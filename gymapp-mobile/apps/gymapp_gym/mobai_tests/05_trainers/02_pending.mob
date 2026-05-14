@@ -1,0 +1,14 @@
+# Pending trainer requests screen loads correctly
+# Tags: trainers, smoke
+# Timeout: 15000
+
+tap ~"المدربين"
+wait_for ~"المدربون" timeout:8000
+
+tap ~"طلبات الانضمام"
+wait_for ~"طلبات انضمام المدربين" timeout:5000
+
+assert_exists ~"طلبات انضمام المدربين"
+assert_not_exists ~"خطأ في التحميل"
+
+tap ~"رجوع"

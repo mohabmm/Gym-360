@@ -1,0 +1,36 @@
+# Owner toggles the gym-level Testing Mode flag (early_session_start feature
+# override) from the staff/gym mobile app. New screen at /settings/testing-mode
+# — verifies the BE round-trip POST then GET reflects the flip.
+# Tags: settings, testing-mode, preprod
+# Timeout: 60000
+
+# Land on Settings hub via the More menu.
+tap ~"الرئيسية"
+delay 1000
+tap ~"المزيد"
+delay 1500
+tap ~"الإعدادات" on_fail:skip
+tap ~"الاعدادات" on_fail:skip
+tap "إعدادات" on_fail:skip
+delay 2000
+
+# Open Testing Mode tile (added 2026-05-12).
+tap "وضع الاختبار"
+wait_for ~"تفعيل وضع الاختبار" timeout:8000
+
+assert_exists ~"تفعيل وضع الاختبار"
+assert_not_exists ~"ApiException"
+
+# Flip toggle on (tapping the row toggles the SwitchListTile).
+tap ~"تفعيل وضع الاختبار"
+delay 2500
+assert_not_exists ~"403"
+assert_not_exists ~"500"
+assert_not_exists ~"ApiException"
+
+# Flip back off.
+tap ~"تفعيل وضع الاختبار"
+delay 2500
+assert_not_exists ~"ApiException"
+
+tap ~"رجوع" on_fail:skip

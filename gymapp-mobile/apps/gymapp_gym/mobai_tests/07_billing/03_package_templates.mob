@@ -1,0 +1,32 @@
+# Package templates list loads and FAB opens create dialog
+# Tags: billing, smoke
+# Timeout: 20000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "قوالب الباقات" timeout:4000
+tap "قوالب الباقات"
+wait_for ~"باقات الحصص" timeout:5000
+
+assert_exists ~"باقات الحصص"
+assert_not_exists ~"خطأ في التحميل"
+
+# Open create package dialog via FAB
+double_tap type:button bounds:bottom_right
+wait_for ~"باقة جديدة" timeout:5000
+
+assert_exists ~"اسم الباقة"
+assert_exists ~"عدد الحصص"
+assert_exists ~"السعر"
+
+# Cancel
+tap ~"الغاء"
+wait_for ~"باقات الحصص" timeout:3000
+
+tap ~"رجوع"

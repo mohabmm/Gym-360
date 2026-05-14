@@ -1,0 +1,20 @@
+# Member leaderboard loads without error
+# Tags: gamification, smoke
+# Timeout: 15000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "ترتيب الاعضاء" timeout:4000
+tap "ترتيب الاعضاء"
+wait_for ~"لوحة الاعضاء" timeout:8000
+
+assert_exists ~"لوحة الاعضاء"
+assert_not_exists ~"خطأ في التحميل"
+
+tap ~"رجوع"

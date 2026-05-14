@@ -1,0 +1,13 @@
+# Trainer home loads + gym-switcher icon GONE (one-gym rule)
+# Tags: home, smoke, tenancy, no-switcher
+# Timeout: 30000
+
+tap ~"الرئيسية"
+delay 2500
+
+# AppBar action "تبديل الصالة" must NOT appear.
+assert_not_exists "تبديل الصالة"
+assert_not_exists "Switch Gym"
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"

@@ -1,0 +1,35 @@
+# Manual check-in with a valid member number shows success card
+# Tags: checkin, smoke
+# Timeout: 20000
+
+# Open More menu and navigate to check-in log
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "تسجيل الحضور" timeout:4000
+tap "تسجيل الحضور"
+wait_for ~"سجل الحضور" timeout:5000
+
+# Open manual check-in (app bar icon)
+tap ~"تسجيل يدوي" type:button
+wait_for ~"رقم العضو" timeout:5000
+
+assert_exists ~"رقم العضو"
+assert_exists ~"تسجيل الحضور" type:button
+
+# Enter valid member number
+type ~"ادخل رقم العضو" → "1"
+tap ~"تسجيل الحضور" type:button
+wait_for ~"تسجيل الحضور" timeout:8000
+
+# Result card shown (success or already-checked-in failure) — no raw exception
+assert_not_exists ~"ApiException"
+
+# Go back twice
+tap ~"رجوع"
+tap ~"رجوع" on_fail:skip

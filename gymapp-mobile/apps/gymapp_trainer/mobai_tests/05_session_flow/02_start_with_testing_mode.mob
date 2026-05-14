@@ -1,0 +1,24 @@
+# With staff-toggled testing-mode = ON, trainer can start a future session
+# before its time. Tests the early_session_start feature override + cache bust
+# path end-to-end from the trainer mobile.
+# Tags: sessions, testing-mode, preprod
+# Timeout: 60000
+
+tap ~"العملاء" on_fail:skip
+tap ~"الزبائن" on_fail:skip
+tap ~"المزيد" on_fail:skip
+delay 1000
+tap "العملاء" on_fail:skip
+delay 2500
+
+# Open first client → most recent session.
+delay 2500
+
+tap ~"بدء" type:button on_fail:skip
+tap ~"بدء الجلسة" type:button on_fail:skip
+delay 2500
+
+# Either Confirmed→InProgress transition succeeded, or the BE returned
+# Scheduling.SessionTooEarly — both are legitimate. A 500 is not.
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"

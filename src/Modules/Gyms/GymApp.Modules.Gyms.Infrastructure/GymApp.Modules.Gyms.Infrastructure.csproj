@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="Quartz.Extensions.Hosting" />
+    <PackageReference Include="BCrypt.Net-Next" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Infrastructure\GymApp.Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gyms.Application\GymApp.Modules.Gyms.Application.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gyms.Domain\GymApp.Modules.Gyms.Domain.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gyms.IntegrationEvents\GymApp.Modules.Gyms.IntegrationEvents.csproj" />
+  </ItemGroup>
+</Project>

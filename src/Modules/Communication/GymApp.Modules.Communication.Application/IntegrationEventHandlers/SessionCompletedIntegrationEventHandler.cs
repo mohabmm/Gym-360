@@ -1,0 +1,55 @@
+using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Domain.Entities;
+using GymApp.Modules.Communication.Domain.Enums;
+using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Scheduling.IntegrationEvents;
+using MediatR;
+using GymApp.Modules.Communication.Application.Abstractions;
+
+namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
+
+internal sealed class SessionCompletedIntegrationEventHandler : INotificationHandler<SessionCompletedIntegrationEvent>
+{
+    private readonly INotificationRepository _notificationRepository;
+    private readonly ICommunicationUnitOfWork _unitOfWork;
+
+    public SessionCompletedIntegrationEventHandler(
+        INotificationRepository notificationRepository,
+        ICommunicationUnitOfWork unitOfWork)
+    {
+        _notificationRepository = notificationRepository;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task Handle(SessionCompletedIntegrationEvent notification, CancellationToken cancellationToken)
+    {
+        var data = new Dictionary<string, string>
+        {
+            ["sessionId"] = notification.SessionId.ToString(),
+            ["gymId"] = notification.GymId.ToString()
+        };
+
+        // Notify trainer
+        var trainerNotif = Notification.Create(
+            notification.TrainerId,
+            "Session Completed",
+            "A training session has been marked as completed.",
+            NotificationType.TrainerFeedback,
+            notification.GymId,
+            data);
+
+        await _notificationRepository.AddAsync(trainerNotif, cancellationToken);
+
+        // Notify member
+        var memberNotif = Notification.Create(
+            notification.MemberId,
+            "Session Completed",
+            "Your training session has been completed. Great work!",
+            NotificationType.SessionReminder,
+            notification.GymId,
+            data);
+
+        await _notificationRepository.AddAsync(memberNotif, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+}

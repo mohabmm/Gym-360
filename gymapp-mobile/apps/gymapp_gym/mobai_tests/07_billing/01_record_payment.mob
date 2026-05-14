@@ -1,0 +1,36 @@
+# Record a payment for an existing member
+# Tags: billing, write
+# Timeout: 25000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "تسجيل دفع" timeout:4000
+tap "تسجيل دفع"
+wait_for ~"رقم العضو" timeout:5000
+
+assert_exists ~"رقم العضو"
+assert_exists ~"المبلغ"
+assert_exists ~"طريقة الدفع"
+assert_exists ~"نوع الدفع"
+
+# Fill form using label text
+type ~"رقم العضو" → "1"
+type ~"المبلغ" → "150"
+
+# Payment method — cash is first (default)
+# Payment type — Membership is default
+
+hide_keyboard on_fail:skip
+tap type:button bounds:bottom_half
+delay 4000
+
+# No raw exception in any snackbar
+assert_not_exists ~"ApiException"
+
+tap ~"رجوع" on_fail:skip

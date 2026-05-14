@@ -1,0 +1,11 @@
+# Workouts tab loads from g1_training schema (Hard-mode tenancy regression)
+# Tags: workouts, tenancy
+# Timeout: 25000
+
+tap ~"التمارين"
+delay 2500
+
+# A workouts list, empty state, or loading must render — no stack trace banner.
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

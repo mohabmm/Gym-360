@@ -1,0 +1,42 @@
+using GymApp.Common.Domain;
+
+namespace GymApp.Modules.Billing.Domain.Entities;
+
+public sealed class GymFeatureOverride : Entity
+{
+    private GymFeatureOverride() { }
+
+    public Guid GymId { get; private set; }
+    public Guid FeatureId { get; private set; }
+    public bool OverrideValue { get; private set; }
+    public string? Reason { get; private set; }
+    public Guid SetBy { get; private set; }
+    public DateTime SetAt { get; private set; }
+
+    public static GymFeatureOverride Create(
+        Guid gymId,
+        Guid featureId,
+        bool overrideValue,
+        Guid setBy,
+        string? reason = null)
+    {
+        return new GymFeatureOverride
+        {
+            Id = Guid.NewGuid(),
+            GymId = gymId,
+            FeatureId = featureId,
+            OverrideValue = overrideValue,
+            Reason = reason,
+            SetBy = setBy,
+            SetAt = DateTime.UtcNow
+        };
+    }
+
+    public void Update(bool overrideValue, string? reason, Guid setBy)
+    {
+        OverrideValue = overrideValue;
+        Reason = reason;
+        SetBy = setBy;
+        SetAt = DateTime.UtcNow;
+    }
+}

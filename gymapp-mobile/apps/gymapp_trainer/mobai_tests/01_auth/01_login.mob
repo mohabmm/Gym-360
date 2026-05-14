@@ -1,0 +1,34 @@
+# Trainer login flow — Hard-mode tenancy regression
+# Tags: auth, smoke, tenancy
+# Timeout: 60000
+
+# If already logged in, sign out via More → Settings → Logout
+tap ~"المزيد" on_fail:skip
+delay 1000
+tap ~"الاعدادات" on_fail:skip
+delay 1000
+tap ~"الإعدادات" on_fail:skip
+delay 1000
+tap ~"تسجيل الخروج" on_fail:skip
+delay 1500
+tap ~"خروج" on_fail:skip
+delay 2000
+
+# Login screen
+wait_for ~"البريد" timeout:15000
+
+type ~"أدخل بريدك" → "trainer@demo.local" on_fail:skip
+delay 800
+hide_keyboard on_fail:skip
+delay 500
+type ~"أدخل كلمة المرور" → "123456"
+delay 800
+hide_keyboard on_fail:skip
+delay 500
+tap ~"تسجيل الدخول" type:button
+
+wait_for ~"الرئيسية" timeout:20000
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

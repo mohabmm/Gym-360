@@ -1,0 +1,80 @@
+{"n": 1, "title": "admin login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 2, "title": "owner login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 3, "title": "staff login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 4, "title": "trainer login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 5, "title": "trainee login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 6, "title": "refresh-token", "method": "POST", "path": "/identity/refresh-token", "code": 200, "status": "PASS", "err": ""}
+{"n": 7, "title": "GET /identity/me", "method": "GET", "path": "/identity/me", "code": 200, "status": "PASS", "err": ""}
+{"n": 8, "title": "change-password (trainee)", "method": "POST", "path": "/identity/change-password", "code": 200, "status": "PASS", "err": ""}
+{"n": 9, "title": "list admin users", "method": "GET", "path": "/admin/users?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 10, "title": "get admin user by id", "method": "GET", "path": "/admin/users/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 11, "title": "patch admin user", "method": "PATCH", "path": "/admin/users/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 12, "title": "create admin user", "method": "POST", "path": "/admin/users", "code": 201, "status": "PASS", "err": ""}
+{"n": 13, "title": "list admin gyms", "method": "GET", "path": "/admin/gyms?page=1&pageSize=20", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 14, "title": "pending gyms", "method": "GET", "path": "/admin/gyms/pending?page=1&pageSize=20", "code": 405, "status": "FAIL(405)", "err": ""}
+{"n": 15, "title": "suspend gym", "method": "POST", "path": "/admin/gyms/99c14975-8030-44d3-bef6-3d8b59213282/suspend", "code": 200, "status": "PASS", "err": ""}
+{"n": 16, "title": "reactivate gym", "method": "POST", "path": "/admin/gyms/99c14975-8030-44d3-bef6-3d8b59213282/reactivate", "code": 200, "status": "PASS", "err": ""}
+{"n": 17, "title": "platform config", "method": "GET", "path": "/admin/platform-config", "code": 200, "status": "PASS", "err": ""}
+{"n": 18, "title": "security settings PATCH", "method": "PATCH", "path": "/admin/security-settings", "code": 204, "status": "PASS", "err": ""}
+{"n": 19, "title": "audit logs", "method": "GET", "path": "/admin/audit-logs?page=1&pageSize=10", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 20, "title": "feature flags", "method": "GET", "path": "/admin/feature-flags", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 21, "title": "list gyms", "method": "GET", "path": "/gyms?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 22, "title": "get gym", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282", "code": 200, "status": "PASS", "err": ""}
+{"n": 23, "title": "update gym", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282", "code": 200, "status": "PASS", "err": ""}
+{"n": 24, "title": "GET operating-hours", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/operating-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 25, "title": "PUT operating-hours", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/operating-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 26, "title": "GET seasonal-hours", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/seasonal-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 27, "title": "PUT seasonal-hours", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/seasonal-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 28, "title": "GET sections", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/sections", "code": 200, "status": "PASS", "err": ""}
+{"n": 29, "title": "PUT sections", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/sections", "code": 400, "status": "FAIL(400)", "err": "Failed to read parameter \"Request request\" from the request body as JSON."}
+{"n": 30, "title": "GET policies", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/policies", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 31, "title": "PUT policies", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/policies", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 32, "title": "GET amenities", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/amenities", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 33, "title": "list members", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 34, "title": "get member", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 35, "title": "patch member", "method": "PATCH", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 36, "title": "freeze member", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/None/freeze", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 37, "title": "unfreeze member", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/None/unfreeze", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 38, "title": "add member note", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/None/notes", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 39, "title": "list staff", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 40, "title": "create staff", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff", "code": 400, "status": "FAIL(400)", "err": "'User Id' must not be empty."}
+{"n": 41, "title": "patch staff", "method": "PATCH", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 42, "title": "get staff", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 43, "title": "deactivate staff", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff/None/deactivate", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 44, "title": "reactivate staff", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff/None/reactivate", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 45, "title": "list trainers", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 46, "title": "get trainer", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 47, "title": "set trainer rate", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers/None/rate", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 48, "title": "get availability", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers/None/availability", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 49, "title": "set availability", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers/None/availability", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 50, "title": "block date", "method": "POST", "path": "/scheduling/availability/block-date", "code": 400, "status": "FAIL(400)", "err": "Gym ID is required."}
+{"n": 51, "title": "book session", "method": "POST", "path": "/scheduling/sessions", "code": 400, "status": "FAIL(400)", "err": ""}
+{"n": 52, "title": "list sessions", "method": "GET", "path": "/scheduling/sessions?page=1&pageSize=10", "code": 400, "status": "FAIL(400)", "err": "The X-Gym-Id header (or gymId query parameter) is required."}
+{"n": 53, "title": "confirm session", "method": "POST", "path": "/scheduling/sessions/None/confirm", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 54, "title": "cancel session", "method": "POST", "path": "/scheduling/sessions/None/cancel", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 55, "title": "complete session", "method": "POST", "path": "/scheduling/sessions/None/complete", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 56, "title": "get session detail", "method": "GET", "path": "/scheduling/sessions/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 57, "title": "log exercise actuals", "method": "POST", "path": "/scheduling/sessions/None/exercise-logs", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 58, "title": "get exercise logs", "method": "GET", "path": "/scheduling/sessions/None/exercise-logs", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 59, "title": "trainer availability lookup", "method": "GET", "path": "/scheduling/availability/trainers/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 60, "title": "calendar view", "method": "GET", "path": "/scheduling/calendar?from=2026-05-14", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 61, "title": "list plans", "method": "GET", "path": "/billing/plans", "code": 400, "status": "FAIL(400)", "err": "The X-Gym-Id header (or gymId query parameter) is required."}
+{"n": 62, "title": "active plan", "method": "GET", "path": "/billing/my-subscription", "code": 200, "status": "PASS", "err": ""}
+{"n": 63, "title": "create plan", "method": "POST", "path": "/billing/plans", "code": 400, "status": "FAIL(400)", "err": "'Gym Id' must not be empty."}
+{"n": 64, "title": "update plan", "method": "PUT", "path": "/billing/plans/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 65, "title": "list package templates", "method": "GET", "path": "/billing/package-templates", "code": 400, "status": "FAIL(400)", "err": "The X-Gym-Id header (or gymId query parameter) is required."}
+{"n": 66, "title": "create package template", "method": "POST", "path": "/billing/package-templates", "code": 400, "status": "FAIL(400)", "err": "'Gym Id' must not be empty."}
+{"n": 67, "title": "assign package", "method": "POST", "path": "/billing/packages/assign", "code": 400, "status": "FAIL(400)", "err": "Failed to read parameter \"AssignSessionPackageRequest request\" from the request "}
+{"n": 68, "title": "my packages", "method": "GET", "path": "/billing/me/packages", "code": 400, "status": "FAIL(400)", "err": "The X-Gym-Id header is required."}
+{"n": 69, "title": "list payments", "method": "GET", "path": "/billing/payments?page=1&pageSize=20", "code": 400, "status": "FAIL(400)", "err": "The X-Gym-Id header (or gymId query parameter) is required."}
+{"n": 70, "title": "void payment", "method": "POST", "path": "/billing/payments/00000000-0000-0000-0000-000000000000/void", "code": 400, "status": "FAIL(400)", "err": "'Payment Id' must not be empty."}
+{"n": 71, "title": "list exercises", "method": "GET", "path": "/training/exercises?page=1&pageSize=10", "code": 200, "status": "PASS", "err": ""}
+{"n": 72, "title": "create exercise", "method": "POST", "path": "/training/exercises", "code": 400, "status": "FAIL(400)", "err": "At least one muscle group is required."}
+{"n": 73, "title": "create program", "method": "POST", "path": "/training/programs", "code": 400, "status": "FAIL(400)", "err": "'Gym Id' must not be empty."}
+{"n": 74, "title": "assign program", "method": "POST", "path": "/training/assignments/program", "code": 400, "status": "FAIL(400)", "err": "Failed to read parameter \"Request request\" from the request body as JSON."}
+{"n": 75, "title": "log body metrics", "method": "POST", "path": "/progress/body-metrics", "code": 400, "status": "FAIL(400)", "err": "The X-Gym-Id header is required."}
+{"n": 76, "title": "body metric trends", "method": "GET", "path": "/progress/body-metrics/trends", "code": 400, "status": "FAIL(400)", "err": "Required parameter \"Guid userId\" was not provided from query string."}
+{"n": 77, "title": "create meal plan", "method": "POST", "path": "/nutrition/meal-plans", "code": 400, "status": "FAIL(400)", "err": "'Gym Id' must not be empty."}
+{"n": 78, "title": "log food", "method": "POST", "path": "/nutrition/food-log", "code": 400, "status": "FAIL(400)", "err": "'Gym Id' must not be empty."}
+{"n": 79, "title": "list notifications", "method": "GET", "path": "/communication/notifications?page=1&pageSize=10", "code": 400, "status": "FAIL(400)", "err": "Required parameter \"Guid userId\" was not provided from query string."}
+{"n": 80, "title": "trainers leaderboard", "method": "GET", "path": "/gamification/trainers/leaderboard", "code": 400, "status": "FAIL(400)", "err": "The X-Gym-Id header (or gymId query parameter) is required."}

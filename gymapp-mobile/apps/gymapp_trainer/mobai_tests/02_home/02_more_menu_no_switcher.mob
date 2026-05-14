@@ -1,0 +1,15 @@
+# Trainer More menu does NOT contain a Switch Gym entry
+# Tags: home, more, no-switcher
+# Timeout: 25000
+
+# Bottom-nav More tab; disambiguate from header "المزيد" by bounds.
+tap ~"الرئيسية" on_fail:skip
+delay 800
+tap ~"المزيد" bounds:bottom_half
+delay 2000
+
+assert_not_exists "تبديل الصالة"
+assert_not_exists "Switch Gym"
+
+# Walk back
+tap ~"الرئيسية" on_fail:skip

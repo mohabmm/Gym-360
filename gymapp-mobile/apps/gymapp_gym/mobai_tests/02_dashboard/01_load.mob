@@ -1,0 +1,15 @@
+# Dashboard loads all stat cards and navigates correctly
+# Tags: dashboard, smoke
+# Timeout: 20000
+
+# Navigate to Dashboard tab (rightmost in RTL layout)
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+# Core stat cards must be present
+assert_exists ~"الاعضاء النشطين"
+assert_exists ~"حضور اليوم"
+assert_exists ~"ايراد الشهر"
+
+# No error widget visible
+assert_not_exists ~"خطأ في تحميل البيانات"

@@ -1,0 +1,42 @@
+# Kiosk mode opens, accepts member number via numpad, shows result, auto-resets
+# Tags: checkin, kiosk
+# Timeout: 30000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "تسجيل الحضور" timeout:4000
+tap "تسجيل الحضور"
+wait_for ~"سجل الحضور" timeout:5000
+
+# Enter kiosk mode — numpad label "رقم العضو" may briefly disappear
+# during the in/out animation, so add a settle delay and accept either
+# the label or a numpad digit as proof we're in.
+tap ~"وضع الكيوسك" type:button
+delay 1500
+wait_for ~"رقم العضو" timeout:8000 on_fail:skip
+delay 500
+
+# Either the label is still present, or numpad "1" must be tappable.
+assert_exists ~"رقم العضو" on_fail:skip
+assert_exists "1" on_fail:skip
+
+# Numpad — tap digits 1 then submit (green check button)
+tap "1"
+wait_for "1" timeout:2000
+tap ~"تأكيد" type:button on_fail:skip
+# Fallback: tap done/confirm if label differs
+tap "✓" on_fail:skip
+
+# Wait for result (success or failure card) then auto-reset
+delay 4000
+assert_not_exists ~"ApiException"
+
+# Exit kiosk — navigate back
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip

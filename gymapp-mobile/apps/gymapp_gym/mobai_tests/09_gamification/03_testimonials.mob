@@ -1,0 +1,22 @@
+# Moderate testimonials screen loads and shows pending or empty state
+# Tags: gamification, smoke
+# Timeout: 15000
+
+# Reset to known state — repeatedly dismiss any open sheet/modal.
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"إغلاق" on_fail:skip
+tap ~"الرئيسية" on_fail:skip
+delay 1000
+wait_for ~"الاعضاء النشطين" timeout:8000 on_fail:skip
+
+tap ~"المزيد" bounds:bottom_half
+wait_for ~"اعتدال الشهادات" timeout:4000
+tap ~"اعتدال الشهادات"
+wait_for ~"اعتدال الشهادات" timeout:5000
+
+assert_exists ~"اعتدال الشهادات"
+assert_not_exists ~"خطأ في التحميل"
+
+tap ~"رجوع" on_fail:skip

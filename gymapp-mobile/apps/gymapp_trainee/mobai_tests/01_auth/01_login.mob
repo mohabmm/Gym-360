@@ -1,0 +1,44 @@
+# Trainee login flow — Hard-mode tenancy regression
+# Tags: auth, smoke, tenancy
+# Timeout: 60000
+
+# If already logged in, log out via More → Settings → Logout. Otherwise the
+# login form is already on screen.
+tap ~"المزيد" on_fail:skip
+delay 1000
+tap ~"الاعدادات" on_fail:skip
+delay 1000
+tap ~"الإعدادات" on_fail:skip
+delay 1000
+tap ~"تسجيل الخروج" on_fail:skip
+delay 1500
+tap ~"خروج" on_fail:skip
+delay 2000
+tap ~"تأكيد" on_fail:skip
+delay 2000
+
+# Login screen
+wait_for ~"البريد" timeout:15000
+
+tap ~"trainee@demo.local" on_fail:skip
+delay 300
+type ~"أدخل بريدك" → "trainee@demo.local" on_fail:skip
+delay 600
+hide_keyboard on_fail:skip
+delay 400
+tap ~"أدخل كلمة المرور"
+delay 400
+type ~"أدخل كلمة المرور" → "123456"
+delay 600
+hide_keyboard on_fail:skip
+delay 400
+tap ~"تسجيل الدخول" type:button
+
+# Home screen markers — bottom-nav labels are stable across the trainee app.
+wait_for ~"الرئيسية" timeout:20000
+wait_for ~"التمارين" timeout:5000
+
+# Tenancy regression — schema mismatches surface as ApiException banners.
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

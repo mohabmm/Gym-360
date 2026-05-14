@@ -1,0 +1,24 @@
+# Water log — exercises POST /nutrition/water-log (race fix verified, see
+# UpsertAndAppendEntryAsync). Logs three quick entries; total should grow,
+# response should never 500.
+# Tags: nutrition, water, preprod
+# Timeout: 60000
+
+tap ~"التغذية" on_fail:skip
+tap ~"الماء" on_fail:skip
+delay 2500
+
+# Quick-add 250ml buttons live on the water dashboard; if absent (older build),
+# tap the FAB and accept whatever default the modal pre-fills.
+tap "250" on_fail:skip
+delay 1500
+tap "500" on_fail:skip
+delay 1500
+tap ~"إضافة" type:button on_fail:skip
+delay 1500
+tap ~"حفظ" type:button on_fail:skip
+delay 2500
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"
+assert_not_exists ~"duplicate"

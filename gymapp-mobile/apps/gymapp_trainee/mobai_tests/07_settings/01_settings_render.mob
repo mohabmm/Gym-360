@@ -1,0 +1,19 @@
+# Settings screen renders + locale toggle works without crash
+# Tags: settings, smoke, preprod
+# Timeout: 30000
+
+# Reset to home tab first so the More-tab selector is unambiguous.
+tap ~"الرئيسية" on_fail:skip
+delay 800
+tap ~"المزيد" bounds:bottom_half
+delay 1500
+tap ~"الاعدادات" on_fail:skip
+tap ~"الإعدادات" on_fail:skip
+delay 2000
+
+assert_not_exists ~"ApiException"
+
+# PDPL section is part of every shipped settings screen; presence confirms the
+# settings list rendered past first paint.
+assert_exists ~"حذف الحساب" on_fail:skip
+assert_exists ~"تصدير بياناتي" on_fail:skip

@@ -1,0 +1,63 @@
+using GymApp.Common.Domain;
+
+namespace GymApp.Modules.Scheduling.Domain.Entities;
+
+public sealed class AvailabilitySlot : Entity
+{
+    private AvailabilitySlot() : base() { }
+
+    private AvailabilitySlot(
+        Guid id,
+        Guid trainerAvailabilityId,
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime,
+        bool isActive) : base(id)
+    {
+        TrainerAvailabilityId = trainerAvailabilityId;
+        DayOfWeek = dayOfWeek;
+        StartTime = startTime;
+        EndTime = endTime;
+        IsActive = isActive;
+    }
+
+    public Guid TrainerAvailabilityId { get; private set; }
+    public DayOfWeek DayOfWeek { get; private set; }
+    public TimeOnly StartTime { get; private set; }
+    public TimeOnly EndTime { get; private set; }
+    public bool IsActive { get; private set; }
+
+    public static AvailabilitySlot Create(
+        Guid trainerAvailabilityId,
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime,
+        bool isActive = true)
+    {
+        return new AvailabilitySlot(
+            Guid.NewGuid(),
+            trainerAvailabilityId,
+            dayOfWeek,
+            startTime,
+            endTime,
+            isActive);
+    }
+
+    public void Activate() => IsActive = true;
+
+    public void Deactivate() => IsActive = false;
+
+    public void UpdateTimes(TimeOnly startTime, TimeOnly endTime)
+    {
+        StartTime = startTime;
+        EndTime = endTime;
+    }
+
+    public bool OverlapsWith(AvailabilitySlot other)
+    {
+        if (DayOfWeek != other.DayOfWeek)
+            return false;
+
+        return StartTime < other.EndTime && other.StartTime < EndTime;
+    }
+}

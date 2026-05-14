@@ -1,0 +1,36 @@
+# Invalid login — wrong password shows error, does NOT log in
+# Tags: auth, validation
+# Timeout: 35000
+
+# Ensure logged out — logout if session active
+tap ~"المزيد" on_fail:skip
+wait_for "الاعدادات" timeout:4000 on_fail:skip
+tap "الاعدادات" on_fail:skip
+wait_for "تسجيل الخروج" timeout:4000 on_fail:skip
+tap "تسجيل الخروج" on_fail:skip
+wait_for "خروج" timeout:3000 on_fail:skip
+tap "خروج" on_fail:skip
+
+# Wait for login form fields to render and become interactive
+wait_for ~"ادخل بريدك الالكتروني" timeout:10000
+delay 2000
+
+# Enter wrong password
+type ~"ادخل بريدك الالكتروني" → "staff@demo.local"
+hide_keyboard on_fail:skip
+type ~"ادخل كلمة المرور" → "wrongpassword"
+hide_keyboard on_fail:skip
+tap ~"تسجيل الدخول" type:button
+delay 5000
+
+# Must NOT reach dashboard
+assert_not_exists ~"الاعضاء النشطين"
+
+# Restore — fix password field (clear and retype correct password)
+type ~"ادخل كلمة المرور" → "123456" clear
+hide_keyboard on_fail:skip
+# Email may have been cleared; retype if hint is visible
+type ~"ادخل بريدك الالكتروني" → "staff@demo.local" on_fail:skip
+hide_keyboard on_fail:skip
+tap ~"تسجيل الدخول" type:button
+wait_for ~"الاعضاء النشطين" timeout:12000

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Domain\GymApp.Common.Domain.csproj" />
+  </ItemGroup>
+</Project>

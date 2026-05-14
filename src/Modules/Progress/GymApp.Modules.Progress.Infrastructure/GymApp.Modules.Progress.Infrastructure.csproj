@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Infrastructure\GymApp.Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Progress.Application\GymApp.Modules.Progress.Application.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Progress.Domain\GymApp.Modules.Progress.Domain.csproj" />
+  </ItemGroup>
+</Project>

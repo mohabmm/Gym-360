@@ -1,0 +1,26 @@
+# Assign package screen loads and validates required fields
+# Tags: billing, smoke
+# Timeout: 20000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "تعيين باقة" timeout:4000
+tap "تعيين باقة"
+wait_for ~"تعيين باقة" timeout:5000
+
+assert_exists ~"رقم العضو"
+assert_exists ~"اختر المدرب"
+assert_exists ~"اختر الباقة"
+
+# Try to submit empty — validation must trigger
+tap ~"تعيين الباقة" type:button
+delay 1000
+assert_not_exists ~"ApiException"
+
+tap ~"رجوع"

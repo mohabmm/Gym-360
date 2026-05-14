@@ -1,0 +1,37 @@
+**/bin
+**/obj
+**/out
+**/.vs
+**/.idea
+**/.vscode
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/build
+**/.dart_tool
+
+# Secrets — never bake into image; mount at runtime
+config/firebase-service-account.json
+config/*-service-account*.json
+*.firebase-adminsdk*.json
+.env
+.env.*
+!.env.example
+
+# Git / docs
+.git
+.gitignore
+**/*.md
+
+# Non-backend trees — Docker build context only needs src/ + root MSBuild files
+gymapp-mobile/
+gymapp-web/
+tests/
+docs/
+scripts/
+config/
+onboard-gym.sh
+docker-compose*.yml
+Dockerfile*
+.github/

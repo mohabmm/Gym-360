@@ -1,0 +1,40 @@
+# Create announcement — fill title, content, submit
+# Tags: announcements, write
+# Timeout: 25000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "الاعلانات" timeout:4000
+tap "الاعلانات"
+# Wait for FAB — confirms we are on the announcements list screen
+wait_for type:button bounds:bottom_left timeout:5000
+
+# Open create via FAB
+tap type:button bounds:bottom_left
+wait_for ~"اعلان جديد" timeout:5000
+
+assert_exists ~"العنوان"
+assert_exists ~"المحتوى"
+assert_exists ~"التصنيف"
+assert_exists ~"الجمهور المستهدف"
+
+# Fill form using hint text
+type ~"ادخل عنوان الاعلان" → "اعلان اختبار موباي"
+type ~"ادخل محتوى الاعلان" → "هذا اعلان تجريبي تم انشاؤه بواسطة اختبار موباي"
+
+hide_keyboard on_fail:skip
+
+# Submit
+tap type:button bounds:bottom_half
+wait_for ~"الاعلانات" timeout:8000
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"مطلوب"
+
+tap ~"رجوع" on_fail:skip

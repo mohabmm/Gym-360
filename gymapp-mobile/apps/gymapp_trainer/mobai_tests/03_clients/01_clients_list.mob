@@ -1,0 +1,10 @@
+# Clients list loads from g1_gyms (members) — Hard-mode tenancy regression
+# Tags: clients, tenancy
+# Timeout: 25000
+
+tap ~"العملاء"
+delay 2500
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

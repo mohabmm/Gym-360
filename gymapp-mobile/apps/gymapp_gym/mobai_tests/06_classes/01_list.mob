@@ -1,0 +1,9 @@
+# Classes list loads without error
+# Tags: classes, smoke
+# Timeout: 15000
+
+tap ~"الحصص" bounds:bottom_half
+wait_for ~"مقعد" timeout:8000
+
+assert_exists ~"الحصص"
+assert_not_exists ~"خطأ في تحميل الحصص"

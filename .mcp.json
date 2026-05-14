@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "gymapi-admin": {
+      "command": "bash",
+      "args": [
+        "/Users/mmagdy2-eg/Desktop/Development/Forma/scripts/mcp-role-wrapper.sh",
+        "admin"
+      ]
+    },
+    "gymapi-owner": {
+      "command": "bash",
+      "args": [
+        "/Users/mmagdy2-eg/Desktop/Development/Forma/scripts/mcp-role-wrapper.sh",
+        "owner"
+      ]
+    },
+    "gymapi-staff": {
+      "command": "bash",
+      "args": [
+        "/Users/mmagdy2-eg/Desktop/Development/Forma/scripts/mcp-role-wrapper.sh",
+        "staff"
+      ]
+    },
+    "gymapi-trainer": {
+      "command": "bash",
+      "args": [
+        "/Users/mmagdy2-eg/Desktop/Development/Forma/scripts/mcp-role-wrapper.sh",
+        "trainer"
+      ]
+    },
+    "gymapi-trainee": {
+      "command": "bash",
+      "args": [
+        "/Users/mmagdy2-eg/Desktop/Development/Forma/scripts/mcp-role-wrapper.sh",
+        "trainee"
+      ]
+    }
+  }
+}

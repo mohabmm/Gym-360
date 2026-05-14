@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1.7
+# Dev-only image: SDK 9.0 (satisfies global.json) + ASP.NET runtime 8.0
+# (matches TargetFramework=net8.0). Used by docker-compose.dev.yml for
+# `dotnet watch` hot-reload. NOT for production.
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0
+
+# Install ASP.NET Core runtime 8.0 alongside the bundled 9.0 runtime
+# so net8.0 apps can run without DOTNET_ROLL_FORWARD gymnastics.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
+    && chmod +x /tmp/dotnet-install.sh \
+    && /tmp/dotnet-install.sh --channel 8.0 --runtime aspnetcore --install-dir /usr/share/dotnet --no-path \
+    && rm /tmp/dotnet-install.sh

@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.MsSql" />
+    <PackageReference Include="Testcontainers.Redis" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\API\GymApp.Api\GymApp.Api.csproj" />
+    <ProjectReference Include="..\..\src\Common\GymApp.Common.Domain\GymApp.Common.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Common\GymApp.Common.Application\GymApp.Common.Application.csproj" />
+    <ProjectReference Include="..\..\src\Common\GymApp.Common.Infrastructure\GymApp.Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Common\GymApp.Common.Presentation\GymApp.Common.Presentation.csproj" />
+
+    <!-- Module Application + Infrastructure references -->
+    <ProjectReference Include="..\..\src\Modules\Identity\GymApp.Modules.Identity.Application\GymApp.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\GymApp.Modules.Identity.Infrastructure\GymApp.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Application\GymApp.Modules.Gyms.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Infrastructure\GymApp.Modules.Gyms.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Training\GymApp.Modules.Training.Application\GymApp.Modules.Training.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Training\GymApp.Modules.Training.Infrastructure\GymApp.Modules.Training.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Progress\GymApp.Modules.Progress.Application\GymApp.Modules.Progress.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Progress\GymApp.Modules.Progress.Infrastructure\GymApp.Modules.Progress.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Scheduling\GymApp.Modules.Scheduling.Application\GymApp.Modules.Scheduling.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Scheduling\GymApp.Modules.Scheduling.Infrastructure\GymApp.Modules.Scheduling.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Nutrition\GymApp.Modules.Nutrition.Application\GymApp.Modules.Nutrition.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Nutrition\GymApp.Modules.Nutrition.Infrastructure\GymApp.Modules.Nutrition.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Communication\GymApp.Modules.Communication.Application\GymApp.Modules.Communication.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Communication\GymApp.Modules.Communication.Infrastructure\GymApp.Modules.Communication.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Billing\GymApp.Modules.Billing.Application\GymApp.Modules.Billing.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Billing\GymApp.Modules.Billing.Infrastructure\GymApp.Modules.Billing.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Application\GymApp.Modules.Gamification.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Infrastructure\GymApp.Modules.Gamification.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+  </ItemGroup>
+
+</Project>

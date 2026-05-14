@@ -1,0 +1,15 @@
+# Trainee sessions tab — list loads from g{N}_scheduling without raw exceptions
+# Tags: sessions, smoke, tenancy, preprod
+# Timeout: 30000
+
+tap ~"الرئيسية"
+delay 1000
+tap ~"المواعيد" on_fail:skip
+tap ~"الجلسات" on_fail:skip
+tap ~"جلسات" on_fail:skip
+delay 2500
+
+# Either upcoming sessions or empty-state copy must render — never a stack trace
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

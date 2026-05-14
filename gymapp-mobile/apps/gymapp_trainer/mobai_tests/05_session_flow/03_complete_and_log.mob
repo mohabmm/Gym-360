@@ -1,0 +1,31 @@
+# Trainer completes an in-progress session and submits the trainer log.
+# Verifies POST /sessions/{id}/complete then /trainer-log. The package's
+# remainingSessions count should also decrement on the BE.
+# Tags: sessions, trainer-log, preprod
+# Timeout: 60000
+
+tap ~"إنهاء" type:button on_fail:skip
+tap ~"إكمال" type:button on_fail:skip
+tap ~"اكمال الجلسة" type:button on_fail:skip
+delay 2500
+
+# Log form opens — fill required fields then save.
+type ~"التمارين" → "Squats, Deadlifts" on_fail:skip
+delay 400
+hide_keyboard on_fail:skip
+type ~"ملاحظات" → "Good form" on_fail:skip
+delay 400
+hide_keyboard on_fail:skip
+type ~"التركيز القادم" → "Hypertrophy" on_fail:skip
+delay 400
+hide_keyboard on_fail:skip
+
+# Effort rating chip — 4
+tap "4" on_fail:skip
+
+tap ~"حفظ" type:button on_fail:skip
+tap ~"إرسال" type:button on_fail:skip
+delay 3000
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"

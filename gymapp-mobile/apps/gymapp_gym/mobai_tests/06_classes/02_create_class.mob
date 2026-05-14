@@ -1,0 +1,31 @@
+# Create a new class — fill all required fields and submit
+# Tags: classes, write
+# Timeout: 30000
+
+tap ~"الحصص" bounds:bottom_half
+wait_for ~"مقعد" timeout:8000
+
+# Open create class form via FAB
+tap type:button bounds:bottom_left
+wait_for ~"حصة جديدة" timeout:5000
+
+assert_exists ~"اسم الحصة"
+
+# Fill class name
+type ~"مثال: يوجا" → "حصة اختبار موباي"
+
+# Select trainer if not already selected
+if_exists ~"اختر المدرب" {
+  tap ~"اختر المدرب"
+  wait_for ~"Demo Trainer" timeout:3000
+  tap ~"Demo Trainer"
+  wait_for ~"السعة" timeout:5000
+}
+
+hide_keyboard on_fail:skip
+tap type:button bounds:bottom_half
+wait_for ~"الحصص" timeout:8000
+
+# Back on list, no validation error
+assert_not_exists ~"مطلوب"
+assert_not_exists ~"ApiException"

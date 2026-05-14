@@ -1,0 +1,18 @@
+# Dashboard kiosk mode shortcut button opens kiosk screen
+# Tags: dashboard, kiosk
+# Timeout: 15000
+
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+# Tap kiosk mode action button in app bar
+tap ~"وضع الكيوسك" type:button
+wait_for ~"رقم العضو" timeout:5000
+
+# Kiosk screen opened — assert numpad or member number input visible
+assert_exists ~"رقم العضو"
+assert_not_exists ~"خطأ"
+
+# Go back
+tap ~"رجوع"
+wait_for ~"الاعضاء النشطين" timeout:5000

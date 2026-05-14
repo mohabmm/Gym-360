@@ -1,0 +1,31 @@
+# Manual check-in with non-existent member number shows clean error message (not raw exception)
+# Tags: checkin, validation
+# Timeout: 20000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "تسجيل الحضور" timeout:4000
+tap "تسجيل الحضور"
+wait_for ~"سجل الحضور" timeout:5000
+
+tap ~"تسجيل يدوي" type:button
+wait_for ~"رقم العضو" timeout:5000
+
+# Enter bogus member number
+type ~"ادخل رقم العضو" → "999999"
+tap ~"تسجيل الحضور" type:button
+wait_for ~"فشل تسجيل الحضور" timeout:8000
+
+# Error card shown with clean message (no "ApiException(XXX):" prefix)
+assert_exists ~"فشل تسجيل الحضور"
+assert_not_exists ~"ApiException"
+assert_not_exists ~"تم تسجيل الحضور"
+
+tap ~"رجوع"
+tap ~"رجوع" on_fail:skip

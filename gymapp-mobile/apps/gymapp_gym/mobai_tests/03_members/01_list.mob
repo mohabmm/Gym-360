@@ -1,0 +1,15 @@
+# Members list loads with filter tabs and member rows
+# Tags: members, smoke
+# Timeout: 15000
+
+tap ~"الاعضاء" bounds:bottom_half
+wait_for "الكل" type:button timeout:5000
+
+# Filter chips present
+assert_exists "الكل"
+assert_exists ~"نشط"
+assert_exists ~"مجمد"
+assert_exists ~"منتهي"
+
+# No error widget
+assert_not_exists ~"خطأ"

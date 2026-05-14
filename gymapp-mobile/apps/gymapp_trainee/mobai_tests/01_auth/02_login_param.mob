@@ -1,0 +1,42 @@
+# Trainee login parameterised — accepts ${email} + ${password} so the same
+# script drives every loop's freshly-bootstrapped trainee account instead of
+# the legacy demo seed user.
+# Tags: auth, smoke, tenancy, preprod
+# Timeout: 90000
+
+# Logout if a session is active. Cascade fails silently when we already start
+# at the login screen.
+tap ~"المزيد" on_fail:skip
+delay 1000
+tap ~"الاعدادات" on_fail:skip
+delay 1000
+tap ~"الإعدادات" on_fail:skip
+delay 1000
+tap ~"تسجيل الخروج" on_fail:skip
+delay 1500
+tap "خروج" type:button on_fail:skip
+tap ~"تأكيد" type:button on_fail:skip
+delay 2500
+
+wait_for ~"البريد" timeout:15000
+
+type ~"أدخل بريدك" → "${email}" on_fail:skip
+type ~"البريد" → "${email}" on_fail:skip
+delay 600
+hide_keyboard on_fail:skip
+delay 400
+# Match either hint ("أدخل كلمة المرور") or label ("كلمة المرور"); whichever
+# the secure field exposes through the accessibility tree.
+type ~"أدخل كلمة المرور" → "${password}" on_fail:skip
+type ~"كلمة المرور" → "${password}" on_fail:skip
+delay 600
+hide_keyboard on_fail:skip
+delay 400
+tap ~"تسجيل الدخول" type:button
+
+wait_for ~"الرئيسية" timeout:25000
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"
+assert_not_exists ~"بيانات تسجيل الدخول غير صحيحة"

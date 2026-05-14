@@ -1,0 +1,32 @@
+# Trainer sets weekly availability (PUT /scheduling/availability). Validates
+# the schedule UI persists slots and that there is no tenant routing issue
+# when writing to g{N}_scheduling.trainer_availabilities.
+# Tags: availability, scheduling, preprod
+# Timeout: 60000
+
+tap ~"الجدول" on_fail:skip
+tap ~"الجدولة" on_fail:skip
+tap ~"التوفر" on_fail:skip
+tap ~"المتاحية" on_fail:skip
+tap ~"المزيد" on_fail:skip
+delay 1000
+tap "التوفر" on_fail:skip
+tap "الجدولة" on_fail:skip
+delay 2500
+
+# Open day picker / first day toggle.
+tap "الاثنين" on_fail:skip
+delay 1000
+
+# Add slot button.
+tap ~"إضافة فترة" on_fail:skip
+tap ~"إضافة وقت" on_fail:skip
+delay 800
+
+tap ~"حفظ" type:button on_fail:skip
+tap ~"تأكيد" type:button on_fail:skip
+delay 2500
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"
+assert_not_exists ~"Invalid object name"

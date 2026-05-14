@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GymApp.Tests.Application" />
+    <InternalsVisibleTo Include="GymApp.Modules.Communication.Infrastructure" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Application\GymApp.Common.Application.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Communication.Domain\GymApp.Modules.Communication.Domain.csproj" />
+    <ProjectReference Include="..\..\Training\GymApp.Modules.Training.IntegrationEvents\GymApp.Modules.Training.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Scheduling\GymApp.Modules.Scheduling.IntegrationEvents\GymApp.Modules.Scheduling.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Progress\GymApp.Modules.Progress.IntegrationEvents\GymApp.Modules.Progress.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Billing\GymApp.Modules.Billing.IntegrationEvents\GymApp.Modules.Billing.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Gamification\GymApp.Modules.Gamification.IntegrationEvents\GymApp.Modules.Gamification.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Gyms\GymApp.Modules.Gyms.IntegrationEvents\GymApp.Modules.Gyms.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Identity\GymApp.Modules.Identity.IntegrationEvents\GymApp.Modules.Identity.IntegrationEvents.csproj" />
+  </ItemGroup>
+</Project>

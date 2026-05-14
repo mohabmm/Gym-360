@@ -1,0 +1,26 @@
+# Check-in log screen loads and shows today's entries
+# Tags: checkin, smoke
+# Timeout: 15000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "تسجيل الحضور" timeout:4000
+tap "تسجيل الحضور"
+wait_for ~"سجل الحضور" timeout:5000
+
+assert_exists ~"سجل الحضور"
+
+# Action buttons in app bar
+assert_exists ~"وضع الكيوسك" type:button
+assert_exists ~"تسجيل يدوي" type:button
+
+# No error widget
+assert_not_exists ~"خطأ في تحميل السجل"
+
+tap ~"رجوع"

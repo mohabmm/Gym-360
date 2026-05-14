@@ -1,0 +1,88 @@
+using GymApp.Common.Application.Abstractions;
+using GymApp.Common.Application.Errors;
+using GymApp.Common.Application.Messaging;
+using GymApp.Common.Domain;
+using GymApp.Modules.Training.Domain.Entities;
+using GymApp.Modules.Training.Domain.Enums;
+using GymApp.Modules.Training.Domain.Errors;
+using GymApp.Modules.Training.Domain.Repositories;
+using GymApp.Modules.Training.Application.Abstractions;
+
+namespace GymApp.Modules.Training.Application.Commands.LogWorkout;
+
+internal sealed class LogWorkoutCommandHandler : ICommandHandler<LogWorkoutCommand, Guid>
+{
+    private readonly IWorkoutLogRepository _workoutLogRepository;
+    private readonly ITrainingUnitOfWork _unitOfWork;
+    private readonly IGymPlanService _gymPlanService;
+
+    public LogWorkoutCommandHandler(
+        IWorkoutLogRepository workoutLogRepository,
+        ITrainingUnitOfWork unitOfWork,
+        IGymPlanService gymPlanService)
+    {
+        _workoutLogRepository = workoutLogRepository;
+        _unitOfWork = unitOfWork;
+        _gymPlanService = gymPlanService;
+    }
+
+    public async Task<Result<Guid>> Handle(LogWorkoutCommand request, CancellationToken cancellationToken)
+    {
+        var isEnabled = await _gymPlanService.IsFeatureEnabledAsync(
+            request.GymId, "session_logging", cancellationToken);
+
+        if (!isEnabled)
+        {
+            var currentPlan = await _gymPlanService.GetPlanCodeAsync(request.GymId, cancellationToken);
+            return Result.Failure<Guid>(PlanErrors.FeatureNotAvailable(
+                "session_logging", currentPlan, "Pro"));
+        }
+
+        // Idempotent on (UserId, Date, WorkoutId) — the DB enforces this tuple
+        // unique. A retry (double-tap / re-submit) returns the existing log's
+        // id so the client sees success and can move on.
+        var existing = await _workoutLogRepository.GetByUserAndDateAsync(
+            request.UserId, request.Date, request.WorkoutId, cancellationToken);
+
+        if (existing is not null)
+        {
+            return Result.Success(existing.Id);
+        }
+
+        var workoutLog = WorkoutLog.Create(
+            request.UserId,
+            request.GymId,
+            request.Date,
+            request.StartedAt,
+            request.WorkoutId,
+            request.Notes,
+            perceivedExertion: request.PerceivedExertion);
+
+        foreach (var setDto in request.Sets)
+        {
+            var weightUnit = Enum.TryParse<WeightUnit>(setDto.WeightUnit, ignoreCase: true, out var unit)
+                ? unit
+                : WeightUnit.Kg;
+
+            workoutLog.AddSet(
+                setDto.ExerciseId,
+                setDto.SetNumber,
+                setDto.Reps,
+                setDto.Weight,
+                weightUnit,
+                setDto.DurationSeconds,
+                setDto.IsCompleted,
+                setDto.Notes);
+        }
+
+        if (request.CompletedAt.HasValue)
+        {
+            workoutLog.Complete(request.CompletedAt.Value, request.DurationMinutes);
+        }
+
+        await _workoutLogRepository.AddAsync(workoutLog, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result.Success(workoutLog.Id);
+    }
+}

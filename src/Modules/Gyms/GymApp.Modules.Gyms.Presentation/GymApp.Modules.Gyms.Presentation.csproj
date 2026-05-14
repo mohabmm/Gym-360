@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Presentation\GymApp.Common.Presentation.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gyms.Application\GymApp.Modules.Gyms.Application.csproj" />
+  </ItemGroup>
+</Project>

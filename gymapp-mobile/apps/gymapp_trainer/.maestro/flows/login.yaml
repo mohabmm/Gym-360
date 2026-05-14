@@ -1,0 +1,28 @@
+appId: com.example.gymappTrainer
+name: trainer-login-smoke
+env:
+  EMAIL: trainer-l3-612493@gym.local
+  PASSWORD: "123456"
+---
+- stopApp
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd:
+    timeout: 15000
+- tapOn:
+    text: ".*دخل بريدك.*"
+    optional: true
+- inputText: ${EMAIL}
+- hideKeyboard
+- tapOn:
+    text: ".*دخل كلمة المرور.*"
+    optional: true
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: "تسجيل الدخول"
+    optional: true
+- extendedWaitUntil:
+    notVisible: "تسجيل الدخول"
+    timeout: 30000
+- assertNotVisible: "تسجيل الدخول"

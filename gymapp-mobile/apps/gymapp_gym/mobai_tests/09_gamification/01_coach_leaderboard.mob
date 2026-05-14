@@ -1,0 +1,28 @@
+# Coach leaderboard loads and testimonials tab navigates correctly
+# Tags: gamification, smoke
+# Timeout: 20000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "لوحة المدربين" timeout:4000
+tap "لوحة المدربين"
+wait_for ~"لوحة المدربين" timeout:8000
+
+assert_exists ~"لوحة المدربين"
+assert_exists ~"الشهادات"
+assert_not_exists ~"خطأ في التحميل"
+
+# Navigate to Testimonials tab
+tap ~"الشهادات"
+wait_for ~"اعتدال الشهادات" timeout:5000
+
+assert_exists ~"اعتدال الشهادات"
+assert_not_exists ~"خطأ في التحميل"
+
+tap ~"رجوع"

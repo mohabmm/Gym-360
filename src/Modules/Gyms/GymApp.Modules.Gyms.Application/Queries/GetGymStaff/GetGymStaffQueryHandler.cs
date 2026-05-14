@@ -1,0 +1,22 @@
+using GymApp.Common.Application.Messaging;
+using GymApp.Common.Domain;
+using GymApp.Modules.Gyms.Application.Contracts;
+using GymApp.Modules.Gyms.Application.DTOs;
+
+namespace GymApp.Modules.Gyms.Application.Queries.GetGymStaff;
+
+internal sealed class GetGymStaffQueryHandler : IQueryHandler<GetGymStaffQuery, List<StaffDto>>
+{
+    private readonly IGymQueryService _gymQueryService;
+
+    public GetGymStaffQueryHandler(IGymQueryService gymQueryService)
+    {
+        _gymQueryService = gymQueryService;
+    }
+
+    public async Task<Result<List<StaffDto>>> Handle(GetGymStaffQuery request, CancellationToken cancellationToken)
+    {
+        var result = await _gymQueryService.GetStaffAsync(request.GymId, cancellationToken);
+        return Result.Success(result);
+    }
+}

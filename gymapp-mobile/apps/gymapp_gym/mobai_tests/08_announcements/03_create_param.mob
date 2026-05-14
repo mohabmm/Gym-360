@@ -1,0 +1,29 @@
+# Owner creates a gym announcement (POST /gyms/{id}/announcements). Validates
+# the CreatedBy-from-JWT fix (no longer takes userId in body).
+# Params: ${title} ${body}
+# Tags: announcements, write, preprod
+# Timeout: 60000
+
+tap ~"المزيد"
+delay 1500
+tap "الإعلانات" on_fail:skip
+tap "إعلانات" on_fail:skip
+delay 2500
+
+tap ~"إنشاء" type:button on_fail:skip
+delay 1500
+
+type ~"العنوان" → "${title}"
+delay 400
+hide_keyboard on_fail:skip
+type ~"المحتوى" → "${body}" on_fail:skip
+type ~"النص" → "${body}" on_fail:skip
+delay 400
+hide_keyboard on_fail:skip
+
+tap ~"نشر" type:button on_fail:skip
+tap ~"حفظ" type:button on_fail:skip
+delay 3000
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"

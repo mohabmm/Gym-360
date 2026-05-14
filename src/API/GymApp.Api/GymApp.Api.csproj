@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Seq" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\GymApp.Common.Infrastructure\GymApp.Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Common\GymApp.Common.Presentation\GymApp.Common.Presentation.csproj" />
+    <!-- Module Presentation layers -->
+    <ProjectReference Include="..\..\Modules\Identity\GymApp.Modules.Identity.Infrastructure\GymApp.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\GymApp.Modules.Identity.Presentation\GymApp.Modules.Identity.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Gyms\GymApp.Modules.Gyms.Infrastructure\GymApp.Modules.Gyms.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Gyms\GymApp.Modules.Gyms.Presentation\GymApp.Modules.Gyms.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Training\GymApp.Modules.Training.Infrastructure\GymApp.Modules.Training.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Training\GymApp.Modules.Training.Presentation\GymApp.Modules.Training.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Progress\GymApp.Modules.Progress.Infrastructure\GymApp.Modules.Progress.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Progress\GymApp.Modules.Progress.Presentation\GymApp.Modules.Progress.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Scheduling\GymApp.Modules.Scheduling.Infrastructure\GymApp.Modules.Scheduling.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Scheduling\GymApp.Modules.Scheduling.Presentation\GymApp.Modules.Scheduling.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Nutrition\GymApp.Modules.Nutrition.Infrastructure\GymApp.Modules.Nutrition.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Nutrition\GymApp.Modules.Nutrition.Presentation\GymApp.Modules.Nutrition.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Communication\GymApp.Modules.Communication.Infrastructure\GymApp.Modules.Communication.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Communication\GymApp.Modules.Communication.Presentation\GymApp.Modules.Communication.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Billing\GymApp.Modules.Billing.Infrastructure\GymApp.Modules.Billing.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Billing\GymApp.Modules.Billing.Presentation\GymApp.Modules.Billing.Presentation.csproj" />
+    <ProjectReference Include="..\..\Modules\Gamification\GymApp.Modules.Gamification.Infrastructure\GymApp.Modules.Gamification.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Gamification\GymApp.Modules.Gamification.Presentation\GymApp.Modules.Gamification.Presentation.csproj" />
+  </ItemGroup>
+
+</Project>

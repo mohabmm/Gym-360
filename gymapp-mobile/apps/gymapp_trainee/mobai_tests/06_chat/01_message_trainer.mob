@@ -1,0 +1,26 @@
+# Trainee opens (or creates) a conversation with the assigned trainer and
+# sends one message. Validates POST /communication/conversations and
+# POST /communication/conversations/{id}/messages.
+# Tags: chat, communication, preprod
+# Timeout: 60000
+
+tap ~"الرسائل" on_fail:skip
+tap ~"المحادثات" on_fail:skip
+tap ~"المزيد" on_fail:skip
+delay 1000
+tap "الرسائل" on_fail:skip
+tap "المحادثات" on_fail:skip
+delay 2500
+
+# Open first conversation if any; otherwise tap the new-message FAB.
+delay 2000
+
+tap ~"اكتب رسالة" on_fail:skip
+type ~"اكتب رسالة" → "Pre-prod E2E ping" on_fail:skip
+delay 600
+hide_keyboard on_fail:skip
+tap ~"إرسال" type:button on_fail:skip
+delay 2500
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"

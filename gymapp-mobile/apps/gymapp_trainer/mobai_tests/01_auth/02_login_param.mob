@@ -1,0 +1,35 @@
+# Trainer login parameterised — drives any loop's freshly-bootstrapped trainer.
+# Params: ${email} ${password}
+# Tags: auth, smoke, tenancy, preprod
+# Timeout: 90000
+
+tap ~"المزيد" on_fail:skip
+delay 1000
+tap ~"الاعدادات" on_fail:skip
+delay 1000
+tap ~"الإعدادات" on_fail:skip
+delay 1000
+tap ~"تسجيل الخروج" on_fail:skip
+delay 1500
+tap ~"خروج" on_fail:skip
+delay 2000
+tap ~"تأكيد" on_fail:skip
+delay 2000
+
+wait_for ~"البريد" timeout:15000
+
+type ~"أدخل بريدك" → "${email}" on_fail:skip
+delay 600
+hide_keyboard on_fail:skip
+delay 400
+type ~"أدخل كلمة المرور" → "${password}"
+delay 600
+hide_keyboard on_fail:skip
+delay 400
+tap ~"تسجيل الدخول" type:button
+
+wait_for ~"الرئيسية" timeout:25000
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

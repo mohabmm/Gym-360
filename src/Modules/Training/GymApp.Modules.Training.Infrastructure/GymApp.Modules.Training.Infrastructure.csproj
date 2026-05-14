@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Infrastructure\GymApp.Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Training.Application\GymApp.Modules.Training.Application.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Training.Domain\GymApp.Modules.Training.Domain.csproj" />
+  </ItemGroup>
+</Project>

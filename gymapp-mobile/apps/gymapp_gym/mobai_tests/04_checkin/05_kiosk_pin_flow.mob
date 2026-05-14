@@ -1,0 +1,28 @@
+# Owner/manager sets the kiosk exit PIN and verifies it via the kiosk-pin
+# settings screen. Receptionists see 403 from this endpoint (covered in a
+# separate permissions test).
+# Tags: kiosk, settings, write, preprod
+# Timeout: 45000
+
+tap ~"المزيد"
+delay 1500
+tap "إعدادات" on_fail:skip
+tap "الاعدادات" on_fail:skip
+delay 1500
+tap "رقم PIN" on_fail:skip
+tap "كيوسك" on_fail:skip
+wait_for ~"PIN" timeout:5000
+
+# Enter a 4-digit PIN. If a PIN already exists the screen demands the current
+# one — accept the fail and stop the script (no destructive state change).
+type ~"PIN جديد" → "1234" on_fail:skip
+delay 400
+type ~"تأكيد PIN" → "1234" on_fail:skip
+delay 400
+hide_keyboard on_fail:skip
+
+tap ~"حفظ" type:button on_fail:skip
+delay 2500
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"

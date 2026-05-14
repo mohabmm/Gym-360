@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Common -->
+    <ProjectReference Include="..\..\src\Common\GymApp.Common.Domain\GymApp.Common.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Common\GymApp.Common.Application\GymApp.Common.Application.csproj" />
+
+    <!-- Identity -->
+    <ProjectReference Include="..\..\src\Modules\Identity\GymApp.Modules.Identity.Domain\GymApp.Modules.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\GymApp.Modules.Identity.Application\GymApp.Modules.Identity.Application.csproj" />
+
+    <!-- Gyms -->
+    <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Domain\GymApp.Modules.Gyms.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Application\GymApp.Modules.Gyms.Application.csproj" />
+
+    <!-- Training -->
+    <ProjectReference Include="..\..\src\Modules\Training\GymApp.Modules.Training.Domain\GymApp.Modules.Training.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Training\GymApp.Modules.Training.Application\GymApp.Modules.Training.Application.csproj" />
+
+    <!-- Progress -->
+    <ProjectReference Include="..\..\src\Modules\Progress\GymApp.Modules.Progress.Domain\GymApp.Modules.Progress.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Progress\GymApp.Modules.Progress.Application\GymApp.Modules.Progress.Application.csproj" />
+
+    <!-- Scheduling -->
+    <ProjectReference Include="..\..\src\Modules\Scheduling\GymApp.Modules.Scheduling.Domain\GymApp.Modules.Scheduling.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Scheduling\GymApp.Modules.Scheduling.Application\GymApp.Modules.Scheduling.Application.csproj" />
+
+    <!-- Nutrition -->
+    <ProjectReference Include="..\..\src\Modules\Nutrition\GymApp.Modules.Nutrition.Domain\GymApp.Modules.Nutrition.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Nutrition\GymApp.Modules.Nutrition.Application\GymApp.Modules.Nutrition.Application.csproj" />
+
+    <!-- Communication -->
+    <ProjectReference Include="..\..\src\Modules\Communication\GymApp.Modules.Communication.Domain\GymApp.Modules.Communication.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Communication\GymApp.Modules.Communication.Application\GymApp.Modules.Communication.Application.csproj" />
+
+    <!-- Billing -->
+    <ProjectReference Include="..\..\src\Modules\Billing\GymApp.Modules.Billing.Domain\GymApp.Modules.Billing.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Billing\GymApp.Modules.Billing.Application\GymApp.Modules.Billing.Application.csproj" />
+
+    <!-- Gamification -->
+    <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Domain\GymApp.Modules.Gamification.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Application\GymApp.Modules.Gamification.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="FluentAssertions" />
+    <Using Include="NSubstitute" />
+  </ItemGroup>
+
+</Project>

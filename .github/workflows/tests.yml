@@ -1,0 +1,115 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  unit-tests:
+    name: Unit & Architecture Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore GymApp.sln
+
+      - name: Build
+        run: dotnet build GymApp.sln -c Release --no-restore
+
+      - name: Run Architecture Tests
+        run: dotnet test tests/GymApp.Tests.Architecture/GymApp.Tests.Architecture.csproj -c Release --no-build --logger trx --results-directory TestResults/Architecture
+
+      - name: Run Domain Tests
+        run: dotnet test tests/GymApp.Tests.Domain/GymApp.Tests.Domain.csproj -c Release --no-build --logger trx --results-directory TestResults/Domain
+
+      - name: Run Application Tests
+        run: dotnet test tests/GymApp.Tests.Application/GymApp.Tests.Application.csproj -c Release --no-build --logger trx --results-directory TestResults/Application
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: TestResults/
+          retention-days: 30
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Test_P@ss2024!"
+          MSSQL_PID: Developer
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Test_P@ss2024!' -Q 'SELECT 1' -C || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore GymApp.sln
+
+      - name: Build
+        run: dotnet build GymApp.sln -c Release --no-restore
+
+      - name: Run Integration Tests
+        env:
+          ConnectionStrings__Database: "Server=localhost,1433;Database=GymApp_Test;User Id=sa;Password=Test_P@ss2024!;TrustServerCertificate=True"
+          ConnectionStrings__Redis: "localhost:6379"
+        run: dotnet test tests/GymApp.Tests.Integration/GymApp.Tests.Integration.csproj -c Release --no-build --logger trx --results-directory TestResults/Integration
+
+      - name: Run Functional Tests
+        env:
+          ConnectionStrings__Database: "Server=localhost,1433;Database=GymApp_Functional;User Id=sa;Password=Test_P@ss2024!;TrustServerCertificate=True"
+          ConnectionStrings__Redis: "localhost:6379"
+        run: dotnet test tests/GymApp.Tests.Functional/GymApp.Tests.Functional.csproj -c Release --no-build --logger trx --results-directory TestResults/Functional
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: TestResults/
+          retention-days: 30

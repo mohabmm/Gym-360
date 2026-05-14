@@ -1,0 +1,18 @@
+# Trainee home loads + gym-switcher icon GONE (one-gym rule, Q3 revised 2026-05-01)
+# Tags: home, smoke, tenancy, no-switcher
+# Timeout: 30000
+
+# Navigate to Home tab.
+tap ~"الرئيسية"
+delay 2000
+
+# The pre-2026-05-01 trainee home rendered an Icons.swap_horiz_rounded button
+# tooltipped "تغيير الصالة" / "Switch Gym" when memberships > 1. The single-gym
+# rule deletes that UI entirely. Either tooltip must NOT appear.
+assert_not_exists "تغيير الصالة"
+assert_not_exists "Switch Gym"
+
+# No tenant routing errors
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"خطأ في تحميل"

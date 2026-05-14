@@ -1,0 +1,10 @@
+# Trainer sessions screen — g1_scheduling schema
+# Tags: sessions, tenancy
+# Timeout: 25000
+
+tap ~"الجدول"
+delay 2500
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

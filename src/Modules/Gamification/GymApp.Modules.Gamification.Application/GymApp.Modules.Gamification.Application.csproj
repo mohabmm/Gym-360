@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GymApp.Tests.Application" />
+    <InternalsVisibleTo Include="GymApp.Modules.Gamification.Infrastructure" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Application\GymApp.Common.Application.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gamification.Domain\GymApp.Modules.Gamification.Domain.csproj" />
+    <ProjectReference Include="..\..\Scheduling\GymApp.Modules.Scheduling.IntegrationEvents\GymApp.Modules.Scheduling.IntegrationEvents.csproj" />
+  </ItemGroup>
+</Project>

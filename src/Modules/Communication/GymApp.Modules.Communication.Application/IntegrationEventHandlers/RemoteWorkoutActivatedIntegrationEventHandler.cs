@@ -1,0 +1,50 @@
+using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Domain.Entities;
+using GymApp.Modules.Communication.Domain.Enums;
+using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Training.IntegrationEvents;
+using MediatR;
+using GymApp.Modules.Communication.Application.Abstractions;
+
+namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
+
+internal sealed class RemoteWorkoutActivatedIntegrationEventHandler : INotificationHandler<RemoteWorkoutActivatedIntegrationEvent>
+{
+    private readonly INotificationRepository _notificationRepository;
+    private readonly ICommunicationUnitOfWork _unitOfWork;
+
+    public RemoteWorkoutActivatedIntegrationEventHandler(
+        INotificationRepository notificationRepository,
+        ICommunicationUnitOfWork unitOfWork)
+    {
+        _notificationRepository = notificationRepository;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task Handle(RemoteWorkoutActivatedIntegrationEvent notification, CancellationToken cancellationToken)
+    {
+        var data = new Dictionary<string, string>
+        {
+            ["trainerId"] = notification.TrainerId.ToString(),
+            ["gymId"] = notification.GymId.ToString()
+        };
+
+        if (notification.Reason is not null)
+            data["reason"] = notification.Reason;
+
+        var body = notification.Reason is not null
+            ? $"Your trainer has activated remote workout mode. Reason: {notification.Reason}"
+            : "Your trainer has activated remote workout mode for you.";
+
+        var notif = Notification.Create(
+            notification.ClientId,
+            "Remote Workout Activated",
+            body,
+            NotificationType.RemoteWorkoutActivated,
+            notification.GymId,
+            data);
+
+        await _notificationRepository.AddAsync(notif, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+}

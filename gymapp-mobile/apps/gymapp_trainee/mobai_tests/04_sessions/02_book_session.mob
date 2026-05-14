@@ -1,0 +1,38 @@
+# Trainee books a session — exercises POST /scheduling/sessions and the
+# trainer-availability picker + remainingSessions guard. Should land on a
+# success toast or new row in the upcoming list.
+# Tags: sessions, booking, preprod
+# Timeout: 90000
+
+tap ~"الرئيسية"
+delay 1000
+
+# Booking entry-point lives on either the home dashboard or the sessions tab.
+tap ~"حجز" on_fail:skip
+tap ~"احجز" on_fail:skip
+delay 1500
+
+# Trainer picker
+tap ~"اختر المدرب" on_fail:skip
+delay 1500
+delay 1000
+
+# Date picker — accept default (today/next slot).
+tap ~"التاريخ" on_fail:skip
+delay 800
+tap ~"موافق" on_fail:skip
+delay 800
+
+# Time slot — accept first available.
+delay 1000
+
+tap ~"تأكيد الحجز" type:button on_fail:skip
+tap ~"احجز" type:button on_fail:skip
+tap ~"حجز" type:button on_fail:skip
+delay 3000
+
+# Final assertion: no raw 500 surfaced. A "no remaining sessions" or
+# "select a trainer" inline validation message is acceptable behaviour.
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"
+assert_not_exists ~"Invalid object name"

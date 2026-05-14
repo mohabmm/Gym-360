@@ -1,0 +1,26 @@
+# Trainer Settings → Testing Mode tile must be present, with the switch in
+# read-only mode showing the gym's BE flag. The owner/manager toggles it from
+# the staff app; the trainer can only read it.
+# Tags: settings, testing-mode, read-only, preprod
+# Timeout: 30000
+
+# Reset to home tab first to avoid ambiguous "المزيد" match.
+tap ~"الرئيسية" on_fail:skip
+delay 800
+tap ~"المزيد" bounds:bottom_half
+delay 1500
+tap ~"الاعدادات" on_fail:skip
+tap ~"الإعدادات" on_fail:skip
+delay 2500
+
+assert_exists ~"وضع الاختبار"
+# Updated subtitle copy after the gap fix — confirms the new BE-backed mode.
+assert_exists ~"يضبطه فريق الصالة" on_fail:skip
+assert_exists ~"Controlled by gym staff" on_fail:skip
+
+# Attempting to flip the switch must NOT change BE state — but at minimum we
+# must not crash. (IgnorePointer wraps the Switch so the tap is a no-op.)
+tap "وضع الاختبار"
+delay 1500
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"

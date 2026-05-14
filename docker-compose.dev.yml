@@ -1,0 +1,41 @@
+# Dev override: runs API via `dotnet watch` against bind-mounted source.
+# Code edits hot-reload inside the container — NO `docker build` cycle.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# First boot still warms NuGet (cached in named volume). Subsequent boots
+# skip restore. Source changes recompile in-container in seconds.
+
+services:
+  gymapp-api:
+    image: gymapp-api-dev:latest
+    build:
+      context: .
+      dockerfile: src/API/GymApp.Api/Dockerfile.dev
+    user: "0:0"
+    working_dir: /src
+    command:
+      - dotnet
+      - watch
+      - run
+      - --non-interactive
+      - --no-hot-reload
+      - --project
+      - src/API/GymApp.Api/GymApp.Api.csproj
+      - --no-launch-profile
+    environment:
+      - DOTNET_USE_POLLING_FILE_WATCHER=1
+      - DOTNET_WATCH_RESTART_ON_RUDE_EDIT=1
+      - DOTNET_NOLOGO=1
+      - DOTNET_ROLL_FORWARD=Major
+      - ASPNETCORE_URLS=http://+:8080
+      - DOTNET_RUNNING_IN_CONTAINER=true
+    volumes:
+      - .:/src:delegated
+      - nuget-packages:/root/.nuget/packages
+      - dotnet-obj-bin:/src/.docker-artifacts
+
+volumes:
+  nuget-packages:
+  dotnet-obj-bin:

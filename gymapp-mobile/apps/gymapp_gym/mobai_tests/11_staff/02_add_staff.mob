@@ -1,0 +1,25 @@
+# Receptionist cannot add staff — FAB must not appear
+# Tags: staff, permissions
+# Timeout: 20000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "الموظفين" timeout:4000
+tap "الموظفين"
+wait_for ~"الموظفون" timeout:5000
+
+# Receptionist role: add-staff FAB must not be shown
+assert_not_exists type:button bounds:bottom_left
+assert_not_exists type:button bounds:bottom_right
+
+# Staff list renders without error
+assert_exists ~"الموظفون"
+assert_not_exists ~"خطأ"
+
+tap ~"رجوع" on_fail:skip

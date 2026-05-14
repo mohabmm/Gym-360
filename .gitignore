@@ -1,0 +1,213 @@
+# ─────────────────────────────────────────────────────────────
+# .NET / Build output
+# ─────────────────────────────────────────────────────────────
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userprefs
+*.pidb
+*.dll
+*.pdb
+*.exe
+[Dd]ebug/
+[Rr]elease/
+[Bb]uild[Ll]og.*
+.vs/
+*.binlog
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!**/packages/build/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Cc]overage*/
+*.coverage
+*.coveragexml
+coverage.opencover.xml
+coverage.cobertura.xml
+
+# ─────────────────────────────────────────────────────────────
+# Environment / Secrets — NEVER commit
+# ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.env
+
+# appsettings overrides (local/dev/prod must stay local)
+appsettings.Local.json
+appsettings.Development.json
+appsettings.Production.json
+**/appsettings.*.Local.json
+**/appsettings.Local.json
+
+# Firebase / service accounts
+config/firebase-service-account.json
+config/*-service-account*.json
+*-service-account*.json
+*firebase-adminsdk*.json
+*.pem
+*.pfx
+*.p12
+*.key
+secrets/
+**/secrets.json
+
+# ─────────────────────────────────────────────────────────────
+# IDE / Editor
+# ─────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+!.vscode/extensions.json
+*.swp
+*.swo
+*~
+
+# ─────────────────────────────────────────────────────────────
+# OS
+# ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ─────────────────────────────────────────────────────────────
+# Node / Next.js / TypeScript
+# ─────────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+.next/
+.turbo/
+.vercel/
+dist/
+.cache/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Playwright / E2E
+**/test-results/
+**/test-results-*/
+**/playwright-report/
+**/playwright/.cache/
+**/.last-run.json
+**/blob-report/
+
+# ─────────────────────────────────────────────────────────────
+# Flutter / Dart
+# ─────────────────────────────────────────────────────────────
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/build/
+**/generated_plugin_registrant.*
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/App.framework
+**/ios/Flutter/flutter_assets/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/android/.gradle/
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+**/*.jks
+**/*.keystore
+
+# Melos (Flutter monorepo)
+**/.melos_tool/
+**/melos_*.iml
+**/pubspec.lock.bak
+
+# ─────────────────────────────────────────────────────────────
+# Logs / Reports / Local artifacts
+# ─────────────────────────────────────────────────────────────
+*.log
+logs/
+mobai_logs/
+mobai_reports/
+test_logs/
+
+# ─────────────────────────────────────────────────────────────
+# Docker / Local data
+# ─────────────────────────────────────────────────────────────
+docker-rescue/
+*.mdf
+*.ldf
+*.bak
+data/
+volumes/
+
+# ─────────────────────────────────────────────────────────────
+# Project-specific sensitive / internal files — NEVER commit
+# ─────────────────────────────────────────────────────────────
+CREDENTIALS.md
+forma-*-firebase-adminsdk*.json
+config/firebase-service-account.json
+
+# Test / bug / audit reports (root-level transient artifacts)
+*_REPORT.md
+*_REPORT_*.md
+*-report.md
+*-test-report.md
+API_PREPROD_TEST_REPORT.md
+MCP_TRAINER_API_TEST_REPORT.md
+SECURITY_AUDIT_REPORT.md
+STAFF_LOGIN_ADDMEMBER_REPORT.md
+STAFF_MCP_API_TEST_REPORT.md
+TRAINER_API_TEST_REPORT.md
+TRAINER_APP_MOBAI_BUG_REPORT.md
+TRAINER_MCP_API_TEST_REPORT.md
+trainer-api-test-report.md
+
+# Bug screenshots / repro artifacts at repo root
+/trainer_bug_*.png
+/*_bug_*.png
+/*-bug-*.png
+/*.screenshot.png
+
+# Local agent / harness state
+.claude/
+.claude-personal/
+.aider*
+.cursor/
+
+# Onboarding / one-off scripts holding secrets (review before committing)
+# onboard-gym.sh   # uncomment if it embeds tenant secrets
+
+# ─────────────────────────────────────────────────────────────
+# Misc
+# ─────────────────────────────────────────────────────────────
+*.tmp
+*.temp
+*.orig
+*.rej
+
+# E2E / test creds & auth state — contain real JWTs and cookies
+tests/e2e_cycle/creds_*.json
+**/e2e/.auth/
+**/.mobai/runs/

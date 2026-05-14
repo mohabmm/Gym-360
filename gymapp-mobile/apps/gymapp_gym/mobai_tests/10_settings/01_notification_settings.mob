@@ -1,0 +1,42 @@
+# Notification settings loads real values from API (GET) and saves (PUT) correctly
+# Tags: settings, api
+# Timeout: 25000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "الاعدادات" timeout:4000
+tap "الاعدادات"
+wait_for ~"اعدادات الاشعارات" timeout:4000
+tap ~"اعدادات الاشعارات"
+wait_for type:switch timeout:6000
+
+# All 4 switches must be present (loaded from API)
+assert_exists ~"عضو جديد"
+assert_exists ~"دفع جديد"
+assert_exists ~"انخفاض الحضور"
+assert_exists ~"تسجيل حضور"
+
+# No loading spinner (API call completed)
+assert_not_exists type:progressindicator
+
+# Toggle check-in switch and save
+tap ~"تسجيل حضور"
+tap type:button bounds:bottom_half
+delay 3000
+
+# No API exception in snackbar
+assert_not_exists ~"ApiException"
+
+# Restore: toggle back and save
+tap ~"تسجيل حضور"
+tap type:button bounds:bottom_half
+delay 2000
+
+tap ~"رجوع"
+tap ~"رجوع" on_fail:skip

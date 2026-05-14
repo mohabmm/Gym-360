@@ -1,0 +1,13 @@
+# Progress tab loads from g1_progress schema
+# Tags: progress, tenancy
+# Timeout: 25000
+
+# Reset to home so the bottom-nav predicate is unambiguous.
+tap ~"الرئيسية" on_fail:skip
+delay 800
+tap ~"التقدم" bounds:bottom_half
+delay 2500
+
+assert_not_exists ~"ApiException"
+assert_not_exists ~"Invalid object name"
+assert_not_exists ~"500 Internal"

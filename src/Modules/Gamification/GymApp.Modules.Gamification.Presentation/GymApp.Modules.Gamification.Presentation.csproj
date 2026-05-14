@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\GymApp.Common.Presentation\GymApp.Common.Presentation.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gamification.Application\GymApp.Modules.Gamification.Application.csproj" />
+  </ItemGroup>
+</Project>

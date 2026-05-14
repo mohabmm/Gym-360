@@ -1,0 +1,19 @@
+# Staff list loads with staff members and permissions button
+# Tags: staff, smoke
+# Timeout: 15000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "الموظفين" timeout:4000
+tap "الموظفين"
+wait_for ~"الموظفون" timeout:8000
+
+assert_exists ~"الموظفون"
+assert_exists ~"صلاحيات" type:button
+assert_not_exists ~"خطأ"

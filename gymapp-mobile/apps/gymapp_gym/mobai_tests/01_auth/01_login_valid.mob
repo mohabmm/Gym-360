@@ -1,0 +1,39 @@
+# Valid login flow — logout then re-login with correct credentials
+# Tags: auth, smoke
+# Timeout: 45000
+
+# If already logged in, navigate to logout (skip steps if already on login screen)
+tap ~"المزيد" on_fail:skip
+wait_for "الاعدادات" timeout:4000 on_fail:skip
+tap "الاعدادات" on_fail:skip
+wait_for "تسجيل الخروج" timeout:4000 on_fail:skip
+tap "تسجيل الخروج" on_fail:skip
+# Confirm dialog if shown
+wait_for "خروج" timeout:4000 on_fail:skip
+tap "خروج" on_fail:skip
+
+# Now on login screen
+# Wait for form fields to render and become interactive
+wait_for ~"ادخل بريدك الالكتروني" timeout:10000
+delay 2000
+
+# Assert login screen loaded
+assert_exists ~"جيم اب"
+assert_exists ~"البريد الالكتروني"
+assert_exists ~"كلمة المرور"
+
+# Fill email, dismiss keyboard, then fill password
+type ~"ادخل بريدك الالكتروني" → "staff@demo.local"
+delay 500
+hide_keyboard on_fail:skip
+delay 500
+type ~"ادخل كلمة المرور" → "123456"
+delay 500
+hide_keyboard on_fail:skip
+delay 500
+tap ~"تسجيل الدخول" type:button
+wait_for ~"الاعضاء النشطين" timeout:10000
+
+# Assert dashboard loaded after login
+assert_exists ~"الاعضاء النشطين"
+assert_exists ~"حضور اليوم"

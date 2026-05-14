@@ -1,0 +1,80 @@
+{"n": 1, "title": "admin login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 2, "title": "owner login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 3, "title": "staff login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 4, "title": "trainer login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 5, "title": "trainee login", "method": "POST", "path": "/identity/login", "code": 200, "status": "PASS", "err": ""}
+{"n": 6, "title": "refresh-token", "method": "POST", "path": "/identity/refresh-token", "code": 200, "status": "PASS", "err": ""}
+{"n": 7, "title": "GET /identity/me", "method": "GET", "path": "/identity/me", "code": 200, "status": "PASS", "err": ""}
+{"n": 8, "title": "change-password", "method": "POST", "path": "/identity/change-password", "code": 200, "status": "PASS", "err": ""}
+{"n": 9, "title": "list admin users", "method": "GET", "path": "/admin/users", "code": 200, "status": "PASS", "err": ""}
+{"n": 10, "title": "get admin user", "method": "GET", "path": "/admin/users/563db8a3-fdb9-4329-8c77-a088e69db40c", "code": 200, "status": "PASS", "err": ""}
+{"n": 11, "title": "patch admin user", "method": "PATCH", "path": "/admin/users/563db8a3-fdb9-4329-8c77-a088e69db40c", "code": 200, "status": "PASS", "err": ""}
+{"n": 12, "title": "create admin user", "method": "POST", "path": "/admin/users", "code": 201, "status": "PASS", "err": ""}
+{"n": 13, "title": "list gyms (admin)", "method": "GET", "path": "/gyms?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 14, "title": "pending gyms", "method": "GET", "path": "/gyms/pending?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 15, "title": "suspend gym", "method": "POST", "path": "/admin/gyms/99c14975-8030-44d3-bef6-3d8b59213282/suspend", "code": 200, "status": "PASS", "err": ""}
+{"n": 16, "title": "reactivate gym", "method": "POST", "path": "/admin/gyms/99c14975-8030-44d3-bef6-3d8b59213282/reactivate", "code": 200, "status": "PASS", "err": ""}
+{"n": 17, "title": "platform config", "method": "GET", "path": "/admin/platform-config", "code": 200, "status": "PASS", "err": ""}
+{"n": 18, "title": "security settings", "method": "PATCH", "path": "/admin/security-settings", "code": 204, "status": "PASS", "err": ""}
+{"n": 19, "title": "feature catalog", "method": "GET", "path": "/admin/features", "code": 200, "status": "PASS", "err": ""}
+{"n": 20, "title": "plan feature-matrix", "method": "GET", "path": "/admin/plans/feature-matrix", "code": 200, "status": "PASS", "err": ""}
+{"n": 21, "title": "list gyms", "method": "GET", "path": "/gyms?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 22, "title": "get gym", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282", "code": 200, "status": "PASS", "err": ""}
+{"n": 23, "title": "update gym", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282", "code": 200, "status": "PASS", "err": ""}
+{"n": 24, "title": "GET operating-hours", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/operating-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 25, "title": "PUT operating-hours", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/operating-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 26, "title": "GET seasonal-hours", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/seasonal-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 27, "title": "PUT seasonal-hours", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/seasonal-hours", "code": 200, "status": "PASS", "err": ""}
+{"n": 28, "title": "GET sections", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/sections", "code": 200, "status": "PASS", "err": ""}
+{"n": 29, "title": "PUT sections", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/sections", "code": 200, "status": "PASS", "err": ""}
+{"n": 30, "title": "GET session-policy", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/session-policy", "code": 200, "status": "PASS", "err": ""}
+{"n": 31, "title": "PUT session-policy", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/session-policy", "code": 200, "status": "PASS", "err": ""}
+{"n": 32, "title": "GET branding", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/branding", "code": 200, "status": "PASS", "err": ""}
+{"n": 33, "title": "list members", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members", "code": 200, "status": "PASS", "err": ""}
+{"n": 34, "title": "get member", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/b8e58659-8eef-4d53-92d1-33c83b08089b", "code": 200, "status": "PASS", "err": ""}
+{"n": 35, "title": "patch member", "method": "PATCH", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/b8e58659-8eef-4d53-92d1-33c83b08089b", "code": 200, "status": "PASS", "err": ""}
+{"n": 36, "title": "freeze member", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/b8e58659-8eef-4d53-92d1-33c83b08089b/freeze", "code": 200, "status": "PASS", "err": ""}
+{"n": 37, "title": "unfreeze member", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/b8e58659-8eef-4d53-92d1-33c83b08089b/unfreeze", "code": 200, "status": "PASS", "err": ""}
+{"n": 38, "title": "add member note", "method": "POST", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/members/b8e58659-8eef-4d53-92d1-33c83b08089b/notes", "code": 201, "status": "PASS", "err": ""}
+{"n": 39, "title": "list staff", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 40, "title": "create staff (via admin)", "method": "POST", "path": "/admin/gyms/99c14975-8030-44d3-bef6-3d8b59213282/staff/create", "code": 201, "status": "PASS", "err": ""}
+{"n": 41, "title": "list classes", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/classes?page=1&pageSize=10", "code": 200, "status": "PASS", "err": ""}
+{"n": 42, "title": "list check-ins", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/check-ins?page=1&pageSize=10", "code": 200, "status": "PASS", "err": ""}
+{"n": 43, "title": "list announcements", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/announcements?page=1&pageSize=10", "code": 200, "status": "PASS", "err": ""}
+{"n": 44, "title": "get kiosk-pin", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/kiosk-pin", "code": 200, "status": "PASS", "err": ""}
+{"n": 45, "title": "list trainers", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers", "code": 200, "status": "PASS", "err": ""}
+{"n": 46, "title": "get trainer", "method": "GET", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers/a02eea69-2626-4bac-ab08-9b760a63067b", "code": 200, "status": "PASS", "err": ""}
+{"n": 47, "title": "set trainer rate", "method": "PUT", "path": "/gyms/99c14975-8030-44d3-bef6-3d8b59213282/trainers/a02eea69-2626-4bac-ab08-9b760a63067b/rate", "code": 200, "status": "PASS", "err": ""}
+{"n": 48, "title": "get availability (trainer)", "method": "GET", "path": "/scheduling/availability?trainerId=a02eea69-2626-4bac-ab08-9b760a63067b&gymId=99c14975-8030-44d3-bef6-3d8b59213282", "code": 200, "status": "PASS", "err": ""}
+{"n": 49, "title": "set availability", "method": "PUT", "path": "/scheduling/availability", "code": 204, "status": "PASS", "err": ""}
+{"n": 50, "title": "block date", "method": "POST", "path": "/scheduling/availability/block-date", "code": 400, "status": "FAIL(400)", "err": "This date is already blocked."}
+{"n": 51, "title": "book session", "method": "POST", "path": "/scheduling/sessions", "code": 400, "status": "FAIL(400)", "err": "The requested time slot is not available."}
+{"n": 52, "title": "list sessions", "method": "GET", "path": "/scheduling/sessions?page=1&pageSize=10", "code": 200, "status": "PASS", "err": ""}
+{"n": 53, "title": "confirm session", "method": "POST", "path": "/scheduling/sessions/None/confirm", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 54, "title": "cancel session", "method": "POST", "path": "/scheduling/sessions/None/cancel", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 55, "title": "complete session", "method": "POST", "path": "/scheduling/sessions/None/complete", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 56, "title": "get session", "method": "GET", "path": "/scheduling/sessions/None", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 57, "title": "log exercise actuals", "method": "POST", "path": "/scheduling/sessions/None/exercise-logs", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 58, "title": "get exercise logs", "method": "GET", "path": "/scheduling/sessions/None/exercise-logs", "code": 404, "status": "FAIL(404)", "err": ""}
+{"n": 59, "title": "available slots", "method": "GET", "path": "/scheduling/available-slots?trainerId=a02eea69-2626-4bac-ab08-9b760a63067b&gymId=99c14975-8030-44d3-bef6-3d8b59213282&date=2026-05-14", "code": 200, "status": "PASS", "err": ""}
+{"n": 60, "title": "availability week", "method": "GET", "path": "/scheduling/availability/week?trainerId=a02eea69-2626-4bac-ab08-9b760a63067b&gymId=99c14975-8030-44d3-bef6-3d8b59213282&startDate=2026-05-14", "code": 400, "status": "FAIL(400)", "err": "Required parameter \"DateOnly endDate\" was not provided from query string."}
+{"n": 61, "title": "list plans", "method": "GET", "path": "/billing/plans", "code": 200, "status": "PASS", "err": ""}
+{"n": 62, "title": "my subscription", "method": "GET", "path": "/billing/my-subscription", "code": 200, "status": "PASS", "err": ""}
+{"n": 63, "title": "create membership plan", "method": "POST", "path": "/billing/plans", "code": 201, "status": "PASS", "err": ""}
+{"n": 64, "title": "update plan", "method": "PUT", "path": "/billing/plans/78f8fa20-dd96-47fa-8f7b-26c6820dccff", "code": 200, "status": "PASS", "err": ""}
+{"n": 65, "title": "list package templates", "method": "GET", "path": "/billing/package-templates", "code": 200, "status": "PASS", "err": ""}
+{"n": 66, "title": "create package template", "method": "POST", "path": "/billing/package-templates", "code": 201, "status": "PASS", "err": ""}
+{"n": 67, "title": "assign package", "method": "POST", "path": "/billing/packages/assign", "code": 201, "status": "PASS", "err": ""}
+{"n": 68, "title": "my packages", "method": "GET", "path": "/billing/me/packages", "code": 200, "status": "PASS", "err": ""}
+{"n": 69, "title": "list payments", "method": "GET", "path": "/billing/payments?page=1&pageSize=20", "code": 200, "status": "PASS", "err": ""}
+{"n": 70, "title": "void payment (unhappy 404)", "method": "POST", "path": "/billing/payments/5605359b-7dae-4514-b143-ddad346d9a0c/void", "code": 404, "status": "PASS", "err": ""}
+{"n": 71, "title": "list exercises", "method": "GET", "path": "/training/exercises?page=1&pageSize=10", "code": 200, "status": "PASS", "err": ""}
+{"n": 72, "title": "create exercise (Global)", "method": "POST", "path": "/training/exercises", "code": 201, "status": "PASS", "err": ""}
+{"n": 73, "title": "create program", "method": "POST", "path": "/training/programs", "code": 201, "status": "PASS", "err": ""}
+{"n": 74, "title": "assign program", "method": "POST", "path": "/training/assignments/program", "code": 400, "status": "FAIL(400)", "err": "Failed to read parameter \"Request request\" from the request body as JSON."}
+{"n": 75, "title": "log body metrics", "method": "POST", "path": "/progress/body-metrics", "code": 409, "status": "PASS", "err": ""}
+{"n": 76, "title": "body-metric trends", "method": "GET", "path": "/progress/body-metrics/trends?userId=b8e58659-8eef-4d53-92d1-33c83b08089b&gymId=99c14975-8030-44d3-bef6-3d8b59213282&from=2026-05-06&to=2026-05-13", "code": 200, "status": "PASS", "err": ""}
+{"n": 77, "title": "create meal plan", "method": "POST", "path": "/nutrition/meal-plans", "code": 201, "status": "PASS", "err": ""}
+{"n": 78, "title": "log food", "method": "POST", "path": "/nutrition/food-log", "code": 201, "status": "PASS", "err": ""}
+{"n": 79, "title": "list notifications", "method": "GET", "path": "/communication/notifications?userId=b8e58659-8eef-4d53-92d1-33c83b08089b&page=1&pageSize=10", "code": 200, "status": "PASS", "err": ""}
+{"n": 80, "title": "trainers leaderboard", "method": "GET", "path": "/gamification/trainers/leaderboard", "code": 200, "status": "PASS", "err": ""}

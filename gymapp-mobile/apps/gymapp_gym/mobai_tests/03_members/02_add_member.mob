@@ -1,0 +1,29 @@
+# Add a new member via the FAB form
+# Tags: members, write
+# Timeout: 30000
+
+tap ~"الاعضاء" bounds:bottom_half
+wait_for "الكل" type:button timeout:5000
+
+# Open add member form — FAB requires double-tap
+double_tap type:button bounds:bottom_left
+wait_for ~"اضافة عضو" timeout:5000
+assert_exists ~"الاسم الاول"
+assert_exists ~"الاسم الاخير"
+assert_exists ~"رقم الهاتف"
+
+# Fill required fields using label text
+type ~"الاسم الاول" → "تجريبي"
+type ~"الاسم الاخير" → "اختبار"
+type ~"رقم الهاتف" → "01099999991"
+type ~"البريد الالكتروني" → "test.mobai@example.com"
+
+hide_keyboard on_fail:skip
+
+# Submit
+tap type:button bounds:bottom_half
+wait_for ~"الاعضاء" timeout:8000
+
+# Should return to list without error
+assert_not_exists ~"مطلوب"
+assert_not_exists ~"خطأ"

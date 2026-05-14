@@ -1,0 +1,20 @@
+# Revenue dashboard loads chart without error
+# Tags: billing, smoke
+# Timeout: 15000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "لوحة الايرادات" timeout:4000
+tap "لوحة الايرادات"
+wait_for ~"لوحة الايرادات" timeout:8000
+
+assert_exists ~"لوحة الايرادات"
+assert_not_exists ~"خطأ"
+
+tap ~"رجوع"

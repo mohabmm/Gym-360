@@ -1,0 +1,107 @@
+# All secret values default to DEV-ONLY fallbacks via ${VAR:-default} so
+# `docker-compose up` works out of the box. In production, supply these via
+# a .env file or the host environment — never commit real secrets.
+
+services:
+  gymapp-api:
+    build:
+      context: .
+      dockerfile: src/API/GymApp.Api/Dockerfile
+    container_name: gymapp-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ConnectionStrings__Database=Server=gymapp-db,1433;Database=GymApp;User Id=sa;Password=${DB_SA_PASSWORD:-GymApp_P@ss2024!};TrustServerCertificate=True
+      - ConnectionStrings__Redis=gymapp-redis:6379,password=${REDIS_PASSWORD:-devredis}
+      - ConnectionStrings__RabbitMq=amqp://${RABBITMQ_DEFAULT_USER:-gymapp}:${RABBITMQ_DEFAULT_PASS:-devrabbit}@gymapp-rabbitmq:5672
+      - Jwt__SecretKey=${JWT_SECRET_KEY:-dev-only-jwt-secret-not-for-production-minimum-32-chars!}
+      - Cors__AllowedOrigins__0=${CORS_ORIGIN_0:-http://localhost:3000}
+      - Cors__AllowedOrigins__1=${CORS_ORIGIN_1:-http://localhost:3001}
+      - Cors__AllowedOrigins__2=${CORS_ORIGIN_2:-http://localhost:3003}
+      - Fcm__IsEnabled=${FCM_ENABLED:-true}
+      - Fcm__ProjectId=${FCM_PROJECT_ID:-forma-389d6}
+      - Fcm__ServiceAccountKeyPath=/run/secrets/firebase-service-account.json
+      - Tenancy__Mode=${TENANCY_MODE:-Hard}
+      # Production posture: NO demo gym, NO demo trainer/trainee/staff/owner
+      # users. Override these to true in .env (or shell) only for local dev.
+      - Tenancy__RunDevSeedersOnHard=${TENANCY_RUN_DEV_SEEDERS_ON_HARD:-false}
+      - Seed__RunDemoData=${SEED_RUN_DEMO_DATA:-false}
+      - Identity__RunDevSeeder=${IDENTITY_RUN_DEV_SEEDER:-true}
+      - Identity__DevSeederScope=${IDENTITY_DEV_SEEDER_SCOPE:-admin}
+    volumes:
+      - ./config/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
+    depends_on:
+      gymapp-db:
+        condition: service_healthy
+      gymapp-redis:
+        condition: service_healthy
+      gymapp-rabbitmq:
+        condition: service_healthy
+    networks:
+      - gymapp-network
+
+  gymapp-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: gymapp-db
+    platform: linux/amd64
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_SA_PASSWORD:-GymApp_P@ss2024!}
+      - MSSQL_PID=Developer
+    volumes:
+      - gymapp-db-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${DB_SA_PASSWORD:-GymApp_P@ss2024!}" -Q "SELECT 1" -C || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - gymapp-network
+
+  gymapp-redis:
+    image: redis:7-alpine
+    container_name: gymapp-redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-devredis}"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - gymapp-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-devredis}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - gymapp-network
+
+  gymapp-rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: gymapp-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-gymapp}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-devrabbit}
+    volumes:
+      - gymapp-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gymapp-network
+
+volumes:
+  gymapp-db-data:
+  gymapp-redis-data:
+  gymapp-rabbitmq-data:
+
+networks:
+  gymapp-network:
+    driver: bridge

@@ -1,0 +1,17 @@
+# Trainer opens today's session card from the home dashboard. Confirms that
+# the per-gym scheduling.sessions read for "today" resolves without error.
+# Tags: sessions, home, preprod
+# Timeout: 30000
+
+tap ~"الرئيسية"
+delay 2500
+
+# A session card or empty-state must render. Stack traces or schema-resolution
+# errors are immediate failures.
+assert_not_exists ~"ApiException"
+assert_not_exists ~"500 Internal"
+assert_not_exists ~"Invalid object name"
+
+# Open the first card if any.
+delay 2500
+assert_not_exists ~"ApiException"

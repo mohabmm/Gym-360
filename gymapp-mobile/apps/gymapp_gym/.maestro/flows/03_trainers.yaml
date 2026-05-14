@@ -1,0 +1,32 @@
+appId: com.example.gymappGym
+name: 03_trainers
+env:
+  EMAIL: staff-l3-612493@gym.local
+  PASSWORD: "123456"
+---
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd:
+    timeout: 15000
+- tapOn:
+    text: ".*دخل بريدك.*"
+    optional: true
+- inputText: ${EMAIL}
+- hideKeyboard
+- tapOn:
+    text: ".*دخل كلمة المرور.*"
+    optional: true
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: "تسجيل الدخول"
+    optional: true
+- extendedWaitUntil:
+    notVisible: "تسجيل الدخول"
+    timeout: 30000
+- tapOn:
+    point: "50%,92%"
+- extendedWaitUntil:
+    visible: "المدربون|قائمة المدربين|المدربين|طلبات الانضمام"
+    timeout: 15000
+- assertVisible: "المدربون|قائمة المدربين|المدربين|طلبات الانضمام"

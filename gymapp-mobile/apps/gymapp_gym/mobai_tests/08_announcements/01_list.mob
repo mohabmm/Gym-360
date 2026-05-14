@@ -1,0 +1,20 @@
+# Announcements list loads without error
+# Tags: announcements, smoke
+# Timeout: 15000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "الاعلانات" timeout:4000
+tap "الاعلانات"
+wait_for ~"الاعلانات" timeout:8000
+
+assert_exists ~"الاعلانات"
+assert_not_exists ~"خطأ في تحميل الاعلانات"
+
+tap ~"رجوع"

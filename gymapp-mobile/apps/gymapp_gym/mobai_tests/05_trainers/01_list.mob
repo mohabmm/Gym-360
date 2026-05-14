@@ -1,0 +1,12 @@
+# Trainer list loads with active trainers and pending tab
+# Tags: trainers, smoke
+# Timeout: 15000
+
+tap ~"المدربين"
+wait_for ~"المدربون" timeout:8000
+
+assert_exists ~"المدربون"
+assert_exists ~"طلبات الانضمام"
+
+# No error widget
+assert_not_exists ~"خطأ في تحميل المدربين"

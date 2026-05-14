@@ -1,0 +1,23 @@
+# Branding screen loads gym logo and color fields
+# Tags: settings, smoke
+# Timeout: 15000
+
+# Reset to known state
+hide_keyboard on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"رجوع" on_fail:skip
+tap ~"الرئيسية"
+wait_for ~"الاعضاء النشطين" timeout:8000
+
+tap ~"المزيد"
+wait_for "الاعدادات" timeout:4000
+tap "الاعدادات"
+wait_for ~"العلامة التجارية" timeout:4000
+tap ~"العلامة التجارية"
+wait_for ~"العلامة التجارية" timeout:8000
+
+assert_exists ~"العلامة التجارية"
+assert_not_exists ~"خطأ في التحميل"
+
+tap ~"رجوع"
+tap ~"رجوع" on_fail:skip

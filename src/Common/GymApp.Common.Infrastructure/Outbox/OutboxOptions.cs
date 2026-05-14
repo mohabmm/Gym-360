@@ -1,0 +1,7 @@
+namespace GymApp.Common.Infrastructure.Outbox;
+
+public sealed class OutboxOptions
+{
+    public int IntervalInSeconds { get; init; } = 10;
+    public int BatchSize { get; init; } = 20;
+}
