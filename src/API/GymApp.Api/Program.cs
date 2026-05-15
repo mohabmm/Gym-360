@@ -61,6 +61,26 @@ builder.Host.UseSerilog((context, configuration) =>
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services.Configure<JwtOptions>(jwtSection);
 
+// Fail-fast: HS256 needs ≥256 bits of entropy. Reject empty / placeholder / short keys
+// at startup so misconfigured deployments never sign tokens with a weak secret.
+{
+    var jwtBoot = jwtSection.Get<JwtOptions>();
+    var secret = jwtBoot?.SecretKey ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(secret)
+        || secret.StartsWith("REPLACE_VIA_ENV", StringComparison.OrdinalIgnoreCase)
+        || secret.StartsWith("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+        || Encoding.UTF8.GetByteCount(secret) < 32)
+    {
+        throw new InvalidOperationException(
+            "Jwt:SecretKey is missing, placeholder, or shorter than 32 bytes. " +
+            "Set JWT_SECRET_KEY env (generate via: openssl rand -base64 64).");
+    }
+    if (string.IsNullOrWhiteSpace(jwtBoot!.Issuer) || string.IsNullOrWhiteSpace(jwtBoot.Audience))
+    {
+        throw new InvalidOperationException("Jwt:Issuer and Jwt:Audience must be configured.");
+    }
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -575,6 +595,21 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_gyms_GymCode' AND obje
 }
 
 // --- Pipeline ---
+// ForwardedHeaders FIRST: behind Dokploy/Traefik (or any reverse proxy), trust
+// X-Forwarded-Proto / X-Forwarded-For so Request.Scheme, Url.Action redirects,
+// and client-IP logging reflect the real client. Must run before auth/CORS.
+{
+    var fwd = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+            | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+            | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost,
+    };
+    fwd.KnownNetworks.Clear();
+    fwd.KnownProxies.Clear();
+    app.UseForwardedHeaders(fwd);
+}
+
 // UseCors must run before UseExceptionHandler so error responses keep CORS headers;
 // otherwise the browser surfaces a misleading "blocked by CORS" error masking the real 5xx.
 app.UseCors();
