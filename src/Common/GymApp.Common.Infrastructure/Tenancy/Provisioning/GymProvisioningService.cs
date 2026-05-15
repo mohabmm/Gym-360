@@ -174,14 +174,7 @@ IF @planId IS NULL
 DECLARE @now datetime2 = SYSUTCDATETIME();
 IF @planId IS NOT NULL
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM [{prefix}_billing].gym_subscriptions WHERE GymId = @gymId)
-    BEGIN
-        INSERT INTO [{prefix}_billing].gym_subscriptions
-          (Id, GymId, PlanId, StartedAt, ExpiresAt, IsActive, IsTrial, TrialExpiresAt, PaymentStatus, LastPaymentAt, NextPaymentDue, OverdueSince, GracePeriodEndsAt)
-        VALUES
-          (NEWID(), @gymId, @planId, @now, DATEADD(YEAR, 1, @now), 1, 0, NULL, N'Paid', @now, DATEADD(MONTH, 1, @now), NULL, NULL);
-    END
-    ELSE
+    IF EXISTS (SELECT 1 FROM [{prefix}_billing].gym_subscriptions WHERE GymId = @gymId)
     BEGIN
         -- Repair orphan subscriptions: PlanId points to a wiped plan, sub is inactive,
         -- or expired. Without this, post-wipe boots would leave gyms stranded on a
@@ -200,6 +193,17 @@ BEGIN
           AND  (NOT EXISTS (SELECT 1 FROM [{prefix}_billing].subscription_plans p WHERE p.Id = s.PlanId)
                 OR s.IsActive = 0
                 OR s.ExpiresAt < @now);
+    END
+    ELSE IF @ownerTier IS NOT NULL
+    BEGIN
+        -- Only seed a default subscription when the owner contract dictates a tier.
+        -- For admin-registered gyms with no contract, leave the gym subscription-less
+        -- so GymApprovedIntegrationEventHandler can subscribe it to the default Pro
+        -- plan; otherwise this insert wins the race and locks the gym to Free.
+        INSERT INTO [{prefix}_billing].gym_subscriptions
+          (Id, GymId, PlanId, StartedAt, ExpiresAt, IsActive, IsTrial, TrialExpiresAt, PaymentStatus, LastPaymentAt, NextPaymentDue, OverdueSince, GracePeriodEndsAt)
+        VALUES
+          (NEWID(), @gymId, @planId, @now, DATEADD(YEAR, 1, @now), 1, 0, NULL, N'Paid', @now, DATEADD(MONTH, 1, @now), NULL, NULL);
     END
 END
 

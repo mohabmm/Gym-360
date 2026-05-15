@@ -76,7 +76,7 @@ internal sealed class RegisterGymCommandHandler : ICommandHandler<RegisterGymCom
             await _gymRepository.AddAsync(gym, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             if (request.AutoApprove)
-                await _publisher.Publish(new GymApprovedIntegrationEvent(gym.Id), cancellationToken);
+                await _publisher.Publish(new GymApprovedIntegrationEvent(gym.Id, request.OwnerId), cancellationToken);
             return Result.Success(gym.Id);
         }
 
@@ -103,8 +103,15 @@ internal sealed class RegisterGymCommandHandler : ICommandHandler<RegisterGymCom
         // so plan-gated features (custom_exercise_library, etc.) work post-register.
         // Only fired when the gym is auto-approved; pending gyms must be approved
         // separately via /admin/gyms/{gymId}/approve which raises the same event.
+        // Resolve IPublisher from the tenant-pinned scope so downstream handlers
+        // (e.g. Billing's auto-subscribe) write to the new gym's g{N}_* schemas
+        // instead of the request-scope tenant (which is the admin caller, not the
+        // gym being provisioned).
         if (request.AutoApprove)
-            await _publisher.Publish(new GymApprovedIntegrationEvent(gym.Id), cancellationToken);
+        {
+            var scopedPublisher = sp.GetRequiredService<IPublisher>();
+            await scopedPublisher.Publish(new GymApprovedIntegrationEvent(gym.Id, request.OwnerId), cancellationToken);
+        }
 
         return Result.Success(gym.Id);
     }
