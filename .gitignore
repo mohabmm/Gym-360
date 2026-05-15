@@ -159,7 +159,12 @@ docker-rescue/
 *.mdf
 *.ldf
 *.bak
-data/
+# Root-only `data/` — anchored so it does NOT match nested `Data/` source
+# folders inside modules (e.g. src/Modules/<X>/Infrastructure/Data/*DbContext.cs)
+# or Flutter feature data layers (e.g. lib/features/<X>/data/*.dart).
+# macOS' default case-insensitive filesystem made the previous unanchored
+# `data/` rule swallow those source trees from commits.
+/data/
 volumes/
 
 # ─────────────────────────────────────────────────────────────
