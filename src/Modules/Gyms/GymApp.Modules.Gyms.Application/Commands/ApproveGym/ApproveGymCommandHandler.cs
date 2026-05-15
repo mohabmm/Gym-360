@@ -40,7 +40,7 @@ internal sealed class ApproveGymCommandHandler : ICommandHandler<ApproveGymComma
         // Cross-module fan-out: Billing handler attaches default Pro subscription so
         // plan-gated features work post-approval. Same event fired by RegisterGym
         // when AutoApprove=true.
-        await _publisher.Publish(new GymApprovedIntegrationEvent(gym.Id), cancellationToken);
+        await _publisher.Publish(new GymApprovedIntegrationEvent(gym.Id, gym.OwnerId), cancellationToken);
 
         return Result.Success();
     }
