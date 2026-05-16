@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.forma.remote-control</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-l</string>
+    <string>/Users/mmagdy2-eg/Development/Forma/scripts/staging_loop/remote_server.sh</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/mmagdy2-eg/Development/Forma</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/mmagdy2-eg/Development/Forma/test_logs/staging_loop/remote_control.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/mmagdy2-eg/Development/Forma/test_logs/staging_loop/remote_control.err</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/mmagdy2-eg/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/mmagdy2-eg/.dotnet/tools</string>
+    <key>HOME</key>
+    <string>/Users/mmagdy2-eg</string>
+    <key>CLAUDE_CONFIG_DIR</key>
+    <string>/Users/mmagdy2-eg/.claude-personal</string>
+  </dict>
+</dict>
+</plist>
