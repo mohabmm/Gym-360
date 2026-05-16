@@ -5,6 +5,7 @@ using GymApp.Modules.Gyms.Application.Commands.RegisterGym;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Repositories;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GymApp.Tests.Application.Gyms;
@@ -16,13 +17,14 @@ public class RegisterGymCommandHandlerTests
     private readonly IGymProvisioner _provisioner = Substitute.For<IGymProvisioner>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IServiceScopeFactory _scopeFactory = Substitute.For<IServiceScopeFactory>();
+    private readonly IPublisher _publisher = Substitute.For<IPublisher>();
     private readonly RegisterGymCommandHandler _sut;
 
     public RegisterGymCommandHandlerTests()
     {
         _tenantContext.IsHardIsolation.Returns(false);
         _sut = new RegisterGymCommandHandler(
-            _gymRepository, _unitOfWork, _provisioner, _tenantContext, _scopeFactory);
+            _gymRepository, _unitOfWork, _provisioner, _tenantContext, _scopeFactory, _publisher);
     }
 
     private static RegisterGymCommand CreateValidCommand() =>
@@ -48,6 +50,7 @@ public class RegisterGymCommandHandlerTests
         await _gymRepository.Received(1).AddAsync(Arg.Any<Gym>(), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await _provisioner.DidNotReceive().ProvisionAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 }
