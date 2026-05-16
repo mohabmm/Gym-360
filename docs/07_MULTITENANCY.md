@@ -116,7 +116,7 @@ For owners on `Contract.DashboardMode ∈ {Unified, Both}`, the admin web aggreg
 Safe rollout (one DB instance per environment):
 
 1. **Code rollout** — deploy build with `Tenancy:Mode = "Soft"` (default). All DbContexts use the legacy `module` schema names; nothing changes at runtime.
-2. **Maintenance window**: stop API, run `db/migrations/2026_05_01_hard_isolation_bootstrap.sql`. The script:
+2. **Maintenance window**: stop API, run `src/DB/migrations/2026_05_01_hard_isolation_bootstrap.sql`. The script:
    - Creates `gyms_registry` schema and Owner/Contract rows for the existing demo owner.
    - Stamps the existing demo gym as `g1` and `ALTER SCHEMA g1_{module} TRANSFER` every per-module table.
    - Writes `dbo.__tenancy_version (Version=1)`.
@@ -154,5 +154,5 @@ Safe rollout (one DB instance per environment):
 | `src/API/GymApp.Api/Middleware/TenantResolutionMiddleware.cs` | Reads JWT → populates scope |
 | `src/API/GymApp.Api/Endpoints/OwnerGymsEndpoint.cs` | POST /api/v1/owners/{ownerId}/gyms |
 | `src/Modules/Identity/.../Commands/SelectGym/SelectGymCommandHandler.cs` | Owner gym chooser |
-| `db/migrations/2026_05_01_hard_isolation_bootstrap.sql` | Soft → Hard migration |
+| `src/DB/migrations/2026_05_01_hard_isolation_bootstrap.sql` | Soft → Hard migration |
 | `db/migrations/2026_05_01_rollback.sql` | Hard → Soft rollback |
