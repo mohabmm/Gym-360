@@ -34,7 +34,7 @@ export default defineConfig({
       testMatch: /staff-auth\.setup\.ts/,
     },
     {
-      name: 'chromium',
+      name: 'admin',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'e2e/.auth/user.json',
