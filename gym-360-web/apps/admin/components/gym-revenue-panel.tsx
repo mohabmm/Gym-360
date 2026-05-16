@@ -10,7 +10,7 @@ import {
   BILLING,
   formatCurrency,
   formatDate,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import {
   AreaChart,
   Area,

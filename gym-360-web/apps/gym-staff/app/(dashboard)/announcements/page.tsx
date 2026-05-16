@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { PageHeader, StatusBadge, Modal, ConfirmModal, formatDate } from '@gymapp/ui';
-import type { Announcement } from '@gymapp/ui';
+import { PageHeader, StatusBadge, Modal, ConfirmModal, formatDate } from '@gym360/ui';
+import type { Announcement } from '@gym360/ui';
 import { Plus, Megaphone, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useAnnouncements, useCreateAnnouncement, useUpdateAnnouncement, useDeleteAnnouncement } from '@/lib/hooks/useAnnouncements';
 

@@ -18,11 +18,11 @@ import {
   GYMS as GYMS_ENDPOINTS,
   BILLING,
   useInvalidateQueries,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import { Building2, Users, DollarSign, Dumbbell, Edit, Pause, Play, Settings, BarChart3, CreditCard, AlertCircle, UserPlus, Shield, Trash2 } from 'lucide-react';
 import { useGym, usePlans, useFeatures, usePlanFeatureMatrix, useGymFeatureOverrides, useSuspendGym, useDeleteGym, useGymMembers, useGymTrainers, useGymStaff, useCreateGymStaff, type CreateGymStaffPayload } from '@/lib/hooks';
-import { extractApiErrors } from '@gymapp/ui';
-import { PageSkeleton } from '@gymapp/ui';
+import { extractApiErrors } from '@gym360/ui';
+import { PageSkeleton } from '@gym360/ui';
 import { GymSettingsPanel } from '@/components/gym-settings-panel';
 import { GymRevenuePanel } from '@/components/gym-revenue-panel';
 

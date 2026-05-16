@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PageHeader, StatusBadge, KpiCard, Modal, formatCurrency, formatDate } from '@gymapp/ui';
+import { PageHeader, StatusBadge, KpiCard, Modal, formatCurrency, formatDate } from '@gym360/ui';
 import { CreditCard, DollarSign, Plus, Receipt, Package, Edit, Trash2, Users } from 'lucide-react';
 import {
   useMembershipPlans, useSessionPackageTemplates, useActivePackages, usePayments,

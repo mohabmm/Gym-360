@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import type { StaffSubRole } from '@gymapp/ui';
+import type { StaffSubRole } from '@gym360/ui';
 
 export interface OwnedGym {
   gymId: string;

@@ -1,8 +1,8 @@
 {
-  "name": "gymapp-web",
+  "name": "gym-360-web",
   "private": true,
   "workspaces": [
-    "packages/@gymapp/*",
+    "packages/@gym360/*",
     "apps/*"
   ],
   "scripts": {

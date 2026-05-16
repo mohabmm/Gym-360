@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
-import { PageHeader, StatusBadge, KpiCard } from '@gymapp/ui';
+import { PageHeader, StatusBadge, KpiCard } from '@gym360/ui';
 import { Star, Users, Edit, DollarSign, X, Save, Mail, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

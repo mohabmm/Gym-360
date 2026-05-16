@@ -13,7 +13,7 @@ import {
   apiDelete,
   BILLING,
   useInvalidateQueries,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Rocket, Plus, Edit, Trash2, AlertCircle } from 'lucide-react';
 import {
@@ -24,8 +24,8 @@ import {
   useDeploy,
   useTogglePlanFeature,
 } from '@/lib/hooks';
-import { TableSkeleton } from '@gymapp/ui';
-import type { PlanChangeLog, SubscriptionPlan, Feature } from '@gymapp/ui';
+import { TableSkeleton } from '@gym360/ui';
+import type { PlanChangeLog, SubscriptionPlan, Feature } from '@gym360/ui';
 
 export default function PlansPage() {
   const [pendingChanges, setPendingChanges] = useState(0);

@@ -5,7 +5,7 @@ import {
   apiGet,
   apiPost,
   apiDelete,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import type {
   GymListItem,
   PendingGym,
@@ -13,7 +13,7 @@ import type {
   MemberListItem,
   TrainerListItem,
   ApiResponse,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 
 // The API returns a paginated envelope: { data: { items: [...], page, pageSize, ... } }
 // The admin UI wants a flat array, so unwrap items here and normalise

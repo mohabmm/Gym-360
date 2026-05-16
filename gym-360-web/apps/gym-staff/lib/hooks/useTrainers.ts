@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
-import type { TrainerListItem } from '@gymapp/ui';
+import type { TrainerListItem } from '@gym360/ui';
 
 export interface TrainerClientItem {
   id: string;

@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { SidebarNav, type NavSection, LocaleToggle, ThemeToggle } from '@gymapp/ui';
+import { SidebarNav, type NavSection, LocaleToggle, ThemeToggle } from '@gym360/ui';
 import Image from 'next/image';
 import {
   LayoutDashboard, Building2, Users, CreditCard, Layers, BarChart3, TrendingDown,

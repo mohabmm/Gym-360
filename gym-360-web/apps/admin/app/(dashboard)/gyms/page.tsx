@@ -12,12 +12,12 @@ import {
   apiPost,
   GYMS as GYMS_ENDPOINTS,
   useInvalidateQueries,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Filter, AlertCircle } from 'lucide-react';
 import { useGyms, useAdminUsers } from '@/lib/hooks';
-import type { GymListItem } from '@gymapp/ui';
-import { TableSkeleton } from '@gymapp/ui';
+import type { GymListItem } from '@gym360/ui';
+import { TableSkeleton } from '@gym360/ui';
 
 const columns: ColumnDef<GymListItem, unknown>[] = [
   {

@@ -1,4 +1,4 @@
-import { useApiMutation, useInvalidateQueries, IDENTITY } from '@gymapp/ui';
+import { useApiMutation, useInvalidateQueries, IDENTITY } from '@gym360/ui';
 
 export interface CreateGymOwnerPayload {
   email: string;

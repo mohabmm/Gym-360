@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
-import type { PaymentListItem } from '@gymapp/ui';
+import type { PaymentListItem } from '@gym360/ui';
 
 export interface MembershipPlan {
   id: string; name: string; description: string; durationDays: number;

@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@gymapp/ui'],
+  output: 'standalone',
+  outputFileTracingRoot: require('path').join(__dirname, '../../'),
+  transpilePackages: ['@gym360/ui'],
   experimental: {
     optimizePackageImports: ['lucide-react', 'recharts'],
   },

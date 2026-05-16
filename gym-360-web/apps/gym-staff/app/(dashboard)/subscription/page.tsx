@@ -1,6 +1,6 @@
 'use client';
 
-import { PageHeader, StatusBadge, KpiCard, formatDate } from '@gymapp/ui';
+import { PageHeader, StatusBadge, KpiCard, formatDate } from '@gym360/ui';
 import { CreditCard, CheckCircle2, Users, Dumbbell, UserCheck, Calendar, AlertCircle } from 'lucide-react';
 import { useMySubscription, useMyPlanFeatures } from '@/lib/hooks/useBilling';
 

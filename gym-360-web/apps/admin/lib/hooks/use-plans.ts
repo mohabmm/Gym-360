@@ -7,7 +7,7 @@ import {
   ADMIN,
   useApiQuery,
   useInvalidateQueries,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import type {
   SubscriptionPlan,
   Feature,
@@ -17,7 +17,7 @@ import type {
   GymSubscription,
   DeployRequest,
   ApiResponse,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 
 export function usePlans() {
   return useApiQuery<SubscriptionPlan[]>(['plans'], BILLING.PLANS);

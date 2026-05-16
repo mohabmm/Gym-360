@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PageHeader } from '@gymapp/ui';
+import { PageHeader } from '@gym360/ui';
 import { Check, MapPin, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGym, useUpdateGym } from '@/lib/hooks/useGym';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { KpiCard, ChartContainer, StatusBadge, PageHeader, ConfirmModal, formatCurrency, formatNumber } from '@gymapp/ui';
+import { KpiCard, ChartContainer, StatusBadge, PageHeader, ConfirmModal, formatCurrency, formatNumber } from '@gym360/ui';
 import { Building2, Users, DollarSign, Dumbbell, AlertTriangle, TrendingUp, TrendingDown, Pause } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import Link from 'next/link';

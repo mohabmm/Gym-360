@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1.7
+# Build context: gym-360-web/ (monorepo root)
+
+# ---------- deps ----------
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /repo
+
+COPY package.json package-lock.json turbo.json tsconfig.json ./
+COPY apps/admin/package.json apps/admin/
+COPY apps/gym-staff/package.json apps/gym-staff/
+COPY packages/@gym360/ui/package.json packages/@gym360/ui/
+
+RUN --mount=type=cache,id=npm,target=/root/.npm \
+    npm ci --include=dev
+
+# ---------- build ----------
+FROM node:20-alpine AS build
+WORKDIR /repo
+
+COPY --from=deps /repo/node_modules ./node_modules
+COPY --from=deps /repo/apps/gym-staff/node_modules ./apps/gym-staff/node_modules
+COPY --from=deps /repo/packages/@gym360/ui/node_modules ./packages/@gym360/ui/node_modules
+COPY . .
+
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npx turbo build --filter=gym-staff
+
+# ---------- runtime ----------
+FROM node:20-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+COPY --from=build --chown=nextjs:nodejs /repo/apps/gym-staff/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /repo/apps/gym-staff/.next/static ./apps/gym-staff/.next/static
+COPY --from=build --chown=nextjs:nodejs /repo/apps/gym-staff/public ./apps/gym-staff/public
+
+USER nextjs
+EXPOSE 3000
+CMD ["node", "apps/gym-staff/server.js"]

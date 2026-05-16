@@ -3,7 +3,7 @@
 import { type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { SidebarNav, type NavSection, LocaleToggle, ThemeToggle, GymSwitcher, type GymOption } from '@gymapp/ui';
+import { SidebarNav, type NavSection, LocaleToggle, ThemeToggle, GymSwitcher, type GymOption } from '@gym360/ui';
 import {
   LayoutDashboard, Users, Dumbbell, CalendarDays, BookOpen,
   CreditCard, Trophy, Megaphone, BarChart3, DoorOpen, UserCog, Settings,
