@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { PageHeader, StatusBadge, Modal, ConfirmModal, formatTime, DAY_NAMES } from '@gymapp/ui';
+import { PageHeader, StatusBadge, Modal, ConfirmModal, formatTime, DAY_NAMES } from '@gym360/ui';
 import { Plus, CalendarDays, Edit, Trash2 } from 'lucide-react';
 import { useClasses, useCreateClass, useUpdateClass, useDeleteClass } from '@/lib/hooks/useClasses';
 import { useTrainers } from '@/lib/hooks/useTrainers';
-import type { GymClass } from '@gymapp/ui';
+import type { GymClass } from '@gym360/ui';
 
 type Draft = Omit<GymClass, 'id'> & { id?: string };
 

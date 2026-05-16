@@ -1,11 +1,11 @@
 'use client';
 
-import { PageHeader, KpiCard, ChartContainer, StatusBadge, DataTable, formatCurrency, PageSkeleton } from '@gymapp/ui';
+import { PageHeader, KpiCard, ChartContainer, StatusBadge, DataTable, formatCurrency, PageSkeleton } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { TrendingDown, AlertTriangle, DollarSign, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useChurnAnalytics } from '@/lib/hooks';
-import type { AtRiskGym } from '@gymapp/ui';
+import type { AtRiskGym } from '@gym360/ui';
 
 const FALLBACK_CHURN_BY_PLAN = [
   { plan: 'Free', churnRate: 18, color: '#94A3B8' },

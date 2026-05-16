@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { PageHeader, StatusBadge, Modal } from '@gymapp/ui';
+import { PageHeader, StatusBadge, Modal } from '@gym360/ui';
 import { Plus, Shield } from 'lucide-react';
 import { useStaff, useCreateStaff } from '@/lib/hooks/useStaff';
-import type { StaffPermission } from '@gymapp/ui';
+import type { StaffPermission } from '@gym360/ui';
 
 const allPermissions: { key: StaffPermission; label: string }[] = [
   { key: 'manage_members', label: 'Manage Members' },

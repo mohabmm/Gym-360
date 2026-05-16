@@ -1,5 +1,5 @@
-import { useApiQuery, useApiMutation, useInvalidateQueries, IDENTITY } from '@gymapp/ui';
-import type { AdminUser } from '@gymapp/ui';
+import { useApiQuery, useApiMutation, useInvalidateQueries, IDENTITY } from '@gym360/ui';
+import type { AdminUser } from '@gym360/ui';
 
 export function useAdminUsers() {
   return useApiQuery<AdminUser[]>(

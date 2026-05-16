@@ -1,4 +1,4 @@
-import { useApiQuery, ADMIN, GYMS } from '@gymapp/ui';
+import { useApiQuery, ADMIN, GYMS } from '@gym360/ui';
 import type {
   PlatformKpis,
   TimeSeriesPoint,
@@ -7,7 +7,7 @@ import type {
   AtRiskGym,
   ChurnMetrics,
   FeatureUsage,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 
 export interface PlatformAnalytics {
   kpis: PlatformKpis;

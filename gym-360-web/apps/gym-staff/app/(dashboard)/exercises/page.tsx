@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { PageHeader, DataTable, StatusBadge, Modal, FeatureGate, FEATURE_CODES } from '@gymapp/ui';
+import { PageHeader, DataTable, StatusBadge, Modal, FeatureGate, FEATURE_CODES } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Filter, Plus, BookOpen } from 'lucide-react';
 

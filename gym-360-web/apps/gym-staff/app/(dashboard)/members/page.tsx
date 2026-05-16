@@ -3,11 +3,11 @@
 import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { PageHeader, DataTable, StatusBadge, Modal, formatDate } from '@gymapp/ui';
+import { PageHeader, DataTable, StatusBadge, Modal, formatDate } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Filter, Upload } from 'lucide-react';
 import { useMembers, useCreateMember } from '@/lib/hooks/useMembers';
-import type { MemberListItem } from '@gymapp/ui';
+import type { MemberListItem } from '@gym360/ui';
 
 const columns: ColumnDef<MemberListItem, unknown>[] = [
   {

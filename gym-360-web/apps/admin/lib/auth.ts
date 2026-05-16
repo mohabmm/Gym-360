@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import type { AdminRole } from '@gymapp/ui';
+import type { AdminRole } from '@gym360/ui';
 
 declare module 'next-auth' {
   interface Session {

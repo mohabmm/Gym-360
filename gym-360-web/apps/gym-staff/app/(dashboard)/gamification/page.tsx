@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PageHeader, StatusBadge, ConfirmModal } from '@gymapp/ui';
+import { PageHeader, StatusBadge, ConfirmModal } from '@gym360/ui';
 import { Trophy, Star, Medal, MessageSquare } from 'lucide-react';
 import { useMemberLeaderboard, useTrainerRankings, useTestimonials, useModerateTestimonial } from '@/lib/hooks/useGamification';
 

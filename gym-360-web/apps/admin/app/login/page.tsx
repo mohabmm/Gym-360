@@ -65,7 +65,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@gymapp.com"
+              placeholder="admin@gym-360.com"
               required
               className="w-full h-10 rounded-lg border border-slate-600 bg-slate-800/50 px-3 text-sm text-white placeholder:text-slate-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
             />

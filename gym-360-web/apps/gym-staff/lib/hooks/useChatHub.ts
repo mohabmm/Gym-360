@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSignalR } from '@gymapp/ui';
+import { useSignalR } from '@gym360/ui';
 
 interface MessagePayload {
   conversationId: string;

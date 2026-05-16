@@ -1,10 +1,10 @@
 'use client';
 
-import { PageHeader, KpiCard, ChartContainer, formatCurrency, formatNumber } from '@gymapp/ui';
+import { PageHeader, KpiCard, ChartContainer, formatCurrency, formatNumber } from '@gym360/ui';
 import { Building2, Users, DollarSign, Dumbbell, TrendingUp, Activity, AlertCircle } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { usePlatformAnalytics } from '@/lib/hooks';
-import { PageSkeleton } from '@gymapp/ui';
+import { PageSkeleton } from '@gym360/ui';
 
 const COLORS = ['#94A3B8', '#3B82F6', '#8B5CF6', '#F59E0B'];
 

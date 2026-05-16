@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { PageHeader, DataTable, StatusBadge, formatDate, apiPatch, IDENTITY, useInvalidateQueries, Modal, extractApiErrors } from '@gymapp/ui';
+import { PageHeader, DataTable, StatusBadge, formatDate, apiPatch, IDENTITY, useInvalidateQueries, Modal, extractApiErrors } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Filter, Pause, Play, AlertCircle, UserPlus } from 'lucide-react';
 import { useAdminUsers, useCreateGymOwner, type CreateGymOwnerPayload } from '@/lib/hooks';
-import { TableSkeleton } from '@gymapp/ui';
-import type { AdminUser } from '@gymapp/ui';
+import { TableSkeleton } from '@gym360/ui';
+import type { AdminUser } from '@gym360/ui';
 
 const EMPTY_OWNER_FORM: CreateGymOwnerPayload = {
   email: '',

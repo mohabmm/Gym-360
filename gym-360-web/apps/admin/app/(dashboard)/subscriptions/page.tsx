@@ -10,11 +10,11 @@ import {
   apiPut,
   BILLING,
   useInvalidateQueries,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import { Edit, Plus, AlertCircle } from 'lucide-react';
 import { usePlans, useFeatures, useGyms } from '@/lib/hooks';
-import { CardSkeleton } from '@gymapp/ui';
-import type { SubscriptionPlan } from '@gymapp/ui';
+import { CardSkeleton } from '@gym360/ui';
+import type { SubscriptionPlan } from '@gym360/ui';
 
 type PlanFormState = {
   code: string;

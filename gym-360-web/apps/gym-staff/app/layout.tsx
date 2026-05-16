@@ -9,7 +9,7 @@ import {
   initialHtmlClass,
   isLocale,
   isThemePref,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import './globals.css';
 import { Providers } from './providers';
 

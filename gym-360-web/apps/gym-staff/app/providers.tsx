@@ -3,7 +3,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SessionProvider, useSession } from 'next-auth/react';
-import { useSignalR, useInvalidateQueries, SuspensionOverlay } from '@gymapp/ui';
+import { useSignalR, useInvalidateQueries, SuspensionOverlay } from '@gym360/ui';
 import { Toaster } from 'sonner';
 
 function SignalRProvider({ children }: { children: ReactNode }) {
@@ -48,7 +48,7 @@ function SignalRProvider({ children }: { children: ReactNode }) {
       {isSuspended && (
         <SuspensionOverlay
           gymName="First Gym"
-          onContactSupport={() => window.open('mailto:support@gymapp.com')}
+          onContactSupport={() => window.open('mailto:support@gym-360.com')}
         />
       )}
       {children}
