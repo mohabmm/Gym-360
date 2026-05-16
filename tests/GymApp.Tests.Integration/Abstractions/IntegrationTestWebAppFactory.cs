@@ -84,8 +84,27 @@ public sealed class IntegrationTestWebAppFactory
 
         foreach (var contextType in publicContextTypes)
         {
-            if (scope.ServiceProvider.GetService(contextType) is DbContext dbContext)
+            if (scope.ServiceProvider.GetService(contextType) is not DbContext dbContext)
+                continue;
+
+            if (contextType == typeof(GymApp.Common.Infrastructure.Outbox.OutboxDbContext))
+            {
+                // EnsureCreatedAsync() no-ops once an earlier context created the
+                // shared database, so the outbox schema/table is never made and
+                // every event-publishing test fails with
+                // "Invalid object name 'outbox.outbox_messages'".
+                // OutboxDbContext's model is OutboxMessage only, so per-context
+                // CreateTablesAsync() creates exactly outbox.outbox_messages with
+                // no cross-context model-merge risk.
+                var creator = dbContext.GetService<IRelationalDatabaseCreator>();
+                if (!await creator.ExistsAsync())
+                    await creator.CreateAsync();
+                await creator.CreateTablesAsync();
+            }
+            else
+            {
                 await dbContext.Database.EnsureCreatedAsync();
+            }
         }
 
         // Identity DbContext is internal — resolve via its unit-of-work interface.

@@ -29,10 +29,12 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
         string role = "trainee",
         Guid? gymId = null,
         string? staffRole = null,
-        string? adminRole = null)
+        string? adminRole = null,
+        string? staffSubRole = null)
     {
         var jwtService = Scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
-        return jwtService.GenerateAccessToken(userId, email, role, gymId, staffRole, adminRole);
+        return jwtService.GenerateAccessToken(
+            userId, email, role, gymId, staffRole, adminRole, staffSubRole: staffSubRole);
     }
 
     /// <summary>
@@ -43,10 +45,12 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
         string role = "trainee",
         Guid? gymId = null,
         string? staffRole = null,
-        string? adminRole = null)
+        string? adminRole = null,
+        string? staffSubRole = null)
     {
         var uid = userId ?? Guid.NewGuid();
-        var token = CreateAccessToken(uid, $"user-{uid}@test.com", role, gymId, staffRole, adminRole);
+        var token = CreateAccessToken(
+            uid, $"user-{uid}@test.com", role, gymId, staffRole, adminRole, staffSubRole);
         var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
