@@ -52,5 +52,23 @@ setup('staff login', async ({ page }) => {
   }
   await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 15000 });
 
+  // Guard against the silent-auth-failure cascade: a NextAuth session must
+  // exist before we persist storageState. A landed-on-dashboard URL alone is
+  // not proof of auth (an unauthenticated SPA shell can still render an
+  // <h1>), so assert the actual session cookie. Without this, an empty auth
+  // state would silently cascade into ~29 downstream gym-staff failures.
+  const state = await page.context().storageState();
+  const hasSession = state.cookies.some(
+    (c) =>
+      (c.name === 'next-auth.session-token' ||
+        c.name === '__Secure-next-auth.session-token') &&
+      !!c.value,
+  );
+  expect(
+    hasSession,
+    'No NextAuth session cookie after staff login — auth state would be empty ' +
+      'and silently cascade into downstream gym-staff failures',
+  ).toBe(true);
+
   await page.context().storageState({ path: authFile });
 });
