@@ -28,6 +28,10 @@ services:
       - Fcm__ProjectId=${FCM_PROJECT_ID:-forma-389d6}
       - Fcm__ServiceAccountKeyPath=/run/secrets/firebase-service-account.json
       - Tenancy__Mode=${TENANCY_MODE:-Hard}
+      # Run EF migrations + Hard-mode fresh-DB self-bootstrap at startup.
+      # Required on Dokploy (non-Development env) so deploys come up without a
+      # manual SQL step. Safe/idempotent; never auto-stamps a DB with soft data.
+      - Database__AutoMigrate=${DB_AUTO_MIGRATE:-true}
       # Production posture: NO demo gym, NO demo trainer/trainee/staff/owner
       # users. Override these to true in .env (or shell) only for local dev.
       - Tenancy__RunDevSeedersOnHard=${TENANCY_RUN_DEV_SEEDERS_ON_HARD:-false}
