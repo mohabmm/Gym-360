@@ -39,6 +39,11 @@ public sealed class IntegrationTestWebAppFactory
                 ["ConnectionStrings:Redis"] = _redisContainer.GetConnectionString(),
                 // Pin tenancy to Soft mode for integration tests.
                 ["Tenancy:Mode"] = "Soft",
+                // Program.cs fail-fasts on a missing/placeholder JWT secret. The
+                // base appsettings.json ships "REPLACE_VIA_ENV", and CI runs in
+                // Release (no appsettings.Development.json) with no JWT env, so
+                // supply a valid ≥32-byte test secret here to keep the host bootable.
+                ["Jwt:SecretKey"] = "integration-tests-only-jwt-secret-key-not-for-production-use",
             });
         });
 

@@ -40,6 +40,11 @@ public sealed class FunctionalTestWebAppFactory
                 // requires the bootstrap migration + gyms_registry rows that
                 // these tests don't seed.
                 ["Tenancy:Mode"] = "Soft",
+                // Program.cs fail-fasts on a missing/placeholder JWT secret. The
+                // base appsettings.json ships "REPLACE_VIA_ENV", and CI runs in
+                // Release (no appsettings.Development.json) with no JWT env, so
+                // supply a valid ≥32-byte test secret here to keep the host bootable.
+                ["Jwt:SecretKey"] = "functional-tests-only-jwt-secret-key-not-for-production-use",
             });
         });
 

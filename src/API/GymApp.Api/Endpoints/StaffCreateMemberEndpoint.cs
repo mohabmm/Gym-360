@@ -56,7 +56,7 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
             // (b) registers a gym_members row via IGymMemberDirectory and assigns a
             // MemberNumber, and (c) publishes MemberAddedToGymIntegrationEvent. Skipping
             // it (calling directory.RegisterAsync alone) leaves /me/* endpoints returning
-            // MEMBER_ROLE_REQUIRED because IsActiveMemberAsync reads MemberIds.
+            // NOT_A_MEMBER_OF_GYM because IsActiveMemberAsync reads MemberIds.
             var addCmd = new AddMemberCommand(gymId, userId, request.Section, MemberNumber: null);
             var addResult = await sender.Send(addCmd, ct);
             if (addResult.IsFailure)

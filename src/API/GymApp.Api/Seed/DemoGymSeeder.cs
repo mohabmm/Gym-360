@@ -159,7 +159,7 @@ public static class DemoGymSeeder
             // Mirror member into the Gym.MemberIds JSON so IsActiveMemberAsync
             // (which reads the JSON column, not gym_members) returns true.
             // AddMember is the authoritative path; gym_members alone leaves
-            // /me/* endpoints returning MEMBER_ROLE_REQUIRED.
+            // /me/* endpoints returning NOT_A_MEMBER_OF_GYM.
             if (!gym.MemberIds.Contains(traineeId.Value))
                 gym.AddMember(traineeId.Value);
         }
