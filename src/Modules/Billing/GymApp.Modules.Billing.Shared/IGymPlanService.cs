@@ -1,4 +1,4 @@
-namespace GymApp.Common.Application.Abstractions;
+namespace GymApp.Modules.Billing.Shared;
 
 public interface IGymPlanService
 {

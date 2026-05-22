@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Identity.Shared;
 using GymApp.Modules.Gyms.IntegrationEvents;
 using GymApp.Modules.Progress.Application.Abstractions;
 using GymApp.Modules.Progress.Domain.Entities;

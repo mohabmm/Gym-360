@@ -1,4 +1,4 @@
-namespace GymApp.Common.Application.Abstractions;
+namespace GymApp.Modules.Identity.Shared;
 
 /// <summary>
 /// Cross-module contract to resolve a gym-scoped member number to a user id.

@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Identity.Shared;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Application.Commands.RecordCheckIn;
 using GymApp.Modules.Gyms.Application.Contracts;

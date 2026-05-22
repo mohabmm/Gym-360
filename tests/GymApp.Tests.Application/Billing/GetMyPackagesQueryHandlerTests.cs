@@ -1,5 +1,6 @@
 using System.Reflection;
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gyms.Shared;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Repositories;

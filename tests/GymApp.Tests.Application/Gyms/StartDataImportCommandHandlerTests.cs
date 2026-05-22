@@ -1,5 +1,5 @@
 using FluentAssertions;
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Application.Commands.StartDataImport;
