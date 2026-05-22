@@ -15,5 +15,9 @@
     <ProjectReference Include="..\GymApp.Modules.Gyms.Application\GymApp.Modules.Gyms.Application.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Gyms.Domain\GymApp.Modules.Gyms.Domain.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Gyms.IntegrationEvents\GymApp.Modules.Gyms.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Billing\GymApp.Modules.Billing.Shared\GymApp.Modules.Billing.Shared.csproj" />
+    <ProjectReference Include="..\..\Gamification\GymApp.Modules.Gamification.Shared\GymApp.Modules.Gamification.Shared.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gyms.Shared\GymApp.Modules.Gyms.Shared.csproj" />
+    <ProjectReference Include="..\..\Identity\GymApp.Modules.Identity.Shared\GymApp.Modules.Identity.Shared.csproj" />
   </ItemGroup>
 </Project>

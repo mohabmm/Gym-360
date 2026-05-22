@@ -61,6 +61,26 @@ builder.Host.UseSerilog((context, configuration) =>
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services.Configure<JwtOptions>(jwtSection);
 
+// Fail-fast: HS256 needs ≥256 bits of entropy. Reject empty / placeholder / short keys
+// at startup so misconfigured deployments never sign tokens with a weak secret.
+{
+    var jwtBoot = jwtSection.Get<JwtOptions>();
+    var secret = jwtBoot?.SecretKey ?? string.Empty;
+    if (string.IsNullOrWhiteSpace(secret)
+        || secret.StartsWith("REPLACE_VIA_ENV", StringComparison.OrdinalIgnoreCase)
+        || secret.StartsWith("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+        || Encoding.UTF8.GetByteCount(secret) < 32)
+    {
+        throw new InvalidOperationException(
+            "Jwt:SecretKey is missing, placeholder, or shorter than 32 bytes. " +
+            "Set JWT_SECRET_KEY env (generate via: openssl rand -base64 64).");
+    }
+    if (string.IsNullOrWhiteSpace(jwtBoot!.Issuer) || string.IsNullOrWhiteSpace(jwtBoot.Audience))
+    {
+        throw new InvalidOperationException("Jwt:Issuer and Jwt:Audience must be configured.");
+    }
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -268,8 +288,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// --- Hard-tenancy version gate: refuse to start if Tenancy:Mode=Hard but the
-// bootstrap migration has not been applied. Soft mode skips this check entirely.
+// --- Hard-tenancy bootstrap + version gate ------------------------------------
+// Soft mode skips entirely. In Hard mode the platform refuses to start until
+// dbo.__tenancy_version >= 1. On a *fresh* database we self-bootstrap that
+// marker (mirrors scripts/phase0_reset.sh) so production/staging deploys come
+// up without a manual SQL step. If legacy *soft* data is present we do NOT
+// auto-stamp — that path requires the maintenance-window migration
+// src/DB/migrations/2026_05_01_hard_isolation_bootstrap.sql, and auto-stamping
+// would silently corrupt tenancy.
+var runDbInit = app.Environment.IsDevelopment()
+    || builder.Configuration.GetValue<bool>("Database:AutoMigrate", false);
 {
     var tenancyMode = builder.Configuration.GetSection("Tenancy:Mode").Value ?? "Soft";
     if (string.Equals(tenancyMode, "Hard", StringComparison.OrdinalIgnoreCase))
@@ -278,24 +306,102 @@ var app = builder.Build();
         try
         {
             using var conn = new Microsoft.Data.SqlClient.SqlConnection(connStr);
-            await conn.OpenAsync();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "IF OBJECT_ID('dbo.__tenancy_version','U') IS NULL SELECT 0 ELSE SELECT ISNULL(MAX([Version]),0) FROM dbo.__tenancy_version";
-            var version = (int)(await cmd.ExecuteScalarAsync() ?? 0);
+            // Bounded retry: the gate runs before EF (which has its own resiliency),
+            // so a cold-start SQL race must NOT silently skip the fresh-DB bootstrap
+            // — otherwise __tenancy_version is never stamped and the next restart
+            // crash-loops on the version gate.
+            for (var attempt = 1; ; attempt++)
+            {
+                try { await conn.OpenAsync(); break; }
+                catch (Microsoft.Data.SqlClient.SqlException) when (attempt < 10)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                }
+            }
+
+            async Task<int> ReadTenancyVersionAsync()
+            {
+                using var c = conn.CreateCommand();
+                c.CommandText = "IF OBJECT_ID('dbo.__tenancy_version','U') IS NULL SELECT 0 ELSE SELECT ISNULL(MAX([Version]),0) FROM dbo.__tenancy_version";
+                return (int)(await c.ExecuteScalarAsync() ?? 0);
+            }
+
+            var version = await ReadTenancyVersionAsync();
             if (version < 1)
-                throw new InvalidOperationException(
-                    "Tenancy:Mode=Hard but dbo.__tenancy_version < 1. Run db/migrations/2026_05_01_hard_isolation_bootstrap.sql first.");
+            {
+                // Detect pre-existing soft-tenancy data: any *unprefixed* per-module
+                // business schema still carrying base tables. Deliberately excludes:
+                //   - identity  : global cross-tenant in BOTH modes (a seeded admin
+                //                  is NOT soft data — counting it crash-loops a fresh
+                //                  Hard deploy whose bootstrap raced the DB cold start).
+                //   - billing   : Step 1b intentionally keeps a legacy billing.* schema
+                //                  in Hard mode as the hydration source for g{N}_billing.
+                using var probe = conn.CreateCommand();
+                probe.CommandText = @"
+DECLARE @soft BIT = 0;
+IF EXISTS (
+    SELECT 1 FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id
+    WHERE s.name IN ('gyms','training','progress','scheduling','nutrition','communication','gamification')
+) SET @soft = 1;
+SELECT @soft;";
+                var hasSoftData = Convert.ToInt32(await probe.ExecuteScalarAsync() ?? 0) == 1;
+
+                if (hasSoftData)
+                    throw new InvalidOperationException(
+                        "Tenancy:Mode=Hard but dbo.__tenancy_version < 1 and legacy soft-tenancy data is present. " +
+                        "Run src/DB/migrations/2026_05_01_hard_isolation_bootstrap.sql in a maintenance window first.");
+
+                if (!runDbInit)
+                    throw new InvalidOperationException(
+                        "Tenancy:Mode=Hard but dbo.__tenancy_version < 1 on a fresh database, and DB auto-init is off. " +
+                        "Set Database:AutoMigrate=true (env Database__AutoMigrate=true) to self-bootstrap, " +
+                        "or run src/DB/migrations/2026_05_01_hard_isolation_bootstrap.sql.");
+
+                // Fresh DB + auto-init enabled → idempotent mini-bootstrap.
+                using var boot = conn.CreateCommand();
+                boot.CommandText = @"
+IF OBJECT_ID('dbo.__tenancy_version','U') IS NULL
+    CREATE TABLE dbo.__tenancy_version ([Version] INT NOT NULL PRIMARY KEY, AppliedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), Note NVARCHAR(500) NULL);
+IF NOT EXISTS (SELECT 1 FROM dbo.__tenancy_version WHERE [Version] = 1)
+    INSERT INTO dbo.__tenancy_version ([Version], Note) VALUES (1, N'fresh-DB self-bootstrap (Program.cs startup)');
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = N'gyms_registry') EXEC('CREATE SCHEMA [gyms_registry]');
+IF OBJECT_ID('gyms_registry.gyms','U') IS NULL
+BEGIN
+    CREATE TABLE gyms_registry.gyms (
+        GymId UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+        OwnerId UNIQUEIDENTIFIER NOT NULL,
+        Name NVARCHAR(200) NOT NULL,
+        Slug NVARCHAR(100) NOT NULL,
+        SchemaPrefix NVARCHAR(20) NOT NULL,
+        SequentialNumber INT IDENTITY(1,1) NOT NULL,
+        Status NVARCHAR(20) NOT NULL,
+        CreatedAt DATETIME2 NOT NULL,
+        CONSTRAINT UQ_gyms_registry_gyms_SchemaPrefix UNIQUE (SchemaPrefix),
+        CONSTRAINT UQ_gyms_registry_gyms_Slug UNIQUE (Slug),
+        CONSTRAINT UQ_gyms_registry_gyms_SequentialNumber UNIQUE (SequentialNumber)
+    );
+    CREATE INDEX IX_gyms_registry_gyms_OwnerId ON gyms_registry.gyms (OwnerId);
+END;";
+                await boot.ExecuteNonQueryAsync();
+
+                version = await ReadTenancyVersionAsync();
+                if (version < 1)
+                    throw new InvalidOperationException(
+                        "Hard-mode self-bootstrap ran but dbo.__tenancy_version is still < 1. Aborting startup.");
+            }
         }
         catch (Microsoft.Data.SqlClient.SqlException) { /* DB not reachable yet — let normal startup error path handle it */ }
     }
 }
 
-// --- Auto-migrate in Development: applies EF migrations for all registered DbContexts,
+// --- DB initialization: applies EF migrations for all registered DbContexts,
 // and EnsureCreated() for contexts without migrations (e.g. OutboxDbContext).
+// Runs in Development, or anywhere Database:AutoMigrate=true (env
+// Database__AutoMigrate=true) — required for self-bootstrapping Dokploy deploys.
 //
 // Tenancy-aware: per-gym DbContexts are migrated once per gym in gyms_registry
 // when running Hard. Soft mode just runs each context once with no tenant set.
-if (app.Environment.IsDevelopment())
+if (runDbInit)
 {
     using var scope = app.Services.CreateScope();
     var sp = scope.ServiceProvider;
@@ -575,6 +681,21 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_gyms_GymCode' AND obje
 }
 
 // --- Pipeline ---
+// ForwardedHeaders FIRST: behind Dokploy/Traefik (or any reverse proxy), trust
+// X-Forwarded-Proto / X-Forwarded-For so Request.Scheme, Url.Action redirects,
+// and client-IP logging reflect the real client. Must run before auth/CORS.
+{
+    var fwd = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+            | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+            | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost,
+    };
+    fwd.KnownNetworks.Clear();
+    fwd.KnownProxies.Clear();
+    app.UseForwardedHeaders(fwd);
+}
+
 // UseCors must run before UseExceptionHandler so error responses keep CORS headers;
 // otherwise the browser surfaces a misleading "blocked by CORS" error masking the real 5xx.
 app.UseCors();

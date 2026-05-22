@@ -557,11 +557,16 @@
           "StackExchange.Redis": "[2.7.33, )"
         }
       },
+      "gymapp.modules.billing.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.gamification.application": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gamification.Domain": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "GymApp.Modules.Scheduling.IntegrationEvents": "[1.0.0, )"
         }
       },
@@ -570,6 +575,12 @@
         "dependencies": {
           "GymApp.Common.Domain": "[1.0.0, )"
         }
+      },
+      "gymapp.modules.gamification.shared": {
+        "type": "Project"
+      },
+      "gymapp.modules.identity.shared": {
+        "type": "Project"
       },
       "gymapp.modules.scheduling.integrationevents": {
         "type": "Project",

@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Identity.Shared;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;

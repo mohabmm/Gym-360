@@ -7,5 +7,6 @@
     <ProjectReference Include="..\..\..\Common\GymApp.Common.Infrastructure\GymApp.Common.Infrastructure.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Gamification.Application\GymApp.Modules.Gamification.Application.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Gamification.Domain\GymApp.Modules.Gamification.Domain.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Gamification.Shared\GymApp.Modules.Gamification.Shared.csproj" />
   </ItemGroup>
 </Project>

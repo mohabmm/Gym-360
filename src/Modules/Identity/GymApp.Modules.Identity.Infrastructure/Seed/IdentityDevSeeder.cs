@@ -55,6 +55,6 @@ public static class IdentityDevSeeder
         }
 
         await ctx.SaveChangesAsync(ct);
-        logger.LogInformation("IdentityDevSeeder: seeded {Added}/{Total} demo users (password: Demo1234!)", added, seeds.Length);
+        logger.LogInformation("IdentityDevSeeder: seeded {Added}/{Total} demo users (password: 123456)", added, seeds.Length);
     }
 }

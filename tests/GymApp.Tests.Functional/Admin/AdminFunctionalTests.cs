@@ -256,7 +256,7 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
         var client = CreateAdminClient();
 
         // Act
-        var response = await client.GetAsync("api/v1/admin/feature-matrix");
+        var response = await client.GetAsync("api/v1/admin/plans/feature-matrix");
 
         // Assert
         response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
@@ -270,7 +270,7 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
         var client = CreateTraineeClient();
 
         // Act
-        var response = await client.GetAsync("api/v1/admin/feature-matrix");
+        var response = await client.GetAsync("api/v1/admin/plans/feature-matrix");
 
         // Assert
         AssertStatusCode(response, HttpStatusCode.Forbidden);
@@ -360,7 +360,7 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
 
         // Act
         var response = await client.GetAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/plan-change-log");
+            $"api/v1/admin/plan-change-log?gymId={Guid.NewGuid()}&page=1&pageSize=20");
 
         // Assert
         response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
@@ -375,7 +375,7 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
 
         // Act
         var response = await client.GetAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/plan-change-log");
+            $"api/v1/admin/plan-change-log?gymId={Guid.NewGuid()}&page=1&pageSize=20");
 
         // Assert
         AssertStatusCode(response, HttpStatusCode.Forbidden);

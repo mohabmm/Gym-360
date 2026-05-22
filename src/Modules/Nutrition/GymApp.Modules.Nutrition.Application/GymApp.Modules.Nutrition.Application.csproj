@@ -7,5 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common\GymApp.Common.Application\GymApp.Common.Application.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Nutrition.Domain\GymApp.Modules.Nutrition.Domain.csproj" />
+    <ProjectReference Include="..\..\Billing\GymApp.Modules.Billing.Shared\GymApp.Modules.Billing.Shared.csproj" />
+    <ProjectReference Include="..\..\Gyms\GymApp.Modules.Gyms.Shared\GymApp.Modules.Gyms.Shared.csproj" />
   </ItemGroup>
 </Project>

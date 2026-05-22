@@ -23,11 +23,17 @@
           "MediatR": "[12.2.0, )"
         }
       },
+      "gymapp.modules.billing.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.gyms.integrationevents": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Domain": "[1.0.0, )"
         }
+      },
+      "gymapp.modules.gyms.shared": {
+        "type": "Project"
       },
       "gymapp.modules.identity.domain": {
         "type": "Project",
@@ -40,6 +46,9 @@
         "dependencies": {
           "GymApp.Common.Domain": "[1.0.0, )"
         }
+      },
+      "gymapp.modules.identity.shared": {
+        "type": "Project"
       },
       "FluentValidation": {
         "type": "CentralTransitive",

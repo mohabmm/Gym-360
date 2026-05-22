@@ -39,12 +39,20 @@ src/
 - **Application**: References Domain only. Contains: Commands, Queries, Handlers (internal sealed), Validators (internal), DTOs, Mappers. Uses MediatR.
 - **Infrastructure**: References Application + Domain. Contains: EF Core DbContext, Entity Configurations, Repositories, External service clients.
 - **Presentation**: References Application only. Contains: Minimal API endpoints implementing `IEndpoint`.
-- **IntegrationEvents**: Standalone project. Contains ONLY `record` classes for cross-module events. This is the ONLY project other modules may reference.
+- **IntegrationEvents**: Standalone leaf project. Contains ONLY `record` classes for cross-module async events.
+- **Shared** (optional, per module): Standalone leaf project — references nothing. Contains the module's cross-module **sync** contract interfaces + their DTO records (e.g. `Billing.Shared/IGymPlanService`). Implementation lives in that module's Infrastructure; consumers inject the interface via DI.
+
+### Shared vs Internal — the module boundary
+
+A module's **shared surface** is exactly two projects: `.Shared` (sync contracts) + `.IntegrationEvents` (async events). These are the *only* projects another module may reference. Everything else — `Domain`, `Application`, `Infrastructure`, `Presentation` — is **module-internal**. Enforced by `GymApp.Tests.Architecture` (`ModuleBoundaryTests`, `ModuleContractProjectTests`).
+
+Contract ownership: the module whose `.Shared` holds an interface owns it; the implementation lives in that module's Infrastructure. Cross-cutting *platform* abstractions that are not owned by any business module (`ICacheService`, `IDateTimeProvider`, `IChatNotifier`, `IUserDataProvider`) stay in `Common.Application/Abstractions`. Each module's intra-module `Application/Contracts/` folder holds **same-module** service interfaces — not part of the shared surface.
 
 ## Cross-Module Communication
-- **NEVER** reference another module's Domain/Application/Infrastructure directly
-- **Synchronous**: Module A calls Module B's IntegrationEvents (in-process MediatR publish)
-- **Asynchronous (Phase 2)**: Outbox → RabbitMQ → Inbox pattern via MassTransit
+- **NEVER** reference another module's Domain/Application/Infrastructure directly — only its `.Shared` and `.IntegrationEvents`
+- **Synchronous**: Module A injects an interface from Module B's `.Shared` project (DI); impl lives in B's Infrastructure
+- **Asynchronous**: Module A publishes an event from its `.IntegrationEvents`; Module B handles it via `INotificationHandler<T>`
+- **Async transport (Phase 2)**: Outbox → RabbitMQ → Inbox pattern via MassTransit
 - **Current flow**: DomainEvent → SaveChanges intercepts → OutboxMessage table → Quartz job polls → MediatR.Publish → handlers in consuming modules
 
 ## Domain Primitives (Bookify — verbatim)
@@ -1082,7 +1090,7 @@ Minimum 3 unique client ratings required to qualify for Coach of the Month.
 - **Domain rules**: Domain events must be `sealed` and end with `DomainEvent`. Entities must have private parameterless constructor.
 - **Application rules**: CommandHandlers end with `CommandHandler` and are `internal`. QueryHandlers end with `QueryHandler` and are `internal`. Validators end with `Validator` and are `internal`.
 - **Layer rules (Bookify verbatim)**: Domain → no dependency on Application/Infrastructure/Presentation. Application → no dependency on Infrastructure/Presentation. Infrastructure → no dependency on Presentation.
-- **Module boundary rules (Milan)**: Each module's Domain/Application/Infrastructure must NOT reference any other module's Domain/Application/Infrastructure. Only IntegrationEvents cross-references allowed.
+- **Module boundary rules (Milan)**: Each module's Domain/Application/Infrastructure must NOT reference any other module's Domain/Application/Infrastructure. Only `.Shared` (sync contracts) and `.IntegrationEvents` (async events) cross-references allowed.
 
 ## CI/CD Pipeline
 Unit tests + Architecture tests → run on every push (fast, no containers). Integration tests + Functional tests → run after unit tests pass (need Docker for Testcontainers).

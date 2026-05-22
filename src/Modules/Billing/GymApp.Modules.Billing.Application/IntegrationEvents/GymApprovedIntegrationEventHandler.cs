@@ -36,17 +36,34 @@ internal sealed class GymApprovedIntegrationEventHandler : INotificationHandler<
 
     public async Task Handle(GymApprovedIntegrationEvent notification, CancellationToken cancellationToken)
     {
-        var existing = await _subscriptionRepository.GetByGymIdAsync(notification.GymId, cancellationToken);
-        if (existing is not null) return;
-
-        var plan = await _planRepository.GetByCodeAsync(DefaultPlanCode, cancellationToken);
-        if (plan is null)
+        var proPlan = await _planRepository.GetByCodeAsync(DefaultPlanCode, cancellationToken);
+        if (proPlan is null)
         {
             _logger.LogWarning("Default plan '{PlanCode}' not found; gym {GymId} left without subscription", DefaultPlanCode, notification.GymId);
             return;
         }
 
-        await _subscriptionRepository.AddAsync(GymSubscription.Create(notification.GymId, plan.Id), cancellationToken);
+        var existing = await _subscriptionRepository.GetByGymIdAsync(notification.GymId, cancellationToken);
+        if (existing is not null)
+        {
+            // Provisioner may have seeded a Free subscription based on the owner's
+            // contract tier (or as a fallback). Upgrade to Pro on first approval so
+            // plan-gated features work without manual admin intervention. Skip the
+            // upgrade if the gym is already on Pro/Business — owners can later
+            // downgrade via the admin UI and that choice should stick.
+            if (existing.PlanId == proPlan.Id) return;
+
+            var currentPlan = await _planRepository.GetByIdAsync(existing.PlanId, cancellationToken);
+            if (currentPlan is not null && !string.Equals(currentPlan.Code, "free", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            existing.ChangePlan(proPlan.Id);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Upgraded gym {GymId} from Free to {PlanCode} on approval", notification.GymId, DefaultPlanCode);
+            return;
+        }
+
+        await _subscriptionRepository.AddAsync(GymSubscription.Create(notification.GymId, proPlan.Id), cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Auto-subscribed gym {GymId} to plan {PlanCode}", notification.GymId, DefaultPlanCode);
     }

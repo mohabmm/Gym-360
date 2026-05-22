@@ -14,9 +14,10 @@ public sealed class GymsFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task CreateGym_ValidData_Returns201()
     {
-        // Arrange
+        // Arrange — POST /api/v1/gyms is platform_admin-only (RegisterGymEndpoint).
+        // The gym's OwnerId is carried in the body, distinct from the admin caller.
         var ownerId = Guid.NewGuid();
-        var client = CreateOwnerClient(ownerId);
+        var client = CreateAdminClient();
 
         // Act
         var response = await client.PostAsJsonAsync("api/v1/gyms", new
@@ -24,7 +25,7 @@ public sealed class GymsFunctionalTests : BaseFunctionalTest
             OwnerId = ownerId,
             Name = $"Gym-{Guid.NewGuid():N}",
             Description = "Test gym",
-            Address = new { Street = "123 Test", City = "Cairo", Governorate = "Cairo", PostalCode = "11511" },
+            Address = new { Street = "123 Test", City = "Cairo", State = "Cairo", Country = "Egypt", ZipCode = "11511" },
             Contact = new { Phone = "+201111222333", Email = "gym@test.com" }
         });
 
@@ -35,8 +36,8 @@ public sealed class GymsFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task CreateGym_MissingName_Returns400()
     {
-        // Arrange
-        var client = CreateOwnerClient();
+        // Arrange — POST /api/v1/gyms is platform_admin-only (RegisterGymEndpoint).
+        var client = CreateAdminClient();
 
         // Act
         var response = await client.PostAsJsonAsync("api/v1/gyms", new

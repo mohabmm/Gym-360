@@ -1593,8 +1593,11 @@
           "FluentValidation.DependencyInjectionExtensions": "[11.9.0, )",
           "GymApp.Common.Application": "[1.0.0, )",
           "GymApp.Modules.Billing.Domain": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "GymApp.Modules.Scheduling.IntegrationEvents": "[1.0.0, )"
         }
       },
@@ -1610,6 +1613,7 @@
           "GymApp.Common.Infrastructure": "[1.0.0, )",
           "GymApp.Modules.Billing.Application": "[1.0.0, )",
           "GymApp.Modules.Billing.Domain": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[8.0.8, )"
         }
       },
@@ -1623,8 +1627,12 @@
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Presentation": "[1.0.0, )",
-          "GymApp.Modules.Billing.Application": "[1.0.0, )"
+          "GymApp.Modules.Billing.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )"
         }
+      },
+      "gymapp.modules.billing.shared": {
+        "type": "Project"
       },
       "gymapp.modules.communication.application": {
         "type": "Project",
@@ -1635,6 +1643,7 @@
           "GymApp.Modules.Gamification.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "GymApp.Modules.Progress.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Scheduling.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Training.IntegrationEvents": "[1.0.0, )"
@@ -1673,7 +1682,9 @@
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gamification.Domain": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "GymApp.Modules.Scheduling.IntegrationEvents": "[1.0.0, )"
         }
       },
@@ -1689,6 +1700,7 @@
           "GymApp.Common.Infrastructure": "[1.0.0, )",
           "GymApp.Modules.Gamification.Application": "[1.0.0, )",
           "GymApp.Modules.Gamification.Domain": "[1.0.0, )",
+          "GymApp.Modules.Gamification.Shared": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[8.0.8, )"
         }
       },
@@ -1705,12 +1717,17 @@
           "GymApp.Modules.Gamification.Application": "[1.0.0, )"
         }
       },
+      "gymapp.modules.gamification.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.gyms.application": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gyms.Domain": "[1.0.0, )",
-          "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )"
+          "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )"
         }
       },
       "gymapp.modules.gyms.domain": {
@@ -1726,9 +1743,13 @@
           "ClosedXML": "[0.104.1, )",
           "FluentValidation.DependencyInjectionExtensions": "[11.9.0, )",
           "GymApp.Common.Infrastructure": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
+          "GymApp.Modules.Gamification.Shared": "[1.0.0, )",
           "GymApp.Modules.Gyms.Application": "[1.0.0, )",
           "GymApp.Modules.Gyms.Domain": "[1.0.0, )",
           "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "MediatR": "[12.2.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[8.0.8, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
@@ -1749,13 +1770,19 @@
           "GymApp.Modules.Gyms.Application": "[1.0.0, )"
         }
       },
+      "gymapp.modules.gyms.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.identity.application": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.Domain": "[1.0.0, )",
-          "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )"
+          "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )"
         }
       },
       "gymapp.modules.identity.domain": {
@@ -1769,8 +1796,10 @@
         "dependencies": {
           "BCrypt.Net-Next": "[4.0.3, )",
           "GymApp.Common.Infrastructure": "[1.0.0, )",
+          "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.Application": "[1.0.0, )",
           "GymApp.Modules.Identity.Domain": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[8.0.8, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[8.0.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.1, )",
@@ -1790,10 +1819,15 @@
           "GymApp.Modules.Identity.Application": "[1.0.0, )"
         }
       },
+      "gymapp.modules.identity.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.nutrition.application": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
+          "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
           "GymApp.Modules.Nutrition.Domain": "[1.0.0, )"
         }
       },
@@ -1829,8 +1863,10 @@
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "GymApp.Modules.Progress.Domain": "[1.0.0, )",
           "GymApp.Modules.Training.IntegrationEvents": "[1.0.0, )"
         }
@@ -1867,6 +1903,7 @@
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Scheduling.Domain": "[1.0.0, )",
           "GymApp.Modules.Scheduling.IntegrationEvents": "[1.0.0, )"
@@ -1904,6 +1941,7 @@
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Training.Domain": "[1.0.0, )"
         }

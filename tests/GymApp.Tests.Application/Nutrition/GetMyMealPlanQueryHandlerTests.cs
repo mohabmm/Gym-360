@@ -1,4 +1,5 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gyms.Shared;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Modules.Nutrition.Application.Queries.GetMyMealPlan;
 using GymApp.Modules.Nutrition.Domain.Entities;
@@ -78,7 +79,7 @@ public class GetMyMealPlanQueryHandlerTests
         var result = await _sut.Handle(new GetMyMealPlanQuery(userId, gymId), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(GymAccessErrors.MemberRoleRequired.Code);
+        result.Error.Code.Should().Be(GymAccessErrors.NotAMemberOfGym.Code);
     }
 
     [Fact]

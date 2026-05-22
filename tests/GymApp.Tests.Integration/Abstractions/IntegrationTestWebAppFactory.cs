@@ -28,6 +28,21 @@ public sealed class IntegrationTestWebAppFactory
         .WithImage("redis:7-alpine")
         .Build();
 
+    public IntegrationTestWebAppFactory()
+    {
+        // Program.cs fail-fasts on a missing/placeholder JWT secret at line ~67,
+        // which runs BEFORE builder.Build(). The factory's ConfigureAppConfiguration
+        // delegates only execute at Build() time, so an in-memory override is invisible
+        // to that pre-Build check. An environment variable, however, IS read by
+        // WebApplication.CreateBuilder's eagerly-registered EnvironmentVariables
+        // provider. Set it in the ctor — which runs before the host is ever built —
+        // so the pre-Build validation sees a valid secret. Double-underscore maps to
+        // the Jwt:SecretKey config key.
+        Environment.SetEnvironmentVariable(
+            "Jwt__SecretKey",
+            "integration-tests-only-jwt-secret-key-not-for-production-use");
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureAppConfiguration((context, config) =>
@@ -39,6 +54,8 @@ public sealed class IntegrationTestWebAppFactory
                 ["ConnectionStrings:Redis"] = _redisContainer.GetConnectionString(),
                 // Pin tenancy to Soft mode for integration tests.
                 ["Tenancy:Mode"] = "Soft",
+                // Jwt:SecretKey is set via env var in the ctor — Program.cs validates
+                // it before Build(), so an in-memory override here is too late.
             });
         });
 
@@ -84,8 +101,27 @@ public sealed class IntegrationTestWebAppFactory
 
         foreach (var contextType in publicContextTypes)
         {
-            if (scope.ServiceProvider.GetService(contextType) is DbContext dbContext)
+            if (scope.ServiceProvider.GetService(contextType) is not DbContext dbContext)
+                continue;
+
+            if (contextType == typeof(GymApp.Common.Infrastructure.Outbox.OutboxDbContext))
+            {
+                // EnsureCreatedAsync() no-ops once an earlier context created the
+                // shared database, so the outbox schema/table is never made and
+                // every event-publishing test fails with
+                // "Invalid object name 'outbox.outbox_messages'".
+                // OutboxDbContext's model is OutboxMessage only, so per-context
+                // CreateTablesAsync() creates exactly outbox.outbox_messages with
+                // no cross-context model-merge risk.
+                var creator = dbContext.GetService<IRelationalDatabaseCreator>();
+                if (!await creator.ExistsAsync())
+                    await creator.CreateAsync();
+                await creator.CreateTablesAsync();
+            }
+            else
+            {
                 await dbContext.Database.EnsureCreatedAsync();
+            }
         }
 
         // Identity DbContext is internal — resolve via its unit-of-work interface.

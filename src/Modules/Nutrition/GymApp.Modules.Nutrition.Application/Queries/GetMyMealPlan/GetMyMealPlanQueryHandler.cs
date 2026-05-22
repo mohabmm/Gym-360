@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gyms.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
@@ -31,8 +31,12 @@ internal sealed class GetMyMealPlanQueryHandler
         if (await _membershipChecker.IsGymSuspendedAsync(request.GymId, cancellationToken))
             return Result.Failure<MealPlanDetailDto?>(GymAccessErrors.GymSuspended);
 
+        // The endpoint is gated to the trainee role (RequireAuthorization("trainee")),
+        // so a caller reaching this handler is always a trainee. A failed membership
+        // check therefore means "this trainee has no relationship to this gym" —
+        // NotAMemberOfGym, not MemberRoleRequired (which is for wrong-role callers).
         if (!await _membershipChecker.IsActiveMemberAsync(request.GymId, request.UserId, cancellationToken))
-            return Result.Failure<MealPlanDetailDto?>(GymAccessErrors.MemberRoleRequired);
+            return Result.Failure<MealPlanDetailDto?>(GymAccessErrors.NotAMemberOfGym);
 
         var plans = await _mealPlanRepository.GetByClientAsync(
             request.UserId, request.GymId, cancellationToken);

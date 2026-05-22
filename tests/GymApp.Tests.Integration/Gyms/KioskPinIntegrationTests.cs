@@ -33,11 +33,17 @@ public sealed class KioskPinIntegrationTests : BaseIntegrationTest
         return gym;
     }
 
+    // The gym_owner_or_manager policy gates Manager via the `staffSubRole` JWT
+    // claim (IStaffSubRoleResolver), not the bare `staffRole` claim — the helper
+    // must mint staffSubRole so Manager is authorized (Owner passes via its own
+    // staffRole=owner branch).
     private HttpClient ManagerClient(Guid gymId) =>
-        CreateAuthenticatedClient(role: "gym_staff", gymId: gymId, staffRole: "manager");
+        CreateAuthenticatedClient(role: "gym_staff", gymId: gymId,
+            staffRole: "manager", staffSubRole: "Manager");
 
     private HttpClient ReceptionistClient(Guid gymId) =>
-        CreateAuthenticatedClient(role: "gym_staff", gymId: gymId, staffRole: "receptionist");
+        CreateAuthenticatedClient(role: "gym_staff", gymId: gymId,
+            staffRole: "receptionist", staffSubRole: "Receptionist");
 
     private HttpClient OwnerClient(Guid gymId, Guid? ownerId = null) =>
         CreateGymOwnerClient(userId: ownerId, gymId: gymId);

@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Identity.Shared;
 using GymApp.Modules.Identity.Application.Abstractions;
 using GymApp.Modules.Identity.Domain.Repositories;
 using GymApp.Modules.Identity.Domain.ValueObjects;

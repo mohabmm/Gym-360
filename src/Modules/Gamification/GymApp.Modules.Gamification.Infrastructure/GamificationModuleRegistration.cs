@@ -1,5 +1,6 @@
 using FluentValidation;
 using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gamification.Shared;
 using GymApp.Common.Application.Behaviors;
 using GymApp.Common.Infrastructure.Interceptors;
 using GymApp.Common.Infrastructure.Tenancy;
@@ -21,11 +22,14 @@ public static class GamificationModuleRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Database");
-
+        // Resolve the connection string lazily inside the options lambda so it
+        // reflects every configuration source layered on after registration
+        // (e.g. test-host overrides). Capturing it eagerly into a local pinned
+        // this module to a stale value and split it onto a different database
+        // than the lazily-resolved modules. Keep consistent with the others.
         services.AddDbContext<GamificationDbContext>((sp, options) =>
         {
-            options.UseSqlServer(connectionString)
+            options.UseSqlServer(configuration.GetConnectionString("Database"))
                 .UseTenantSchemaResolution();
             options.AddInterceptors(sp.GetRequiredService<ConvertDomainEventsToOutboxMessagesInterceptor>());
         });
