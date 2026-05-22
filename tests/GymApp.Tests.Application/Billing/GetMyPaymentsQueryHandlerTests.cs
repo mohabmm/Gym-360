@@ -145,7 +145,7 @@ public class GetMyPaymentsQueryHandlerTests
         dynamic result = await InvokeHandleAsync(handler, query);
 
         ((bool)result.IsFailure).Should().BeTrue();
-        ((string)result.Error.Code).Should().Be(GymAccessErrors.MemberRoleRequired.Code);
+        ((string)result.Error.Code).Should().Be(GymAccessErrors.NotAMemberOfGym.Code);
     }
 
     [Fact]
