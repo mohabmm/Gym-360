@@ -53,6 +53,13 @@ public class BookSessionCommandHandlerTests
         _availabilityRepository.GetByTrainerAndGymAsync(trainerId, gymId, Arg.Any<CancellationToken>())
             .Returns((TrainerAvailability?)null);
 
+        // Member has session-package capacity available, so the handler's
+        // unconditional capacity guard passes and execution reaches the
+        // trainer-availability branch this test is named for.
+        _sessionPackageService.GetBookableSessionsAsync(
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(1);
+
         var command = new BookSessionCommand(
             GymId: gymId,
             TrainerId: trainerId,
