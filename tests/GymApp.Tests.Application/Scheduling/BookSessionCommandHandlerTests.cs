@@ -50,13 +50,17 @@ public class BookSessionCommandHandlerTests
         // Arrange
         var trainerId = Guid.NewGuid();
         var gymId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
         _availabilityRepository.GetByTrainerAndGymAsync(trainerId, gymId, Arg.Any<CancellationToken>())
             .Returns((TrainerAvailability?)null);
+        // Pass the capacity guard so the availability check is the one under test.
+        _sessionPackageService.GetBookableSessionsAsync(memberId, gymId, Arg.Any<CancellationToken>())
+            .Returns(1);
 
         var command = new BookSessionCommand(
             GymId: gymId,
             TrainerId: trainerId,
-            MemberId: Guid.NewGuid(),
+            MemberId: memberId,
             Date: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             Time: new TimeOnly(10, 0),
             DurationMinutes: 60,
