@@ -1,4 +1,4 @@
-import type { GymListItem, PendingGym, AdminUser, SubscriptionPlan, Feature, PlanFeature, FeatureOverride, PlanChangeLog, AtRiskGym, PlanDistribution, TimeSeriesPoint, CityRevenue, FeatureUsage } from '@gymapp/ui';
+import type { GymListItem, PendingGym, AdminUser, SubscriptionPlan, Feature, PlanFeature, FeatureOverride, PlanChangeLog, AtRiskGym, PlanDistribution, TimeSeriesPoint, CityRevenue, FeatureUsage } from '@gym360/ui';
 
 // ──── Admin Users ────
 export const adminUsers: (AdminUser & { isYou?: boolean })[] = [

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { PageHeader, formatDate } from '@gymapp/ui';
+import { PageHeader, formatDate } from '@gym360/ui';
 import { Send, MessageSquare, AlertCircle } from 'lucide-react';
 import {
   useConversations,

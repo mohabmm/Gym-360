@@ -5,6 +5,7 @@ using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Modules.Gyms.Application.Abstractions;
+using MediatR;
 
 namespace GymApp.Tests.Application.Gyms;
 
@@ -12,11 +13,12 @@ public class ApproveGymCommandHandlerTests
 {
     private readonly IGymRepository _gymRepository = Substitute.For<IGymRepository>();
     private readonly IGymsUnitOfWork _unitOfWork = Substitute.For<IGymsUnitOfWork>();
+    private readonly IPublisher _publisher = Substitute.For<IPublisher>();
     private readonly ApproveGymCommandHandler _sut;
 
     public ApproveGymCommandHandlerTests()
     {
-        _sut = new ApproveGymCommandHandler(_gymRepository, _unitOfWork);
+        _sut = new ApproveGymCommandHandler(_gymRepository, _unitOfWork, _publisher);
     }
 
     private static Gym CreatePendingGym()

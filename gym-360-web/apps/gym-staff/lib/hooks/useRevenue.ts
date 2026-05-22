@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
-import type { PaymentListItem } from '@gymapp/ui';
+import type { PaymentListItem } from '@gym360/ui';
 
 export interface RevenueSummary {
   monthlyRevenue: { month: string; revenue: number }[];

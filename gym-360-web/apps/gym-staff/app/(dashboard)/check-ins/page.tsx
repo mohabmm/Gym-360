@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { PageHeader, KpiCard, StatusBadge, Modal, formatTime } from '@gymapp/ui';
+import { PageHeader, KpiCard, StatusBadge, Modal, formatTime } from '@gym360/ui';
 import { DoorOpen, QrCode, Keyboard, User, Plus, Check } from 'lucide-react';
 import { useCheckIns } from '@/lib/hooks/useCheckIns';
 import { useMembers } from '@/lib/hooks/useMembers';
 import apiClient from '@/lib/api-client';
-import type { MemberCheckIn } from '@gymapp/ui';
+import type { MemberCheckIn } from '@gym360/ui';
 
 type CheckInMethod = 'qr' | 'numpad' | 'manual';
 

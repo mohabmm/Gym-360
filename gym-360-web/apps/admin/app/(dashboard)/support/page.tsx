@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { PageHeader, StatusBadge, SearchInput, SlideOverPanel } from '@gymapp/ui';
+import { PageHeader, StatusBadge, SearchInput, SlideOverPanel } from '@gym360/ui';
 import { Download } from 'lucide-react';
 import { supportTickets, type SupportTicket } from '@/lib/mock-data';
 

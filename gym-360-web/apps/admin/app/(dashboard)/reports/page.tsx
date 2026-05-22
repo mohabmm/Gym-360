@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { PageHeader, StatusBadge, formatCurrency, PageSkeleton } from '@gymapp/ui';
+import { PageHeader, StatusBadge, formatCurrency, PageSkeleton } from '@gym360/ui';
 import { Download } from 'lucide-react';
 import { useGyms } from '@/lib/hooks';
 

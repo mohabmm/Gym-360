@@ -1,6 +1,6 @@
 'use client';
 
-import { PageHeader, KpiCard, ChartContainer, formatCurrency, formatNumber } from '@gymapp/ui';
+import { PageHeader, KpiCard, ChartContainer, formatCurrency, formatNumber } from '@gym360/ui';
 import { Users, DollarSign, DoorOpen, Dumbbell, BarChart3 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useRevenue } from '@/lib/hooks/useRevenue';
@@ -14,6 +14,7 @@ export default function AnalyticsPage() {
   const gymId = session?.user?.gymId;
   const { data: revenueData } = useRevenue();
   const monthlyRevenue = revenueData?.monthlyRevenue ?? [];
+  const totalRevenue = monthlyRevenue.reduce((sum, m) => sum + m.revenue, 0);
   const { data: analytics } = useQuery({
     queryKey: ['gym-analytics', gymId],
     enabled: !!gymId,
@@ -76,7 +77,7 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard value={formatNumber(analytics?.totalMembers ?? 0)} label="Active Members" icon={<Users className="h-5 w-5" />} variant="success" />
-        <KpiCard value={formatCurrency(revenueData?.totalRevenue ?? 0)} label="Revenue" icon={<DollarSign className="h-5 w-5" />} variant="info" />
+        <KpiCard value={formatCurrency(totalRevenue)} label="Revenue" icon={<DollarSign className="h-5 w-5" />} variant="info" />
         <KpiCard value={formatNumber(analytics?.checkInsToday ?? 0)} label="Daily Check-ins" icon={<DoorOpen className="h-5 w-5" />} />
         <KpiCard value={formatNumber(analytics?.totalClasses ?? 0)} label="Total Classes" icon={<BarChart3 className="h-5 w-5" />} />
       </div>

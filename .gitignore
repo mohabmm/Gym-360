@@ -23,6 +23,14 @@ out/
 .nuget/
 packages/
 !**/packages/build/
+# JS monorepo shared workspace — NOT NuGet. The unanchored 'packages/' rule
+# above wrongly hid gym-360-web/packages/@gym360/ui (~50 source files),
+# which broke Dokploy git-clone builds. Re-include source, re-ignore artifacts.
+!gym-360-web/packages/
+!gym-360-web/packages/**
+gym-360-web/packages/**/node_modules/
+gym-360-web/packages/**/.turbo/
+gym-360-web/packages/**/*.tsbuildinfo
 
 # Test results
 [Tt]est[Rr]esult*/
@@ -151,6 +159,9 @@ logs/
 mobai_logs/
 mobai_reports/
 test_logs/
+# Staging-loop run output (state.json, sweep results, orchestrator logs).
+# Anchored to repo root so it cannot swallow a nested source `artifacts/`.
+/artifacts/
 
 # ─────────────────────────────────────────────────────────────
 # Docker / Local data

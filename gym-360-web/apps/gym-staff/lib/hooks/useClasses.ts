@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
-import type { GymClass } from '@gymapp/ui';
+import type { GymClass } from '@gym360/ui';
 
 const DAY_NAME_TO_INDEX: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,

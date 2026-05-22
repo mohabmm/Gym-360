@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@gymapp/ui';
+import { cn } from '@gym360/ui';
 
 interface KpiCardProps {
   title: string;

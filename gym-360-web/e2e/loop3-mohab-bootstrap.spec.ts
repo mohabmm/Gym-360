@@ -117,7 +117,7 @@ test('Loop3 — admin creates gym via /gyms UI', async ({ page }) => {
 
   await page.getByRole('button', { name: /^Add Gym$/i }).first().click();
 
-  // Modal in @gymapp/ui is a position-fixed div with no role. Anchor on the heading.
+  // Modal in @gym360/ui is a position-fixed div with no role. Anchor on the heading.
   const heading = page.getByRole('heading', { name: 'Add Gym' });
   await heading.waitFor({ state: 'visible', timeout: 10_000 });
   const modal = heading.locator('xpath=ancestor::div[contains(@class,"rounded")][1]');

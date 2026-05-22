@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { StatusBadge, DAY_NAMES, apiGet, apiPut, GYMS as GYMS_ENDPOINTS } from '@gymapp/ui';
+import { StatusBadge, DAY_NAMES, apiGet, apiPut, GYMS as GYMS_ENDPOINTS } from '@gym360/ui';
 import { Clock, Shield, Users, CalendarDays, Plus, Trash2, Save } from 'lucide-react';
 
 type DaySchedule = {

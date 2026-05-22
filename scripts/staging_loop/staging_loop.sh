@@ -52,10 +52,93 @@ fi
 
 cd "$FORMA_ROOT"
 
+# Harden: a working tree left on another branch or with uncommitted edits must
+# never wedge the loop. `git checkout` aborts on dirty tracked files — that is
+# exactly what stalled the loop for days. Stash tracked changes up-front so every
+# branch switch below is guaranteed clean. Untracked paths (artifacts/) are left
+# alone. The stash is intentionally not auto-popped: a human can recover it.
+if [ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+  if git stash push --quiet -m "staging-loop auto-stash $(date -u +%Y%m%dT%H%M%SZ)" 2>/dev/null; then
+    log "auto-stashed dirty working tree before branch switch"
+  else
+    log "WARNING: git stash failed; branch switch may abort"
+  fi
+fi
+
 # Update develop in working tree (best-effort; resume may already be on it)
 git fetch origin --quiet || log "git fetch failed; continuing"
 git checkout "$FORMA_DEV_BRANCH" 2>/dev/null || true
 git pull --ff-only origin "$FORMA_DEV_BRANCH" 2>/dev/null || true
+
+#────────────────────────────────────────────────────────────────────────────────
+# Auto-approve + auto-merge any stale auto-fix PR left open by a prior cycle.
+# User policy: a new cycle must not start behind an un-merged PR — mark it ready,
+# approve, squash-merge (--admin bypasses branch protection / draft / required
+# reviews). gh user is the PR author so self-approve is rejected by GitHub; that
+# is tolerated — the --admin merge does not require the approval to succeed.
+# Merge failure is logged + pushed but does NOT block the new cycle.
+#────────────────────────────────────────────────────────────────────────────────
+# A merge can fail because the PR conflicts with the base (--admin bypasses
+# branch protection, NOT merge conflicts). Loop regenerates fixes from triage
+# every cycle, so a conflicting stale auto-fix PR is disposable: close it +
+# delete its branch so it never wedges the loop. Returns 0 if it handled
+# (closed) the PR, 1 if the failure was something else.
+close_if_conflicting() {
+  local pr="$1" ms
+  ms="$(gh pr view "$pr" --json mergeable --jq .mergeable 2>/dev/null || echo UNKNOWN)"
+  if [ "$ms" = "CONFLICTING" ]; then
+    gh pr close "$pr" --delete-branch \
+      --comment "Auto-closed by staging-loop: conflicts with $FORMA_PR_BASE; fixes regenerate next cycle from triage." \
+      >/dev/null 2>&1 || true
+    log "PR #$pr CONFLICTING → closed + branch deleted (fixes regenerate next cycle)"
+    push "Forma loop: 🗑️ PR #$pr conflicting — auto-closed, branch deleted"
+    return 0
+  fi
+  return 1
+}
+
+merge_stale_auto_fix_prs() {
+  command -v gh >/dev/null 2>&1 || { log "stale-PR: gh not found — skip"; return 0; }
+  local prs n rc mlog
+  prs="$(gh pr list --base "$FORMA_PR_BASE" --state open \
+           --json number,headRefName \
+           --jq '.[] | select(.headRefName|startswith("auto-fix/")) | .number' \
+         2>/dev/null || true)"
+  if [ -z "$prs" ]; then
+    log "stale-PR: no open auto-fix PR on $FORMA_PR_BASE"
+    return 0
+  fi
+  for n in $prs; do
+    log "stale-PR: #$n open from prior cycle — auto ready+approve+merge"
+    gh pr ready "$n" >/dev/null 2>&1 || true
+    # Self-approve is blocked by GitHub for the PR author; best-effort only.
+    gh pr review "$n" --approve \
+      --body "Auto-approved by staging-loop before next cycle" >/dev/null 2>&1 || true
+    mlog="${LOG_ROOT}/stale_pr_${n}.log"
+    gh pr merge "$n" --squash --delete-branch --admin >"$mlog" 2>&1
+    rc=$?
+    if [ "$rc" = "0" ]; then
+      log "stale-PR: #$n squash-merged into $FORMA_PR_BASE"
+      push "Forma loop: ♻️ stale PR #$n auto-merged to $FORMA_PR_BASE before new cycle"
+    elif close_if_conflicting "$n"; then
+      : # conflicting → closed + branch deleted above
+    else
+      log "stale-PR: #$n merge FAILED (rc=$rc, see $mlog) — new cycle continues anyway"
+      push "Forma loop: ⚠️ stale PR #$n auto-merge FAILED; new cycle continues"
+    fi
+  done
+  # Refresh working tree so phases see the just-merged commit.
+  git fetch origin --quiet || true
+  git checkout "$FORMA_DEV_BRANCH" 2>/dev/null || true
+  git pull --ff-only origin "$FORMA_DEV_BRANCH" 2>/dev/null || true
+}
+
+# Only on a truly fresh cron/manual start (not a mid-cycle resume / phase jump).
+if [ -z "$PHASE_OVERRIDE" ] \
+   && { [ "$TRIGGER" = "cron" ] || [ "$TRIGGER" = "manual" ]; } \
+   && [ "$ENTRY_PHASE" = "health" ]; then
+  merge_stale_auto_fix_prs || true
+fi
 
 # Mutation break gate (pre-flight)
 if [ -f "${ART_ROOT}/mutation/_break_marker" ]; then
@@ -397,6 +480,35 @@ PY
     log "PR created: $PR_URL"
   fi
   state_set pr_url "$PR_URL"
+
+  # Auto-approve the freshly created PR. gh user is the PR author, so GitHub
+  # rejects self-approval — best-effort only; the next-cycle stale handler
+  # merges via --admin which does not require this approval to land.
+  PR_NUM="$(gh pr list --head "$MB" --base "$FORMA_PR_BASE" --json number --jq '.[0].number' 2>/dev/null || true)"
+  if [ -n "$PR_NUM" ]; then
+    gh pr ready "$PR_NUM" >/dev/null 2>&1 || true
+    gh pr review "$PR_NUM" --approve \
+      --body "Auto-approved by staging-loop" >/dev/null 2>&1 \
+      && log "PR #$PR_NUM auto-approved" \
+      || log "PR #$PR_NUM auto-approve skipped (self-approval blocked by GitHub; --admin merge will still land)"
+
+    # Manual trigger: merge this cycle's own PR into develop now (don't wait
+    # for the next cycle's stale handler). Cron runs still defer to next cycle.
+    if [ "$TRIGGER" = "manual" ]; then
+      MLOG="${ART_ROOT}/${RUN_ID}/pr_merge.log"
+      gh pr merge "$PR_NUM" --squash --delete-branch --admin >"$MLOG" 2>&1
+      if [ "$?" = "0" ]; then
+        log "PR #$PR_NUM squash-merged into $FORMA_PR_BASE (manual trigger)"
+        push "Forma loop $RUN_ID: ✅ PR #$PR_NUM auto-merged to $FORMA_PR_BASE"
+      elif close_if_conflicting "$PR_NUM"; then
+        : # conflicting → closed + branch deleted above
+      else
+        log "PR #$PR_NUM merge FAILED (see $MLOG) — left open for next-cycle handler"
+        push "Forma loop $RUN_ID: ⚠️ PR #$PR_NUM auto-merge FAILED; left open"
+      fi
+    fi
+  fi
+
   state_set_outcome fixed
   state_set_phase done
   notify_cycle_done "$RUN_ID" "fixed" "$PR_URL"

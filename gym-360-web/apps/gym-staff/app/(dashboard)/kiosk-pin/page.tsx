@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { PageHeader, ConfirmModal } from '@gymapp/ui';
+import { PageHeader, ConfirmModal } from '@gym360/ui';
 import { Lock, AlertTriangle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';

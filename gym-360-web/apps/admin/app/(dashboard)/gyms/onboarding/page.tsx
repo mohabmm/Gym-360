@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { PageHeader, StatusBadge, Modal, formatDate, extractApiErrors, useInvalidateQueries } from '@gymapp/ui';
+import { PageHeader, StatusBadge, Modal, formatDate, extractApiErrors, useInvalidateQueries } from '@gym360/ui';
 import { UserPlus, Check, X, Clock, AlertCircle } from 'lucide-react';
 import { usePendingGyms, usePlans, useApproveGym, useRejectGym, useChangePlan } from '@/lib/hooks';
-import type { PendingGym } from '@gymapp/ui';
+import type { PendingGym } from '@gym360/ui';
 
 export default function GymOnboardingPage() {
   const [showApproveModal, setShowApproveModal] = useState(false);

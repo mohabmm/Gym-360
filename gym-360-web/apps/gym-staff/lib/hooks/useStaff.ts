@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
-import type { StaffMember, StaffSubRole } from '@gymapp/ui';
+import type { StaffMember, StaffSubRole } from '@gym360/ui';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normaliseStaff(s: any): StaffMember {

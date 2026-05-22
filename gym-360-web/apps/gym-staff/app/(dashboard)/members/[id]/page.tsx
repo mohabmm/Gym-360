@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
-import { PageHeader, StatusBadge, KpiCard, Modal, formatCurrency, formatDate } from '@gymapp/ui';
+import { PageHeader, StatusBadge, KpiCard, Modal, formatCurrency, formatDate } from '@gym360/ui';
 import { Users, CreditCard, CalendarDays, Activity, Edit, Trash2, UserCheck } from 'lucide-react';
 import { useMember, useUpdateMember, useDeleteMember, useQuickAssignTrainer, useMemberPackages } from '@/lib/hooks/useMembers';
 import { useTrainers } from '@/lib/hooks/useTrainers';
@@ -318,7 +318,7 @@ export default function MemberDetailPage() {
             >
               <option value="">Select a trainer…</option>
               {trainers
-                .filter((t) => t.status !== 'pending_approval' && t.status !== 'rejected')
+                .filter((t) => (t.status as string) !== 'pending_approval' && (t.status as string) !== 'rejected')
                 .map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}

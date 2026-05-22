@@ -50,7 +50,7 @@ export default function LoginPage() {
               className="h-full w-full object-contain"
             />
           </div>
-          <h1 className="text-2xl font-heading font-bold">GymApp Staff Portal</h1>
+          <h1 className="text-2xl font-heading font-bold">Gym-360 Staff Portal</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to manage your gym</p>
         </div>
 

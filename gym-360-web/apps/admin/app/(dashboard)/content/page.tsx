@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { PageHeader, DataTable, StatusBadge, useApiQuery, TRAINING } from '@gymapp/ui';
+import { PageHeader, DataTable, StatusBadge, useApiQuery, TRAINING } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { ExternalLink, Filter, AlertCircle } from 'lucide-react';
 

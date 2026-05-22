@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { PageHeader, StatusBadge, Modal, ConfirmModal } from '@gymapp/ui';
+import { PageHeader, StatusBadge, Modal, ConfirmModal } from '@gym360/ui';
 import { Plus, Star, Users, Trophy } from 'lucide-react';
 import { useTrainers, useApproveTrainer, useRejectTrainer, useCreateTrainer } from '@/lib/hooks/useTrainers';
 

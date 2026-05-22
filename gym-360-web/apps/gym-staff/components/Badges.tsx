@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@gymapp/ui';
+import { cn } from '@gym360/ui';
 
 export function StatusBadge({ status }: { status: string }) {
   const config: Record<string, string> = {

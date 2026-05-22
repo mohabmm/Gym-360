@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
-import { useSignalR, useInvalidateQueries, configureApiClient } from '@gymapp/ui';
+import { useSignalR, useInvalidateQueries, configureApiClient } from '@gym360/ui';
 
 /**
  * Registers the access token with the shared axios client. The token is read through

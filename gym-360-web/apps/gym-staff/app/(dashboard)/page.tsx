@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { KpiCard, ChartContainer, StatusBadge, formatCurrency, getRelativeTime, formatTime } from '@gymapp/ui';
+import { KpiCard, ChartContainer, StatusBadge, formatCurrency, getRelativeTime, formatTime } from '@gym360/ui';
 import { Users, DollarSign, DoorOpen, Dumbbell, UserPlus, CreditCard, CalendarDays, Megaphone, Trophy, Clock } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useMembers } from '@/lib/hooks/useMembers';

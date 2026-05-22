@@ -14,11 +14,11 @@ import {
   IDENTITY,
   useInvalidateQueries,
   useApiQuery,
-} from '@gymapp/ui';
+} from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Settings, Shield, Users, Database, Plus, Trash2, Lock } from 'lucide-react';
 import { useAdminUsers } from '@/lib/hooks';
-import type { AdminUser } from '@gymapp/ui';
+import type { AdminUser } from '@gym360/ui';
 
 const tabs = ['Platform Config', 'Admin Team', 'Security', 'PDPL Compliance'] as const;
 

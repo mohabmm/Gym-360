@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@gymapp/ui": "*",
+    "@gym360/ui": "*",
     "@microsoft/signalr": "^8.0.0",
     "@tanstack/react-query": "^5.28.0",
     "@tanstack/react-table": "^8.15.0",

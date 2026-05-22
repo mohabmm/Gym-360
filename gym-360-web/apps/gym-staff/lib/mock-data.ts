@@ -1,4 +1,4 @@
-import type { MemberListItem, TrainerListItem, GymClass, PaymentListItem, Announcement, LeaderboardEntry, TrainerRankingEntry, Testimonial, MemberCheckIn, StaffMember } from '@gymapp/ui';
+import type { MemberListItem, TrainerListItem, GymClass, PaymentListItem, Announcement, LeaderboardEntry, TrainerRankingEntry, Testimonial, MemberCheckIn, StaffMember } from '@gym360/ui';
 
 // ──── First Gym Staff ────
 export const gymStaff: StaffMember[] = [

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { PageHeader, StatusBadge, FeatureGate, FEATURE_CODES } from '@gymapp/ui';
+import { PageHeader, StatusBadge, FeatureGate, FEATURE_CODES } from '@gym360/ui';
 import { Download, FileUp, FileSpreadsheet, AlertCircle, Loader2 } from 'lucide-react';
 import {
   useDataImportJobs,

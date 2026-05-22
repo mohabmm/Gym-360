@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
-import type { MemberCheckIn } from '@gymapp/ui';
+import type { MemberCheckIn } from '@gym360/ui';
 
 export function useCheckIns() {
   const { data: session } = useSession();

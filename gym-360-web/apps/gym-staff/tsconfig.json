@@ -16,8 +16,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"],
-      "@gymapp/ui": ["../../packages/@gymapp/ui/src"],
-      "@gymapp/ui/*": ["../../packages/@gymapp/ui/src/*"]
+      "@gym360/ui": ["../../packages/@gym360/ui/src"],
+      "@gym360/ui/*": ["../../packages/@gym360/ui/src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
