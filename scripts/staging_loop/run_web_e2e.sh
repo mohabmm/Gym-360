@@ -25,7 +25,7 @@ ART_DIR="${ART_ROOT}/${RUN_ID}/web_${APP}"
 mkdir -p "$ART_DIR"
 state_set "sweeps.${STATE_KEY}.status" running
 
-cd "${FORMA_ROOT}/gymapp-web"
+cd "${FORMA_ROOT}/gym-360-web"
 
 LOG="$ART_DIR/playwright.log"
 REPORT_DIR="$ART_DIR/report"

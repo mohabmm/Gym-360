@@ -7,7 +7,8 @@ spawned you with `isolation: "worktree"` so your edits won't conflict with sibli
 
 - Module: `{{MODULE}}` ONLY
 - Run ID: `{{RUN_ID}}`
-- Your branch: `{{BRANCH}}` — create it: `git checkout -b {{BRANCH}}`
+- Your branch: `{{BRANCH}}` — create it from current develop (your worktree may
+  have a stale base): `git fetch origin && git checkout -B {{BRANCH}} origin/develop`
 - Max file edits: **5**
 - Max turns: **30**
 
@@ -53,8 +54,8 @@ Test placement:
 - DbContext / migration → `tests/GymApp.Tests.Integration/<Module>/`
 - Endpoint behavior  → `tests/GymApp.Tests.Functional/<Module>/`
 - Cross-module flow  → `tests/GymApp.Tests.Functional/Scenarios/`
-- Next.js component  → `gymapp-web/apps/<app>/__tests__/`
-- Next.js E2E        → `gymapp-web/e2e/<app>/`
+- Next.js component  → `gym-360-web/apps/<app>/__tests__/`
+- Next.js E2E        → `gym-360-web/e2e/<app>/`
 - Flutter logic      → `gymapp-mobile/apps/<app>/test/`
 - Flutter widget     → `gymapp-mobile/apps/<app>/test/widget/`
 
@@ -97,7 +98,9 @@ test({{MODULE}}): cover <bug short name>
 
 ## Workflow
 
-1. `git checkout -b {{BRANCH}}` (you're already in your worktree)
+1. `git fetch origin && git checkout -B {{BRANCH}} origin/develop` — your worktree
+   may have been created from a stale base (e.g. the repo root commit, which does
+   not build); this **forces** it onto current `develop` so the build is sane
 2. For each failure in your scope:
    a. Diagnose root cause
    b. Edit prod or test (or both)

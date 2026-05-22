@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Boot admin (:3003) + staff (:3001) Next.js dev servers locally via the
-# npm/turbo monorepo at gymapp-web. .env.local already points
+# npm/turbo monorepo at gym-360-web. .env.local already points
 # NEXT_PUBLIC_API_URL at staging-api. PIDs → $WEB_PID_FILE.
 # Idempotent: reuse if already serving.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/config.sh"
 
-WEB_ROOT="${FORMA_ROOT}/gymapp-web"
+WEB_ROOT="${FORMA_ROOT}/gym-360-web"
 mkdir -p "$LOG_ROOT"
 ADMIN_LOG="${LOG_ROOT}/web_admin.dev.log"
 STAFF_LOG="${LOG_ROOT}/web_staff.dev.log"

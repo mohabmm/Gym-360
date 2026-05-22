@@ -68,8 +68,8 @@ fi
 echo "stryker: OK"
 
 # Verify Playwright browsers
-if [ -d "${FORMA_ROOT}/gymapp-web/node_modules/playwright" ]; then
-  (cd "${FORMA_ROOT}/gymapp-web" && npx playwright install --with-deps chromium 2>&1 | tail -3) || true
+if [ -d "${FORMA_ROOT}/gym-360-web/node_modules/playwright" ]; then
+  (cd "${FORMA_ROOT}/gym-360-web" && npx playwright install --with-deps chromium 2>&1 | tail -3) || true
 fi
 
 # Make logs dir

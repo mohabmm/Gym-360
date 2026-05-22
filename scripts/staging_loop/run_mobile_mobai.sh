@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # MobAI mobile suite. Args: <trainee|trainer|staff>
 # Requires: emulator running OR real device + MobAI bridge.
-# Mob scripts live under tests/maestro/apps/${app}/ — reused .mob format.
+# Maestro flows live under gymapp-mobile/apps/<app>/.maestro/flows/ (yaml).
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/state.sh"
 
 APP="${1:?usage: $0 <trainee|trainer|staff>}"
 case "$APP" in
-  trainee) STATE_KEY="mobile_trainee"; MOB_DIR="tests/maestro/apps/gymapp_trainee";;
-  trainer) STATE_KEY="mobile_trainer"; MOB_DIR="tests/maestro/apps/gymapp_trainer";;
-  staff)   STATE_KEY="mobile_staff";   MOB_DIR="tests/maestro/apps/gym-staff";;
+  trainee) STATE_KEY="mobile_trainee"; MOB_DIR="gymapp-mobile/apps/gymapp_trainee/.maestro/flows";;
+  trainer) STATE_KEY="mobile_trainer"; MOB_DIR="gymapp-mobile/apps/gymapp_trainer/.maestro/flows";;
+  staff)   STATE_KEY="mobile_staff";   MOB_DIR="gymapp-mobile/apps/gymapp_gym/.maestro/flows";;
   *) echo "invalid app: $APP"; exit 1;;
 esac
 

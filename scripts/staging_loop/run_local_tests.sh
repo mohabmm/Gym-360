@@ -113,12 +113,12 @@ PY
 done
 
 # Frontend tests (optional — skip if no script defined)
-if [ -f "${FORMA_ROOT}/gymapp-web/package.json" ]; then
-  if jq -e '.scripts.test' "${FORMA_ROOT}/gymapp-web/package.json" >/dev/null 2>&1; then
+if [ -f "${FORMA_ROOT}/gym-360-web/package.json" ]; then
+  if jq -e '.scripts.test' "${FORMA_ROOT}/gym-360-web/package.json" >/dev/null 2>&1; then
     log "${KIND}: web unit tests"
     LOG="$ART_DIR/web_unit.log"
     set +e
-    (cd "${FORMA_ROOT}/gymapp-web" && timeout 600 pnpm -r --filter '!*e2e*' test) > "$LOG" 2>&1
+    (cd "${FORMA_ROOT}/gym-360-web" && timeout 600 pnpm -r --filter '!*e2e*' test) > "$LOG" 2>&1
     WRC=$?
     set -e
     state_set "${STATE_KEY}.suites.web_unit.status" done
