@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Test run settings for the functional suite.
+
+  TESTCONTAINERS_RYUK_DISABLED disables the Testcontainers Ryuk resource-reaper.
+  Ryuk bind-mounts the Docker socket; on macOS Docker Desktop installs that expose
+  only the user-scoped socket (~/.docker/run/docker.sock) the bind mount fails with
+  "operation not supported", which aborts every container start and blocks the whole
+  functional suite. Setting the variable here applies it to the test host process
+  *before* it spawns, so it is read before any Testcontainers type is touched —
+  there is no assembly-load / static-constructor timing window to lose.
+  FunctionalTestWebAppFactory disposes its own containers in DisposeAsync, so Ryuk's
+  stray-container cleanup is not needed.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

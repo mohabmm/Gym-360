@@ -3,6 +3,8 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Auto-applies functional.runsettings (disables Testcontainers Ryuk reaper). -->
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)functional.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>
