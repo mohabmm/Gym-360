@@ -40,18 +40,25 @@ internal sealed class ExerciseRepository : IExerciseRepository
         if (equipment.HasValue)
             query = query.Where(e => e.Equipment == equipment.Value);
 
-        if (muscleGroup.HasValue)
-        {
-            var mgStr = muscleGroup.Value.ToString();
-            query = query.Where(e => EF.Property<string>(e, "muscle_groups").Contains(mgStr));
-        }
-
         if (!string.IsNullOrWhiteSpace(searchTerm))
             query = query.Where(e => e.Name.Contains(searchTerm));
 
-        return await query
+        var exercises = await query
             .OrderBy(e => e.Name)
             .ToListAsync(cancellationToken);
+
+        // MuscleGroups is persisted as a comma-joined string via a value
+        // converter, so EF cannot translate a server-side filter on it — the
+        // previous EF.Property<string>(e, "muscle_groups") referenced the
+        // column name (not a model property) and threw at query translation.
+        // Filter in memory after materialisation; the handler already
+        // paginates in memory, so this changes no observable behaviour.
+        if (muscleGroup.HasValue)
+            return exercises
+                .Where(e => e.MuscleGroups.Contains(muscleGroup.Value))
+                .ToList();
+
+        return exercises;
     }
 
     public async Task AddAsync(Exercise exercise, CancellationToken cancellationToken = default)
