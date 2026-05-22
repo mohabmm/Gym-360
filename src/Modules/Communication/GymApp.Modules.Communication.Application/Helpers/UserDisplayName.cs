@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Identity.Shared;
 
 namespace GymApp.Modules.Communication.Application.Helpers;
 

@@ -1,4 +1,4 @@
-namespace GymApp.Common.Application.Abstractions;
+namespace GymApp.Modules.Identity.Shared;
 
 public sealed record UserDisplay(Guid UserId, string FullName, string? PhotoUrl);
 

@@ -6,7 +6,7 @@ B2B SaaS gym management platform (Egyptian market). .NET 8 modular monolith + 3 
 
 - **.NET 8 modular monolith** — Bookify / Milan Jovanovic patterns
 - **9 modules**: Identity, Gyms, Training, Progress, Scheduling, Nutrition, Communication, Billing, Gamification
-- Each module = 5 projects: Domain, Application, Infrastructure, Presentation, IntegrationEvents
+- Each module = 5 core projects (Domain, Application, Infrastructure, Presentation, IntegrationEvents) + optional `.Shared` (cross-module **sync** contracts)
 - **SQL Server 2022** (EF Core only — no Dapper/raw SQL), **Redis** (cache), **Quartz** (outbox), **RabbitMQ** (Phase 2), **Serilog + Seq**
 - **MediatR** (CQRS) + **FluentValidation**
 
@@ -16,7 +16,7 @@ See `docs/01_GYMAPP_BACKEND_COMPLETE.md` for full backend reference and solution
 
 1. **Pure EF Core** — `AsNoTracking()` for reads. `UseSqlServer()` only.
 2. **Feature gating** — every gated handler calls `IGymPlanService.IsFeatureEnabledAsync` BEFORE work.
-3. **Module boundaries** — NEVER reference another module's Domain/Application/Infrastructure. Only `IntegrationEvents` cross-reference.
+3. **Module boundaries** — NEVER reference another module's Domain/Application/Infrastructure. A module's *shared surface* is exactly its `.Shared` project (sync contracts, consumed via DI) + `.IntegrationEvents` project (async events); those two are the only legal cross-module references. Everything else is module-internal. A `.Shared` project is a leaf — it references nothing. Owner of a contract = the module whose `.Shared` holds it (impl in that module's Infrastructure). Cross-cutting platform abstractions (`ICacheService`, `IDateTimeProvider`, …) stay in `Common.Application`.
 4. **Internal sealed** — all handlers and validators.
 5. **Bookify patterns** — `Entity`, `Result<T>`, `Error`, domain events, Outbox.
 6. **Arabic first** — Arabic primary + English, full RTL.

@@ -1,4 +1,4 @@
-namespace GymApp.Common.Application.Abstractions;
+namespace GymApp.Modules.Identity.Shared;
 
 /// <summary>
 /// Cross-module contract to mutate user profile fields. Implementation lives in

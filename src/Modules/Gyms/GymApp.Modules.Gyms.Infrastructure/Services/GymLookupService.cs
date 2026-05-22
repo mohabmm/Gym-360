@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gyms.Shared;
 using GymApp.Common.Application.Tenancy;
 
 namespace GymApp.Modules.Gyms.Infrastructure.Services;

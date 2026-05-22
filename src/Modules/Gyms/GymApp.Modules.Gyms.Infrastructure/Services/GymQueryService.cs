@@ -1,4 +1,6 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gamification.Shared;
+using GymApp.Modules.Identity.Shared;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Enums;

@@ -8,5 +8,7 @@
     <ProjectReference Include="..\..\..\Common\GymApp.Common.Application\GymApp.Common.Application.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Gamification.Domain\GymApp.Modules.Gamification.Domain.csproj" />
     <ProjectReference Include="..\..\Scheduling\GymApp.Modules.Scheduling.IntegrationEvents\GymApp.Modules.Scheduling.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Billing\GymApp.Modules.Billing.Shared\GymApp.Modules.Billing.Shared.csproj" />
+    <ProjectReference Include="..\..\Identity\GymApp.Modules.Identity.Shared\GymApp.Modules.Identity.Shared.csproj" />
   </ItemGroup>
 </Project>

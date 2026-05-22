@@ -105,6 +105,10 @@
     <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Infrastructure\GymApp.Modules.Gamification.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Presentation\GymApp.Modules.Gamification.Presentation.csproj" />
     <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.IntegrationEvents\GymApp.Modules.Gamification.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Shared\GymApp.Modules.Gyms.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\GymApp.Modules.Identity.Shared\GymApp.Modules.Identity.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Billing\GymApp.Modules.Billing.Shared\GymApp.Modules.Billing.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Shared\GymApp.Modules.Gamification.Shared.csproj" />
   </ItemGroup>
 
 </Project>

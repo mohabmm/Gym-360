@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Presentation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

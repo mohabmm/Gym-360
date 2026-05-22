@@ -1,5 +1,6 @@
 using FluentValidation;
 using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Behaviors;
 using GymApp.Common.Infrastructure.Interceptors;
 using GymApp.Common.Infrastructure.Tenancy;

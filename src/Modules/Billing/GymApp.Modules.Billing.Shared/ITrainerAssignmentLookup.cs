@@ -1,4 +1,4 @@
-namespace GymApp.Common.Application.Abstractions;
+namespace GymApp.Modules.Billing.Shared;
 
 /// <summary>
 /// Resolves the trainer currently assigned to a trainee, per gym. "Assigned"

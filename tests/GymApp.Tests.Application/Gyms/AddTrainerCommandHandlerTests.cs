@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Application.Commands.AddTrainer;
 using GymApp.Modules.Gyms.Application.Contracts;

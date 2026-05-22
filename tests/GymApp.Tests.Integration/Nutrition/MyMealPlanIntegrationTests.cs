@@ -1,6 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Modules.Gyms.Infrastructure.Data;
