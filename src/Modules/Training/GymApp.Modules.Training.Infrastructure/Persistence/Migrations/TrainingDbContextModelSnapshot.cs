@@ -23,10 +23,44 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.Exercise", b =>
+            modelBuilder.Entity("GymApp.Common.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ProcessedOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessedOnUtc")
+                        .HasFilter("[ProcessedOnUtc] IS NULL");
+
+                    b.ToTable("outbox_messages", "outbox", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.Exercise", b =>
+                {
+                    b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Category")
@@ -70,6 +104,10 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NameAr")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -2516,7 +2554,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.LogSet", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int?>("DurationSeconds")
@@ -2560,7 +2597,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.Program", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -2584,6 +2620,10 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("NameAr")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<Guid>("TrainerId")
                         .HasColumnType("uniqueidentifier");
 
@@ -2602,7 +2642,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.ProgramWeek", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("DayWorkouts")
@@ -2631,7 +2670,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.RemoteWorkoutConfig", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("ActivatedAt")
@@ -2669,7 +2707,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.Workout", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
@@ -2690,6 +2727,10 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NameAr")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
@@ -2717,7 +2758,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.WorkoutAssignment", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AssignmentType")
@@ -2770,7 +2810,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.WorkoutExercise", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int?>("DurationSeconds")
@@ -2817,7 +2856,6 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.WorkoutLog", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("CompletedAt")
