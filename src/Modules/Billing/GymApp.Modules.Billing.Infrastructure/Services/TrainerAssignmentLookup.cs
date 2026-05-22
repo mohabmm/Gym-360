@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Billing.Domain.Enums;
 using GymApp.Modules.Billing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;

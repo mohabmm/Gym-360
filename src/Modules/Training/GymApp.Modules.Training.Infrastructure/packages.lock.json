@@ -563,6 +563,9 @@
           "StackExchange.Redis": "[2.7.33, )"
         }
       },
+      "gymapp.modules.billing.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.identity.integrationevents": {
         "type": "Project",
         "dependencies": {
@@ -573,6 +576,7 @@
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
+          "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Training.Domain": "[1.0.0, )"
         }

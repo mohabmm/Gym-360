@@ -9,5 +9,8 @@
     <ProjectReference Include="..\GymApp.Modules.Identity.Domain\GymApp.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Identity.IntegrationEvents\GymApp.Modules.Identity.IntegrationEvents.csproj" />
     <ProjectReference Include="..\..\Gyms\GymApp.Modules.Gyms.IntegrationEvents\GymApp.Modules.Gyms.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Billing\GymApp.Modules.Billing.Shared\GymApp.Modules.Billing.Shared.csproj" />
+    <ProjectReference Include="..\..\Gyms\GymApp.Modules.Gyms.Shared\GymApp.Modules.Gyms.Shared.csproj" />
+    <ProjectReference Include="..\GymApp.Modules.Identity.Shared\GymApp.Modules.Identity.Shared.csproj" />
   </ItemGroup>
 </Project>

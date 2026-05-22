@@ -23,6 +23,9 @@
           "MediatR": "[12.2.0, )"
         }
       },
+      "gymapp.modules.billing.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.identity.integrationevents": {
         "type": "Project",
         "dependencies": {

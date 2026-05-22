@@ -1,4 +1,5 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gyms.Shared;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Modules.Nutrition.Application.Queries.GetMyMealPlan;
 using GymApp.Modules.Nutrition.Domain.Entities;

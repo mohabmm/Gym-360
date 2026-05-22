@@ -1,4 +1,4 @@
-namespace GymApp.Common.Application.Abstractions;
+namespace GymApp.Modules.Gyms.Shared;
 
 /// <summary>
 /// Cross-module contract used by non-Gyms handlers to validate that a caller

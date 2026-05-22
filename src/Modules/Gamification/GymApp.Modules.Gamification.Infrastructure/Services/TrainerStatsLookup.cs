@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gamification.Shared;
 using GymApp.Modules.Gamification.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 

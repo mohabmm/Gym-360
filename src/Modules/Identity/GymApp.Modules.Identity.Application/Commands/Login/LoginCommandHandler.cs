@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Gyms.Shared;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Application.Tenancy;
 using GymApp.Common.Domain;

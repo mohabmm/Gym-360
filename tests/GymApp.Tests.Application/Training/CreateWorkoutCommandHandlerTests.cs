@@ -1,4 +1,4 @@
-using GymApp.Common.Application.Abstractions;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Application.Commands.CreateWorkout;

@@ -1,4 +1,4 @@
-namespace GymApp.Common.Application.Abstractions;
+namespace GymApp.Modules.Gyms.Shared;
 
 /// <summary>
 /// Cross-module hook so the Identity module can read a user's gym-side StaffRole

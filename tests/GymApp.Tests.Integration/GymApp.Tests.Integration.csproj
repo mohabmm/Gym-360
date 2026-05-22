@@ -59,6 +59,8 @@
     <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Domain\GymApp.Modules.Gamification.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Application\GymApp.Modules.Gamification.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Gamification\GymApp.Modules.Gamification.Infrastructure\GymApp.Modules.Gamification.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Billing\GymApp.Modules.Billing.Shared\GymApp.Modules.Billing.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Shared\GymApp.Modules.Gyms.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
