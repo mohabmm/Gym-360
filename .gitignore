@@ -159,6 +159,9 @@ logs/
 mobai_logs/
 mobai_reports/
 test_logs/
+# Staging-loop run output (state.json, sweep results, orchestrator logs).
+# Anchored to repo root so it cannot swallow a nested source `artifacts/`.
+/artifacts/
 
 # ─────────────────────────────────────────────────────────────
 # Docker / Local data

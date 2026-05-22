@@ -20,13 +20,25 @@ state_set "${STATE_KEY}.started_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 cd "$FORMA_ROOT"
 
-# Ensure SQL + Redis up
-if ! docker compose -f docker-compose.dev.yml ps --status running --services 2>/dev/null | grep -q sqlserver; then
+# Fail fast if the Docker daemon is dead/unresponsive. Without this every
+# `docker compose` call below blocks forever (observed: 8h wedge on a dead
+# Docker Desktop). `timeout` is the gtimeout shim on PATH (config.sh).
+if ! timeout 20 docker info >/dev/null 2>&1; then
+  log "${KIND}: Docker daemon unreachable — gate cannot run, marking failed"
+  state_set "${STATE_KEY}.status" failed
+  state_set "${STATE_KEY}.reason" "docker_daemon_down"
+  echo '[{"source":"local_tests","module":"infra","error":"docker daemon unreachable"}]' > "$ART_DIR/failures.json"
+  exit 1
+fi
+
+# Ensure SQL + Redis up (every docker call timeout-wrapped so a hung daemon
+# fails the gate fast instead of blocking the whole loop).
+if ! timeout 30 docker compose -f docker-compose.dev.yml ps --status running --services 2>/dev/null | grep -q sqlserver; then
   log "${KIND}: starting sqlserver+redis containers"
-  docker compose -f docker-compose.dev.yml up -d sqlserver redis 2>&1 | tee -a "$ART_DIR/docker.log" || true
+  timeout 180 docker compose -f docker-compose.dev.yml up -d sqlserver redis 2>&1 | tee -a "$ART_DIR/docker.log" || true
   # wait for SQL ready (up to 60s)
   for i in $(seq 1 30); do
-    if docker compose -f docker-compose.dev.yml exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Test_P@ss2024!" -Q "SELECT 1" -C >/dev/null 2>&1; then
+    if timeout 15 docker compose -f docker-compose.dev.yml exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Test_P@ss2024!" -Q "SELECT 1" -C >/dev/null 2>&1; then
       break
     fi
     sleep 2
@@ -36,17 +48,21 @@ fi
 FAIL_FILE="$ART_DIR/failures.json"
 echo "[]" > "$FAIL_FILE"
 
-declare -A SUITES=(
-  [architecture]="tests/GymApp.Tests.Architecture/GymApp.Tests.Architecture.csproj"
-  [domain]="tests/GymApp.Tests.Domain/GymApp.Tests.Domain.csproj"
-  [application]="tests/GymApp.Tests.Application/GymApp.Tests.Application.csproj"
-  [integration]="tests/GymApp.Tests.Integration/GymApp.Tests.Integration.csproj"
-  [functional]="tests/GymApp.Tests.Functional/GymApp.Tests.Functional.csproj"
-)
+# bash 3.2 (macOS /bin/bash) has no associative arrays — use a case lookup.
+suite_proj() {
+  case "$1" in
+    architecture) echo "tests/GymApp.Tests.Architecture/GymApp.Tests.Architecture.csproj";;
+    domain)       echo "tests/GymApp.Tests.Domain/GymApp.Tests.Domain.csproj";;
+    application)  echo "tests/GymApp.Tests.Application/GymApp.Tests.Application.csproj";;
+    integration)  echo "tests/GymApp.Tests.Integration/GymApp.Tests.Integration.csproj";;
+    functional)   echo "tests/GymApp.Tests.Functional/GymApp.Tests.Functional.csproj";;
+    *) echo "";;
+  esac
+}
 
 OVERALL=0
 for suite in architecture domain application integration functional; do
-  proj="${SUITES[$suite]}"
+  proj="$(suite_proj "$suite")"
   if [ ! -f "$proj" ]; then
     state_set "${STATE_KEY}.suites.${suite}.status" missing
     continue

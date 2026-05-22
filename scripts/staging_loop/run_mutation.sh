@@ -49,16 +49,15 @@ if ! dotnet tool list -g | grep -q dotnet-stryker; then
 fi
 export PATH="$PATH:$HOME/.dotnet/tools"
 
-declare -A PROJ_DIRS=(
-  [Domain]="src/Modules"
-  [Application]="src/Modules"
-  [Functional]="src/Modules"
-)
-declare -A TEST_PROJS=(
-  [Domain]="tests/GymApp.Tests.Domain/GymApp.Tests.Domain.csproj"
-  [Application]="tests/GymApp.Tests.Application/GymApp.Tests.Application.csproj"
-  [Functional]="tests/GymApp.Tests.Functional/GymApp.Tests.Functional.csproj"
-)
+# bash 3.2 (macOS /bin/bash) has no associative arrays — use a case lookup.
+test_proj() {
+  case "$1" in
+    Domain)      echo "tests/GymApp.Tests.Domain/GymApp.Tests.Domain.csproj";;
+    Application) echo "tests/GymApp.Tests.Application/GymApp.Tests.Application.csproj";;
+    Functional)  echo "tests/GymApp.Tests.Functional/GymApp.Tests.Functional.csproj";;
+    *) echo "";;
+  esac
+}
 
 # Update state helper local
 ms_set() {
@@ -74,7 +73,7 @@ ms_set() {
 
 OVERALL_BREAK=0
 for kind in Domain Application Functional; do
-  TPROJ="${TEST_PROJS[$kind]}"
+  TPROJ="$(test_proj "$kind")"
   if [ ! -f "$TPROJ" ]; then ms_set "projects.${kind}.status" missing; continue; fi
   ms_set "projects.${kind}.status" running
   OUT="$DIR/$kind"
