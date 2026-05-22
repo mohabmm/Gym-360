@@ -42,7 +42,9 @@ void main() {
         ApiEndpoints.messages('conv-1'),
         respond: (_) => t.adapter.ok([Samples.message()]),
       );
-      final msgs = await ds.getMessages('conv-1', userId: 'user-1');
+      // The caller (user) is derived from the JWT server-side — getMessages
+      // no longer takes a userId.
+      final msgs = await ds.getMessages('conv-1');
       expect(msgs.first.content, contains('Great session'));
     });
 
@@ -52,24 +54,28 @@ void main() {
         ApiEndpoints.messages('conv-1'),
         respond: (_) => t.adapter.created('msg-new'),
       );
+      // senderId is derived from the JWT server-side — the body carries
+      // only content (+ optional media fields).
       final id = await ds.sendMessage(
         conversationId: 'conv-1',
-        senderId: 'user-1',
         content: 'hey',
       );
       expect(id, 'msg-new');
       final body = t.onlyRequest.bodyAsMap!;
-      expect(body, {'senderId': 'user-1', 'content': 'hey'});
+      expect(body, {'content': 'hey'});
       expect(body.containsKey('mediaUrl'), isFalse);
     });
 
-    test('PUT mark conversation read sends userId', () async {
+    test('PUT mark conversation read derives user from JWT (no body)',
+        () async {
       t.adapter.onPut(
         '${ApiEndpoints.conversationById('conv-1')}/read',
         respond: (_) => t.adapter.noContent(),
       );
-      await ds.markMessagesRead(conversationId: 'conv-1', userId: 'user-1');
-      expect(t.onlyRequest.bodyAsMap, {'userId': 'user-1'});
+      // The user is derived from the JWT server-side — markMessagesRead
+      // sends no request body.
+      await ds.markMessagesRead(conversationId: 'conv-1');
+      expect(t.onlyRequest.bodyAsMap, isNull);
     });
   });
 

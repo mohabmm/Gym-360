@@ -54,20 +54,25 @@ class Samples {
         'expiresAt': '2026-05-16T10:00:00.000Z',
       };
 
+  /// Mirrors the backend `SessionDto` (scheduling.SessionDto) — `memberId`,
+  /// `gymId`, `sessionType` and `createdAt` are required by [SessionModel].
   static Map<String, dynamic> session({
     String id = 'session-1',
     String status = 'Scheduled',
   }) =>
       {
         'id': id,
+        'gymId': 'gym-1',
         'trainerId': 'trainer-1',
         'trainerName': 'Coach Omar',
-        'traineeId': 'client-1',
-        'traineeName': 'Mona Ali',
+        'memberId': 'client-1',
+        'memberName': 'Mona Ali',
         'scheduledAt': '2026-04-20T09:00:00.000Z',
         'durationMinutes': 60,
         'status': status,
-        'type': 'PT',
+        'sessionType': 'PT',
+        'isRecurring': false,
+        'createdAt': '2026-04-15T10:00:00.000Z',
       };
 
   static Map<String, dynamic> workout({String id = 'workout-1'}) => {
@@ -206,13 +211,19 @@ class Samples {
         'category': 'Protein',
       };
 
+  /// Mirrors the backend `BodyMetricDto` — [BodyMetricEntryModel] requires
+  /// `userId`, `gymId`, `date`, `source`, `loggedBy` and `createdAt`; the
+  /// weight reading lives in `weight`/`weightUnit`, not `metricType`/`value`.
   static Map<String, dynamic> bodyMetric({String id = 'bm-1'}) => {
         'id': id,
         'userId': 'client-1',
-        'metricType': 'Weight',
-        'value': 72.5,
-        'unit': 'kg',
-        'recordedAt': '2026-04-15T08:00:00.000Z',
+        'gymId': 'gym-1',
+        'date': '2026-04-15',
+        'weight': 72.5,
+        'weightUnit': 'kg',
+        'source': 'Trainer',
+        'loggedBy': 'trainer-1',
+        'createdAt': '2026-04-15T08:00:00.000Z',
       };
 
   static Map<String, dynamic> remoteWorkoutStatus({bool isActive = true}) => {

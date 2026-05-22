@@ -86,7 +86,7 @@ void main() {
       final req = t.onlyRequest;
       expect(req.q('memberId'), kClientId);
       expect(req.q('gymId'), kGymId);
-      expect(sessions.single.traineeId, 'client-1');
+      expect(sessions.single.memberId, 'client-1');
     });
 
     test('GET /progress/clients/{clientId} returns body metrics', () async {
@@ -103,8 +103,8 @@ void main() {
       );
 
       expect(t.onlyRequest.path, '/api/v1/progress/clients/$kClientId');
-      expect(metrics.single.metricType, 'Weight');
-      expect(metrics.single.value, 72.5);
+      expect(metrics.single.weight, 72.5);
+      expect(metrics.single.weightUnit, 'kg');
     });
 
     test('GET /training/remote-workout/status returns RemoteWorkoutStatus',

@@ -53,7 +53,8 @@ class Samples {
             'exerciseId': 'ex-1',
             'orderIndex': 0,
             'sets': 4,
-            'reps': 10,
+            // WorkoutExerciseModel.reps is a String (supports ranges "8-12").
+            'reps': '10',
             'weight': 60.0,
             'restSeconds': 90,
           },
@@ -397,13 +398,16 @@ class Samples {
         'bufferMinutes': 15,
       };
 
+  /// Mirrors the backend `ExerciseDto` — [ExerciseModel] takes a
+  /// `muscleGroups` string list and a required `scope`, not the legacy
+  /// `muscleGroup`/`difficulty`/`isCustom` shape.
   static Map<String, dynamic> exercise({String id = 'ex-1'}) => {
         'id': id,
         'name': 'Bench Press',
-        'muscleGroup': 'Chest',
+        'muscleGroups': ['Chest'],
         'equipment': 'Barbell',
         'category': 'Compound',
-        'difficulty': 'Intermediate',
-        'isCustom': false,
+        'scope': 'Global',
+        'isActive': true,
       };
 }

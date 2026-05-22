@@ -77,7 +77,8 @@ void main() {
       ],
       'perceivedExertion': 7,
     });
-    expect(log.id, 'log-new');
+    // logWorkout returns the created log's id (a bare String), not a model.
+    expect(log, 'log-new');
     final body = t.onlyRequest.bodyAsMap!;
     expect(body['date'], '2026-04-16');
     expect(body['startedAt'], '2026-04-16T09:00:00.000Z');

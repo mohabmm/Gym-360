@@ -123,14 +123,17 @@ void main() {
 
     test('403 feature-gated broadcast surfaces FeatureGatedException',
         () async {
+      // ErrorInterceptor maps to FeatureGatedException only when the error
+      // code is 'PLAN.FEATURE_NOT_AVAILABLE' and reads the meta keys
+      // 'feature' + 'requiredPlan'.
       t.adapter.onPost(
         ApiEndpoints.broadcast,
         respond: (_) => t.adapter.error(
           403,
-          code: 'FEATURE_GATED',
+          code: 'PLAN.FEATURE_NOT_AVAILABLE',
           message: 'Broadcasts require Pro plan',
           extras: {
-            'featureCode': 'broadcasts',
+            'feature': 'broadcasts',
             'requiredPlan': 'Pro',
           },
         ),

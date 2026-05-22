@@ -105,14 +105,17 @@ void main() {
   });
 
   test('403 feature-gated error maps to FeatureGatedException', () async {
+    // ErrorInterceptor maps to FeatureGatedException only when the error
+    // code is 'PLAN.FEATURE_NOT_AVAILABLE' and reads the meta keys
+    // 'feature' + 'requiredPlan'.
     t.adapter.onPost(
       ApiEndpoints.sessionTrainerLog('session-1'),
       respond: (_) => t.adapter.error(
         403,
-        code: 'FEATURE_GATED',
+        code: 'PLAN.FEATURE_NOT_AVAILABLE',
         message: 'Not available on Free plan',
         extras: {
-          'featureCode': 'session_logging',
+          'feature': 'session_logging',
           'requiredPlan': 'Starter',
         },
       ),
