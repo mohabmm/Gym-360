@@ -33,8 +33,12 @@ internal sealed class GetMyPaymentsQueryHandler
         if (await _membershipChecker.IsGymSuspendedAsync(request.GymId, cancellationToken))
             return Result.Failure<PagedResponse<MyPaymentDto>>(GymAccessErrors.GymSuspended);
 
+        // The endpoint is gated to the trainee role (RequireAuthorization("trainee")),
+        // so a caller reaching this handler is always a trainee. A failed membership
+        // check therefore means "this trainee has no relationship to this gym" —
+        // NotAMemberOfGym, not MemberRoleRequired (which is for wrong-role callers).
         if (!await _membershipChecker.IsActiveMemberAsync(request.GymId, request.UserId, cancellationToken))
-            return Result.Failure<PagedResponse<MyPaymentDto>>(GymAccessErrors.MemberRoleRequired);
+            return Result.Failure<PagedResponse<MyPaymentDto>>(GymAccessErrors.NotAMemberOfGym);
 
         var page = request.Page < 1 ? 1 : request.Page;
         var pageSize = Math.Clamp(request.PageSize, MinPageSize, MaxPageSize);
