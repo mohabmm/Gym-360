@@ -115,6 +115,56 @@ services:
     networks:
       - gymapp-network
 
+  # --- Web apps (Next.js, monorepo in gym-360-web/) ---
+  # Routed by Traefik via the labels below on the external dokploy-network.
+  # NEXT_PUBLIC_API_URL is a BUILD ARG (baked into the JS bundle) — changing it
+  # requires a rebuild, not just a restart.
+  gym-360-admin-web:
+    build:
+      context: ./gym-360-web
+      dockerfile: Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_URL: ${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+    container_name: gym-360-admin-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL_ADMIN:-https://staging-admin.gym-365.com}
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.gym-360-admin-web.rule=Host(`staging-admin.gym-365.com`)"
+      - "traefik.http.routers.gym-360-admin-web.entrypoints=websecure"
+      - "traefik.http.routers.gym-360-admin-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gym-360-admin-web.loadbalancer.server.port=3000"
+
+  gym-360-staff-web:
+    build:
+      context: ./gym-360-web
+      dockerfile: Dockerfile.gym-staff
+      args:
+        NEXT_PUBLIC_API_URL: ${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+    container_name: gym-360-staff-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL_STAFF:-https://staging-staff.gym-365.com}
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.gym-360-staff-web.rule=Host(`staging-staff.gym-365.com`)"
+      - "traefik.http.routers.gym-360-staff-web.entrypoints=websecure"
+      - "traefik.http.routers.gym-360-staff-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gym-360-staff-web.loadbalancer.server.port=3000"
+
 volumes:
   gymapp-db-data:
   gymapp-redis-data:
@@ -122,4 +172,7 @@ volumes:
 
 networks:
   gymapp-network:
+  # External network created by Dokploy; Traefik lives here and routes the web apps.
+  dokploy-network:
+    external: true
     driver: bridge
