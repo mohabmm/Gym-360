@@ -63,6 +63,17 @@ function diffMinutes(start: string, end: string): number {
   return total > 0 ? total : 60;
 }
 
+// The API binds startTime to a .NET TimeOnly, whose System.Text.Json converter
+// requires "HH:mm:ss". <input type="time"> yields "HH:mm" (no seconds), which
+// fails body deserialization with "Failed to read parameter Request from body
+// as JSON". Pad to seconds so the payload is a valid TimeOnly string.
+function toApiTime(t: string): string {
+  if (!t) return '00:00:00';
+  const parts = t.split(':');
+  while (parts.length < 3) parts.push('00');
+  return parts.map((p) => p.padStart(2, '0')).join(':');
+}
+
 export interface ClassMutationInput {
   name: string;
   nameAr?: string;
@@ -89,7 +100,7 @@ export function useCreateClass() {
         trainerId: data.trainerId,
         schedule: {
           dayOfWeek: data.dayOfWeek,
-          startTime: data.startTime,
+          startTime: toApiTime(data.startTime),
           durationMinutes: diffMinutes(data.startTime, data.endTime),
           isRecurring: data.isRecurring,
         },
@@ -114,7 +125,7 @@ export function useUpdateClass() {
         trainerId: data.trainerId,
         schedule: {
           dayOfWeek: data.dayOfWeek,
-          startTime: data.startTime,
+          startTime: toApiTime(data.startTime),
           durationMinutes: diffMinutes(data.startTime, data.endTime),
           isRecurring: data.isRecurring,
         },

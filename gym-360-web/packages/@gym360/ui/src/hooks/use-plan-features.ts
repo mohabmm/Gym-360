@@ -19,8 +19,10 @@ export function usePlanFeatures(): PlanFeaturesResult {
   const { data, isLoading, error } = useQuery<PlanFeature[]>({
     queryKey: ['plan-features'],
     queryFn: async () => {
-      const response = await apiGet<PlanFeature[]>(BILLING.MY_FEATURES);
-      return response.data;
+      // BE returns { gymId, planCode, planName, ...limits, features: PlanFeature[] };
+      // the effective feature list is nested under `features`.
+      const response = await apiGet<{ features?: PlanFeature[] }>(BILLING.MY_FEATURES);
+      return response.data?.features ?? [];
     },
     staleTime: Infinity, // Only refetch on SignalR signal
     gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
