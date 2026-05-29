@@ -1,10 +1,58 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SessionProvider, useSession } from 'next-auth/react';
-import { useSignalR, useInvalidateQueries, SuspensionOverlay } from '@gym360/ui';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { SessionProvider, useSession, signOut } from 'next-auth/react';
+import { useSignalR, useInvalidateQueries, SuspensionOverlay, configureApiClient } from '@gym360/ui';
 import { Toaster } from 'sonner';
+
+/**
+ * Wires the shared @gym360/ui axios client (used by usePlanFeatures / FeatureGate)
+ * with the next-auth access token + active gymId. Without this the shared client
+ * sent no Authorization/X-Gym-Id, so /billing/plan-features returned 401 and every
+ * FeatureGate stayed stuck on the upgrade prompt. Token/gym are read through refs so
+ * each request gets the latest value even before React re-renders.
+ */
+function ApiClientConfigurator({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
+  const tokenRef = useRef<string | null>(null);
+  const gymIdRef = useRef<string | null>(null);
+  const sessionReadyRef = useRef(false);
+  const queryClient = useQueryClient();
+
+  tokenRef.current = (session as unknown as { accessToken?: string } | null)?.accessToken ?? null;
+  gymIdRef.current = session?.user?.gymId ?? null;
+  if (status !== 'loading') sessionReadyRef.current = true;
+
+  useEffect(() => {
+    configureApiClient({
+      getAccessToken: () => tokenRef.current,
+      getActiveGymId: () => gymIdRef.current,
+      onUnauthorized: () => {
+        if (sessionReadyRef.current && tokenRef.current) {
+          void signOut({ callbackUrl: '/login' });
+        }
+      },
+    });
+  }, []);
+
+  // Refetch any queries that fired during the hydration gap once the session is ready.
+  useEffect(() => {
+    if (status === 'authenticated' && tokenRef.current) {
+      void queryClient.invalidateQueries();
+    }
+  }, [status, queryClient]);
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+        Loading…
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
 
 function SignalRProvider({ children }: { children: ReactNode }) {
   const { invalidate } = useInvalidateQueries();
@@ -73,7 +121,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        <SignalRProvider>{children}</SignalRProvider>
+        <ApiClientConfigurator>
+          <SignalRProvider>{children}</SignalRProvider>
+        </ApiClientConfigurator>
         <Toaster position="top-right" richColors />
       </QueryClientProvider>
     </SessionProvider>
