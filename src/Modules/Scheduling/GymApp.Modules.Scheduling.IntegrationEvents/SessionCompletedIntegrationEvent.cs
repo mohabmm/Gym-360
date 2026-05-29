@@ -6,4 +6,4 @@ public sealed record SessionCompletedIntegrationEvent(
     Guid SessionId,
     Guid TrainerId,
     Guid MemberId,
-    Guid GymId) : IDomainEvent;
+    Guid GymId) : IIntegrationEvent;

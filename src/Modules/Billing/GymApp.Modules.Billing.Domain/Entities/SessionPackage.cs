@@ -59,6 +59,11 @@ public sealed class SessionPackage : Entity
 
     public Result UseSession(Guid sessionId)
     {
+        // Idempotency: at-least-once outbox delivery may re-invoke this for a session already
+        // counted. Treat a repeat as a no-op success so the package is never double-deducted.
+        if (_usageHistory.Any(u => u.SessionId == sessionId && u.UsageType == PackageUsageType.Completed))
+            return Result.Success();
+
         if (Status == PackageStatus.Exhausted)
             return Result.Failure(Errors.BillingErrors.PackageExhausted);
 
@@ -75,6 +80,10 @@ public sealed class SessionPackage : Entity
 
     public Result RecordLateCancelUsage(Guid sessionId)
     {
+        // Idempotency: see UseSession — a repeated late-cancel for the same session is a no-op.
+        if (_usageHistory.Any(u => u.SessionId == sessionId && u.UsageType == PackageUsageType.LateCancelled))
+            return Result.Success();
+
         if (Status == PackageStatus.Exhausted)
             return Result.Failure(Errors.BillingErrors.PackageExhausted);
 

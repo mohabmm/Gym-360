@@ -12,6 +12,11 @@ internal sealed class DeleteAccountCommandHandler : ICommandHandler<DeleteAccoun
 {
     private readonly IUserRepository _userRepository;
     private readonly IIdentityUnitOfWork _unitOfWork;
+
+    // Deliberately synchronous (NOT routed through the integration-event outbox): account
+    // deletion is a global Identity operation, so its outbox row would land in the global
+    // outbox schema that the Hard-mode per-gym outbox processor never drains. Real
+    // anonymization is backstopped by the scheduled 30-day purge job regardless.
     private readonly IPublisher _publisher;
 
     public DeleteAccountCommandHandler(

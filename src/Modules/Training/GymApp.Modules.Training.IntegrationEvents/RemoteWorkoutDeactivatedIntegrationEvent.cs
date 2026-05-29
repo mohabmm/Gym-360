@@ -5,4 +5,4 @@ namespace GymApp.Modules.Training.IntegrationEvents;
 public sealed record RemoteWorkoutDeactivatedIntegrationEvent(
     Guid TrainerId,
     Guid ClientId,
-    Guid GymId) : IDomainEvent;
+    Guid GymId) : IIntegrationEvent;

@@ -4,7 +4,6 @@ using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.IntegrationEvents;
-using MediatR;
 
 namespace GymApp.Modules.Gyms.Application.Commands.ApproveGym;
 
@@ -12,16 +11,16 @@ internal sealed class ApproveGymCommandHandler : ICommandHandler<ApproveGymComma
 {
     private readonly IGymRepository _gymRepository;
     private readonly IGymsUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public ApproveGymCommandHandler(
         IGymRepository gymRepository,
         IGymsUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
         _unitOfWork = unitOfWork;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result> Handle(ApproveGymCommand request, CancellationToken cancellationToken)
@@ -35,12 +34,14 @@ internal sealed class ApproveGymCommandHandler : ICommandHandler<ApproveGymComma
             return result;
 
         _gymRepository.Update(gym);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Cross-module fan-out: Billing handler attaches default Pro subscription so
         // plan-gated features work post-approval. Same event fired by RegisterGym
-        // when AutoApprove=true.
-        await _publisher.Publish(new GymApprovedIntegrationEvent(gym.Id, gym.OwnerId), cancellationToken);
+        // when AutoApprove=true. Enqueued before SaveChanges so it commits to the outbox
+        // in this transaction and is delivered (with retry) by the outbox processor.
+        _integrationEvents.Enqueue(new GymApprovedIntegrationEvent(gym.Id, gym.OwnerId));
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

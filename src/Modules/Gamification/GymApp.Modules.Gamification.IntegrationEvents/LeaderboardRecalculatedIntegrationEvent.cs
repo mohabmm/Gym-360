@@ -4,4 +4,4 @@ namespace GymApp.Modules.Gamification.IntegrationEvents;
 
 public sealed record LeaderboardRecalculatedIntegrationEvent(
     Guid GymId,
-    string LeaderboardType) : IDomainEvent;
+    string LeaderboardType) : IIntegrationEvent;

@@ -1,9 +1,9 @@
 using System.Text;
+using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Repositories;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
@@ -17,7 +17,7 @@ internal sealed class ProcessDataImportJob : IJob
     private readonly IDataImportJobRepository _jobRepository;
     private readonly IImportFileStorage _fileStorage;
     private readonly IEnumerable<IImportParser> _parsers;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
     private readonly IGymsUnitOfWork _unitOfWork;
     private readonly ILogger<ProcessDataImportJob> _logger;
 
@@ -25,14 +25,14 @@ internal sealed class ProcessDataImportJob : IJob
         IDataImportJobRepository jobRepository,
         IImportFileStorage fileStorage,
         IEnumerable<IImportParser> parsers,
-        IPublisher publisher,
+        IIntegrationEventPublisher integrationEvents,
         IGymsUnitOfWork unitOfWork,
         ILogger<ProcessDataImportJob> logger)
     {
         _jobRepository = jobRepository;
         _fileStorage = fileStorage;
         _parsers = parsers;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
         _unitOfWork = unitOfWork;
         _logger = logger;
     }
@@ -68,10 +68,12 @@ internal sealed class ProcessDataImportJob : IJob
             await using var content = await _fileStorage.OpenAsync(job.StoragePath, ct);
             var parsed = await parser.ParseAsync(job.Id, job.GymId, content, ct);
 
-            foreach (var e in parsed.Members) await _publisher.Publish(e, ct);
-            foreach (var e in parsed.Payments) await _publisher.Publish(e, ct);
-            foreach (var e in parsed.Packages) await _publisher.Publish(e, ct);
-            foreach (var e in parsed.InBodyRecords) await _publisher.Publish(e, ct);
+            // Enqueue onto the outbox; the rows are flushed by the job-completion SaveChanges
+            // below (same intercepted GymsDbContext, same g{N}_outbox) and delivered durably.
+            foreach (var e in parsed.Members) _integrationEvents.Enqueue(e);
+            foreach (var e in parsed.Payments) _integrationEvents.Enqueue(e);
+            foreach (var e in parsed.Packages) _integrationEvents.Enqueue(e);
+            foreach (var e in parsed.InBodyRecords) _integrationEvents.Enqueue(e);
 
             string? errorReportPath = null;
             if (parsed.Errors.Count > 0)

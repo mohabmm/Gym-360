@@ -14,4 +14,4 @@ public sealed record DataImportMemberIntegrationEvent(
     DateTime? DateOfBirth,
     string Gender,
     DateTime JoinedAt,
-    string? Section) : IDomainEvent;
+    string? Section) : IIntegrationEvent;

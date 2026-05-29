@@ -45,7 +45,15 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
             notification.TrainerId,
             cancellationToken);
 
-        if (rate.HasValue)
+        // Idempotency: at-least-once delivery may re-run this; never pay a trainer twice for the
+        // same session. (The package deduction above is guarded inside SessionPackage.UseSession.)
+        var alreadyRecorded = await _earningsRepository.ExistsForSessionAsync(
+            notification.GymId,
+            notification.TrainerId,
+            notification.SessionId,
+            cancellationToken);
+
+        if (rate.HasValue && !alreadyRecorded)
         {
             var earningsRecord = TrainerEarningsRecord.Create(
                 notification.GymId,

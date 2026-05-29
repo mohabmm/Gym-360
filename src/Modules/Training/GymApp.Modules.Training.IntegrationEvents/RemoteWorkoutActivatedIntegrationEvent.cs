@@ -6,4 +6,4 @@ public sealed record RemoteWorkoutActivatedIntegrationEvent(
     Guid TrainerId,
     Guid ClientId,
     Guid GymId,
-    string? Reason) : IDomainEvent;
+    string? Reason) : IIntegrationEvent;

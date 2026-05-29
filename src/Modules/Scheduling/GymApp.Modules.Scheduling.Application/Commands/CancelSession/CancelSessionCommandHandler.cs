@@ -7,7 +7,6 @@ using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.IntegrationEvents;
-using MediatR;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.CancelSession;
 
@@ -21,20 +20,20 @@ internal sealed class CancelSessionCommandHandler : ICommandHandler<CancelSessio
     private readonly IGymSessionPolicyService _gymSessionPolicyService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISchedulingUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public CancelSessionCommandHandler(
         ISessionRepository sessionRepository,
         IGymSessionPolicyService gymSessionPolicyService,
         IDateTimeProvider dateTimeProvider,
         ISchedulingUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IIntegrationEventPublisher integrationEvents)
     {
         _sessionRepository = sessionRepository;
         _gymSessionPolicyService = gymSessionPolicyService;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result> Handle(CancelSessionCommand request, CancellationToken cancellationToken)
@@ -63,19 +62,22 @@ internal sealed class CancelSessionCommandHandler : ICommandHandler<CancelSessio
             return result;
 
         _sessionRepository.Update(session);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        // Status is set by session.Cancel above, so the late-cancel decision is known before
+        // commit. Enqueue before SaveChanges so the event commits to the outbox in this
+        // transaction and is delivered durably (with retry) by the outbox processor.
         if (isLateCancellation && session.Status == SessionStatus.LateCancelled)
         {
-            await _publisher.Publish(
+            _integrationEvents.Enqueue(
                 new SessionLateCancelledIntegrationEvent(
                     session.Id,
                     session.TrainerId,
                     session.MemberId,
                     session.GymId,
-                    request.CancelledBy),
-                cancellationToken);
+                    request.CancelledBy));
         }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

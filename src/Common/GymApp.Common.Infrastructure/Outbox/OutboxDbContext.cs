@@ -14,6 +14,7 @@ public sealed class OutboxDbContext : DbContext
     }
 
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<OutboxMessageConsumer> OutboxMessageConsumers => Set<OutboxMessageConsumer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,8 +27,18 @@ public sealed class OutboxDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Type).HasMaxLength(500).IsRequired();
             entity.Property(e => e.Content).IsRequired();
+            entity.Property(e => e.RetryCount).HasDefaultValue(0);
             entity.HasIndex(e => e.ProcessedOnUtc)
                 .HasFilter("[ProcessedOnUtc] IS NULL");
+        });
+
+        modelBuilder.Entity<OutboxMessageConsumer>(entity =>
+        {
+            entity.ToTable("outbox_message_consumers", schema);
+            // Name is part of the clustered PK; keep it well under the 900-byte key limit.
+            // Handler type names are short (< 100 chars in practice).
+            entity.HasKey(e => new { e.OutboxMessageId, e.Name });
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
         });
     }
 }

@@ -15,4 +15,4 @@ public sealed record DataImportInBodyIntegrationEvent(
     decimal? Bmi,
     decimal? BasalMetabolicRate,
     decimal? BodyWaterKg,
-    string? Notes) : IDomainEvent;
+    string? Notes) : IIntegrationEvent;

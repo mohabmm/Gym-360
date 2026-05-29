@@ -8,4 +8,11 @@ public sealed class OutboxMessage
     public string Content { get; set; } = string.Empty;
     public DateTime? ProcessedOnUtc { get; set; }
     public string? Error { get; set; }
+
+    /// <summary>
+    /// Number of failed delivery attempts. Incremented (and <see cref="ProcessedOnUtc"/> left null
+    /// for retry) when a handler throws; once it reaches OutboxOptions.MaxRetryCount the message is
+    /// dead-lettered (ProcessedOnUtc stamped, Error kept) so a poison message cannot wedge the queue.
+    /// </summary>
+    public int RetryCount { get; set; }
 }

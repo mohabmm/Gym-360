@@ -5,7 +5,7 @@ using GymApp.Modules.Gyms.Application.Commands.RegisterGym;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Repositories;
-using MediatR;
+using GymApp.Common.Application.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GymApp.Tests.Application.Gyms;
@@ -17,14 +17,14 @@ public class RegisterGymCommandHandlerTests
     private readonly IGymProvisioner _provisioner = Substitute.For<IGymProvisioner>();
     private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IServiceScopeFactory _scopeFactory = Substitute.For<IServiceScopeFactory>();
-    private readonly IPublisher _publisher = Substitute.For<IPublisher>();
+    private readonly IIntegrationEventPublisher _integrationEvents = Substitute.For<IIntegrationEventPublisher>();
     private readonly RegisterGymCommandHandler _sut;
 
     public RegisterGymCommandHandlerTests()
     {
         _tenantContext.IsHardIsolation.Returns(false);
         _sut = new RegisterGymCommandHandler(
-            _gymRepository, _unitOfWork, _provisioner, _tenantContext, _scopeFactory, _publisher);
+            _gymRepository, _unitOfWork, _provisioner, _tenantContext, _scopeFactory, _integrationEvents);
     }
 
     private static RegisterGymCommand CreateValidCommand() =>
