@@ -67,6 +67,11 @@ public sealed class Announcement : Entity
         RaiseDomainEvent(new AnnouncementPublishedDomainEvent(GymId, Id));
     }
 
+    public void Unpublish()
+    {
+        PublishedAt = null;
+    }
+
     public void Update(string title, string content, string? imageUrl, AnnouncementCategory category, TargetAudience targetAudience)
     {
         Title = title;
