@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
-namespace GymApp.Api.Endpoints;
+namespace GymApp.Api.Orchestration;
 
 internal sealed class AdminCreateGymStaffEndpoint : IEndpoint
 {
