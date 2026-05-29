@@ -327,6 +327,12 @@ END
 --            that failed (keeps at-least-once delivery idempotent).
 --        New gyms get both from the EF model via GymProvisioningService.CreateTablesAsync;
 --        this is the existing-schema backfill. Schema-agnostic + idempotent.
+--        EXCLUDES the 'identity' schema: identity.outbox_messages is migration-owned
+--        (IdentityDbContext maps it there without ExcludeFromMigrations), so RetryCount is
+--        added by the AddRetryCountToOutboxMessages EF migration instead. Backfilling it here
+--        too would make that non-idempotent AddColumn migration fail on the duplicate column.
+--        (Identity's outbox is global — never drained by the per-gym processor — so it needs
+--        no consumer ledger either.)
 SET QUOTED_IDENTIFIER ON;
 DECLARE @outboxUpgrade nvarchar(max) = N'';
 SELECT @outboxUpgrade = @outboxUpgrade + N'
@@ -340,7 +346,8 @@ IF OBJECT_ID(' + QUOTENAME(s.name + N'.outbox_message_consumers', '''') + N', ''
         CONSTRAINT ' + QUOTENAME(N'PK_' + s.name + N'_outbox_message_consumers') + N' PRIMARY KEY (OutboxMessageId, Name)
     );'
 FROM sys.schemas s
-WHERE OBJECT_ID(s.name + N'.outbox_messages', 'U') IS NOT NULL;
+WHERE OBJECT_ID(s.name + N'.outbox_messages', 'U') IS NOT NULL
+  AND s.name <> N'identity';  -- migration-owned; see note above
 
 IF LEN(@outboxUpgrade) > 0
     EXEC sp_executesql @outboxUpgrade;
