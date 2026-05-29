@@ -21,6 +21,9 @@ services:
       - Cors__AllowedOrigins__0=${CORS_ORIGIN_0:-http://localhost:3000}
       - Cors__AllowedOrigins__1=${CORS_ORIGIN_1:-http://localhost:3001}
       - Cors__AllowedOrigins__2=${CORS_ORIGIN_2:-http://localhost:3003}
+      # Staging web hosts — always allowed so deployed admin/staff logins pass CORS.
+      - Cors__AllowedOrigins__3=${CORS_ORIGIN_3:-https://staging-admin.gym-365.com}
+      - Cors__AllowedOrigins__4=${CORS_ORIGIN_4:-https://staging-staff.gym-365.com}
       # FCM disabled by default. To enable: set FCM_ENABLED=true, place the
       # service-account JSON at ./config/firebase-service-account.json, and
       # uncomment the matching volume mount below.
