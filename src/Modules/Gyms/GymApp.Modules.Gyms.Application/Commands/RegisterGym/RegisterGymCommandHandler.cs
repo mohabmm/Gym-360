@@ -7,7 +7,6 @@ using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Modules.Gyms.IntegrationEvents;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GymApp.Modules.Gyms.Application.Commands.RegisterGym;
@@ -19,7 +18,7 @@ internal sealed class RegisterGymCommandHandler : ICommandHandler<RegisterGymCom
     private readonly IGymProvisioner _provisioner;
     private readonly ITenantContext _tenantContext;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public RegisterGymCommandHandler(
         IGymRepository gymRepository,
@@ -27,14 +26,14 @@ internal sealed class RegisterGymCommandHandler : ICommandHandler<RegisterGymCom
         IGymProvisioner provisioner,
         ITenantContext tenantContext,
         IServiceScopeFactory scopeFactory,
-        IPublisher publisher)
+        IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
         _unitOfWork = unitOfWork;
         _provisioner = provisioner;
         _tenantContext = tenantContext;
         _scopeFactory = scopeFactory;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result<Guid>> Handle(RegisterGymCommand request, CancellationToken cancellationToken)
@@ -74,9 +73,9 @@ internal sealed class RegisterGymCommandHandler : ICommandHandler<RegisterGymCom
         if (!_tenantContext.IsHardIsolation)
         {
             await _gymRepository.AddAsync(gym, cancellationToken);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
             if (request.AutoApprove)
-                await _publisher.Publish(new GymApprovedIntegrationEvent(gym.Id, request.OwnerId), cancellationToken);
+                _integrationEvents.Enqueue(new GymApprovedIntegrationEvent(gym.Id, request.OwnerId));
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             return Result.Success(gym.Id);
         }
 
@@ -97,21 +96,22 @@ internal sealed class RegisterGymCommandHandler : ICommandHandler<RegisterGymCom
         var scopedUow = sp.GetRequiredService<IGymsUnitOfWork>();
 
         await scopedRepo.AddAsync(gym, cancellationToken);
-        await scopedUow.SaveChangesAsync(cancellationToken);
 
         // Cross-module fan-out: Billing handler subscribes the gym to a default plan
         // so plan-gated features (custom_exercise_library, etc.) work post-register.
         // Only fired when the gym is auto-approved; pending gyms must be approved
         // separately via /admin/gyms/{gymId}/approve which raises the same event.
-        // Resolve IPublisher from the tenant-pinned scope so downstream handlers
-        // (e.g. Billing's auto-subscribe) write to the new gym's g{N}_* schemas
-        // instead of the request-scope tenant (which is the admin caller, not the
-        // gym being provisioned).
+        // Enqueue via the tenant-pinned scope's publisher BEFORE scopedUow.SaveChanges so the
+        // outbox row is written by the scoped GymsDbContext into the new gym's g{N}_outbox
+        // schema (not the admin request scope). The Hard-mode outbox processor then delivers
+        // it with the gym's tenant set, so Billing's auto-subscribe writes to g{N}_billing.
         if (request.AutoApprove)
         {
-            var scopedPublisher = sp.GetRequiredService<IPublisher>();
-            await scopedPublisher.Publish(new GymApprovedIntegrationEvent(gym.Id, request.OwnerId), cancellationToken);
+            var scopedIntegrationEvents = sp.GetRequiredService<IIntegrationEventPublisher>();
+            scopedIntegrationEvents.Enqueue(new GymApprovedIntegrationEvent(gym.Id, request.OwnerId));
         }
+
+        await scopedUow.SaveChangesAsync(cancellationToken);
 
         return Result.Success(gym.Id);
     }

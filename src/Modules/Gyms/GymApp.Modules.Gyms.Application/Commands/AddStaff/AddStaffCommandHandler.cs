@@ -9,7 +9,6 @@ using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.IntegrationEvents;
-using MediatR;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddStaff;
 
@@ -20,7 +19,7 @@ internal sealed class AddStaffCommandHandler : ICommandHandler<AddStaffCommand>
     private readonly IGymPlanService _gymPlanService;
     private readonly IGymQueryService _gymQueryService;
     private readonly IGymsUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public AddStaffCommandHandler(
         IGymRepository gymRepository,
@@ -28,14 +27,14 @@ internal sealed class AddStaffCommandHandler : ICommandHandler<AddStaffCommand>
         IGymPlanService gymPlanService,
         IGymQueryService gymQueryService,
         IGymsUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
         _staffRoleRepository = staffRoleRepository;
         _gymPlanService = gymPlanService;
         _gymQueryService = gymQueryService;
         _unitOfWork = unitOfWork;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result> Handle(AddStaffCommand request, CancellationToken cancellationToken)
@@ -61,11 +60,11 @@ internal sealed class AddStaffCommandHandler : ICommandHandler<AddStaffCommand>
         var staffRole = StaffRole.Create(request.GymId, request.UserId, roleType);
 
         await _staffRoleRepository.AddAsync(staffRole, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        await _publisher.Publish(
-            new StaffAddedToGymIntegrationEvent(request.GymId, request.UserId, roleType.ToString()),
-            cancellationToken);
+        _integrationEvents.Enqueue(
+            new StaffAddedToGymIntegrationEvent(request.GymId, request.UserId, roleType.ToString()));
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

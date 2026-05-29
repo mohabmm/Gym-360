@@ -6,4 +6,4 @@ public sealed record SessionPackageLowIntegrationEvent(
     Guid PackageId,
     Guid MemberId,
     Guid GymId,
-    int Remaining) : IDomainEvent;
+    int Remaining) : IIntegrationEvent;

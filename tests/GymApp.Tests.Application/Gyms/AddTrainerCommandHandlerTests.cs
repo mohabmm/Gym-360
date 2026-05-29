@@ -6,7 +6,7 @@ using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
-using MediatR;
+using GymApp.Common.Application.Messaging;
 
 namespace GymApp.Tests.Application.Gyms;
 
@@ -17,7 +17,7 @@ public class AddTrainerCommandHandlerTests
     private readonly IGymQueryService _queryService = Substitute.For<IGymQueryService>();
     private readonly IGymTrainerRequestRepository _trainerRequestRepository = Substitute.For<IGymTrainerRequestRepository>();
     private readonly IGymsUnitOfWork _unitOfWork = Substitute.For<IGymsUnitOfWork>();
-    private readonly IPublisher _publisher = Substitute.For<IPublisher>();
+    private readonly IIntegrationEventPublisher _integrationEvents = Substitute.For<IIntegrationEventPublisher>();
     private readonly AddTrainerCommandHandler _sut;
 
     public AddTrainerCommandHandlerTests()
@@ -27,7 +27,7 @@ public class AddTrainerCommandHandlerTests
         _trainerRequestRepository.GetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((GymTrainerRequest?)null);
         _sut = new AddTrainerCommandHandler(
-            _gymRepository, _planService, _queryService, _trainerRequestRepository, _unitOfWork, _publisher);
+            _gymRepository, _planService, _queryService, _trainerRequestRepository, _unitOfWork, _integrationEvents);
     }
 
     private static Gym CreateActiveGym(Guid gymId)

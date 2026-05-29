@@ -7,4 +7,4 @@ public sealed record GymBrandingUpdatedIntegrationEvent(
     string? LogoUrl,
     string? PrimaryColor,
     string? SecondaryColor,
-    string? CoverPhotoUrl) : IDomainEvent;
+    string? CoverPhotoUrl) : IIntegrationEvent;

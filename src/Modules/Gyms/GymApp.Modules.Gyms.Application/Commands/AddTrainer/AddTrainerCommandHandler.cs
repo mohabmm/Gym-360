@@ -8,7 +8,6 @@ using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.IntegrationEvents;
-using MediatR;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddTrainer;
 
@@ -19,7 +18,7 @@ internal sealed class AddTrainerCommandHandler : ICommandHandler<AddTrainerComma
     private readonly IGymQueryService _gymQueryService;
     private readonly IGymTrainerRequestRepository _trainerRequestRepository;
     private readonly IGymsUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public AddTrainerCommandHandler(
         IGymRepository gymRepository,
@@ -27,14 +26,14 @@ internal sealed class AddTrainerCommandHandler : ICommandHandler<AddTrainerComma
         IGymQueryService gymQueryService,
         IGymTrainerRequestRepository trainerRequestRepository,
         IGymsUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
         _gymPlanService = gymPlanService;
         _gymQueryService = gymQueryService;
         _trainerRequestRepository = trainerRequestRepository;
         _unitOfWork = unitOfWork;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result> Handle(AddTrainerCommand request, CancellationToken cancellationToken)
@@ -79,11 +78,11 @@ internal sealed class AddTrainerCommandHandler : ICommandHandler<AddTrainerComma
         }
 
         _gymRepository.Update(gym);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        await _publisher.Publish(
-            new TrainerAddedToGymIntegrationEvent(request.GymId, request.TrainerId),
-            cancellationToken);
+        _integrationEvents.Enqueue(
+            new TrainerAddedToGymIntegrationEvent(request.GymId, request.TrainerId));
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

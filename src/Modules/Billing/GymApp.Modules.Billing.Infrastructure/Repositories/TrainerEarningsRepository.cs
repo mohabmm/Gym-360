@@ -37,6 +37,13 @@ internal sealed class TrainerEarningsRepository : ITrainerEarningsRepository
         await _dbContext.TrainerEarningsRecords.AddAsync(record, cancellationToken);
     }
 
+    public async Task<bool> ExistsForSessionAsync(Guid gymId, Guid trainerId, Guid sessionId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.TrainerEarningsRecords
+            .AsNoTracking()
+            .AnyAsync(r => r.GymId == gymId && r.TrainerId == trainerId && r.SessionId == sessionId, cancellationToken);
+    }
+
     public async Task<decimal?> GetTrainerRateAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default)
     {
         var readModel = await _dbContext.TrainerRates

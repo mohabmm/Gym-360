@@ -316,6 +316,35 @@ BEGIN
         WHERE ProcessedOnUtc IS NULL;');
 END
 
+-- 0.6.1) Durable integration-events upgrade. Backfill EVERY existing outbox_messages
+--        schema (soft 'outbox', legacy per-module schemas, and every per-gym
+--        g{N}_outbox) with:
+--          * RetryCount column — the outbox processor increments it on handler
+--            failure and dead-letters at OutboxOptions.MaxRetryCount instead of
+--            stamping ProcessedOnUtc immediately (old behaviour = at-most-once).
+--          * outbox_message_consumers ledger — (OutboxMessageId, Name) records which
+--            handlers already ran, so a retried message only re-invokes the handler(s)
+--            that failed (keeps at-least-once delivery idempotent).
+--        New gyms get both from the EF model via GymProvisioningService.CreateTablesAsync;
+--        this is the existing-schema backfill. Schema-agnostic + idempotent.
+SET QUOTED_IDENTIFIER ON;
+DECLARE @outboxUpgrade nvarchar(max) = N'';
+SELECT @outboxUpgrade = @outboxUpgrade + N'
+IF COL_LENGTH(' + QUOTENAME(s.name + N'.outbox_messages', '''') + N', ''RetryCount'') IS NULL
+    ALTER TABLE ' + QUOTENAME(s.name) + N'.outbox_messages
+        ADD RetryCount int NOT NULL CONSTRAINT ' + QUOTENAME(N'DF_' + s.name + N'_outbox_RetryCount') + N' DEFAULT 0;
+IF OBJECT_ID(' + QUOTENAME(s.name + N'.outbox_message_consumers', '''') + N', ''U'') IS NULL
+    CREATE TABLE ' + QUOTENAME(s.name) + N'.outbox_message_consumers (
+        OutboxMessageId uniqueidentifier NOT NULL,
+        Name            nvarchar(200)    NOT NULL,
+        CONSTRAINT ' + QUOTENAME(N'PK_' + s.name + N'_outbox_message_consumers') + N' PRIMARY KEY (OutboxMessageId, Name)
+    );'
+FROM sys.schemas s
+WHERE OBJECT_ID(s.name + N'.outbox_messages', 'U') IS NOT NULL;
+
+IF LEN(@outboxUpgrade) > 0
+    EXEC sp_executesql @outboxUpgrade;
+
 -- 0.7) Create gyms.data_import_jobs (entity exists; migration never created the
 --      table). GET /gyms/{id}/imports, GET /gyms/{id}/imports/{jobId}, and
 --      GET /gyms/{id}/imports/{jobId}/errors.csv 500 with "Invalid object name"

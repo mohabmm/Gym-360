@@ -7,7 +7,7 @@ using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 using GymApp.Modules.Scheduling.Application.Abstractions;
-using MediatR;
+using GymApp.Common.Application.Messaging;
 
 namespace GymApp.Tests.Application.Scheduling;
 
@@ -17,13 +17,13 @@ public class CancelSessionCommandHandlerTests
     private readonly IGymSessionPolicyService _gymSessionPolicyService = Substitute.For<IGymSessionPolicyService>();
     private readonly IDateTimeProvider _dateTimeProvider = Substitute.For<IDateTimeProvider>();
     private readonly ISchedulingUnitOfWork _unitOfWork = Substitute.For<ISchedulingUnitOfWork>();
-    private readonly IPublisher _publisher = Substitute.For<IPublisher>();
+    private readonly IIntegrationEventPublisher _integrationEvents = Substitute.For<IIntegrationEventPublisher>();
     private readonly CancelSessionCommandHandler _sut;
 
     public CancelSessionCommandHandlerTests()
     {
         _sut = new CancelSessionCommandHandler(
-            _sessionRepository, _gymSessionPolicyService, _dateTimeProvider, _unitOfWork, _publisher);
+            _sessionRepository, _gymSessionPolicyService, _dateTimeProvider, _unitOfWork, _integrationEvents);
     }
 
     private static Session CreateFutureSession(Guid gymId, int daysFromNow = 3)

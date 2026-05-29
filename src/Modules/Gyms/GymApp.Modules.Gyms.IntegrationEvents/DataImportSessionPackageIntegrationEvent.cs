@@ -14,4 +14,4 @@ public sealed record DataImportSessionPackageIntegrationEvent(
     decimal TotalPrice,
     string Currency,
     DateTime PurchasedAt,
-    DateTime? ExpiresAt) : IDomainEvent;
+    DateTime? ExpiresAt) : IIntegrationEvent;

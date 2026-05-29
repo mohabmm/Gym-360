@@ -5,4 +5,4 @@ namespace GymApp.Modules.Identity.IntegrationEvents;
 public sealed record UserLinkedToGymIntegrationEvent(
     Guid UserId,
     Guid GymId,
-    string Role) : IDomainEvent;
+    string Role) : IIntegrationEvent;

@@ -7,7 +7,6 @@ using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.IntegrationEvents;
-using MediatR;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddMember;
 
@@ -18,7 +17,7 @@ internal sealed class AddMemberCommandHandler : ICommandHandler<AddMemberCommand
     private readonly IGymQueryService _gymQueryService;
     private readonly IGymMemberDirectory _memberDirectory;
     private readonly IGymsUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public AddMemberCommandHandler(
         IGymRepository gymRepository,
@@ -26,14 +25,14 @@ internal sealed class AddMemberCommandHandler : ICommandHandler<AddMemberCommand
         IGymQueryService gymQueryService,
         IGymMemberDirectory memberDirectory,
         IGymsUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
         _gymPlanService = gymPlanService;
         _gymQueryService = gymQueryService;
         _memberDirectory = memberDirectory;
         _unitOfWork = unitOfWork;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result> Handle(AddMemberCommand request, CancellationToken cancellationToken)
@@ -57,12 +56,11 @@ internal sealed class AddMemberCommandHandler : ICommandHandler<AddMemberCommand
         var assignedNumber = await _memberDirectory.RegisterAsync(
             request.GymId, request.UserId, request.MemberNumber, request.Section, cancellationToken);
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        await _publisher.Publish(
+        _integrationEvents.Enqueue(
             new MemberAddedToGymIntegrationEvent(
-                request.GymId, request.UserId, request.Section, assignedNumber),
-            cancellationToken);
+                request.GymId, request.UserId, request.Section, assignedNumber));
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
