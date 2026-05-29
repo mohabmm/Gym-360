@@ -13,7 +13,8 @@ import type { MemberCheckIn } from '@gym360/ui';
 type CheckInMethod = 'qr' | 'numpad' | 'manual';
 
 type CheckInPayload = {
-  method: 'Qr' | 'Numpad' | 'Manual';
+  // Must match the API's CheckInMethod enum: QR | MemberNumber | Manual.
+  method: 'QR' | 'MemberNumber' | 'Manual';
   qrToken?: string;
   memberNumber?: string;
   memberId?: string;
@@ -39,9 +40,12 @@ export default function CheckInsPage() {
   const [qrError, setQrError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
-  const qrCount = checkIns.filter((c) => c.method === 'qr').length;
-  const manualCount = checkIns.filter((c) => c.method === 'manual').length;
-  const numpadCount = checkIns.filter((c) => c.method === 'numpad').length;
+  // API serializes CheckInMethod as "QR" | "MemberNumber" | "Manual"; normalize
+  // case-insensitively (the numpad flow maps to MemberNumber).
+  const methodKey = (m?: string) => (m ?? '').toLowerCase();
+  const qrCount = checkIns.filter((c) => methodKey(c.method) === 'qr').length;
+  const manualCount = checkIns.filter((c) => methodKey(c.method) === 'manual').length;
+  const numpadCount = checkIns.filter((c) => methodKey(c.method) === 'membernumber').length;
 
   const showFlash = (msg: string) => {
     setFlash(msg);
@@ -63,7 +67,7 @@ export default function CheckInsPage() {
     if (!numpadValue) return;
     try {
       await recordMutation.mutateAsync({
-        method: 'Numpad',
+        method: 'MemberNumber',
         memberNumber: numpadValue,
         staffId,
       });
@@ -127,7 +131,7 @@ export default function CheckInsPage() {
     if (recordMutation.isPending) return;
     try {
       await recordMutation.mutateAsync({
-        method: 'Qr',
+        method: 'QR',
         qrToken: decoded.trim(),
         staffId,
       });
@@ -313,8 +317,8 @@ export default function CheckInsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <StatusBadge
-                    variant={checkIn.method === 'qr' ? 'info' : checkIn.method === 'numpad' ? 'warning' : 'default'}
-                    label={checkIn.method.toUpperCase()}
+                    variant={methodKey(checkIn.method) === 'qr' ? 'info' : methodKey(checkIn.method) === 'membernumber' ? 'warning' : 'default'}
+                    label={methodKey(checkIn.method) === 'membernumber' ? 'NUMPAD' : (checkIn.method ?? '').toUpperCase()}
                   />
                   <span className="text-sm text-muted-foreground">
                     {formatTime(new Date(checkIn.checkInTime).toTimeString().slice(0, 5))}
