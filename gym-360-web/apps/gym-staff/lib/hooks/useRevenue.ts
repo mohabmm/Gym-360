@@ -15,8 +15,21 @@ export function useRevenue() {
         apiClient.get('/billing/revenue'),
         apiClient.get('/billing/payments', { params: { page: 1, pageSize: 10 } }),
       ]);
-      const monthlyRevenue = revenueRes.data.data?.monthlyBreakdown ?? revenueRes.data.data ?? [];
-      const recentPayments = paymentsRes.data.data?.items ?? paymentsRes.data.data ?? [];
+      // /billing/revenue returns a summary object ({ totalRevenue, currency, … }) with
+      // no monthlyBreakdown array. Only treat the payload as the series when it is
+      // actually an array — otherwise the downstream `.reduce` blows up on the object.
+      const rev = revenueRes.data.data;
+      const monthlyRevenue = Array.isArray(rev?.monthlyBreakdown)
+        ? rev.monthlyBreakdown
+        : Array.isArray(rev)
+          ? rev
+          : [];
+      const payments = paymentsRes.data.data;
+      const recentPayments = Array.isArray(payments?.items)
+        ? payments.items
+        : Array.isArray(payments)
+          ? payments
+          : [];
       return { monthlyRevenue, recentPayments };
     },
   });
