@@ -43,10 +43,9 @@ public static class ObservabilityExtensions
                 .AddHttpClientInstrumentation()
                 .AddSqlClientInstrumentation(o =>
                 {
-                    // Capture the SQL text + the exception so per-gym write failures
+                    // Record the exception on the SQL span so per-gym write failures
                     // (e.g. "Invalid column name 'RetryCount'" on g{N}_outbox_messages)
                     // surface as span errors in SigNoz instead of a bare 500.
-                    o.SetDbStatementForText = true;
                     o.RecordException = true;
                 })
                 .AddOtlpExporter())
