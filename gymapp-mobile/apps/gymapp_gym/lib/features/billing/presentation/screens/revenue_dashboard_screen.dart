@@ -74,14 +74,25 @@ class RevenueDashboardScreen extends ConsumerWidget {
                           ),
                         ),
                         title: Text(
-                          NumberFormatter.formatCurrency(p.amount),
+                          (p.memberName != null && p.memberName!.isNotEmpty)
+                              ? p.memberName!
+                              : NumberFormatter.formatCurrency(p.amount),
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        subtitle: p.createdAt != null
-                            ? Text(DateFormatter.formatShort(p.createdAt!))
-                            : null,
+                        subtitle: Text(
+                          [
+                            NumberFormatter.formatCurrency(p.amount),
+                            if (p.purpose.isNotEmpty)
+                              p.purpose.replaceAllMapped(
+                                RegExp(r'([a-z0-9])([A-Z])'),
+                                (m) => '${m[1]} ${m[2]}',
+                              ),
+                            if (p.createdAt != null)
+                              DateFormatter.formatShort(p.createdAt!),
+                          ].join(' · '),
+                        ),
                         trailing: _StatusBadge(status: p.status, isArabic: isArabic),
                       ),
                     )),
