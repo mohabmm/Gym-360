@@ -1,7 +1,9 @@
+using GymApp.Common.Application.Exceptions;
 using GymApp.Common.Domain;
 using GymApp.Common.Infrastructure.Outbox;
 using GymApp.Modules.Identity.Application.Abstractions;
 using GymApp.Modules.Identity.Domain.Entities;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymApp.Modules.Identity.Infrastructure.Persistence;
@@ -38,6 +40,24 @@ internal sealed class IdentityDbContext : DbContext, IIdentityUnitOfWork
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        return await base.SaveChangesAsync(cancellationToken);
+        try
+        {
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsActiveMembershipViolation(ex))
+        {
+            // One-Gym filtered unique index (UX_user_gym_memberships_active_per_user)
+            // tripped by a race the in-memory LinkToGym guard couldn't pre-empt. Translate
+            // the would-be 500 into a clean 409 (see GlobalExceptionHandler).
+            throw new ConflictException(
+                "User.AlreadyActiveInAnotherGym",
+                "This person already has an active membership at another gym (One-Gym rule).");
+        }
     }
+
+    // SQL Server unique-constraint/index violation = error 2627 (constraint) or 2601 (index).
+    private static bool IsActiveMembershipViolation(DbUpdateException ex) =>
+        ex.InnerException is SqlException sql
+        && sql.Number is 2601 or 2627
+        && sql.Message.Contains("UX_user_gym_memberships_active_per_user", StringComparison.OrdinalIgnoreCase);
 }

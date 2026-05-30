@@ -43,6 +43,12 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
                 StatusCodes.Status400BadRequest,
                 new List<ApiError> { new("BAD_REQUEST", badRequest.Message) }),
 
+            // Uniqueness/state invariant tripped at the DB after a race slipped past the
+            // in-memory domain guard (translated in the module DbContext). Surface as 409.
+            ConflictException conflict => (
+                StatusCodes.Status409Conflict,
+                new List<ApiError> { new(conflict.Code, conflict.Message) }),
+
             UnauthorizedAccessException => (
                 StatusCodes.Status401Unauthorized,
                 new List<ApiError> { new("UNAUTHORIZED", "Authentication is required.") }),
