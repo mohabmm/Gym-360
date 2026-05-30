@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -48,6 +50,14 @@ public static class ObservabilityExtensions
                     // surface as span errors in SigNoz instead of a bare 500.
                     o.RecordException = true;
                 })
+                // SqlClient instrumentation 1.14+ emits ONLY the *stable* DB semantic
+                // conventions (db.system.name / db.namespace / db.query.text). Our
+                // SigNoz "DB Call Metrics" tab keys off the *old* experimental
+                // attribute db.system, so it reads empty. The migration env var
+                // (OTEL_SEMCONV_STABILITY_OPT_IN=database/dup) was dropped in the
+                // stable release, so we back-fill the legacy attribute names on each
+                // DB span ourselves. Cheap, runs only when OTel is enabled.
+                .AddProcessor(new SignozDbSemconvCompatProcessor())
                 .AddOtlpExporter())
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
@@ -56,5 +66,35 @@ public static class ObservabilityExtensions
                 .AddOtlpExporter());
 
         return builder;
+    }
+}
+
+/// <summary>
+/// Back-fills the legacy (experimental) DB span attributes from the stable v1.33
+/// conventions emitted by OpenTelemetry.Instrumentation.SqlClient 1.14+, so the
+/// self-hosted SigNoz "DB Call Metrics" tab (which still keys off <c>db.system</c>)
+/// recognises our SQL Server spans. Runs on span end, only for spans that already
+/// carry a stable DB attribute — non-DB spans are untouched.
+/// </summary>
+internal sealed class SignozDbSemconvCompatProcessor : BaseProcessor<Activity>
+{
+    public override void OnEnd(Activity activity)
+    {
+        if (activity.GetTagItem("db.system.name") is not string system)
+            return; // not a DB span under the stable conventions — leave it alone.
+
+        // SigNoz groups DB Call Metrics by the legacy db.system value ("mssql").
+        // The stable convention reports "microsoft.sql_server"; normalise it.
+        if (activity.GetTagItem("db.system") is null)
+            activity.SetTag("db.system", system == "microsoft.sql_server" ? "mssql" : system);
+
+        if (activity.GetTagItem("db.name") is null && activity.GetTagItem("db.namespace") is { } ns)
+            activity.SetTag("db.name", ns);
+
+        if (activity.GetTagItem("db.statement") is null && activity.GetTagItem("db.query.text") is { } text)
+            activity.SetTag("db.statement", text);
+
+        if (activity.GetTagItem("db.operation") is null && activity.GetTagItem("db.operation.name") is { } op)
+            activity.SetTag("db.operation", op);
     }
 }
