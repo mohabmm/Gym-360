@@ -65,19 +65,18 @@ removes the race in Layer 1 and adds defense-in-depth.
 
 ### Also
 - **Do NOT** add a public domain to the OTLP collector port (`4317`/`4318`) — keep it
-  internal-only (the compose already does; it's reached over `dokploy-network`).
+  internal-only (the compose already does; it's reached over the `signoz-net` network).
 - Only the UI (`signoz` :8080) gets a public domain.
 
-## Connect the API (both options)
+## Connect the API
 
-The API container must reach the collector. Attach it to the SigNoz network and set env:
+The API reaches the collector over the `signoz-net` network — the SigNoz compose
+creates it with a fixed name, and the root `docker-compose.yml` already declares
+`signoz-net` (external) on `gymapp-api`. So it joins automatically on the next API
+deploy — **deploy SigNoz first** so the network exists. No manual
+`docker network connect` needed, and no edit to SigNoz's git-sourced compose.
 
-```bash
-# one-time: join the API container to signoz-net (or set it in the API's compose/Dokploy network)
-docker network connect signoz-net <gymapp-api-container>
-```
-
-Dokploy → `gymapp-api` → Environment:
+Then set on Dokploy → `gymapp-api` → Environment, and redeploy:
 
 ```
 OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector:4318
@@ -85,7 +84,7 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 OTEL_SERVICE_NAME=gymapp-api
 ```
 
-Redeploy the API. `gymapp-api` appears under SigNoz → Services within ~1 min.
+`gymapp-api` appears under SigNoz → Services within ~1 min.
 
 ## Read the per-gym 500
 SigNoz → Traces → `service.name=gymapp-api`, route contains `staff-create` (or status Error)

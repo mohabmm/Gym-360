@@ -43,9 +43,10 @@ services:
       - Identity__DevSeederScope=${IDENTITY_DEV_SEEDER_SCOPE:-admin}
       # OpenTelemetry → self-hosted SigNoz (deploy/signoz). No-op unless
       # OTEL_EXPORTER_OTLP_ENDPOINT is set, so it defaults to empty/off and only
-      # activates on staging where SigNoz runs. Collector reached over the shared
-      # external dokploy-network (joined below); attach the SigNoz compose to that
-      # same network in Dokploy so `signoz-otel-collector` resolves. OTLP/HTTP :4318.
+      # activates on staging where SigNoz runs. Collector reached over the external
+      # `signoz-net` network (joined below), which the SigNoz compose creates with a
+      # fixed name — so no edit to SigNoz's git-sourced compose is needed. Deploy
+      # SigNoz first so the network exists. OTLP/HTTP on :4318.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
       - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-gymapp-api}
@@ -63,10 +64,10 @@ services:
         condition: service_healthy
     networks:
       - gymapp-network
-      # Shared external network (Dokploy/Traefik). API joins it to reach
-      # signoz-otel-collector by name for OTLP — attach the SigNoz compose to
-      # this same dokploy-network in Dokploy. Re-attached on every API redeploy.
-      - dokploy-network
+      # External network created by the SigNoz compose (fixed name `signoz-net`).
+      # The API joins it to reach signoz-otel-collector by name for OTLP. Deploy
+      # SigNoz first so the network exists; no edit to SigNoz's compose required.
+      - signoz-net
 
   gymapp-db:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -188,3 +189,8 @@ networks:
   dokploy-network:
     external: true
     driver: bridge
+  # External network created by the SigNoz compose (deploy/signoz, fixed name
+  # `signoz-net`). External here so this compose joins it instead of creating it —
+  # deploy SigNoz before the API so the network already exists.
+  signoz-net:
+    external: true
