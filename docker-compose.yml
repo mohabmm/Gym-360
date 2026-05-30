@@ -9,9 +9,14 @@ services:
       dockerfile: src/API/GymApp.Api/Dockerfile
     container_name: gymapp-api
     ports:
-      # Bind to loopback only — Dokploy/Traefik reaches the API via the internal
-      # docker network. Local dev still works through 127.0.0.1:8080.
-      - "127.0.0.1:8080:8080"
+      # Loopback-only host publish, purely for local `docker compose` dev — on
+      # Dokploy the API is reached over the internal network (its domain routes
+      # there), so no host port is needed. The 127.0.0.1 prefix is HARDCODED so
+      # only the host PORT is overridable, never the bind address — it can never
+      # be exposed on a public interface via env. SigNoz also publishes :8080, so
+      # on staging set API_HTTP_PORT=8090 (or any free loopback port) to avoid the
+      # clash. Local dev keeps 8080.
+      - "127.0.0.1:${API_HTTP_PORT:-8080}:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - ConnectionStrings__Database=Server=gymapp-db,1433;Database=GymApp;User Id=sa;Password=${DB_SA_PASSWORD:-GymApp_P@ss2024!};TrustServerCertificate=True
