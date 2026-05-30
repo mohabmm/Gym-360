@@ -36,7 +36,37 @@ OTLP receivers: `signoz-otel-collector:4318` (HTTP) / `:4317` (gRPC). UI: contai
 If you prefer Dokploy-managed: create a **Compose** app pointed at the SigNoz repo
 (`github.com/SigNoz/signoz`, ref `v0.126.1`, compose path `deploy/docker/docker-compose.yaml`).
 Dokploy clones the full tree so the bind-mounts resolve. Add a domain
-(`signoz.gym-365.com` → `signoz` :8080) + lock it down.
+(`signoz.gym-365.com` → `signoz` :8080) + lock it down (see below).
+
+## Lock the SigNoz UI (two layers)
+
+The UI exposes ALL telemetry (URLs, SQL, errors). Lock it with both:
+
+### Layer 1 — SigNoz native admin (your account)
+SigNoz self-host: the **first user to sign up becomes the org admin**, and open
+signup is disabled afterwards (invite-only). So **immediately after deploy**, open
+`https://signoz.gym-365.com`, sign up with **`mohab_31_8@hotmail.com`** + a strong
+password — that claims the admin/owner account. Do this within seconds of the first
+deploy so nobody else grabs it. Add teammates later via Settings → Members (invite).
+
+### Layer 2 — Traefik basic-auth at the edge (closes the signup window)
+A gate in front of the UI so the SigNoz login page isn't even reachable without it —
+removes the race in Layer 1 and adds defense-in-depth.
+
+1. Generate the credential (locally, never committed):
+   ```bash
+   scripts/signoz_basicauth.sh        # user = mohab_31_8@hotmail.com, prompts for password
+   ```
+   It prints an htpasswd `user:bcrypt-hash` line (and a `$`-escaped variant for raw
+   Traefik labels).
+2. In Dokploy → `signoz` app → Domains/Advanced → add a Traefik **basicauth**
+   middleware with that users line, attached to the signoz router.
+3. Reload. `https://signoz.gym-365.com` now prompts before showing SigNoz's own login.
+
+### Also
+- **Do NOT** add a public domain to the OTLP collector port (`4317`/`4318`) — keep it
+  internal-only (the compose already does; it's reached over `dokploy-network`).
+- Only the UI (`signoz` :8080) gets a public domain.
 
 ## Connect the API (both options)
 
