@@ -25,7 +25,7 @@ Seq sidecar (which was never externally reachable on staging).
 4. **Resources:** ClickHouse needs ~2–4 GB RAM. Confirm the staging host has headroom
    (RAM is the constraint, not disk).
 5. **Network:** ensure the `signoz` compose and the **API app share a Docker network** so the
-   API can reach `signoz-otel-collector:4317` by service name. In Dokploy, attach both to the
+   API can reach `signoz-otel-collector:4318` (OTLP/HTTP) by service name. In Dokploy, attach both to the
    same network (e.g. the shared `dokploy-network`), or run them in the same compose project.
 
 ## Part 2 — Expose the SigNoz UI
@@ -40,16 +40,17 @@ The API auto-enables OpenTelemetry **only when an OTLP endpoint is set** — so 
 locally. On the Dokploy **API app → Environment**, add:
 
 ```
-OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector:4317
-OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector:4318
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 OTEL_SERVICE_NAME=gymapp-api
 ```
 
-- Use the **internal** collector service name + port `4317` (gRPC), NOT the public domain.
-- If gRPC over the Docker network misbehaves, switch to HTTP: set
-  `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf` and
-  `OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector:4318`
-  (the code routes the logs sink to `/v1/logs` automatically for http/protobuf).
+- Use the **internal** collector service name + port `4318` (OTLP/HTTP), NOT the public domain.
+- HTTP/protobuf is the recommended transport here — simpler over the Dokploy Docker network,
+  no HTTP/2 negotiation. The code routes the Serilog logs sink to `/v1/logs` automatically for
+  `http/protobuf`; the OTLP trace/metric exporter appends `/v1/traces` + `/v1/metrics` itself.
+- gRPC alternative (only if you prefer it): `OTEL_EXPORTER_OTLP_PROTOCOL=grpc` with
+  `OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector:4317`.
 
 Redeploy the API. Within ~1 min, `gymapp-api` appears in SigNoz → Services.
 

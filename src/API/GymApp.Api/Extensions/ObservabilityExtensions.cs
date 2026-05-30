@@ -14,8 +14,8 @@ namespace GymApp.Api.Extensions;
 /// registered at all, so local dev and tests are unaffected.
 ///
 /// Env (set in Dokploy on the API app):
-///   OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector:4317
-///   OTEL_EXPORTER_OTLP_PROTOCOL=grpc           (default; "http/protobuf" also supported)
+///   OTEL_EXPORTER_OTLP_ENDPOINT=http://signoz-otel-collector:4318
+///   OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf  (recommended over the Docker network; "grpc" also supported on :4317)
 ///   OTEL_SERVICE_NAME=gymapp-api               (falls back to "gymapp-api")
 /// The OTLP exporter reads these standard env vars natively.
 /// </summary>
