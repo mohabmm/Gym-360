@@ -6,7 +6,13 @@ import { toast } from 'sonner';
 import { PageHeader, DataTable, StatusBadge, Modal, formatDate } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Filter, Upload } from 'lucide-react';
-import { useMembers, useCreateMember } from '@/lib/hooks/useMembers';
+import {
+  useMembers,
+  useCreateMember,
+  useLookupMemberByPhone,
+  useLinkExistingMember,
+  type ExistingMemberLookup,
+} from '@/lib/hooks/useMembers';
 import type { MemberListItem } from '@gym360/ui';
 
 const columns: ColumnDef<MemberListItem, unknown>[] = [
@@ -53,16 +59,22 @@ export default function MembersPage() {
   const router = useRouter();
   const { data: members = [], isLoading } = useMembers();
   const createMember = useCreateMember();
+  const lookupMember = useLookupMemberByPhone();
+  const linkExisting = useLinkExistingMember();
   const [statusFilter, setStatusFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', section: 'Mens' });
   const [formError, setFormError] = useState<string | null>(null);
+  // Set when staff-create reports a duplicate (409) AND we resolved who the phone
+  // belongs to — drives the "Add existing member?" confirm prompt inside the modal.
+  const [existingMatch, setExistingMatch] = useState<ExistingMemberLookup | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setNewMember({ name: '', email: '', phone: '', section: 'Mens' });
     setFormError(null);
+    setExistingMatch(null);
   };
 
   const handleAddMember = () => {
@@ -71,6 +83,7 @@ export default function MembersPage() {
       return;
     }
     setFormError(null);
+    setExistingMatch(null);
     createMember.mutate(newMember, {
       onSuccess: () => {
         toast.success(`Member ${newMember.name} added.`);
@@ -78,11 +91,41 @@ export default function MembersPage() {
         setShowAddMember(false);
       },
       onError: (err: unknown) => {
+        const status = (err as { response?: { status?: number } })?.response?.status;
         const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
           ?.response?.data?.errors?.[0]?.message ?? 'Failed to add member.';
+        // 409 = phone/email already belongs to an existing member. Resolve their
+        // identity so staff can confirm and re-link instead of creating a duplicate.
+        if (status === 409) {
+          lookupMember.mutate(newMember.phone, {
+            onSuccess: (match) => { setFormError(null); setExistingMatch(match); },
+            onError: () => setFormError(msg),
+          });
+          return;
+        }
         setFormError(msg);
       },
     });
+  };
+
+  const handleLinkExisting = () => {
+    if (!existingMatch) return;
+    setFormError(null);
+    linkExisting.mutate(
+      { phone: newMember.phone, section: newMember.section },
+      {
+        onSuccess: () => {
+          toast.success(`${existingMatch.firstName} ${existingMatch.lastName} added to your gym.`);
+          resetForm();
+          setShowAddMember(false);
+        },
+        onError: (err: unknown) => {
+          const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
+            ?.response?.data?.errors?.[0]?.message ?? 'Failed to add existing member.';
+          setFormError(msg);
+        },
+      },
+    );
   };
 
   const handleBulkImport = () => importInputRef.current?.click();
@@ -161,14 +204,39 @@ export default function MembersPage() {
         footer={
           <>
             <button onClick={() => { resetForm(); setShowAddMember(false); }} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button>
-            <button onClick={handleAddMember} disabled={createMember.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
-              {createMember.isPending ? 'Adding…' : 'Add Member'}
-            </button>
+            {existingMatch ? (
+              <button
+                onClick={handleLinkExisting}
+                disabled={linkExisting.isPending || existingMatch.isAlreadyMemberOfThisGym}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+              >
+                {linkExisting.isPending ? 'Adding…' : 'Add existing member'}
+              </button>
+            ) : (
+              <button onClick={handleAddMember} disabled={createMember.isPending || lookupMember.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
+                {createMember.isPending || lookupMember.isPending ? 'Adding…' : 'Add Member'}
+              </button>
+            )}
           </>
         }
       >
         <div className="space-y-3">
           {formError && <p className="text-sm text-destructive">{formError}</p>}
+          {existingMatch && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+              <p className="font-medium text-amber-900">
+                {existingMatch.firstName} {existingMatch.lastName} is already registered
+              </p>
+              <p className="text-amber-800">
+                {existingMatch.email} · {existingMatch.phone}
+              </p>
+              <p className="mt-1 text-amber-800">
+                {existingMatch.isAlreadyMemberOfThisGym
+                  ? 'This person is already a member of your gym.'
+                  : 'Add this existing member to your gym instead of creating a duplicate?'}
+              </p>
+            </div>
+          )}
           <label className="block">
             <span className="text-sm font-medium">Name</span>
             <input value={newMember.name} onChange={(e) => setNewMember({ ...newMember, name: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />

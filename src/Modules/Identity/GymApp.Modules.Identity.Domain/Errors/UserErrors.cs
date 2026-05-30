@@ -33,4 +33,16 @@ public static class UserErrors
     public static readonly Error PhoneReservedForOtherRole = new(
         "User.PhoneReservedForOtherRole",
         "An account with this phone already exists with another role (e.g. owner, admin, trainer). Use a different email/phone.");
+
+    // Codes carry a literal dot before "AlreadyExists" so ErrorStatusCodeMapper maps
+    // them to HTTP 409 Conflict (the ".AlreadyExists" suffix rule). Surfaced when staff
+    // try to create a NEW member whose phone/email already belongs to an existing trainee
+    // — they must re-link that member via "Add existing member" instead of silently
+    // overwriting another person's identity (the silent-reuse bug).
+    public static readonly Error MemberPhoneAlreadyExists = new(
+        "User.Phone.AlreadyExists",
+        "A member with this phone number is already registered. Use \"Add existing member\" to link them to your gym.");
+    public static readonly Error MemberEmailAlreadyExists = new(
+        "User.Email.AlreadyExists",
+        "A member with this email is already registered. Use \"Add existing member\" to link them to your gym.");
 }
