@@ -64,10 +64,10 @@ services:
         condition: service_healthy
     networks:
       - gymapp-network
-      # Shared external network (Dokploy/Traefik). API joins it to reach
-      # signoz-otel-collector by name for OTLP — attach the SigNoz compose to
-      # this same dokploy-network in Dokploy. Re-attached on every API redeploy.
-      - dokploy-network
+      # External network created by the SigNoz compose (fixed name `signoz-net`).
+      # The API joins it to reach signoz-otel-collector by name for OTLP. Deploy
+      # SigNoz first so the network exists; no edit to SigNoz's compose required.
+      - signoz-net
 
   gymapp-db:
     image: mcr.microsoft.com/mssql/server:2022-latest
