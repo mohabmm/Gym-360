@@ -77,10 +77,14 @@ export function useTrainerRankings() {
 }
 
 export function useTestimonials() {
+  const { data: session } = useSession();
+  const gymId = session?.user?.gymId;
   return useQuery<Testimonial[]>({
-    queryKey: ['testimonials'],
+    queryKey: ['testimonials', gymId],
+    enabled: !!gymId,
     queryFn: async () => {
-      const res = await apiClient.get('/gamification/testimonials/pending', { params: { page: 1, pageSize: 50 } });
+      // BE binds gymId from the query string (not the X-Gym-Id header); omitting it 400s.
+      const res = await apiClient.get('/gamification/testimonials/pending', { params: { gymId, page: 1, pageSize: 50 } });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const raw: any[] = res.data.data?.items ?? (Array.isArray(res.data.data) ? res.data.data : []);
       return raw.map((t): Testimonial => ({

@@ -1,4 +1,4 @@
-# `API/Endpoints/` — Cross-Module Orchestration Only
+# `API/Orchestration/` — Cross-Module Orchestration Only
 
 This folder is a deliberate exception to the rule that endpoints live in module `Presentation` projects.
 

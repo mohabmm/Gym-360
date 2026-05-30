@@ -6,4 +6,4 @@ public sealed record StreakMilestoneReachedIntegrationEvent(
     Guid UserId,
     Guid GymId,
     string StreakType,
-    int MilestoneDay) : IDomainEvent;
+    int MilestoneDay) : IIntegrationEvent;

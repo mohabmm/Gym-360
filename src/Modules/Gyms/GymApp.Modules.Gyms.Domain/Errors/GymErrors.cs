@@ -16,6 +16,7 @@ public static class GymErrors
     public static readonly Error TrainerNotFound = new("Gyms.TrainerNotFound", "The trainer was not found in this gym.");
     public static readonly Error ClassFull = new("Gyms.ClassFull", "The class is full and waitlist is not enabled.");
     public static readonly Error ClassNotFound = new("Gyms.ClassNotFound", "The class was not found or is not active.");
+    public static readonly Error AnnouncementNotFound = new("Gyms.AnnouncementNotFound", "The announcement was not found.");
     public static readonly Error ClassAlreadyBooked = new("Gyms.ClassAlreadyBooked", "You are already booked into this class.");
     public static readonly Error BookingNotFound = new("Gyms.BookingNotFound", "The booking was not found.");
     public static readonly Error InvalidCheckIn = new("Gyms.InvalidCheckIn", "The check-in is invalid.");

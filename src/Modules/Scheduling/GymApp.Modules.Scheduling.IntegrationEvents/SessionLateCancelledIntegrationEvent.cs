@@ -7,4 +7,4 @@ public sealed record SessionLateCancelledIntegrationEvent(
     Guid TrainerId,
     Guid MemberId,
     Guid GymId,
-    Guid CancelledBy) : IDomainEvent;
+    Guid CancelledBy) : IIntegrationEvent;

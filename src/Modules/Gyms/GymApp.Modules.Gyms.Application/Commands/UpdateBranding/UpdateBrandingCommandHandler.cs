@@ -7,7 +7,6 @@ using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.IntegrationEvents;
-using MediatR;
 
 namespace GymApp.Modules.Gyms.Application.Commands.UpdateBranding;
 
@@ -16,18 +15,18 @@ internal sealed class UpdateBrandingCommandHandler : ICommandHandler<UpdateBrand
     private readonly IGymRepository _gymRepository;
     private readonly IGymPlanService _gymPlanService;
     private readonly IGymsUnitOfWork _unitOfWork;
-    private readonly IPublisher _publisher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public UpdateBrandingCommandHandler(
         IGymRepository gymRepository,
         IGymPlanService gymPlanService,
         IGymsUnitOfWork unitOfWork,
-        IPublisher publisher)
+        IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
         _gymPlanService = gymPlanService;
         _unitOfWork = unitOfWork;
-        _publisher = publisher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result> Handle(UpdateBrandingCommand request, CancellationToken cancellationToken)
@@ -55,20 +54,20 @@ internal sealed class UpdateBrandingCommandHandler : ICommandHandler<UpdateBrand
         gym.UpdateBranding(branding);
 
         _gymRepository.Update(gym);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Real-time fan-out: SignalR (web/mobile foreground) handler in API host
         // broadcasts to gym:{id} group so connected trainee/trainer/staff clients
         // invalidate cached branding without re-login. Mobile foreground covered
         // by SignalR; background refresh deferred (login fetch refreshes).
-        await _publisher.Publish(
+        _integrationEvents.Enqueue(
             new GymBrandingUpdatedIntegrationEvent(
                 request.GymId,
                 request.LogoUrl,
                 request.PrimaryColor,
                 request.SecondaryColor,
-                request.CoverPhotoUrl),
-            cancellationToken);
+                request.CoverPhotoUrl));
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

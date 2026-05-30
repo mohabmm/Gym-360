@@ -39,6 +39,7 @@ public static class ErrorStatusCodeMapper
             _ when code.EndsWith(".EmailNotVerified", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
             _ when code.EndsWith(".AccountSuspended", StringComparison.Ordinal) => StatusCodes.Status403Forbidden,
             _ when code.EndsWith(".AccountDeleted", StringComparison.Ordinal) => StatusCodes.Status403Forbidden,
+            _ when code.EndsWith(".AlreadyActiveInAnotherGym", StringComparison.Ordinal) => StatusCodes.Status409Conflict,
             _ when code.EndsWith(".Unauthorized", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
             _ when code.EndsWith(".Forbidden", StringComparison.Ordinal) => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest,

@@ -35,4 +35,14 @@ internal sealed class AnnouncementRepository : IAnnouncementRepository
     {
         await _dbContext.Announcements.AddAsync(announcement, cancellationToken);
     }
+
+    public void Update(Announcement announcement)
+    {
+        _dbContext.Announcements.Update(announcement);
+    }
+
+    public void Remove(Announcement announcement)
+    {
+        _dbContext.Announcements.Remove(announcement);
+    }
 }

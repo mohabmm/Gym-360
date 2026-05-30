@@ -194,6 +194,61 @@ public sealed class UserTests
         user.GymMemberships.Should().ContainSingle();
     }
 
+    // Regression: SigNoz-confirmed 500 on staff-create-trainer. A trainer Active
+    // at gym A, re-linked to gym B (reuse path), used to add a 2nd active membership
+    // and trip the DB filtered unique index → unhandled DbUpdateException → 500.
+    // One-Gym rule (Rule 11) must reject in-domain with a clean conflict instead.
+    [Fact]
+    public void LinkToGym_TrainerAlreadyActiveInAnotherGym_ShouldReturnConflict()
+    {
+        var user = CreateDefaultUser(UserRole.Trainer);
+        user.LinkToGym(Guid.NewGuid(), UserRole.Trainer, null, null);
+
+        var result = user.LinkToGym(Guid.NewGuid(), UserRole.Trainer, null, null);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("User.AlreadyActiveInAnotherGym");
+        user.GymMemberships.Should().ContainSingle(); // second gym not linked
+    }
+
+    [Fact]
+    public void LinkToGym_TraineeAlreadyActiveInAnotherGym_ShouldReturnConflict()
+    {
+        var user = CreateDefaultUser(UserRole.Trainee);
+        user.LinkToGym(Guid.NewGuid(), UserRole.Trainee, null, "MEM001");
+
+        var result = user.LinkToGym(Guid.NewGuid(), UserRole.Trainee, null, "MEM002");
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("User.AlreadyActiveInAnotherGym");
+    }
+
+    [Fact]
+    public void LinkToGym_StaffAlreadyActiveInAnotherGym_ShouldReturnConflict()
+    {
+        var user = CreateDefaultUser(UserRole.GymStaff);
+        user.LinkToGym(Guid.NewGuid(), UserRole.GymStaff, null, null);
+
+        var result = user.LinkToGym(Guid.NewGuid(), UserRole.GymStaff, null, null);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("User.AlreadyActiveInAnotherGym");
+    }
+
+    [Fact]
+    public void LinkToGym_OwnerActiveInAnotherGym_IsExemptFromOneGymRule()
+    {
+        // Owners scope across many gyms via OwnerId, so the One-Gym membership
+        // guard must NOT apply to the GymOwner role.
+        var user = CreateDefaultUser(UserRole.GymOwner);
+        user.LinkToGym(Guid.NewGuid(), UserRole.GymOwner, null, null);
+
+        var result = user.LinkToGym(Guid.NewGuid(), UserRole.GymOwner, null, null);
+
+        result.IsSuccess.Should().BeTrue();
+        user.GymMemberships.Should().HaveCount(2);
+    }
+
     [Fact]
     public void AddRefreshToken_ShouldAddToCollection()
     {

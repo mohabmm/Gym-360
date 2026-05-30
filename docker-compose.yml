@@ -9,9 +9,14 @@ services:
       dockerfile: src/API/GymApp.Api/Dockerfile
     container_name: gymapp-api
     ports:
-      # Bind to loopback only — Dokploy/Traefik reaches the API via the internal
-      # docker network. Local dev still works through 127.0.0.1:8080.
-      - "127.0.0.1:8080:8080"
+      # Loopback-only host publish, purely for local `docker compose` dev — on
+      # Dokploy the API is reached over the internal network (its domain routes
+      # there), so no host port is needed. The 127.0.0.1 prefix is HARDCODED so
+      # only the host PORT is overridable, never the bind address — it can never
+      # be exposed on a public interface via env. SigNoz also publishes :8080, so
+      # on staging set API_HTTP_PORT=8090 (or any free loopback port) to avoid the
+      # clash. Local dev keeps 8080.
+      - "127.0.0.1:${API_HTTP_PORT:-8080}:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - ConnectionStrings__Database=Server=gymapp-db,1433;Database=GymApp;User Id=sa;Password=${DB_SA_PASSWORD:-GymApp_P@ss2024!};TrustServerCertificate=True
@@ -21,6 +26,9 @@ services:
       - Cors__AllowedOrigins__0=${CORS_ORIGIN_0:-http://localhost:3000}
       - Cors__AllowedOrigins__1=${CORS_ORIGIN_1:-http://localhost:3001}
       - Cors__AllowedOrigins__2=${CORS_ORIGIN_2:-http://localhost:3003}
+      # Staging web hosts — always allowed so deployed admin/staff logins pass CORS.
+      - Cors__AllowedOrigins__3=${CORS_ORIGIN_3:-https://staging-admin.gym-365.com}
+      - Cors__AllowedOrigins__4=${CORS_ORIGIN_4:-https://staging-staff.gym-365.com}
       # FCM disabled by default. To enable: set FCM_ENABLED=true, place the
       # service-account JSON at ./config/firebase-service-account.json, and
       # uncomment the matching volume mount below.
@@ -38,6 +46,15 @@ services:
       - Seed__RunDemoData=${SEED_RUN_DEMO_DATA:-false}
       - Identity__RunDevSeeder=${IDENTITY_RUN_DEV_SEEDER:-true}
       - Identity__DevSeederScope=${IDENTITY_DEV_SEEDER_SCOPE:-admin}
+      # OpenTelemetry → self-hosted SigNoz (deploy/signoz). No-op unless
+      # OTEL_EXPORTER_OTLP_ENDPOINT is set, so it defaults to empty/off and only
+      # activates on staging where SigNoz runs. Collector reached over the external
+      # `signoz-net` network (joined below), which the SigNoz compose creates with a
+      # fixed name — so no edit to SigNoz's git-sourced compose is needed. Deploy
+      # SigNoz first so the network exists. OTLP/HTTP on :4318.
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-gymapp-api}
     # FCM service-account mount disabled by default. The host file is gitignored
     # and missing on Dokploy hosts, which causes a bind-mount failure at start.
     # Re-enable locally once ./config/firebase-service-account.json exists.
@@ -52,6 +69,10 @@ services:
         condition: service_healthy
     networks:
       - gymapp-network
+      # External network created by the SigNoz compose (fixed name `signoz-net`).
+      # The API joins it to reach signoz-otel-collector by name for OTLP. Deploy
+      # SigNoz first so the network exists; no edit to SigNoz's compose required.
+      - signoz-net
 
   gymapp-db:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -112,6 +133,56 @@ services:
     networks:
       - gymapp-network
 
+  # --- Web apps (Next.js, monorepo in gym-360-web/) ---
+  # Routed by Traefik via the labels below on the external dokploy-network.
+  # NEXT_PUBLIC_API_URL is a BUILD ARG (baked into the JS bundle) — changing it
+  # requires a rebuild, not just a restart.
+  gym-360-admin-web:
+    build:
+      context: ./gym-360-web
+      dockerfile: Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_URL: ${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+    container_name: gym-360-admin-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL_ADMIN:-https://staging-admin.gym-365.com}
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.gym-360-admin-web.rule=Host(`staging-admin.gym-365.com`)"
+      - "traefik.http.routers.gym-360-admin-web.entrypoints=websecure"
+      - "traefik.http.routers.gym-360-admin-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gym-360-admin-web.loadbalancer.server.port=3000"
+
+  gym-360-staff-web:
+    build:
+      context: ./gym-360-web
+      dockerfile: Dockerfile.gym-staff
+      args:
+        NEXT_PUBLIC_API_URL: ${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+    container_name: gym-360-staff-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${WEB_API_URL:-https://staging-api.gym-365.com/api/v1}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?set NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL_STAFF:-https://staging-staff.gym-365.com}
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.gym-360-staff-web.rule=Host(`staging-staff.gym-365.com`)"
+      - "traefik.http.routers.gym-360-staff-web.entrypoints=websecure"
+      - "traefik.http.routers.gym-360-staff-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gym-360-staff-web.loadbalancer.server.port=3000"
+
 volumes:
   gymapp-db-data:
   gymapp-redis-data:
@@ -119,4 +190,12 @@ volumes:
 
 networks:
   gymapp-network:
+  # External network created by Dokploy; Traefik lives here and routes the web apps.
+  dokploy-network:
+    external: true
     driver: bridge
+  # External network created by the SigNoz compose (deploy/signoz, fixed name
+  # `signoz-net`). External here so this compose joins it instead of creating it —
+  # deploy SigNoz before the API so the network already exists.
+  signoz-net:
+    external: true

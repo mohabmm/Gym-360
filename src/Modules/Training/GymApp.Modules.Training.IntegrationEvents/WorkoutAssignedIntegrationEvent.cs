@@ -6,4 +6,4 @@ public sealed record WorkoutAssignedIntegrationEvent(
     Guid TrainerId,
     Guid ClientId,
     Guid GymId,
-    string WorkoutName) : IDomainEvent;
+    string WorkoutName) : IIntegrationEvent;

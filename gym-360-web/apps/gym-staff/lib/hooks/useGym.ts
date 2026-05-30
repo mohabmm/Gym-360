@@ -26,7 +26,7 @@ function normaliseGym(g: any): GymProfile {
     website: g.contact?.website ?? g.website ?? '',
     street: g.address?.street ?? '',
     city: g.address?.city ?? '',
-    area: g.address?.area ?? '',
+    area: g.address?.area ?? g.address?.state ?? '',
     amenities: g.amenities ?? [],
   };
 }
@@ -54,8 +54,11 @@ export function useUpdateGym() {
       const res = await apiClient.put(`/gyms/${gymId}`, {
         name: data.name,
         description: data.description,
+        // BE AddressDto requires street/city/country (validator NotEmpty). The UI
+        // only collects street/city/area, so map area→state, default country to
+        // Egypt, and send zipCode. Without `country` the save 400s.
         address: (data.street || data.city || data.area)
-          ? { street: data.street, city: data.city, area: data.area }
+          ? { street: data.street ?? '', city: data.city ?? '', state: data.area ?? '', country: 'Egypt', zipCode: '' }
           : undefined,
         contact: (data.phone || data.email || data.website)
           ? { phone: data.phone, email: data.email, website: data.website }

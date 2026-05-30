@@ -93,7 +93,10 @@ export const BILLING = {
   SESSION_PACKAGE: (id: string) => `/billing/session-packages/${id}`,
   SESSION_PACKAGE_TEMPLATES: '/billing/session-package-templates',
   PLAN_CHANGE_LOG: '/admin/plan-change-log',
-  MY_FEATURES: '/billing/my-features',
+  // The tenant's effective features (plan + per-gym overrides). Gym is supplied
+  // via the X-Gym-Id header injected by api-client. The old '/billing/my-features'
+  // path 404'd, leaving every FeatureGate stuck on the upgrade prompt.
+  MY_FEATURES: '/billing/plan-features',
 } as const;
 
 // Communication Module

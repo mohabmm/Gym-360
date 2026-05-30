@@ -6,4 +6,4 @@ public sealed record MemberAddedToGymIntegrationEvent(
     Guid GymId,
     Guid MemberId,
     string? Section,
-    string? MemberNumber) : IDomainEvent;
+    string? MemberNumber) : IIntegrationEvent;

@@ -7,4 +7,4 @@ public sealed record SessionBookedIntegrationEvent(
     Guid TrainerId,
     Guid MemberId,
     Guid GymId,
-    DateTime ScheduledAt) : IDomainEvent;
+    DateTime ScheduledAt) : IIntegrationEvent;

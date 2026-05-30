@@ -12,4 +12,4 @@ public sealed record DataImportPaymentIntegrationEvent(
     string PaymentMethod,
     string Purpose,
     string ReceiptNumber,
-    DateTime PaidAt) : IDomainEvent;
+    DateTime PaidAt) : IIntegrationEvent;

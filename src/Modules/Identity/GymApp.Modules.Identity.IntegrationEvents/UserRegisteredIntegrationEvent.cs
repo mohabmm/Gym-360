@@ -7,4 +7,4 @@ public sealed record UserRegisteredIntegrationEvent(
     string Email,
     string FirstName,
     string LastName,
-    string Role) : IDomainEvent;
+    string Role) : IIntegrationEvent;

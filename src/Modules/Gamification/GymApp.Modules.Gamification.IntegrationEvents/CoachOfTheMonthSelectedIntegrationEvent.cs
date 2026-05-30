@@ -6,4 +6,4 @@ public sealed record CoachOfTheMonthSelectedIntegrationEvent(
     Guid TrainerId,
     Guid GymId,
     int Month,
-    int Year) : IDomainEvent;
+    int Year) : IIntegrationEvent;
