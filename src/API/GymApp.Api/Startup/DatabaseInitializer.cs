@@ -113,6 +113,43 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_gyms_GymCode' AND obje
             logger.LogError(ex, "Tenant registry GymCode column patch failed");
         }
 
+        // Step 1a' — Durable-outbox backfill (seed §0.6.1). OutboxDbContext has no
+        // migrations (it uses EnsureCreated), so per-gym g{N}_outbox_messages tables
+        // created before the durable-integration-events upgrade are NEVER altered by a
+        // redeploy — EnsureCreated only CREATEs missing tables, it doesn't add columns.
+        // Result: per-gym module WRITES (add-member enroll, announcement, …) 500 on the
+        // outbox INSERT because RetryCount / the consumer ledger are missing, while reads
+        // look healthy. This schema-agnostic, idempotent backfill adds them to EVERY
+        // existing outbox_messages schema (excluding migration-owned 'identity'), so a
+        // normal deploy self-heals. New gyms already get these from the EF model via
+        // GymProvisioningService.CreateTablesAsync.
+        try
+        {
+            var registry = sp.GetRequiredService<GymApp.Common.Infrastructure.Tenancy.Registry.TenantRegistryDbContext>();
+            await registry.Database.ExecuteSqlRawAsync(@"
+SET QUOTED_IDENTIFIER ON;
+DECLARE @outboxUpgrade nvarchar(max) = N'';
+SELECT @outboxUpgrade = @outboxUpgrade + N'
+IF COL_LENGTH(' + QUOTENAME(s.name + N'.outbox_messages', '''') + N', ''RetryCount'') IS NULL
+    ALTER TABLE ' + QUOTENAME(s.name) + N'.outbox_messages
+        ADD RetryCount int NOT NULL CONSTRAINT ' + QUOTENAME(N'DF_' + s.name + N'_outbox_RetryCount') + N' DEFAULT 0;
+IF OBJECT_ID(' + QUOTENAME(s.name + N'.outbox_message_consumers', '''') + N', ''U'') IS NULL
+    CREATE TABLE ' + QUOTENAME(s.name) + N'.outbox_message_consumers (
+        OutboxMessageId uniqueidentifier NOT NULL,
+        Name            nvarchar(200)    NOT NULL,
+        CONSTRAINT ' + QUOTENAME(N'PK_' + s.name + N'_outbox_message_consumers') + N' PRIMARY KEY (OutboxMessageId, Name)
+    );'
+FROM sys.schemas s
+WHERE OBJECT_ID(s.name + N'.outbox_messages', 'U') IS NOT NULL
+  AND s.name <> N'identity';
+IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
+            logger.LogInformation("Durable-outbox backfill (RetryCount + consumer ledger) ensured across existing schemas.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Durable-outbox backfill failed; per-gym writes may 500 on the outbox INSERT.");
+        }
+
         var tenancy = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<GymApp.Common.Infrastructure.Tenancy.TenancyOptions>>().Value;
 
         // Step 1b — Hard-mode reference data bootstrap.
