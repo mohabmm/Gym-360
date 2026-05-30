@@ -41,6 +41,14 @@ services:
       - Seed__RunDemoData=${SEED_RUN_DEMO_DATA:-false}
       - Identity__RunDevSeeder=${IDENTITY_RUN_DEV_SEEDER:-true}
       - Identity__DevSeederScope=${IDENTITY_DEV_SEEDER_SCOPE:-admin}
+      # OpenTelemetry → self-hosted SigNoz (deploy/signoz). No-op unless
+      # OTEL_EXPORTER_OTLP_ENDPOINT is set, so it defaults to empty/off and only
+      # activates on staging where SigNoz runs. Collector reached over the shared
+      # external dokploy-network (joined below); attach the SigNoz compose to that
+      # same network in Dokploy so `signoz-otel-collector` resolves. OTLP/HTTP :4318.
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-gymapp-api}
     # FCM service-account mount disabled by default. The host file is gitignored
     # and missing on Dokploy hosts, which causes a bind-mount failure at start.
     # Re-enable locally once ./config/firebase-service-account.json exists.
@@ -55,6 +63,10 @@ services:
         condition: service_healthy
     networks:
       - gymapp-network
+      # Shared external network (Dokploy/Traefik). API joins it to reach
+      # signoz-otel-collector by name for OTLP — attach the SigNoz compose to
+      # this same dokploy-network in Dokploy. Re-attached on every API redeploy.
+      - dokploy-network
 
   gymapp-db:
     image: mcr.microsoft.com/mssql/server:2022-latest
