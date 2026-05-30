@@ -754,7 +754,15 @@ test.describe('Admin Bug Hunt — Dashboard', () => {
     await page.waitForTimeout(4000);
 
     const criticalErrors = consoleErrors.filter(
-      (e) => !e.includes('SignalR') && !e.includes('negotiation') && !e.includes('Unauthorized'),
+      (e) =>
+        !e.includes('SignalR') &&
+        !e.includes('negotiation') &&
+        !e.includes('Unauthorized') &&
+        // Next.js link-prefetch noise: RSC payload prefetch can fail over the
+        // network and harmlessly falls back to a full browser navigation. Not
+        // an app error — exclude so the dashboard check isn't flaky.
+        !e.includes('RSC payload') &&
+        !/Failed to fetch.*Falling back to browser navigation/.test(e),
     );
 
     if (criticalErrors.length > 0) {
@@ -1128,9 +1136,11 @@ test.describe('Admin Bug Hunt — Gym Detail Actions', () => {
       return;
     }
 
-    // Intercept PATCH to force failure
+    // Intercept the gym-update mutation to force failure. The page saves via
+    // PUT (apiPut → GYMS.UPDATE); fail any write verb so the catch path runs.
     await page.route('**/api/v1/gyms/**', (route) => {
-      if (route.request().method() === 'PATCH') return route.fulfill({ status: 500, body: '{"error":"Server error"}' });
+      const m = route.request().method();
+      if (m === 'PUT' || m === 'PATCH') return route.fulfill({ status: 500, body: '{"error":"Server error"}' });
       return route.continue();
     });
 
