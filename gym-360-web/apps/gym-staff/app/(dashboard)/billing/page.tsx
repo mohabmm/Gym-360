@@ -52,7 +52,7 @@ export default function BillingPage() {
   const [editingTemplate, setEditingTemplate] = useState<SessionPackageTemplate | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignForm, setAssignForm] = useState({ memberId: '', templateId: '' });
-  const [paymentForm, setPaymentForm] = useState({ memberId: '', amount: '', type: 'membership', method: 'cash' });
+  const [paymentForm, setPaymentForm] = useState({ memberId: '', amount: '', type: 'Membership', method: 'Cash' });
 
   const { data: plans = [] } = useMembershipPlans();
   const { data: templates = [] } = useSessionPackageTemplates();
@@ -106,7 +106,7 @@ export default function BillingPage() {
       {
         onSuccess: () => {
           toast.success(`Payment of ${formatCurrency(amount)} recorded for ${member?.name}.`);
-          setPaymentForm({ memberId: '', amount: '', type: 'membership', method: 'cash' });
+          setPaymentForm({ memberId: '', amount: '', type: 'Membership', method: 'Cash' });
           setShowRecordPayment(false);
         },
         onError: (err) => showApiError(err, 'Failed to record payment.'),
@@ -579,22 +579,18 @@ export default function BillingPage() {
           <div>
             <label className="block text-sm font-medium mb-1.5">Payment Type</label>
             <select value={paymentForm.type} onChange={(e) => setPaymentForm({ ...paymentForm, type: e.target.value })} className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm">
-              <option value="membership">Membership</option>
-              <option value="session_package">Session Package</option>
-              <option value="personal_training">Personal Training</option>
-              <option value="class">Class</option>
-              <option value="other">Other</option>
+              <option value="Membership">Membership</option>
+              <option value="SessionPackage">Session Package</option>
+              <option value="Product">Product</option>
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1.5">Payment Method</label>
             <select value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })} className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm">
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="vodafone_cash">Vodafone Cash</option>
-              <option value="instapay">InstaPay</option>
-              <option value="fawry">Fawry</option>
-              <option value="bank_transfer">Bank Transfer</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+              <option value="Online">Online</option>
+              <option value="BankTransfer">Bank Transfer</option>
             </select>
           </div>
         </div>

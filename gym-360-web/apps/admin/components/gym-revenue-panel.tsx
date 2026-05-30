@@ -33,6 +33,7 @@ type Props = {
 type PaymentRow = {
   id: string;
   memberId: string;
+  memberName?: string | null;
   amount: number;
   currency: string;
   paymentMethod: string;
@@ -45,6 +46,12 @@ type PaymentRow = {
 };
 
 type PagedPayments = { items: PaymentRow[]; page: number; pageSize: number; total: number };
+
+// BE sends enum names in PascalCase ("SessionPackage", "BankTransfer"); space them for display.
+const humanize = (v?: string | null): string =>
+  String(v ?? '')
+    .replace(/_/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 
 const METHOD_COLORS: Record<string, string> = {
   cash: '#10B981',
@@ -327,6 +334,7 @@ export function GymRevenuePanel({ gymId }: Props) {
               <thead>
                 <tr className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="text-left py-2.5 px-4 font-semibold">Receipt</th>
+                  <th className="text-left py-2.5 px-4 font-semibold">Member</th>
                   <th className="text-left py-2.5 px-4 font-semibold">Purpose</th>
                   <th className="text-left py-2.5 px-4 font-semibold">Method</th>
                   <th className="text-right py-2.5 px-4 font-semibold">Amount</th>
@@ -338,8 +346,9 @@ export function GymRevenuePanel({ gymId }: Props) {
                 {recent.map((p) => (
                   <tr key={p.id} className="border-b last:border-0 hover:bg-muted/40">
                     <td className="py-2.5 px-4 font-mono text-xs">{p.receiptNumber}</td>
-                    <td className="py-2.5 px-4 capitalize">{p.purpose.replace(/_/g, ' ')}</td>
-                    <td className="py-2.5 px-4 capitalize">{p.paymentMethod.replace(/_/g, ' ')}</td>
+                    <td className="py-2.5 px-4 font-medium">{p.memberName ?? '—'}</td>
+                    <td className="py-2.5 px-4 capitalize">{humanize(p.purpose)}</td>
+                    <td className="py-2.5 px-4 capitalize">{humanize(p.paymentMethod)}</td>
                     <td className="py-2.5 px-4 text-right font-medium">
                       {formatCurrency(p.amount)}
                     </td>

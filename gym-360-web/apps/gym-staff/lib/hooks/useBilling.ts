@@ -48,12 +48,43 @@ export function useActivePackages() {
   });
 }
 
+// BE returns enum names in PascalCase (e.g. "Completed", "SessionPackage", "BankTransfer")
+// and uses purpose/paymentMethod field names. The UI compares lowercase tokens and renders
+// snake_case as spaced words, so normalize the shape here.
+const toToken = (v: unknown): string =>
+  String(v ?? '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase();
+
+type RawPayment = {
+  id: string;
+  memberId: string;
+  memberName?: string | null;
+  amount: number;
+  status?: string;
+  paymentMethod?: string;
+  method?: string;
+  purpose?: string;
+  type?: string;
+  paidAt?: string | null;
+  createdAt: string;
+};
+
 export function usePayments(pageSize = 50) {
   return useQuery<PaymentListItem[]>({
     queryKey: ['payments', pageSize],
     queryFn: async () => {
       const res = await apiClient.get('/billing/payments', { params: { page: 1, pageSize } });
-      return res.data.data?.items ?? res.data.data ?? [];
+      const raw: RawPayment[] = res.data.data?.items ?? res.data.data ?? [];
+      return raw.map((p) => ({
+        id: p.id,
+        memberName: p.memberName ?? '—',
+        amount: p.amount,
+        status: toToken(p.status) as PaymentListItem['status'],
+        method: toToken(p.paymentMethod ?? p.method) as PaymentListItem['method'],
+        type: toToken(p.purpose ?? p.type) as PaymentListItem['type'],
+        createdAt: p.paidAt ?? p.createdAt,
+      }));
     },
   });
 }

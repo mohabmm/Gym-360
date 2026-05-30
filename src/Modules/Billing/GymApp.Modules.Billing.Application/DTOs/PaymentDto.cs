@@ -14,4 +14,5 @@ public sealed record PaymentDto(
     Guid RecordedBy,
     string? VoidReason,
     DateTime? PaidAt,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? MemberName = null);
