@@ -65,7 +65,7 @@ removes the race in Layer 1 and adds defense-in-depth.
 
 ### Also
 - **Do NOT** add a public domain to the OTLP collector port (`4317`/`4318`) — keep it
-  internal-only (the compose already does; it's reached over `dokploy-network`).
+  internal-only (the compose already does; it's reached over the `signoz-net` network).
 - Only the UI (`signoz` :8080) gets a public domain.
 
 ## Connect the API (both options)
