@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Service registration (see Extensions/*) ---
 builder.AddCommonInfrastructure();   // Serilog, clock, JWT service, outbox, tenancy, Redis, Quartz, MediatR
+builder.AddObservability();          // OpenTelemetry traces + metrics → OTLP/SigNoz (no-op if OTEL endpoint unset)
 builder.AddJwtAuthentication();      // JWT bearer + secret fail-fast + SignalR token handoff
 builder.AddAuthorizationPolicies();  // claim/role-based policies
 builder.AddApplicationModules();     // assembly force-load + 9 feature modules
