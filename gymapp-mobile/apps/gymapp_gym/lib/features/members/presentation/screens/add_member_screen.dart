@@ -33,21 +33,32 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
+    final apiClient = ref.read(apiClientProvider);
+    final gymId = ref.read(currentGymIdProvider);
+    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
     try {
-      final apiClient = ref.read(apiClientProvider);
-      final gymId = ref.read(currentGymIdProvider);
-      final email = _emailController.text.trim();
-
-      final userId = await apiClient.post<String>(
-        ApiEndpoints.identityStaffCreateUser,
-        data: {
-          'firstName': _firstNameController.text.trim(),
-          'lastName': _lastNameController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          if (email.isNotEmpty) 'email': email,
-        },
-        parser: (data) => (data as Map<String, dynamic>)['userId'] as String,
-      );
+      final String userId;
+      try {
+        userId = await apiClient.post<String>(
+          ApiEndpoints.identityStaffCreateUser,
+          data: {
+            'firstName': _firstNameController.text.trim(),
+            'lastName': _lastNameController.text.trim(),
+            'phone': phone,
+            if (email.isNotEmpty) 'email': email,
+          },
+          parser: (data) => (data as Map<String, dynamic>)['userId'] as String,
+        );
+      } on ApiException catch (e) {
+        // 409 = phone/email already belongs to an existing member. Offer to re-link
+        // them to this gym instead of creating a duplicate (matches staff web).
+        if (e.statusCode == 409) {
+          await _offerLinkExisting(phone);
+          return;
+        }
+        rethrow;
+      }
 
       await apiClient.post<void>(
         ApiEndpoints.gymMembers(gymId),
@@ -65,6 +76,79 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Resolves the existing trainee behind a duplicate phone, asks staff to confirm,
+  /// then re-links them to this gym via staff-link-existing (no duplicate created).
+  Future<void> _offerLinkExisting(String phone) async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final apiClient = ref.read(apiClientProvider);
+
+    Map<String, dynamic> match;
+    try {
+      match = await apiClient.get<Map<String, dynamic>>(
+        ApiEndpoints.identityStaffLookupUser,
+        queryParameters: {'phone': phone},
+        parser: (data) => data as Map<String, dynamic>,
+      );
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+      return;
+    }
+
+    final name =
+        '${match['firstName'] ?? ''} ${match['lastName'] ?? ''}'.trim();
+    final alreadyMember = match['isAlreadyMemberOfThisGym'] == true;
+    if (!mounted) return;
+
+    if (alreadyMember) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic
+            ? '$name عضو بالفعل في هذه الصالة'
+            : '$name is already a member of this gym'),
+      ));
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isArabic ? 'عضو موجود' : 'Existing member'),
+        content: Text(isArabic
+            ? 'يوجد عضو مسجل بهذا الرقم: $name (${match['email'] ?? ''}). إضافته إلى صالتك؟'
+            : 'A member with this phone already exists: $name (${match['email'] ?? ''}). Add them to your gym?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(isArabic ? 'إلغاء' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isArabic ? 'إضافة' : 'Add'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await apiClient.post<void>(
+        ApiEndpoints.identityStaffLinkExisting,
+        data: {'phone': phone},
+        parser: (_) {},
+      );
+      if (mounted) {
+        ref.invalidate(membersProvider);
+        context.pop();
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 

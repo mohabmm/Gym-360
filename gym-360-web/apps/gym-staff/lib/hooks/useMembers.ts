@@ -67,16 +67,19 @@ export function useCreateMember() {
     }) => {
       const [firstName, ...rest] = data.name.trim().split(/\s+/);
       const lastName = rest.join(' ') || firstName;
-      // staff-create is the single authoritative entry point: it creates/reuses
+      // staff-create is the authoritative entry point for NEW members: it creates
       // the Trainee user, calls AddMemberCommand (gym.MemberIds + gym_members
-      // directory row), and links the user to the gym. A separate
-      // POST /gyms/{id}/members would re-enter AddMemberCommand and trip
-      // Gyms.MemberAlreadyAdded — leaving the dashboard stale.
+      // directory row), and links the user to the gym. It now REJECTS a phone/email
+      // that already belongs to an existing member (409) instead of silently
+      // returning that other person's account — the caller handles 409 by offering
+      // the "Add existing member" re-link flow (useLinkExistingMember).
+      // Email is sent only when provided; the backend synthesizes a stable
+      // placeholder from the phone otherwise (no Date.now() churn that masked dups).
       const userRes = await apiClient.post('/identity/users/staff-create', {
         firstName,
         lastName,
         phone: data.phone,
-        email: data.email || `${firstName.toLowerCase()}.${Date.now()}@member.local`,
+        ...(data.email ? { email: data.email } : {}),
         section: data.section,
       });
       const userId =
@@ -85,6 +88,49 @@ export function useCreateMember() {
         throw new Error('Identity service did not return a user id.');
       }
       return userRes.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['members', gymId] }),
+  });
+}
+
+export interface ExistingMemberLookup {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  isAlreadyMemberOfThisGym: boolean;
+}
+
+/**
+ * Resolves an existing trainee by phone so the Add Member dialog can confirm a
+ * returning member before re-linking. Called when staff-create returns 409
+ * (phone/email already registered). Backed by GET /identity/users/staff-lookup.
+ */
+export function useLookupMemberByPhone() {
+  return useMutation<ExistingMemberLookup, unknown, string>({
+    mutationFn: async (phone: string) => {
+      const res = await apiClient.get('/identity/users/staff-lookup', { params: { phone } });
+      return res.data.data as ExistingMemberLookup;
+    },
+  });
+}
+
+/**
+ * Re-links an existing trainee (resolved by phone) to the staff's gym without
+ * creating a duplicate. Backed by POST /identity/users/staff-link-existing.
+ */
+export function useLinkExistingMember() {
+  const { data: session } = useSession();
+  const gymId = session?.user?.gymId;
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { phone: string; section?: string }) => {
+      const res = await apiClient.post('/identity/users/staff-link-existing', {
+        phone: data.phone,
+        section: data.section,
+      });
+      return res.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['members', gymId] }),
   });
