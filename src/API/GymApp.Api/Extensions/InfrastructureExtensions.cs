@@ -25,8 +25,40 @@ public static class InfrastructureExtensions
     public static WebApplicationBuilder AddCommonInfrastructure(this WebApplicationBuilder builder)
     {
         // --- Serilog ---
+        // Sinks come from appsettings "Serilog" (Console + Seq). When an OTLP
+        // endpoint is configured (Dokploy/SigNoz), ALSO ship logs over OTLP so
+        // logs correlate with traces in SigNoz. No endpoint set → Seq-only, as before.
         builder.Host.UseSerilog((context, configuration) =>
-            configuration.ReadFrom.Configuration(context.Configuration));
+        {
+            configuration.ReadFrom.Configuration(context.Configuration);
+
+            var otlpEndpoint = context.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
+                               ?? context.Configuration["Otel:Endpoint"];
+            if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+            {
+                var serviceName = context.Configuration["OTEL_SERVICE_NAME"]
+                                  ?? context.Configuration["Otel:ServiceName"]
+                                  ?? "gymapp-api";
+                var useHttp = string.Equals(
+                    context.Configuration["OTEL_EXPORTER_OTLP_PROTOCOL"],
+                    "http/protobuf",
+                    StringComparison.OrdinalIgnoreCase);
+
+                configuration.WriteTo.OpenTelemetry(options =>
+                {
+                    // Serilog's OTLP sink wants the signal-specific logs path for HTTP,
+                    // and the base gRPC endpoint otherwise.
+                    options.Endpoint = useHttp ? $"{otlpEndpoint.TrimEnd('/')}/v1/logs" : otlpEndpoint;
+                    options.Protocol = useHttp
+                        ? Serilog.Sinks.OpenTelemetry.OtlpProtocol.HttpProtobuf
+                        : Serilog.Sinks.OpenTelemetry.OtlpProtocol.Grpc;
+                    options.ResourceAttributes = new Dictionary<string, object>
+                    {
+                        ["service.name"] = serviceName,
+                    };
+                });
+            }
+        });
 
         // --- Common services ---
         builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
