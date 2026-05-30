@@ -116,6 +116,15 @@ public sealed class User : Entity
         if (_gymMemberships.Any(m => m.GymId == gymId && m.Role == role && m.IsActive))
             return Result.Failure(Errors.UserErrors.AlreadyLinkedToGym);
 
+        // One-Gym principal rule (CLAUDE.md Rule 11): Trainer/Trainee/GymStaff hold at
+        // most one Active membership across ALL gyms — enforced in the DB by the filtered
+        // unique index UX_user_gym_memberships_active_per_user. Mirror it here so callers
+        // get a clean 409 instead of an unhandled 500 (DbUpdateException) at SaveChanges.
+        // Owners scope across gyms via OwnerId, not memberships, so they are exempt.
+        if (role is UserRole.Trainer or UserRole.Trainee or UserRole.GymStaff
+            && _gymMemberships.Any(m => m.IsActive && m.GymId != gymId))
+            return Result.Failure(Errors.UserErrors.AlreadyActiveInAnotherGym);
+
         // Trainees must always have a MemberNumber so the trainee app's QR check-in
         // works. Non-trainee roles (Owner/Staff/Trainer) don't need one.
         if (role == UserRole.Trainee && string.IsNullOrWhiteSpace(memberNumber))

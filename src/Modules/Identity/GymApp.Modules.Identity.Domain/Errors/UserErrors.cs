@@ -21,6 +21,9 @@ public static class UserErrors
     public static readonly Error InvalidPhoneNumber = new("User.InvalidPhoneNumber", "The provided phone number is not valid.");
     public static readonly Error UnderMinimumAge = new("User.UnderMinimumAge", "User does not meet the minimum age requirement.");
     public static readonly Error AlreadyLinkedToGym = new("User.AlreadyLinkedToGym", "User is already linked to this gym with the specified role.");
+    public static readonly Error AlreadyActiveInAnotherGym = new(
+        "User.AlreadyActiveInAnotherGym",
+        "This person already has an active membership at another gym. Trainers, trainees and staff can belong to only one gym at a time (One-Gym rule) — offboard them from the other gym first.");
     public static readonly Error TraineeMembershipMissingMemberNumber = new(
         "User.TraineeMembershipMissingMemberNumber",
         "Trainee gym memberships must be created with a non-empty MemberNumber. Register the user via IGymMemberDirectory.RegisterAsync to obtain one.");
