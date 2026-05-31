@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gymapp_core/gymapp_core.dart' show TelemetryNavigatorObserver;
 
 import 'providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -96,6 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.home,
+    observers: [TelemetryNavigatorObserver(ref.read(telemetryServiceProvider))],
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);

@@ -1,5 +1,7 @@
+using System.Threading.RateLimiting;
 using GymApp.Api.Middleware;
 using GymApp.Common.Infrastructure.Outbox;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GymApp.Api.Extensions;
 
@@ -57,6 +59,30 @@ public static class ApiServicesExtensions
                     },
                     Array.Empty<string>()
                 }
+            });
+        });
+
+        // --- Rate limiting ---
+        // Used by the client-telemetry ingest endpoint so one crash-looping device
+        // can't flood log ingest. Partitioned by authenticated user, else client IP.
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.AddPolicy("client-logs", httpContext =>
+            {
+                var partitionKey = httpContext.User.FindFirst(
+                        System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value
+                    ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                    ?? "anonymous";
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ =>
+                    new FixedWindowRateLimiterOptions
+                    {
+                        // Each batch can carry up to 100 records; 60 batches/min/device
+                        // is generous for telemetry yet caps a runaway client.
+                        PermitLimit = 60,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                    });
             });
         });
 

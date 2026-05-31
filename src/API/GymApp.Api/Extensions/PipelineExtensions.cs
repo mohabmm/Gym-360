@@ -45,6 +45,10 @@ public static class PipelineExtensions
         app.UseAuthentication();
         app.UseAuthorization();
 
+        // Rate limiting (policies registered in AddApiServices) — after auth so
+        // the limiter can partition by authenticated user id.
+        app.UseRateLimiter();
+
         // --- Tenant resolution (no-op when Tenancy:Mode=Soft) ---
         app.UseMiddleware<TenantResolutionMiddleware>();
 

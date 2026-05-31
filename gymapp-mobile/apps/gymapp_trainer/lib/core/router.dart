@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gymapp_core/gymapp_core.dart' show TelemetryNavigatorObserver;
 
 import 'providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -90,6 +91,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.home,
     debugLogDiagnostics: true,
+    observers: [TelemetryNavigatorObserver(ref.read(telemetryServiceProvider))],
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isAuth = authState.status == AuthStatus.authenticated;
