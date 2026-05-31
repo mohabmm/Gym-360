@@ -17,18 +17,27 @@ out/
 .vs/
 *.binlog
 
-# NuGet
+# NuGet — anchored to the repo-root restore dir. The old unanchored 'packages/'
+# rule wrongly hid the JS (gym-360-web/packages) and Flutter
+# (gymapp-mobile/packages) source workspaces, breaking git-clone CI builds
+# (CS0234/CS0246 on Dokploy; missing gymapp_core for the mobile apps).
 *.nupkg
 *.snupkg
 .nuget/
-packages/
+/packages/
 !**/packages/build/
-# JS monorepo shared workspace — NOT NuGet. The unanchored 'packages/' rule
-# above wrongly hid gym-360-web/packages/@gym360/ui (~50 source files),
-# which broke Dokploy git-clone builds. Re-include source, re-ignore artifacts.
+# JS monorepo shared workspace — NOT NuGet. (Kept explicit; the anchored rule
+# above no longer hides it.)
 !gym-360-web/packages/
 !gym-360-web/packages/**
 gym-360-web/packages/**/node_modules/
+# Flutter shared packages: track source, keep build artifacts + generated code
+# out (matches the apps, which commit no generated *.g.dart / *.freezed.dart).
+gymapp-mobile/packages/**/.dart_tool/
+gymapp-mobile/packages/**/build/
+gymapp-mobile/packages/**/*.g.dart
+gymapp-mobile/packages/**/*.freezed.dart
+gymapp-mobile/packages/**/pubspec.lock
 gym-360-web/packages/**/.turbo/
 gym-360-web/packages/**/*.tsbuildinfo
 
