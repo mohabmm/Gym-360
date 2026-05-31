@@ -33,6 +33,7 @@ class UserModel with _$UserModel {
     DateTime? createdAt,
     DateTime? lastLoginAt,
     String? memberNumber,
+    String? nationalId,
   }) = _UserModel;
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>

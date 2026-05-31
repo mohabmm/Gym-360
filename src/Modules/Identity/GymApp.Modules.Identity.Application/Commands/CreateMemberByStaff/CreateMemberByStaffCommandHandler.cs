@@ -76,7 +76,8 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
             request.FirstName.Trim(),
             request.LastName.Trim(),
             Gender.Male,
-            UserRole.Trainee);
+            UserRole.Trainee,
+            nationalId: request.NationalId);
 
         user.Activate();
 

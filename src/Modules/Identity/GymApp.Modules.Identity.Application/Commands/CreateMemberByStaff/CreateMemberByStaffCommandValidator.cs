@@ -21,5 +21,11 @@ internal sealed class CreateMemberByStaffCommandValidator : AbstractValidator<Cr
         RuleFor(x => x.Email)
             .EmailAddress().WithMessage("A valid email address is required.")
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
+
+        // National ID optional; if supplied must be a 14-digit Egyptian NID.
+        RuleFor(x => x.NationalId)
+            .Must(id => id!.Trim().Length == 14 && id.Trim().All(char.IsDigit))
+            .WithMessage("National ID must be exactly 14 digits.")
+            .When(x => !string.IsNullOrWhiteSpace(x.NationalId));
     }
 }

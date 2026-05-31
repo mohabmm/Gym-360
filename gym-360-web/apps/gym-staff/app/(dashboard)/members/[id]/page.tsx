@@ -193,6 +193,7 @@ export default function MemberDetailPage() {
               <div><dt className="text-muted-foreground">Email</dt><dd className="font-medium">{member.email}</dd></div>
               <div><dt className="text-muted-foreground">Phone</dt><dd className="font-medium">{member.phone}</dd></div>
               <div><dt className="text-muted-foreground">Floor</dt><dd className="font-medium">{member.section}</dd></div>
+              <div><dt className="text-muted-foreground">National ID</dt><dd className="font-medium">{member.nationalId || '—'}</dd></div>
               <div><dt className="text-muted-foreground">Status</dt><dd><StatusBadge variant={member.status} /></dd></div>
             </dl>
           </div>
