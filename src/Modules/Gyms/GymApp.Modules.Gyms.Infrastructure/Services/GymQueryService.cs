@@ -209,8 +209,13 @@ internal sealed class GymQueryService : IGymQueryService
         var statusKey = status?.Trim().ToLowerInvariant();
         var frozenFilter = statusKey == "frozen";
         // Only "active"/"inactive" map to an Identity profile status; "frozen" is a gym
-        // directory flag (handled here) and "expired" has no backing (no constraint).
+        // directory flag (handled here).
         var profileStatusFilter = statusKey is "active" or "inactive" ? statusKey : null;
+
+        // Any other status value ("expired", typos) has no backing data — return an empty
+        // page rather than silently falling through to the full roster.
+        if (statusKey is not null && statusKey is not ("active" or "inactive" or "frozen"))
+            return new PagedResponse<MemberDto>(new List<MemberDto>(), page, pageSize, 0, 0);
         var hasSection = !string.IsNullOrWhiteSpace(section);
         var hasSearch = !string.IsNullOrWhiteSpace(search);
         // The directory is needed for section / frozen / member-number search, and also

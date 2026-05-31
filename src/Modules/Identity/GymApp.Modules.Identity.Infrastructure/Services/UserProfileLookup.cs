@@ -99,19 +99,10 @@ internal sealed class UserProfileLookup : IUserProfileLookup
             .AsNoTracking()
             .Where(u => ids.Contains(u.Id));
 
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var pattern = $"%{search.Trim()}%";
-            query = query.Where(u =>
-                EF.Functions.Like(u.FirstName, pattern) ||
-                EF.Functions.Like(u.LastName, pattern) ||
-                EF.Functions.Like(u.Email.Value, pattern) ||
-                EF.Functions.Like(u.PhoneNumber.Value, pattern));
-        }
-
-        // Map the staff UI's member-status vocabulary onto UserStatus. "frozen" is a
-        // gym-directory flag handled by the caller (never reaches here); "expired" has no
-        // UserStatus backing so it applies no profile constraint.
+        // Status is value-converted to a string column, so an enum equality predicate
+        // translates to SQL cleanly. Map the staff UI's member-status vocabulary onto
+        // UserStatus: "frozen" is a gym-directory flag handled by the caller (never
+        // reaches here); "expired" has no UserStatus backing (no profile constraint).
         if (!string.IsNullOrWhiteSpace(status))
         {
             switch (status.Trim().ToLowerInvariant())
@@ -125,8 +116,32 @@ internal sealed class UserProfileLookup : IUserProfileLookup
             }
         }
 
-        return await query
-            .Select(u => u.Id)
+        var term = search?.Trim();
+        if (string.IsNullOrEmpty(term))
+            return await query.Select(u => u.Id).ToListAsync(cancellationToken);
+
+        // Email/PhoneNumber are value-converted (HasConversion in UserConfiguration), so
+        // `.Value` only translates inside a PROJECTION, never inside a WHERE/LIKE. Project
+        // the candidate rows (bounded to this gym's members) — mirroring GetProfilesAsync —
+        // and match the search term in memory.
+        var rows = await query
+            .Select(u => new
+            {
+                u.Id,
+                u.FirstName,
+                u.LastName,
+                Email = u.Email.Value,
+                Phone = u.PhoneNumber.Value,
+            })
             .ToListAsync(cancellationToken);
+
+        return rows
+            .Where(r =>
+                (r.FirstName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.LastName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.Email?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (r.Phone?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Select(r => r.Id)
+            .ToList();
     }
 }
