@@ -43,6 +43,56 @@ export function useMembers() {
   });
 }
 
+export interface MembersPage {
+  items: MemberListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface MembersQuery {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string;
+  section?: string;
+}
+
+/**
+ * Server-side paged + searched member list for the Members table. The BE filters
+ * by name/email/phone/memberNumber (search) and status/section across the WHOLE
+ * roster, so members past the first page are findable — the old `useMembers()`
+ * fetched a 200-row client-side slice and hid everyone beyond it.
+ */
+export function useMembersPaged(query: MembersQuery) {
+  const { data: session } = useSession();
+  const gymId = session?.user?.gymId;
+  const { page, pageSize, search, status, section } = query;
+  return useQuery<MembersPage>({
+    queryKey: ['members', gymId, 'paged', { page, pageSize, search, status, section }],
+    enabled: !!gymId,
+    placeholderData: (prev) => prev, // keep the table populated while paging/searching
+    queryFn: async () => {
+      const params: Record<string, string | number> = { page, pageSize };
+      if (search?.trim()) params.search = search.trim();
+      if (status && status !== 'all') params.status = status;
+      if (section && section !== 'all') params.section = section;
+      const res = await apiClient.get(`/gyms/${gymId}/members`, { params });
+      const data = res.data.data ?? {};
+      const raw: unknown[] = data.items ?? (Array.isArray(data) ? data : []);
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        items: (raw as any[]).map(normaliseMember),
+        page: data.page ?? page,
+        pageSize: data.pageSize ?? pageSize,
+        totalCount: data.totalCount ?? raw.length,
+        totalPages: data.totalPages ?? 1,
+      };
+    },
+  });
+}
+
 export function useMember(id: string) {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;

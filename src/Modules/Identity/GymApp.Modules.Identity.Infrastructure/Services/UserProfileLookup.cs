@@ -84,4 +84,49 @@ internal sealed class UserProfileLookup : IUserProfileLookup
                 u.Role.ToRoleClaim(),
                 u.Status.ToString().ToLowerInvariant()));
     }
+
+    public async Task<IReadOnlyList<Guid>> FilterProfileIdsAsync(
+        IReadOnlyCollection<Guid> candidateIds,
+        string? search,
+        string? status,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = candidateIds.Distinct().ToArray();
+        if (ids.Length == 0)
+            return Array.Empty<Guid>();
+
+        var query = _dbContext.Users
+            .AsNoTracking()
+            .Where(u => ids.Contains(u.Id));
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search.Trim()}%";
+            query = query.Where(u =>
+                EF.Functions.Like(u.FirstName, pattern) ||
+                EF.Functions.Like(u.LastName, pattern) ||
+                EF.Functions.Like(u.Email.Value, pattern) ||
+                EF.Functions.Like(u.PhoneNumber.Value, pattern));
+        }
+
+        // Map the staff UI's member-status vocabulary onto UserStatus. "frozen" is a
+        // gym-directory flag handled by the caller (never reaches here); "expired" has no
+        // UserStatus backing so it applies no profile constraint.
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            switch (status.Trim().ToLowerInvariant())
+            {
+                case "active":
+                    query = query.Where(u => u.Status == UserStatus.Active);
+                    break;
+                case "inactive":
+                    query = query.Where(u => u.Status != UserStatus.Active && u.Status != UserStatus.Deleted);
+                    break;
+            }
+        }
+
+        return await query
+            .Select(u => u.Id)
+            .ToListAsync(cancellationToken);
+    }
 }

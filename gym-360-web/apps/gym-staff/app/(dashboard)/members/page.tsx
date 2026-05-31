@@ -1,19 +1,21 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, DataTable, StatusBadge, Modal, formatDate } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Filter, Upload } from 'lucide-react';
 import {
-  useMembers,
+  useMembersPaged,
   useCreateMember,
   useLookupMemberByPhone,
   useLinkExistingMember,
   type ExistingMemberLookup,
 } from '@/lib/hooks/useMembers';
 import type { MemberListItem } from '@gym360/ui';
+
+const PAGE_SIZE = 20;
 
 const columns: ColumnDef<MemberListItem, unknown>[] = [
   {
@@ -57,12 +59,35 @@ const columns: ColumnDef<MemberListItem, unknown>[] = [
 
 export default function MembersPage() {
   const router = useRouter();
-  const { data: members = [], isLoading } = useMembers();
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sectionFilter, setSectionFilter] = useState('all');
+
+  // Debounce the search box so each keystroke doesn't fire a request; reset to
+  // page 1 whenever the term settles so results start from the top.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const { data: membersPage, isLoading, isFetching } = useMembersPaged({
+    page,
+    pageSize: PAGE_SIZE,
+    search,
+    status: statusFilter,
+    section: sectionFilter,
+  });
+  const members = membersPage?.items ?? [];
+  const totalCount = membersPage?.totalCount ?? 0;
+
   const createMember = useCreateMember();
   const lookupMember = useLookupMemberByPhone();
   const linkExisting = useLinkExistingMember();
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sectionFilter, setSectionFilter] = useState('all');
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', section: 'Mens' });
   const [formError, setFormError] = useState<string | null>(null);
@@ -136,27 +161,11 @@ export default function MembersPage() {
     e.target.value = '';
   };
 
-  const filtered = useMemo(() => {
-    return members.filter((m) => {
-      if (statusFilter !== 'all' && m.status !== statusFilter) return false;
-      if (sectionFilter !== 'all' && m.section !== sectionFilter) return false;
-      return true;
-    });
-  }, [members, statusFilter, sectionFilter]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <p className="text-muted-foreground text-sm">Loading members…</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Members"
-        description={`${members.length} members at First Gym`}
+        description={`${totalCount} members`}
         actions={
           <div className="flex items-center gap-2">
             <input ref={importInputRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportFile} />
@@ -172,14 +181,14 @@ export default function MembersPage() {
 
       <div className="flex items-center gap-3">
         <Filter className="h-4 w-4 text-muted-foreground" />
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
           <option value="all">All Statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
           <option value="frozen">Frozen</option>
           <option value="expired">Expired</option>
         </select>
-        <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
+        <select value={sectionFilter} onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
           <option value="all">All Floors</option>
           <option value="Mens">Men&apos;s</option>
           <option value="Womens">Ladies</option>
@@ -188,10 +197,17 @@ export default function MembersPage() {
       </div>
 
       <DataTable
-        data={filtered}
+        data={members}
         columns={columns}
-        searchPlaceholder="Search members by name..."
-        searchColumn="name"
+        searchPlaceholder="Search by name, phone, email or member #..."
+        onSearchChange={setSearchInput}
+        searchValue={searchInput}
+        serverSidePagination
+        totalCount={totalCount}
+        page={page}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+        isLoading={isLoading || isFetching}
         enableExport
         onRowClick={(member) => router.push(`/members/${member.id}`)}
       />

@@ -9,4 +9,5 @@ public sealed record GetGymMembersQuery(
     int PageSize,
     string? Status,
     string? Section,
-    Guid? TrainerId = null) : IQuery<PagedResponse<MemberDto>>;
+    Guid? TrainerId = null,
+    string? Search = null) : IQuery<PagedResponse<MemberDto>>;

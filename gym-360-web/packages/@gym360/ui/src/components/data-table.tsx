@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, type ReactNode } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -35,6 +35,19 @@ interface DataTableProps<TData> {
   onPageChange?: (page: number) => void;
   onSortChange?: (sortBy: string, direction: 'asc' | 'desc') => void;
   /**
+   * Server-side search. When provided, the search box becomes controlled and
+   * reports the term to the parent (which fetches + debounces) instead of
+   * filtering the loaded rows client-side. Pair with `serverSidePagination`
+   * + `totalCount` so search spans the whole dataset, not just one page.
+   */
+  onSearchChange?: (term: string) => void;
+  searchValue?: string;
+  /**
+   * Controlled current page (1-based) for `serverSidePagination`. Lets the parent
+   * own paging so changing search/filters can reset to page 1 without remounting.
+   */
+  page?: number;
+  /**
    * Render a custom mobile card for each row below the md breakpoint.
    * When omitted, the default mobile layout stacks visible columns as
    * label/value pairs.
@@ -59,6 +72,9 @@ export function DataTable<TData>({
   serverSidePagination = false,
   onPageChange,
   onSortChange,
+  onSearchChange,
+  searchValue,
+  page,
   renderMobileRow,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -66,6 +82,15 @@ export function DataTable<TData>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize });
   const [globalFilter, setGlobalFilter] = useState('');
+
+  // In server mode the parent owns the current page (so a search/filter change can
+  // jump back to page 1). Mirror it into the table's internal pagination state.
+  const controlledPageIndex = serverSidePagination && page ? page - 1 : undefined;
+  useEffect(() => {
+    if (controlledPageIndex !== undefined && controlledPageIndex !== pagination.pageIndex) {
+      setPagination((prev) => ({ ...prev, pageIndex: controlledPageIndex }));
+    }
+  }, [controlledPageIndex, pagination.pageIndex]);
 
   const table = useReactTable({
     data,
@@ -134,9 +159,19 @@ export function DataTable<TData>({
           <input
             type="text"
             placeholder={searchPlaceholder}
-            value={searchColumn ? (columnFilters.find((f) => f.id === searchColumn)?.value as string ?? '') : globalFilter}
+            value={
+              onSearchChange
+                ? (searchValue ?? '')
+                : searchColumn
+                  ? ((columnFilters.find((f) => f.id === searchColumn)?.value as string) ?? '')
+                  : globalFilter
+            }
             onChange={(e) => {
-              if (searchColumn) {
+              if (onSearchChange) {
+                // Server-side search: hand the term to the parent (debounced + refetched
+                // there) instead of filtering the loaded page client-side.
+                onSearchChange(e.target.value);
+              } else if (searchColumn) {
                 setColumnFilters((prev) => [
                   ...prev.filter((f) => f.id !== searchColumn),
                   { id: searchColumn, value: e.target.value },
