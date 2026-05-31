@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { PageHeader, StatusBadge, Modal } from '@gym360/ui';
 import { Plus, Shield } from 'lucide-react';
 import { useStaff, useCreateStaff } from '@/lib/hooks/useStaff';
-import type { StaffPermission } from '@gym360/ui';
+import type { StaffMember, StaffPermission, StaffSubRole } from '@gym360/ui';
 
 const allPermissions: { key: StaffPermission; label: string }[] = [
   { key: 'manage_members', label: 'Manage Members' },
@@ -18,6 +18,26 @@ const allPermissions: { key: StaffPermission; label: string }[] = [
   { key: 'manage_announcements', label: 'Manage Announcements' },
   { key: 'manage_check_ins', label: 'Manage Check-ins' },
 ];
+
+// Default role permission matrix (docs/03b §"Permission Matrix", docs/06 #20):
+//   Owner        = all
+//   Manager      = all except billing settings
+//   Receptionist = check-in + view members
+// Invariant: receptionist ⊆ manager ⊆ owner. The docs "receptionist records
+// payments" capability is a billing *transaction*, not the coarse "Manage
+// Billing" authority (which the manager also lacks), so it is not granted
+// here — granting it would invert the role hierarchy.
+// These defaults apply unless the gym is on Business (custom_permissions),
+// where the BE returns per-staff overrides which we honour below.
+const DEFAULT_PERMISSIONS: Record<StaffSubRole, StaffPermission[]> = {
+  owner: allPermissions.map((p) => p.key),
+  manager: allPermissions.map((p) => p.key).filter((k) => k !== 'manage_billing'),
+  receptionist: ['manage_check_ins', 'manage_members'],
+};
+
+function effectivePermissions(s: StaffMember): StaffPermission[] {
+  return s.permissions?.length ? s.permissions : (DEFAULT_PERMISSIONS[s.staffSubRole] ?? []);
+}
 
 export default function StaffPage() {
   const { data: gymStaff = [], isLoading } = useStaff();
@@ -134,7 +154,7 @@ export default function StaffPage() {
                   <td className="py-2 px-3">{perm.label}</td>
                   {gymStaff.map((s) => (
                     <td key={s.id} className="py-2 px-3 text-center">
-                      {(s.permissions ?? []).includes(perm.key) ? (
+                      {effectivePermissions(s).includes(perm.key) ? (
                         <div className="h-5 w-5 rounded bg-emerald-100 flex items-center justify-center mx-auto">
                           <svg className="h-3 w-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                         </div>
