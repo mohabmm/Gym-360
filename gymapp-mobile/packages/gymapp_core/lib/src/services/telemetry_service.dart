@@ -178,7 +178,10 @@ class TelemetryService {
   }
 
   /// Records a failed API call. The body is intentionally NOT included — only
-  /// method, scrubbed path, status, and error code travel.
+  /// method, scrubbed path, status, and error code travel. [level] lets the
+  /// caller downgrade expected-but-noteworthy failures (e.g. a 4xx that signals
+  /// a client bug) to `warning` so they stay out of the error tab while remaining
+  /// queryable; server errors / network failures default to `error`.
   void recordApiError({
     required String method,
     required String path,
@@ -186,9 +189,10 @@ class TelemetryService {
     String? errorCode,
     String? errorType,
     String? message,
+    TelemetryLevel level = TelemetryLevel.error,
   }) {
     log(
-      TelemetryLevel.error,
+      level,
       message ?? 'API ${statusCode ?? '?'} $method ${_scrubPath(path)}',
       attributes: {
         'http.method': method,
