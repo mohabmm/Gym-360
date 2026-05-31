@@ -2,7 +2,7 @@ using ClosedXML.Excel;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Infrastructure.Services;
 
-namespace GymApp.Tests.Application.Gyms;
+namespace GymApp.Tests.Integration.Gyms;
 
 /// <summary>
 /// Covers the NationalId column added to the Members import sheet (col 10):
