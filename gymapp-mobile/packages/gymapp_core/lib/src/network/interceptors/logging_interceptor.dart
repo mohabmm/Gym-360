@@ -65,23 +65,39 @@ class LoggingInterceptor extends Interceptor {
     }
 
     // Forward to SigNoz. Cancellations are user-initiated, not failures.
-    // 401/403/404 are expected app flow (auth refresh, not-found) — skip to cut
-    // noise; ship server errors (5xx), network failures, timeouts, and parse-ish.
+    // Classify so real bugs are visible without drowning the error tab:
+    //   • status == null (network/timeout/parse) or 5xx → error.
+    //   • 4xx that signal a client/contract bug (400/408/409/422/429, etc.) →
+    //     warning: queryable in SigNoz but kept out of the error tab.
+    //   • 401/403/404 are expected app flow (auth refresh, not-found) → skip.
+    //   • cancellations → skip (user-initiated).
     if (_telemetry != null && err.type != DioExceptionType.cancel) {
       final status = err.response?.statusCode;
-      final worthReporting = status == null || status >= 500;
-      if (worthReporting) {
+      final level = _reportLevel(status);
+      if (level != null) {
         _telemetry.recordApiError(
           method: err.requestOptions.method,
           path: err.requestOptions.path,
           statusCode: status,
           errorType: err.type.name,
           message: err.message,
+          level: level,
         );
       }
     }
 
     handler.next(err);
+  }
+
+  /// Decides whether (and at what severity) a failed call is shipped to
+  /// telemetry. Returns null to skip. See [onError] for the policy rationale.
+  TelemetryLevel? _reportLevel(int? status) {
+    if (status == null || status >= 500) return TelemetryLevel.error;
+    // Expected app flow — auth refresh handles 401, 403/404 are routine.
+    if (status == 401 || status == 403 || status == 404) return null;
+    // Any other 4xx points at a client/contract bug worth surfacing.
+    if (status >= 400) return TelemetryLevel.warning;
+    return null; // 2xx/3xx never reach onError, but be explicit.
   }
 
   Map<String, dynamic> _sanitizeHeaders(Map<String, dynamic> headers) {
