@@ -18,6 +18,12 @@ class HomeRemoteDataSource {
         parser: (data) {
           if (data == null) return null;
           final json = data as Map<String, dynamic>;
+          // No workout assigned today: BE sends a null-data envelope, which
+          // ApiClient.get surfaces here as the whole `{data:null,...}` map
+          // (its `response.data['data'] ?? response.data` fallback). Without
+          // a real workoutId there's nothing to map, and WorkoutModel's
+          // required `id`/`name` would null-cast crash — so bail out to null.
+          if (json['workoutId'] == null) return null;
           // BE returns TodaysWorkoutResponse (assignmentId, workoutId,
           // workoutName, workoutDescription, ...). Map onto WorkoutModel shape.
           return WorkoutModel.fromJson({
