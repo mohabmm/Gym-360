@@ -24,8 +24,21 @@ export function formatNumber(value: number): string {
   return value.toString();
 }
 
+// Empty/absent dates (optional API fields like expiryDate, lastCheckIn) reach
+// these as '' or null. `new Date('')` is an Invalid Date, which toLocaleString
+// renders as the literal "Invalid Date" in tables — show an em dash instead.
+const EMPTY_DATE = '—';
+
+function parseDate(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export function formatDate(dateStr: string, locale = 'en-EG'): string {
-  return new Date(dateStr).toLocaleDateString(locale, {
+  const d = parseDate(dateStr);
+  if (!d) return EMPTY_DATE;
+  return d.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -33,7 +46,9 @@ export function formatDate(dateStr: string, locale = 'en-EG'): string {
 }
 
 export function formatDateTime(dateStr: string, locale = 'en-EG'): string {
-  return new Date(dateStr).toLocaleString(locale, {
+  const d = parseDate(dateStr);
+  if (!d) return EMPTY_DATE;
+  return d.toLocaleString(locale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -67,8 +82,9 @@ export function truncate(str: string, length: number): string {
 }
 
 export function getRelativeTime(dateStr: string): string {
+  const date = parseDate(dateStr);
+  if (!date) return EMPTY_DATE;
   const now = new Date();
-  const date = new Date(dateStr);
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
