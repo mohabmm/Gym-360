@@ -1,7 +1,7 @@
 appId: com.example.gymappGym
 name: gymstaff-login-smoke
 env:
-  EMAIL: staff-l3-612493@gym.local
+  EMAIL: staff@demo.local
   PASSWORD: "123456"
 ---
 - stopApp
