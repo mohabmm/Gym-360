@@ -1,4 +1,5 @@
 import type { NextAuthOptions } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import type { AdminRole } from '@gym360/ui';
 
@@ -33,6 +34,50 @@ declare module 'next-auth/jwt' {
     expiresAt: number;
     role: string;
     adminRole: AdminRole;
+  }
+}
+
+// Refresh the access token this many ms before its embedded `exp`, so client
+// API calls never fire with an expired token (which would 401 → forced sign-out).
+const ACCESS_TOKEN_REFRESH_SKEW_MS = 60_000;
+
+// Decode the `exp` claim (seconds) of an access token into epoch ms.
+function decodeJwtExpMs(accessToken: string): number | null {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(accessToken.split('.')[1], 'base64').toString('utf-8')
+    );
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+// Exchange a long-lived refresh token for a fresh access/refresh pair.
+// The backend rotates (revokes) the old refresh token, so the new value MUST
+// be persisted. Mutates `token`; returns true on success. The admin role
+// claim does not change across refreshes, so it is preserved as-is.
+async function rotateTokens(token: JWT): Promise<boolean> {
+  if (!token.refreshToken) return false;
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1'}/identity/refresh-token`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: token.refreshToken }),
+      }
+    );
+    if (!res.ok) return false;
+    const body = await res.json();
+    const d = body?.data;
+    if (!d?.accessToken || !d?.refreshToken) return false;
+    token.accessToken = d.accessToken;
+    token.refreshToken = d.refreshToken;
+    token.expiresAt = decodeJwtExpMs(d.accessToken) ?? 0;
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -94,8 +139,29 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
+        token.expiresAt = decodeJwtExpMs(user.accessToken) ?? 0;
         token.role = user.role;
         token.adminRole = user.adminRole;
+        return token;
+      }
+
+      // The NextAuth session cookie lives 24h (maxAge below) but a backend
+      // access token lives ~1h. Without rotation the cookie outlives its token:
+      // every admin API call 401s and the user is bounced to /login mid-session.
+      // Exchange the long-lived refresh token for a fresh pair before expiry;
+      // also recovers a token blanked by an older build.
+      const expiresAt = token.expiresAt ?? 0;
+      const nearExpiry = expiresAt > 0 && Date.now() > expiresAt - ACCESS_TOKEN_REFRESH_SKEW_MS;
+      const expired = expiresAt > 0 && Date.now() >= expiresAt;
+      if (token.refreshToken && (!token.accessToken || nearExpiry)) {
+        if (await rotateTokens(token)) return token;
+        // Rotation failed. Only force re-auth if the current token is genuinely
+        // unusable; keep a still-valid token in the pre-expiry skew window so a
+        // later cycle retries instead of a false logout (the backend revokes
+        // the old refresh token on rotation, so concurrent calls can race).
+        if (!token.accessToken || expired) {
+          return { ...token, accessToken: '' };
+        }
       }
       return token;
     },

@@ -43,6 +43,17 @@ function ApiClientConfigurator({ children }: { children: ReactNode }) {
     }
   }, [status, queryClient]);
 
+  // A session that is "authenticated" but carries no access token means the
+  // refresh token was exhausted/revoked (lib/auth.ts blanks accessToken once it
+  // can no longer rotate). Without this guard the cookie keeps status as
+  // 'authenticated', so the page never bounces to /login and Owners get stuck on
+  // /select-gym with an "Unauthenticated" banner. Force a clean sign-out.
+  useEffect(() => {
+    if (status === 'authenticated' && sessionReadyRef.current && !tokenRef.current) {
+      void signOut({ callbackUrl: '/login' });
+    }
+  }, [status, session]);
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">

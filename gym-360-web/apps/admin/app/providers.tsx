@@ -42,6 +42,16 @@ function ApiClientConfigurator({ children }: { children: ReactNode }) {
     }
   }, [status, session?.accessToken, queryClient]);
 
+  // A session that is "authenticated" but carries no access token means the
+  // refresh token was exhausted/revoked (lib/auth.ts blanks accessToken once it
+  // can no longer rotate). Force a clean sign-out so the user lands on /login
+  // instead of a half-dead session that 401s on every request.
+  useEffect(() => {
+    if (status === 'authenticated' && sessionReadyRef.current && !tokenRef.current) {
+      void signOut({ callbackUrl: '/login' });
+    }
+  }, [status, session]);
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
