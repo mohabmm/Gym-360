@@ -310,7 +310,11 @@ internal sealed class GymQueryService : IGymQueryService
             clientCounts[id] = clients.Count;
         }
 
+        // An id in the gym aggregate (or a trainer request) that resolves to no
+        // Identity profile is orphaned data — e.g. a stale/garbage id left in
+        // trainer_ids. Drop it so the list never surfaces a null-named ghost row.
         var dtos = allIds
+            .Where(id => profiles.TryGetValue(id, out var p) && p is not null)
             .Select(id =>
             {
                 profiles.TryGetValue(id, out var profile);
@@ -378,6 +382,10 @@ internal sealed class GymQueryService : IGymQueryService
         if (!isActive && request is null) return null;
 
         var profile = await _userProfileLookup.GetProfileAsync(trainerId, cancellationToken);
+
+        // No backing Identity profile => orphaned id (stale/garbage data); treat as
+        // not found rather than returning a ghost trainer with null name fields.
+        if (profile is null) return null;
 
         var status = request is not null
             ? request.Status.ToString()
