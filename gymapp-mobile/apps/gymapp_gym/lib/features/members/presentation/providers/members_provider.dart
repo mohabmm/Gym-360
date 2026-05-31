@@ -65,9 +65,13 @@ final membersProvider =
   final filter = ref.watch(memberFilterProvider);
 
   final queryParams = <String, dynamic>{};
-  // BE's GET /gyms/{gymId}/members only supports `status` and `section`
-  // query filters — `search` is silently dropped. We apply the search
-  // term client-side below after the page fetch.
+  // BE now filters server-side by `search` (name/email/phone/memberNumber) and
+  // `status` across the WHOLE roster, so members past the first page are
+  // findable — no more client-side slice filtering.
+  final search = filter.search?.trim() ?? '';
+  if (search.isNotEmpty) {
+    queryParams['search'] = search;
+  }
   if (filter.status != null && filter.status!.isNotEmpty) {
     queryParams['status'] = filter.status;
   }
@@ -75,7 +79,7 @@ final membersProvider =
     queryParams['plan'] = filter.plan;
   }
 
-  final result = await apiClient.getPaginated<UserModel>(
+  return apiClient.getPaginated<UserModel>(
     ApiEndpoints.gymMembers(gymId),
     params: PaginationParams(
       page: filter.page,
@@ -83,29 +87,6 @@ final membersProvider =
     ),
     additionalParams: queryParams,
     itemParser: (json) => UserModel.fromJson(_normalizeMemberJson(json)),
-  );
-
-  final search = filter.search?.trim().toLowerCase() ?? '';
-  if (search.isEmpty) return result;
-
-  bool matches(UserModel m) {
-    final full = '${m.firstName} ${m.lastName}'.toLowerCase();
-    if (full.contains(search)) return true;
-    if ((m.email ?? '').toLowerCase().contains(search)) return true;
-    if ((m.phone ?? '').toLowerCase().contains(search)) return true;
-    if ((m.memberNumber ?? '').toLowerCase().contains(search)) return true;
-    return false;
-  }
-
-  final filtered = result.items.where(matches).toList();
-  return PaginatedResult(
-    items: filtered,
-    meta: PaginationMeta(
-      totalCount: filtered.length,
-      pageSize: result.meta.pageSize,
-      currentPage: result.meta.currentPage,
-      totalPages: 1,
-    ),
   );
 });
 

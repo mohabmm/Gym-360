@@ -9,7 +9,7 @@ public interface IGymQueryService
     Task<GymResponse?> GetGymByIdAsync(Guid gymId, CancellationToken cancellationToken = default);
     Task<bool> IsMemberOfGymAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default);
     Task<bool> IsTrainerAtGymAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default);
-    Task<PagedResponse<MemberDto>> GetMembersAsync(Guid gymId, int page, int pageSize, string? status, string? section, CancellationToken cancellationToken = default);
+    Task<PagedResponse<MemberDto>> GetMembersAsync(Guid gymId, int page, int pageSize, string? status, string? section, string? search, CancellationToken cancellationToken = default);
     Task<MemberDto?> GetMemberAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default);
     Task<List<TrainerDto>> GetTrainersAsync(Guid gymId, string? status = null, CancellationToken cancellationToken = default);
     Task<SessionPolicyDto> GetSessionPolicyAsync(Guid gymId, CancellationToken cancellationToken = default);

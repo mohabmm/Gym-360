@@ -27,6 +27,7 @@ internal sealed class GetGymMembersQueryHandler : IQueryHandler<GetGymMembersQue
             request.PageSize,
             request.Status,
             request.Section,
+            request.Search,
             cancellationToken);
 
         // Trainer-scoped filter: when caller supplies a TrainerId, narrow the
