@@ -37,6 +37,7 @@ internal sealed class UserDataProvider : IUserDataProvider
                 user.LastName,
                 user.DateOfBirth,
                 user.Gender,
+                user.NationalId,
                 user.Role,
                 user.Status,
                 user.Language,

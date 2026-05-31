@@ -89,7 +89,7 @@ export default function MembersPage() {
   const lookupMember = useLookupMemberByPhone();
   const linkExisting = useLinkExistingMember();
   const [showAddMember, setShowAddMember] = useState(false);
-  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', section: 'Mens' });
+  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', section: 'Mens', nationalId: '' });
   const [formError, setFormError] = useState<string | null>(null);
   // Set when staff-create reports a duplicate (409) AND we resolved who the phone
   // belongs to — drives the "Add existing member?" confirm prompt inside the modal.
@@ -97,7 +97,7 @@ export default function MembersPage() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
-    setNewMember({ name: '', email: '', phone: '', section: 'Mens' });
+    setNewMember({ name: '', email: '', phone: '', section: 'Mens', nationalId: '' });
     setFormError(null);
     setExistingMatch(null);
   };
@@ -105,6 +105,11 @@ export default function MembersPage() {
   const handleAddMember = () => {
     if (!newMember.name.trim() || !newMember.phone.trim()) {
       setFormError('Name and phone are required.');
+      return;
+    }
+    const nid = newMember.nationalId.trim();
+    if (nid && !/^\d{14}$/.test(nid)) {
+      setFormError('National ID must be exactly 14 digits.');
       return;
     }
     setFormError(null);
@@ -264,6 +269,10 @@ export default function MembersPage() {
           <label className="block">
             <span className="text-sm font-medium">Email</span>
             <input type="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">National ID</span>
+            <input inputMode="numeric" maxLength={14} value={newMember.nationalId} onChange={(e) => setNewMember({ ...newMember, nationalId: e.target.value.replace(/\D/g, '') })} placeholder="14 digits (optional)" className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
           </label>
           <label className="block">
             <span className="text-sm font-medium">Floor</span>

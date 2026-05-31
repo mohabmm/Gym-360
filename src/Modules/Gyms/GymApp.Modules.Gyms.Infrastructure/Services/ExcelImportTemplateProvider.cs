@@ -12,7 +12,7 @@ internal sealed class ExcelImportTemplateProvider : IImportTemplateProvider
         WriteHeaders(wb.Worksheets.Add("Members"), new[]
         {
             "MemberNumber", "FirstName", "LastName", "Email", "Phone",
-            "DateOfBirth", "Gender", "JoinedAt", "Section"
+            "DateOfBirth", "Gender", "JoinedAt", "Section", "NationalId"
         });
 
         WriteHeaders(wb.Worksheets.Add("Payments"), new[]

@@ -30,7 +30,8 @@ internal sealed class UserProfileLookup : IUserProfileLookup
                 u.LastName,
                 u.ProfilePhotoUrl,
                 u.Role,
-                u.Status
+                u.Status,
+                u.NationalId
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -45,7 +46,8 @@ internal sealed class UserProfileLookup : IUserProfileLookup
             user.Phone,
             user.ProfilePhotoUrl,
             user.Role.ToRoleClaim(),
-            user.Status.ToString().ToLowerInvariant());
+            user.Status.ToString().ToLowerInvariant(),
+            user.NationalId);
     }
 
     public async Task<IReadOnlyDictionary<Guid, UserProfileInfo>> GetProfilesAsync(
@@ -68,7 +70,8 @@ internal sealed class UserProfileLookup : IUserProfileLookup
                 u.LastName,
                 u.ProfilePhotoUrl,
                 u.Role,
-                u.Status
+                u.Status,
+                u.NationalId
             })
             .ToListAsync(cancellationToken);
 
@@ -82,7 +85,8 @@ internal sealed class UserProfileLookup : IUserProfileLookup
                 u.Phone,
                 u.ProfilePhotoUrl,
                 u.Role.ToRoleClaim(),
-                u.Status.ToString().ToLowerInvariant()));
+                u.Status.ToString().ToLowerInvariant(),
+                u.NationalId));
     }
 
     public async Task<IReadOnlyList<Guid>> FilterProfileIdsAsync(

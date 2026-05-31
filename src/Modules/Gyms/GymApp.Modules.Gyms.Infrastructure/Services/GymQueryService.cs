@@ -326,7 +326,8 @@ internal sealed class GymQueryService : IGymQueryService
                     ProfilePhotoUrl: profile?.ProfilePhotoUrl,
                     Role: profile?.Role,
                     Status: profile?.Status,
-                    IsFrozen: hasDir && dir.IsFrozen);
+                    IsFrozen: hasDir && dir.IsFrozen,
+                    NationalId: profile?.NationalId);
             })
             .ToList();
 
@@ -362,7 +363,8 @@ internal sealed class GymQueryService : IGymQueryService
             ProfilePhotoUrl: profile?.ProfilePhotoUrl,
             Role: profile?.Role,
             Status: profile?.Status,
-            IsFrozen: directory?.IsFrozen ?? false);
+            IsFrozen: directory?.IsFrozen ?? false,
+            NationalId: profile?.NationalId);
     }
 
     public async Task<List<TrainerDto>> GetTrainersAsync(Guid gymId, string? status = null, CancellationToken cancellationToken = default)
@@ -544,7 +546,8 @@ internal sealed class GymQueryService : IGymQueryService
                     ProfilePhotoUrl: profile?.ProfilePhotoUrl,
                     Role: profile?.Role,
                     Status: profile?.Status,
-                    IsFrozen: dir?.IsFrozen ?? false);
+                    IsFrozen: dir?.IsFrozen ?? false,
+                    NationalId: profile?.NationalId);
             })
             .ToList();
     }
@@ -637,7 +640,8 @@ internal sealed class GymQueryService : IGymQueryService
                     PhoneNumber: profile?.PhoneNumber,
                     ProfilePhotoUrl: profile?.ProfilePhotoUrl,
                     Role: profile?.Role,
-                    Status: profile?.Status);
+                    Status: profile?.Status,
+                    NationalId: profile?.NationalId);
             })
             .ToList();
     }

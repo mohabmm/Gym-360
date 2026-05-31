@@ -8,7 +8,8 @@ public sealed record UserProfileInfo(
     string? PhoneNumber,
     string? ProfilePhotoUrl,
     string Role,
-    string Status);
+    string Status,
+    string? NationalId = null);
 
 /// <summary>
 /// Cross-module contract to resolve user ids to roster-level profile info

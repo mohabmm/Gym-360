@@ -26,6 +26,7 @@
     <!-- Gyms -->
     <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Domain\GymApp.Modules.Gyms.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Application\GymApp.Modules.Gyms.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Gyms\GymApp.Modules.Gyms.Infrastructure\GymApp.Modules.Gyms.Infrastructure.csproj" />
 
     <!-- Training -->
     <ProjectReference Include="..\..\src\Modules\Training\GymApp.Modules.Training.Domain\GymApp.Modules.Training.Domain.csproj" />

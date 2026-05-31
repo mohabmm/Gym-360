@@ -23,6 +23,7 @@ function normaliseMember(m: any): MemberListItem {
     joinDate: m.joinedAt ?? m.joinDate ?? '',
     expiryDate: m.expiryDate ?? '',
     section: m.section ?? '',
+    nationalId: m.nationalId ?? undefined,
     lastCheckIn: m.lastCheckIn ?? undefined,
     avatarUrl: m.profilePhotoUrl ?? undefined,
   };
@@ -113,7 +114,7 @@ export function useCreateMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
-      name: string; email?: string; phone: string; section?: string;
+      name: string; email?: string; phone: string; section?: string; nationalId?: string;
     }) => {
       const [firstName, ...rest] = data.name.trim().split(/\s+/);
       const lastName = rest.join(' ') || firstName;
@@ -131,6 +132,7 @@ export function useCreateMember() {
         phone: data.phone,
         ...(data.email ? { email: data.email } : {}),
         section: data.section,
+        ...(data.nationalId ? { nationalId: data.nationalId } : {}),
       });
       const userId =
         userRes.data?.data?.userId ?? userRes.data?.data?.id ?? userRes.data?.data ?? null;

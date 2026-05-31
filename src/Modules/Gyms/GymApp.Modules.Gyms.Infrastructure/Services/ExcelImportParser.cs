@@ -52,6 +52,7 @@ internal sealed class ExcelImportParser : IImportParser
                 var gender = row.Cell(7).GetString().Trim();
                 var joinedAt = TryGetDateTime(row.Cell(8)) ?? DateTime.UtcNow;
                 var section = EmptyToNull(row.Cell(9).GetString());
+                var nationalId = ReadIdNumber(row.Cell(10));
 
                 if (string.IsNullOrWhiteSpace(memberNumber))
                 { errors.Add(new("Members", rowNum, "MemberNumber", "required")); continue; }
@@ -60,9 +61,19 @@ internal sealed class ExcelImportParser : IImportParser
                 if (string.IsNullOrWhiteSpace(phone))
                 { errors.Add(new("Members", rowNum, "Phone", "required")); continue; }
 
+                // National ID is optional. If present it must be exactly 14 digits
+                // (Egyptian NID). A malformed value is logged but does NOT block the
+                // member row — the member imports with NationalId=null so staff can
+                // fix the value later from the errors report.
+                if (nationalId is not null && !IsValidNationalId(nationalId))
+                {
+                    errors.Add(new("Members", rowNum, "NationalId", $"invalid '{nationalId}' (must be 14 digits)"));
+                    nationalId = null;
+                }
+
                 members.Add(new DataImportMemberIntegrationEvent(
                     jobId, rowNum, gymId, memberNumber, firstName, lastName,
-                    email, phone, dob, gender, joinedAt, section));
+                    email, phone, dob, gender, joinedAt, section, nationalId));
             }
             catch (Exception ex)
             {
@@ -198,6 +209,21 @@ internal sealed class ExcelImportParser : IImportParser
         if (decimal.TryParse(cell.GetString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)) return d;
         return null;
     }
+
+    // National IDs are long digit strings. When a user types one into Excel it is
+    // often stored as a NUMBER, and GetString() then yields scientific notation
+    // ("1.23457E+13"). Read numeric cells as a 0-decimal integer so the 14 digits
+    // survive intact; otherwise fall back to the trimmed string.
+    private static string? ReadIdNumber(IXLCell cell)
+    {
+        if (cell.IsEmpty()) return null;
+        if (cell.DataType == XLDataType.Number)
+            return ((long)Math.Round(cell.GetDouble())).ToString(CultureInfo.InvariantCulture);
+        return EmptyToNull(cell.GetString());
+    }
+
+    private static bool IsValidNationalId(string value) =>
+        value.Length == 14 && value.All(char.IsDigit);
 
     private static string? EmptyToNull(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
     private static string EmptyOr(string s, string fallback) => string.IsNullOrWhiteSpace(s) ? fallback : s.Trim();

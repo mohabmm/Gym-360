@@ -21,7 +21,8 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
         string LastName,
         string Phone,
         string? Email,
-        string? Section);
+        string? Section,
+        string? NationalId);
 
     internal sealed record Response(Guid UserId, string InitialPassword, string MemberNumber);
 
@@ -43,7 +44,8 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
                 request.FirstName,
                 request.LastName,
                 request.Phone,
-                request.Email);
+                request.Email,
+                request.NationalId);
 
             var createResult = await sender.Send(createCmd, ct);
             if (createResult.IsFailure)

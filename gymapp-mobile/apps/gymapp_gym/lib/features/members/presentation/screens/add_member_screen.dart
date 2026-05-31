@@ -19,6 +19,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _nationalIdController = TextEditingController();
   bool _loading = false;
 
   @override
@@ -27,6 +28,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     _lastNameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _nationalIdController.dispose();
     super.dispose();
   }
 
@@ -37,6 +39,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     final gymId = ref.read(currentGymIdProvider);
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
+    final nationalId = _nationalIdController.text.trim();
     try {
       final String userId;
       try {
@@ -47,6 +50,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
             'lastName': _lastNameController.text.trim(),
             'phone': phone,
             if (email.isNotEmpty) 'email': email,
+            if (nationalId.isNotEmpty) 'nationalId': nationalId,
           },
           parser: (data) => (data as Map<String, dynamic>)['userId'] as String,
         );
@@ -194,6 +198,19 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
                     controller: _emailController,
                     label: isArabic ? 'البريد الالكتروني' : 'Email (optional)',
                     keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 16),
+                  AppTextField(
+                    controller: _nationalIdController,
+                    label: isArabic ? 'الرقم القومي (اختياري)' : 'National ID (optional)',
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      final t = v?.trim() ?? '';
+                      if (t.isEmpty) return null;
+                      return RegExp(r'^\d{14}$').hasMatch(t)
+                          ? null
+                          : (isArabic ? 'يجب أن يكون 14 رقمًا' : 'Must be 14 digits');
+                    },
                   ),
                 ],
               ),
