@@ -20,6 +20,18 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
     baseUrl: ApiBaseUrl.resolve(),
     storage: storage,
+    telemetry: ref.watch(telemetryServiceProvider),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Telemetry (mobile → SigNoz). Overridden in main() with the live instance
+// built before the ProviderScope; the throwing default guards against running
+// without it.
+// ---------------------------------------------------------------------------
+final telemetryServiceProvider = Provider<TelemetryService>((ref) {
+  throw UnimplementedError(
+    'telemetryServiceProvider must be overridden in main()',
   );
 });
 

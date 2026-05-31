@@ -12,9 +12,16 @@ import 'core/providers.dart';
 import 'core/router.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final telemetry = TelemetryService(
+    appName: 'gymapp-trainee',
+    baseUrl: ApiBaseUrl.resolve(),
+    storage: SecureStorageService(),
+  );
 
-  // Load locale data for both UI languages so DateFormat('…', 'en') renders
+  await runWithTelemetry('gymapp-trainee', telemetry, () async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // Load locale data for both UI languages so DateFormat('…', 'en') renders
   // Latin digits and English month names instead of falling back to the
   // device locale — fixes BUG-15 where the Next Session card showed Arabic
   // numerals / months while the rest of the UI was English.
@@ -50,9 +57,12 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  await telemetry.init();
+
   runApp(
     ProviderScope(
       overrides: [
+        telemetryServiceProvider.overrideWithValue(telemetry),
         // Override the core placeholder with the actual billing API implementation
         planFeaturesProvider.overrideWith(
           (ref) async {
@@ -103,6 +113,7 @@ Future<void> main() async {
       child: const GymAppTrainee(),
     ),
   );
+  });
 }
 
 class GymAppTrainee extends ConsumerWidget {
