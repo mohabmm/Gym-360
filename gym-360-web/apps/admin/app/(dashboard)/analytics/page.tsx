@@ -23,7 +23,8 @@ export default function AnalyticsPage() {
   const gymGrowth = analytics?.gymGrowth ?? [];
   const memberGrowth = analytics?.memberGrowth ?? [];
   const cityRevenue = analytics?.cityRevenue ?? [];
-  const planDistribution = analytics?.planDistribution ?? [];
+  // Only plot plans with at least one gym — see dashboard page note.
+  const planDistribution = (analytics?.planDistribution ?? []).filter((p) => p.count > 0);
   const featureUsageData = analytics?.featureUsage ?? [];
   const kpis = analytics?.kpis;
 
@@ -94,13 +95,19 @@ export default function AnalyticsPage() {
         </ChartContainer>
 
         <ChartContainer title="Plan Distribution" height={250}>
-          <PieChart>
-            <Pie data={planDistribution} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="count" nameKey="plan">
-              {planDistribution.map((entry, i) => <Cell key={entry.plan} fill={COLORS[i % COLORS.length]} />)}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
+          {planDistribution.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              No plan data yet
+            </div>
+          ) : (
+            <PieChart>
+              <Pie data={planDistribution} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="count" nameKey="plan" stroke="none" isAnimationActive={false}>
+                {planDistribution.map((entry, i) => <Cell key={entry.plan} fill={COLORS[i % COLORS.length]} />)}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          )}
         </ChartContainer>
       </div>
 
