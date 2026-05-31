@@ -21,6 +21,13 @@ internal sealed class FoodLogRepository : IFoodLogRepository
             .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
     }
 
+    public async Task<FoodLog?> GetByMealIdAsync(Guid mealEntryId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.FoodLogs
+            .Include(f => f.Meals)
+            .FirstOrDefaultAsync(f => f.Meals.Any(m => m.Id == mealEntryId), cancellationToken);
+    }
+
     public async Task<FoodLog?> GetByUserAndDateAsync(
         Guid userId,
         Guid gymId,

@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Nutrition.Domain.Enums;
+using GymApp.Modules.Nutrition.Domain.Errors;
 using GymApp.Modules.Nutrition.Domain.ValueObjects;
 
 namespace GymApp.Modules.Nutrition.Domain.Entities;
@@ -52,6 +53,24 @@ public sealed class MealEntry : Entity
         _foodItems.Remove(item);
         RecalculateTotals();
     }
+
+    /// <summary>
+    /// Removes a single food item by its position in the meal. Food items are
+    /// value objects stored as an ordered JSON array (no stable id), so the
+    /// client addresses them by index — matching the order returned by GET.
+    /// </summary>
+    public Result RemoveFoodItemAt(int index)
+    {
+        if (index < 0 || index >= _foodItems.Count)
+            return Result.Failure(NutritionErrors.FoodItemNotFound(Id, index));
+
+        _foodItems.RemoveAt(index);
+        RecalculateTotals();
+
+        return Result.Success();
+    }
+
+    public int FoodItemCount => _foodItems.Count;
 
     public void RecalculateTotals()
     {

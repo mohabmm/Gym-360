@@ -41,8 +41,18 @@ Future<void> main() async {
   ]);
 
   runApp(
-    const ProviderScope(
-      child: GymAppGymStaff(),
+    ProviderScope(
+      overrides: [
+        // The shared FeatureGate widget watches the core `planFeaturesProvider`,
+        // which is a placeholder that throws UnimplementedError unless overridden.
+        // Without this the gym app's gated screens silently fail open. Delegate
+        // to this app's existing plan-features source so both share one cache and
+        // the FCM config_refresh invalidation (gymPlanFeaturesProvider) propagates.
+        planFeaturesProvider.overrideWith(
+          (ref) => ref.watch(gymPlanFeaturesProvider.future),
+        ),
+      ],
+      child: const GymAppGymStaff(),
     ),
   );
 }
