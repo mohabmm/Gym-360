@@ -61,6 +61,30 @@ public sealed class FoodLog : Entity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Removes a single food item (by index) from a meal in this log. If the
+    /// meal has no items left afterwards, the now-empty meal is removed too.
+    /// Daily totals are recalculated.
+    /// </summary>
+    public Result RemoveFoodItem(Guid mealEntryId, int itemIndex)
+    {
+        var meal = _meals.FirstOrDefault(m => m.Id == mealEntryId);
+        if (meal is null)
+            return Result.Failure(NutritionErrors.FoodLogNotFound(mealEntryId));
+
+        var removal = meal.RemoveFoodItemAt(itemIndex);
+        if (removal.IsFailure)
+            return removal;
+
+        if (meal.FoodItemCount == 0)
+            _meals.Remove(meal);
+
+        RecalculateTotals();
+        UpdatedAt = DateTime.UtcNow;
+
+        return Result.Success();
+    }
+
     public void RecalculateTotals()
     {
         DailyTotals = _meals.Aggregate(

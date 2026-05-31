@@ -1,4 +1,5 @@
 using GymApp.Modules.Gyms.Shared;
+using GymApp.Modules.Identity.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
@@ -17,13 +18,16 @@ internal sealed class GetMyPackagesQueryHandler
 
     private readonly ISessionPackageRepository _packageRepository;
     private readonly IGymMembershipChecker _membershipChecker;
+    private readonly IUserDisplayLookup _userDisplayLookup;
 
     public GetMyPackagesQueryHandler(
         ISessionPackageRepository packageRepository,
-        IGymMembershipChecker membershipChecker)
+        IGymMembershipChecker membershipChecker,
+        IUserDisplayLookup userDisplayLookup)
     {
         _packageRepository = packageRepository;
         _membershipChecker = membershipChecker;
+        _userDisplayLookup = userDisplayLookup;
     }
 
     public async Task<Result<PagedResponse<MySessionPackageDto>>> Handle(
@@ -65,17 +69,32 @@ internal sealed class GetMyPackagesQueryHandler
         var totalCount = ordered.Count;
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
-        var items = ordered
+        var pagePackages = ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .ToList();
+
+        // Resolve trainer display names cross-module via the Identity .Shared
+        // contract (Rule 3-compliant). Batched for the page slice only.
+        var trainerIds = pagePackages
+            .Select(p => p.TrainerId)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        var trainerNames = trainerIds.Count == 0
+            ? null
+            : await _userDisplayLookup.GetDisplayNamesAsync(trainerIds, cancellationToken);
+
+        var items = pagePackages
             .Select(p => new MySessionPackageDto(
                 p.Id,
                 p.Name,
                 p.TrainerId,
-                // Cross-module trainer display-name lookup does not yet exist.
-                // The mobile client resolves names via user endpoints; returning
-                // null keeps this endpoint self-contained and module-bounded.
-                TrainerName: null,
+                TrainerName: trainerNames is not null
+                    && trainerNames.TryGetValue(p.TrainerId, out var display)
+                        ? display.FullName
+                        : null,
                 p.TotalSessions,
                 p.RemainingSessions,
                 p.Status.ToString(),

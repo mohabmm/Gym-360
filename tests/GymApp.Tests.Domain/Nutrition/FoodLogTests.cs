@@ -130,6 +130,61 @@ public sealed class FoodLogTests
 
         log.DailyTotals.Should().Be(NutritionTotals.Zero);
     }
+
+    [Fact]
+    public void RemoveFoodItem_ExistingItem_ShouldRemoveItemAndRecalculate()
+    {
+        var log = CreateDefaultFoodLog();
+        var meal = log.AddMeal(MealType.Breakfast, CreateSampleFoodItems());
+
+        // Remove the second item (Baladi Bread: 280 cal) — leaves Foul (250 cal).
+        var result = log.RemoveFoodItem(meal.Id, 1);
+
+        result.IsSuccess.Should().BeTrue();
+        meal.FoodItems.Should().ContainSingle();
+        meal.FoodItems[0].Name.Should().Be("Foul Medames");
+        log.DailyTotals.TotalCalories.Should().Be(250);
+    }
+
+    [Fact]
+    public void RemoveFoodItem_LastItemInMeal_ShouldRemoveEmptyMeal()
+    {
+        var log = CreateDefaultFoodLog();
+        var meal = log.AddMeal(MealType.Snack, new List<FoodItem>
+        {
+            new("Apple", 150, "g", 80, 0.4m, 21, 0.2m)
+        });
+
+        var result = log.RemoveFoodItem(meal.Id, 0);
+
+        result.IsSuccess.Should().BeTrue();
+        log.Meals.Should().BeEmpty();
+        log.DailyTotals.Should().Be(NutritionTotals.Zero);
+    }
+
+    [Fact]
+    public void RemoveFoodItem_IndexOutOfRange_ShouldFail()
+    {
+        var log = CreateDefaultFoodLog();
+        var meal = log.AddMeal(MealType.Breakfast, CreateSampleFoodItems());
+
+        var result = log.RemoveFoodItem(meal.Id, 5);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Nutrition.FoodItemNotFound");
+        meal.FoodItems.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void RemoveFoodItem_UnknownMeal_ShouldFail()
+    {
+        var log = CreateDefaultFoodLog();
+        log.AddMeal(MealType.Breakfast, CreateSampleFoodItems());
+
+        var result = log.RemoveFoodItem(Guid.NewGuid(), 0);
+
+        result.IsFailure.Should().BeTrue();
+    }
 }
 
 public sealed class NutritionTotalsTests
