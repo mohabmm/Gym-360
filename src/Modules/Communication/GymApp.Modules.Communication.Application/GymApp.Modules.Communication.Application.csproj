@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\Billing\GymApp.Modules.Billing.IntegrationEvents\GymApp.Modules.Billing.IntegrationEvents.csproj" />
     <ProjectReference Include="..\..\Gamification\GymApp.Modules.Gamification.IntegrationEvents\GymApp.Modules.Gamification.IntegrationEvents.csproj" />
     <ProjectReference Include="..\..\Gyms\GymApp.Modules.Gyms.IntegrationEvents\GymApp.Modules.Gyms.IntegrationEvents.csproj" />
+    <ProjectReference Include="..\..\Gyms\GymApp.Modules.Gyms.Shared\GymApp.Modules.Gyms.Shared.csproj" />
     <ProjectReference Include="..\..\Identity\GymApp.Modules.Identity.IntegrationEvents\GymApp.Modules.Identity.IntegrationEvents.csproj" />
     <ProjectReference Include="..\..\Identity\GymApp.Modules.Identity.Shared\GymApp.Modules.Identity.Shared.csproj" />
   </ItemGroup>
