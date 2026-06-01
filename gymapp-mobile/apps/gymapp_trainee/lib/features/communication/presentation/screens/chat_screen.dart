@@ -6,6 +6,10 @@ import 'package:intl/intl.dart';
 import '../../../../core/providers.dart';
 import '../providers/communication_providers.dart';
 
+/// Local prefix that marks an optimistic (not-yet-confirmed) message so the
+/// bubble can render a "sending" clock instead of a delivery tick.
+const _optimisticPrefix = 'optimistic-';
+
 class ChatScreen extends ConsumerWidget {
   const ChatScreen({super.key});
 
@@ -14,6 +18,12 @@ class ChatScreen extends ConsumerWidget {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final conversationsAsync = ref.watch(conversationsProvider);
     final activeConversationId = ref.watch(activeConversationIdProvider);
+
+    // Refresh the conversation list (unread badges, previews) when a new_message
+    // push lands while the list is open.
+    ref.listen(incomingChatMessageProvider, (_, __) {
+      ref.invalidate(conversationsProvider);
+    });
 
     if (activeConversationId != null) {
       return _ConversationScreen(
@@ -33,8 +43,7 @@ class ChatScreen extends ConsumerWidget {
             if (conversations.isEmpty) {
               return EmptyState(
                 icon: Icons.chat_outlined,
-                title:
-                    isArabic ? 'لا توجد محادثات' : 'No conversations',
+                title: isArabic ? 'لا توجد محادثات' : 'No conversations',
                 subtitle: isArabic
                     ? 'محادثاتك مع المدرب ستظهر هنا'
                     : 'Your trainer conversations will appear here',
@@ -48,8 +57,7 @@ class ChatScreen extends ConsumerWidget {
               ),
             );
           },
-          loading: () =>
-              const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => AppErrorWidget(
             message: isArabic
                 ? 'تعذر تحميل المحادثات. يرجى المحاولة مرة أخرى.'
@@ -94,13 +102,20 @@ class _ConversationTile extends ConsumerWidget {
         name: displayName,
         size: 48,
       ),
-      title: Text(displayName,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        displayName,
+        style: TextStyle(
+          fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+        ),
+      ),
       subtitle: conversation.lastMessage != null
           ? Text(
               conversation.lastMessage!.content,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+              ),
             )
           : null,
       trailing: hasUnread
@@ -136,35 +151,112 @@ class _ConversationScreen extends ConsumerStatefulWidget {
       _ConversationScreenState();
 }
 
-class _ConversationScreenState
-    extends ConsumerState<_ConversationScreen> {
+class _ConversationScreenState extends ConsumerState<_ConversationScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   bool _isSending = false;
 
+  /// Optimistic messages shown immediately on send.
+  final List<MessageModel> _pending = [];
+
+  /// Auto-scroll to the bottom only on the first data render.
+  bool _didInitialScroll = false;
+
   @override
   void initState() {
     super.initState();
-    // Mark messages as read when opening the conversation
+    // Mark messages as read when opening the conversation.
     _markAsRead();
+    // Join the SignalR conversation group for live message_received /
+    // messages_read events.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatRealtimeProvider)?.joinConversation(widget.conversationId);
+    });
   }
 
   Future<void> _markAsRead() async {
     try {
       final repo = ref.read(communicationRepositoryProvider);
       await repo.markMessagesRead(conversationId: widget.conversationId);
-      // Refresh conversation list to update unread counts
       ref.invalidate(conversationsProvider);
     } catch (_) {
-      // Silent fail — marking read is non-critical
+      // Silent fail — marking read is non-critical.
     }
   }
 
   @override
   void dispose() {
+    ref.read(chatRealtimeProvider)?.leaveConversation(widget.conversationId);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom({bool animate = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
+      if (animate) {
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scrollController.jumpTo(target);
+      }
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final content = _messageController.text.trim();
+    if (content.isEmpty) return;
+
+    final myId = ref.read(authProvider).valueOrNull?.user?.id ?? '';
+    final optimistic = MessageModel(
+      id: '$_optimisticPrefix${DateTime.now().microsecondsSinceEpoch}',
+      conversationId: widget.conversationId,
+      senderId: myId,
+      content: content,
+      sentAt: DateTime.now(),
+    );
+
+    setState(() {
+      _isSending = true;
+      _pending.add(optimistic);
+    });
+    _messageController.clear();
+    _scrollToBottom(animate: true);
+
+    try {
+      // Sender derived from JWT — server no longer accepts senderId in body.
+      final repo = ref.read(communicationRepositoryProvider);
+      await repo.sendMessage(
+        conversationId: widget.conversationId,
+        content: content,
+      );
+      // Wait for the fresh list before dropping the optimistic copy (no flicker).
+      ref.invalidate(messagesProvider(widget.conversationId));
+      await ref.read(messagesProvider(widget.conversationId).future);
+      if (!mounted) return;
+      setState(() => _pending.removeWhere((m) => m.id == optimistic.id));
+      ref.invalidate(conversationsProvider);
+      _scrollToBottom(animate: true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _pending.removeWhere((m) => m.id == optimistic.id);
+        _messageController.text = content;
+      });
+      final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic
+            ? 'تعذر إرسال الرسالة. يرجى المحاولة مرة أخرى.'
+            : 'Could not send the message. Please try again.'),
+      ));
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
   }
 
   @override
@@ -174,6 +266,23 @@ class _ConversationScreenState
         ref.watch(messagesProvider(widget.conversationId));
     final conversationsAsync = ref.watch(conversationsProvider);
     final myId = ref.watch(authProvider).valueOrNull?.user?.id ?? '';
+
+    // Live refresh + mark-read when a message_received event lands for THIS
+    // conversation, then scroll to the new bottom.
+    ref.listen(incomingChatMessageProvider, (_, next) {
+      final convId = next.valueOrNull?['conversationId']?.toString();
+      if (convId != null && convId != widget.conversationId) return;
+      ref.invalidate(messagesProvider(widget.conversationId));
+      _markAsRead();
+      _scrollToBottom(animate: true);
+    });
+
+    // Counterpart read our messages — refetch so ✓ flips to ✓✓ live.
+    ref.listen(chatMessagesReadProvider, (_, next) {
+      final convId = next.valueOrNull?['conversationId']?.toString();
+      if (convId != null && convId != widget.conversationId) return;
+      ref.invalidate(messagesProvider(widget.conversationId));
+    });
     final counterpartName = conversationsAsync.maybeWhen(
       data: (conversations) {
         ConversationModel? convo;
@@ -213,29 +322,34 @@ class _ConversationScreenState
               onRefresh: () async =>
                   ref.invalidate(messagesProvider(widget.conversationId)),
               child: messagesAsync.when(
-                data: (messages) {
+                data: (serverMessages) {
+                  final messages = [...serverMessages, ..._pending]
+                    ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+
                   if (messages.isEmpty) {
                     return EmptyState(
                       icon: Icons.chat_bubble_outline,
-                      title: isArabic
-                          ? 'لا توجد رسائل بعد'
-                          : 'No messages yet',
+                      title:
+                          isArabic ? 'لا توجد رسائل بعد' : 'No messages yet',
                       subtitle: isArabic
                           ? 'ابدأ المحادثة مع مدربك'
                           : 'Start the conversation with your trainer',
                     );
                   }
+
+                  if (!_didInitialScroll) {
+                    _didInitialScroll = true;
+                    _scrollToBottom();
+                  }
+
                   return ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final msg = messages[index];
-                      final authState = ref.read(authProvider);
-                      final myId = authState.valueOrNull?.user?.id;
                       final isMe = msg.senderId == myId;
-                      return _MessageBubble(
-                          message: msg, isMe: isMe);
+                      return _MessageBubble(message: msg, isMe: isMe);
                     },
                   );
                 },
@@ -271,9 +385,8 @@ class _ConversationScreenState
                     child: TextField(
                       controller: _messageController,
                       decoration: InputDecoration(
-                        hintText: isArabic
-                            ? 'اكتب رسالتك...'
-                            : 'Type a message...',
+                        hintText:
+                            isArabic ? 'اكتب رسالتك...' : 'Type a message...',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -281,14 +394,14 @@ class _ConversationScreenState
                             horizontal: 16, vertical: 8),
                       ),
                       maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
                     onPressed: _isSending ? null : _sendMessage,
                     tooltip: isArabic ? 'إرسال' : 'Send',
-                    // Mirrored on Icon.semanticLabel so VoiceOver reads it
-                    // even when tooltips aren't surfaced.
                     icon: _isSending
                         ? const SizedBox(
                             height: 16,
@@ -306,50 +419,19 @@ class _ConversationScreenState
       ),
     );
   }
-
-  Future<void> _sendMessage() async {
-    final content = _messageController.text.trim();
-    if (content.isEmpty) return;
-
-    setState(() => _isSending = true);
-    _messageController.clear();
-
-    try {
-      // Sender derived from JWT — server no longer accepts senderId in body.
-      final repo = ref.read(communicationRepositoryProvider);
-      await repo.sendMessage(
-        conversationId: widget.conversationId,
-        content: content,
-      );
-      ref.invalidate(messagesProvider(widget.conversationId));
-      ref.invalidate(conversationsProvider);
-    } catch (_) {
-      if (mounted) {
-        final isArabic =
-            Localizations.localeOf(context).languageCode == 'ar';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(isArabic
-              ? 'تعذر إرسال الرسالة. يرجى المحاولة مرة أخرى.'
-              : 'Could not send the message. Please try again.'),
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _isSending = false);
-    }
-  }
 }
 
-/// Timestamp string for a chat bubble. Today's messages show just "HH:mm a"
+/// Timestamp string for a chat bubble. Today's messages show just "h:mm a"
 /// so they stay compact; anything older carries an explicit date so the
 /// conversation doesn't ambiguously read "04:45" forever (BUG-10).
 String _formatSentAt(BuildContext context, DateTime sentAt) {
   final now = DateTime.now();
-  final isToday = now.year == sentAt.year &&
-      now.month == sentAt.month &&
-      now.day == sentAt.day;
+  final local = sentAt.toLocal();
+  final isToday = now.year == local.year &&
+      now.month == local.month &&
+      now.day == local.day;
   final isArabic = Localizations.localeOf(context).languageCode == 'ar';
   final locale = isArabic ? 'ar' : 'en';
-  final local = sentAt.toLocal();
   if (isToday) {
     return DateFormat('h:mm a', locale).format(local);
   }
@@ -362,8 +444,11 @@ class _MessageBubble extends StatelessWidget {
 
   const _MessageBubble({required this.message, required this.isMe});
 
+  bool get _isPending => message.id.startsWith(_optimisticPrefix);
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -374,8 +459,8 @@ class _MessageBubble extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: isMe
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceVariant,
+              ? theme.colorScheme.primary
+              : theme.colorScheme.surfaceVariant,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -389,27 +474,42 @@ class _MessageBubble extends StatelessWidget {
           children: [
             Text(
               message.content,
-              style: TextStyle(
-                color: isMe ? Colors.white : null,
-              ),
+              style: TextStyle(color: isMe ? Colors.white : null),
             ),
             const SizedBox(height: 2),
-            Text(
-              _formatSentAt(context, message.sentAt),
-              style: TextStyle(
-                fontSize: 11,
-                color: isMe
-                    ? Colors.white.withOpacity(0.7)
-                    : Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.color
-                        ?.withOpacity(0.7),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatSentAt(context, message.sentAt),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isMe
+                        ? Colors.white.withOpacity(0.7)
+                        : theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  _statusIcon(),
+                ],
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _statusIcon() {
+    if (_isPending) {
+      return Icon(Icons.access_time,
+          size: 12, color: Colors.white.withOpacity(0.7));
+    }
+    if (message.isRead) {
+      return const Icon(Icons.done_all,
+          size: 14, color: Colors.lightBlueAccent);
+    }
+    return Icon(Icons.check, size: 14, color: Colors.white.withOpacity(0.7));
   }
 }

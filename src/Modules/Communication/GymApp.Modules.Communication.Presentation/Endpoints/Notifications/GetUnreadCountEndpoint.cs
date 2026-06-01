@@ -13,10 +13,13 @@ internal sealed class GetUnreadCountEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/v1/communication/notifications/unread-count", async (
-            Guid userId,
+            HttpContext httpContext,
             Guid? gymId,
             ISender sender) =>
         {
+            if (!UserContext.TryGetUserId(httpContext, out var userId))
+                return Results.Unauthorized();
+
             var query = new GetUnreadCountQuery(userId, gymId);
             var result = await sender.Send(query);
 
@@ -26,7 +29,7 @@ internal sealed class GetUnreadCountEndpoint : IEndpoint
         })
         .RequireAuthorization()
         .WithSummary("Get unread counts")
-        .WithDescription("Returns the count of unread notifications and messages for a user, optionally scoped to a gym.")
+        .WithDescription("Returns the count of unread notifications and messages for the authenticated user, optionally scoped to a gym. User id is derived from the JWT.")
         .WithTags("Communication")
         .Produces<ApiResponse<UnreadCountResponse>>(200)
         .Produces<ApiResponse<object>>(401);
