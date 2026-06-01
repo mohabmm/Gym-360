@@ -48,4 +48,15 @@ internal sealed class GymMembershipChecker : IGymMembershipChecker
             .AsNoTracking()
             .AnyAsync(m => m.GymId == gymId && m.MemberId == memberId && m.IsFrozen, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Guid>> GetMemberIdsAsync(
+        Guid gymId,
+        CancellationToken cancellationToken = default)
+    {
+        var gym = await _dbContext.Gyms
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+
+        return gym is null ? Array.Empty<Guid>() : gym.MemberIds.ToArray();
+    }
 }
