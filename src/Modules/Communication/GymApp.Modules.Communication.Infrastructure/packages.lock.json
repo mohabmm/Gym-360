@@ -581,6 +581,7 @@
           "GymApp.Modules.Communication.Domain": "[1.0.0, )",
           "GymApp.Modules.Gamification.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Identity.Shared": "[1.0.0, )",
           "GymApp.Modules.Progress.IntegrationEvents": "[1.0.0, )",
@@ -605,6 +606,9 @@
         "dependencies": {
           "GymApp.Common.Domain": "[1.0.0, )"
         }
+      },
+      "gymapp.modules.gyms.shared": {
+        "type": "Project"
       },
       "gymapp.modules.identity.integrationevents": {
         "type": "Project",
