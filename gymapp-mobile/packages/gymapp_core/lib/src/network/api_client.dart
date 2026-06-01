@@ -220,9 +220,20 @@ class ApiClient {
         rawItems = const [];
       }
 
-      final items = rawItems
-          .map((item) => itemParser(item as Map<String, dynamic>))
-          .toList();
+      // Parse each row independently: a single malformed item (e.g. a backend
+      // ghost row with null required fields) must not blow up the whole list.
+      // Skip the bad row, log it, and keep the rest.
+      final items = <T>[];
+      for (final item in rawItems) {
+        try {
+          items.add(itemParser(item as Map<String, dynamic>));
+        } catch (e) {
+          developer.log(
+            'Skipping unparseable list item from $path: $e',
+            name: 'ApiClient',
+          );
+        }
+      }
 
       final meta = rawResponse.meta != null
           ? PaginationMeta.fromJson(rawResponse.meta!)
