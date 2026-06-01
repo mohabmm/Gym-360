@@ -204,7 +204,10 @@ internal sealed class GymQueryService : IGymQueryService
         // Member ids in the gym's stored order. Filters below narrow this set BEFORE
         // paging, so search/status/section span the whole roster — not just one fetched
         // page (the old behaviour silently hid members past the first client-side slice).
-        var orderedIds = gym.MemberIds.ToList();
+        // Drop a ghost id equal to the gym's own id: stale/garbage data left in
+        // member_ids resolves to no Identity profile and would surface as a null-named
+        // row (and crash strict mobile parsers). Mirrors the trainer-list ghost guard.
+        var orderedIds = gym.MemberIds.Where(id => id != gymId).ToList();
 
         var statusKey = status?.Trim().ToLowerInvariant();
         var frozenFilter = statusKey == "frozen";
@@ -340,7 +343,8 @@ internal sealed class GymQueryService : IGymQueryService
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
 
-        if (gym is null || !gym.MemberIds.Contains(memberId))
+        // memberId == gymId is a ghost id (stale data in member_ids), not a real member.
+        if (gym is null || memberId == gymId || !gym.MemberIds.Contains(memberId))
             return null;
 
         var profile = await _userProfileLookup.GetProfileAsync(memberId, cancellationToken);
