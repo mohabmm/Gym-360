@@ -6,6 +6,10 @@ import 'package:intl/intl.dart';
 import '../../../../core/providers.dart';
 import '../providers/communication_providers.dart';
 
+/// Local prefix that marks an optimistic (not-yet-confirmed) message so the
+/// bubble can render a "sending" clock instead of a delivery tick.
+const _optimisticPrefix = 'optimistic-';
+
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
 
@@ -20,37 +24,112 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   bool _isSending = false;
 
+  /// Optimistic messages shown immediately on send. Removed once the refetched
+  /// server list contains the confirmed copy (or on failure rollback).
+  final List<MessageModel> _pending = [];
+
+  /// Ensures we only auto-scroll to the bottom on the first data render.
+  bool _didInitialScroll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Clear the unread badge for this conversation as soon as it opens, so the
+    // trainer's home "unread" counter and the conversation list stay accurate
+    // (parity with the trainee app).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _markAsRead();
+      // Join the SignalR conversation group so messages_read / in-thread
+      // message_received events arrive live.
+      ref.read(chatRealtimeProvider)?.joinConversation(widget.conversationId);
+    });
+  }
+
   @override
   void dispose() {
+    ref.read(chatRealtimeProvider)?.leaveConversation(widget.conversationId);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _markAsRead() async {
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      // Caller derived from JWT — no body.
+      await apiClient
+          .putVoid('${ApiEndpoints.conversationById(widget.conversationId)}/read');
+      ref.invalidate(conversationsProvider);
+    } catch (_) {
+      // Marking read is non-critical — fail silently.
+    }
+  }
+
+  void _scrollToBottom({bool animate = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
+      if (animate) {
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      } else {
+        _scrollController.jumpTo(target);
+      }
+    });
   }
 
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
 
-    setState(() => _isSending = true);
+    final myId = ref.read(authProvider).user?.id ?? '';
+    final optimistic = MessageModel(
+      id: '$_optimisticPrefix${DateTime.now().microsecondsSinceEpoch}',
+      conversationId: widget.conversationId,
+      senderId: myId,
+      content: content,
+      sentAt: DateTime.now(),
+    );
+
+    setState(() {
+      _isSending = true;
+      _pending.add(optimistic);
+    });
     _messageController.clear();
+    _scrollToBottom(animate: true);
 
     try {
       // Sender derived from JWT — server no longer accepts senderId in body.
       final apiClient = ref.read(apiClientProvider);
       await apiClient.postVoid(
         ApiEndpoints.messages(widget.conversationId),
-        data: {
-          'content': content,
-        },
+        data: {'content': content},
       );
-      ref.invalidate(
-          conversationMessagesProvider(widget.conversationId));
+      // Wait for the fresh list so we only drop the optimistic copy once the
+      // confirmed message is present — avoids a flicker.
+      ref.invalidate(conversationMessagesProvider(widget.conversationId));
+      await ref
+          .read(conversationMessagesProvider(widget.conversationId).future);
+      if (!mounted) return;
+      setState(() => _pending.removeWhere((m) => m.id == optimistic.id));
       ref.invalidate(conversationsProvider);
+      _scrollToBottom(animate: true);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
-      }
+      if (!mounted) return;
+      // Rollback the optimistic bubble and restore the text for a retry.
+      setState(() {
+        _pending.removeWhere((m) => m.id == optimistic.id);
+        _messageController.text = content;
+      });
+      final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic
+            ? 'تعذر إرسال الرسالة. حاول مرة أخرى.'
+            : 'Could not send the message. Try again.'),
+      ));
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -58,14 +137,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic =
-        Localizations.localeOf(context).languageCode == 'ar';
-    final messagesAsync = ref.watch(
-        conversationMessagesProvider(widget.conversationId));
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final messagesAsync =
+        ref.watch(conversationMessagesProvider(widget.conversationId));
     final auth = ref.watch(authProvider);
     final theme = Theme.of(context);
 
     final title = ref.watch(conversationTitleProvider(widget.conversationId));
+
+    // Live refresh + mark-read when a message_received event lands for THIS
+    // conversation, then scroll to the new bottom.
+    ref.listen(incomingChatMessageProvider, (_, next) {
+      final convId = next.valueOrNull?['conversationId']?.toString();
+      if (convId != null && convId != widget.conversationId) return;
+      ref.invalidate(conversationMessagesProvider(widget.conversationId));
+      _markAsRead();
+      _scrollToBottom(animate: true);
+    });
+
+    // Counterpart read our messages — refetch so ✓ flips to ✓✓ live.
+    ref.listen(chatMessagesReadProvider, (_, next) {
+      final convId = next.valueOrNull?['conversationId']?.toString();
+      if (convId != null && convId != widget.conversationId) return;
+      ref.invalidate(conversationMessagesProvider(widget.conversationId));
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -73,20 +168,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Messages
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async => ref.invalidate(
                   conversationMessagesProvider(widget.conversationId)),
               child: messagesAsync.when(
-                data: (messages) {
+                data: (serverMessages) {
+                  // Merge confirmed + optimistic, keep chronological order.
+                  final messages = [...serverMessages, ..._pending]
+                    ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+
                   if (messages.isEmpty) {
                     return EmptyState(
                       icon: Icons.chat_bubble_outline,
-                      title: isArabic
-                          ? 'ابدا المحادثة'
-                          : 'Start the conversation',
+                      title:
+                          isArabic ? 'ابدا المحادثة' : 'Start the conversation',
                     );
+                  }
+
+                  if (!_didInitialScroll) {
+                    _didInitialScroll = true;
+                    _scrollToBottom();
                   }
 
                   return ListView.builder(
@@ -96,62 +198,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     itemBuilder: (context, index) {
                       final msg = messages[index];
                       final isMe = msg.senderId == auth.user?.id;
-
-                      return Align(
-                        alignment: isMe
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isMe
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.surface,
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(12),
-                              topRight: const Radius.circular(12),
-                              bottomLeft: Radius.circular(isMe ? 12 : 0),
-                              bottomRight:
-                                  Radius.circular(isMe ? 0 : 12),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                msg.content,
-                                style: theme.textTheme.bodyMedium
-                                    ?.copyWith(
-                                  color: isMe
-                                      ? Colors.white
-                                      : theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              Text(
-                                DateFormat('hh:mm a', isArabic ? 'ar' : 'en').format(msg.sentAt),
-                                style: theme.textTheme.bodySmall
-                                    ?.copyWith(
-                                  color: isMe
-                                      ? Colors.white.withOpacity(0.7)
-                                      : AppColors.grey400,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      return _MessageBubble(
+                        message: msg,
+                        isMe: isMe,
+                        isArabic: isArabic,
                       );
                     },
                   );
@@ -161,8 +211,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 error: (e, _) => AppErrorWidget(
                   message: e.toString(),
                   onRetry: () => ref.invalidate(
-                      conversationMessagesProvider(
-                          widget.conversationId)),
+                      conversationMessagesProvider(widget.conversationId)),
                 ),
               ),
             ),
@@ -170,7 +219,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
           // Input bar
           Container(
-            padding: EdgeInsets.fromLTRB(12, 8, 12, 12 + MediaQuery.of(context).padding.bottom),
+            padding: EdgeInsets.fromLTRB(
+                12, 8, 12, 12 + MediaQuery.of(context).padding.bottom),
             decoration: BoxDecoration(
               color: theme.scaffoldBackgroundColor,
               boxShadow: [
@@ -187,9 +237,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   child: TextField(
                     controller: _messageController,
                     decoration: InputDecoration(
-                      hintText: isArabic
-                          ? 'اكتب رسالة...'
-                          : 'Type a message...',
+                      hintText:
+                          isArabic ? 'اكتب رسالة...' : 'Type a message...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -221,5 +270,90 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       ),
     );
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  final MessageModel message;
+  final bool isMe;
+  final bool isArabic;
+
+  const _MessageBubble({
+    required this.message,
+    required this.isMe,
+    required this.isArabic,
+  });
+
+  bool get _isPending => message.id.startsWith(_optimisticPrefix);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: isMe ? theme.colorScheme.primary : theme.colorScheme.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: Radius.circular(isMe ? 12 : 0),
+            bottomRight: Radius.circular(isMe ? 0 : 12),
+          ),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              message.content,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isMe ? Colors.white : theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat('hh:mm a', isArabic ? 'ar' : 'en')
+                      .format(message.sentAt.toLocal()),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isMe
+                        ? Colors.white.withOpacity(0.7)
+                        : AppColors.grey400,
+                    fontSize: 10,
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  _statusIcon(),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusIcon() {
+    if (_isPending) {
+      return Icon(Icons.access_time,
+          size: 12, color: Colors.white.withOpacity(0.7));
+    }
+    if (message.isRead) {
+      // Delivered + read.
+      return const Icon(Icons.done_all, size: 14, color: Colors.lightBlueAccent);
+    }
+    // Sent (server-confirmed) but not yet read.
+    return Icon(Icons.check, size: 14, color: Colors.white.withOpacity(0.7));
   }
 }

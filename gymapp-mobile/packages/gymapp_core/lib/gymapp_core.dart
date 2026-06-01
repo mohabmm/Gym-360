@@ -63,6 +63,7 @@ export 'src/services/offline_queue_service.dart';
 export 'src/services/secure_storage_service.dart';
 export 'src/services/connectivity_service.dart';
 export 'src/services/chat_service.dart';
+export 'src/services/chat_realtime.dart';
 export 'src/services/branding_hub_service.dart';
 export 'src/services/telemetry_service.dart';
 export 'src/services/telemetry_bootstrap.dart';

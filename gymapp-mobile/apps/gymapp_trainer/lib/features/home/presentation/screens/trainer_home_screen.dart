@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
+import '../../../communication/presentation/widgets/notification_bell.dart';
 import '../providers/trainer_dashboard_provider.dart';
 
 class TrainerHomeScreen extends ConsumerWidget {
@@ -56,6 +57,7 @@ class TrainerHomeScreen extends ConsumerWidget {
                   tooltip: isArabic ? 'الرسائل' : 'Messages',
                   onPressed: () => context.push(AppRoutes.chatList),
                 ),
+                const NotificationBell(),
                 const SizedBox(width: 4),
               ],
             ),
