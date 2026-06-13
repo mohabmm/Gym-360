@@ -131,15 +131,19 @@ class _CreateAnnouncementScreenState
                   Wrap(
                     spacing: 8,
                     children: [
+                      // Codes MUST match the BE AnnouncementCategory enum
+                      // (General/Schedule/Offer/Maintenance). Previously the FE
+                      // sent 'promotion'/'event', which fail Enum.TryParse on
+                      // the backend and were silently saved as General.
                       'general',
-                      'promotion',
-                      'event',
+                      'offer',
+                      'schedule',
                       'maintenance',
                     ].map((cat) {
                       final labels = {
                         'general': isArabic ? 'عام' : 'General',
-                        'promotion': isArabic ? 'عرض' : 'Promotion',
-                        'event': isArabic ? 'حدث' : 'Event',
+                        'offer': isArabic ? 'عرض' : 'Offer',
+                        'schedule': isArabic ? 'الجدول' : 'Schedule',
                         'maintenance': isArabic ? 'صيانة' : 'Maintenance',
                       };
                       return ChoiceChip(
