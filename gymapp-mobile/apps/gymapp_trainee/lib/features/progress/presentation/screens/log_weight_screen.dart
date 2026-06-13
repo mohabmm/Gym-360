@@ -88,6 +88,16 @@ class _LogWeightScreenState extends ConsumerState<LogWeightScreen> {
       ));
       return;
     }
+    // Upper bound: guard against fat-finger entries (e.g. 9999) that would
+    // skew the weight chart. 500kg exceeds any realistic human weight.
+    if (weight > 500) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic
+            ? 'الرجاء إدخال وزن واقعي (أقل من 500 كجم)'
+            : 'Enter a realistic weight (under 500 kg)'),
+      ));
+      return;
+    }
 
     setState(() => _isSaving = true);
     try {
