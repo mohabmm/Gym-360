@@ -54,6 +54,22 @@ Color sessionStatusColor(String status) {
   }
 }
 
+/// Localizes the BE SessionType enum (PersonalTraining/Assessment/FollowUp).
+/// The session-detail screen previously printed the raw enum string, leaking
+/// English into the Arabic-first UI. Labels mirror the booking sheet.
+String sessionTypeLabel(String type, bool isArabic) {
+  switch (_normalize(type)) {
+    case 'personaltraining':
+      return isArabic ? 'تدريب شخصي' : 'Personal Training';
+    case 'assessment':
+      return isArabic ? 'تقييم' : 'Assessment';
+    case 'followup':
+      return isArabic ? 'متابعة' : 'Follow-up';
+    default:
+      return type;
+  }
+}
+
 /// Lowercases and strips separators so `Late_Cancelled`, `LATE-CANCELLED`,
 /// `LateCancelled` and `late cancelled` all collapse to `latecancelled`.
 String _normalize(String s) =>

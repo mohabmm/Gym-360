@@ -80,7 +80,8 @@ class _Body extends ConsumerWidget {
             value:
                 '${session.durationMinutes} ${isArabic ? 'دقيقة' : 'min'}'),
         _Row(
-            label: isArabic ? 'النوع' : 'Type', value: session.sessionType),
+            label: isArabic ? 'النوع' : 'Type',
+            value: sessionTypeLabel(session.sessionType, isArabic)),
         _Row(
             label: isArabic ? 'الحالة' : 'Status',
             value: sessionStatusLabel(session.status, isArabic)),
