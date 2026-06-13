@@ -9,6 +9,7 @@ import '../../../../core/router.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
 import '../providers/scheduling_providers.dart';
+import '../session_status_l10n.dart';
 import 'class_schedule_screen.dart';
 
 class UpcomingSessionsScreen extends ConsumerWidget {
@@ -432,40 +433,8 @@ class _SessionTile extends ConsumerWidget {
     }
   }
 
-  String _statusLabel(String status, bool isArabic) {
-    switch (status.toLowerCase()) {
-      case 'scheduled':
-        return isArabic ? 'مجدول' : 'Scheduled';
-      case 'confirmed':
-        return isArabic ? 'مؤكد' : 'Confirmed';
-      case 'completed':
-        return isArabic ? 'مكتمل' : 'Completed';
-      case 'cancelled':
-        return isArabic ? 'ملغي' : 'Cancelled';
-      case 'late_cancelled':
-        return isArabic ? 'إلغاء متأخر' : 'Late Cancelled';
-      case 'no_show':
-        return isArabic ? 'لم يحضر' : 'No Show';
-      case 'pending':
-        return isArabic ? 'قيد الانتظار' : 'Pending';
-      default:
-        return status;
-    }
-  }
+  String _statusLabel(String status, bool isArabic) =>
+      sessionStatusLabel(status, isArabic);
 
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'scheduled':
-      case 'confirmed':
-        return Colors.blue;
-      case 'completed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      case 'late_cancelled':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
+  Color _statusColor(String status) => sessionStatusColor(status);
 }
