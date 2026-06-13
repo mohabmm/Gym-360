@@ -24,6 +24,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   bool _isSending = false;
 
+  /// Cached realtime handle captured in [initState] so [dispose] can leave the
+  /// SignalR group without touching `ref` — reading a provider after the
+  /// element is disposed throws "Cannot use ref after the widget was disposed".
+  ChatRealtime? _realtime;
+
   /// Optimistic messages shown immediately on send. Removed once the refetched
   /// server list contains the confirmed copy (or on failure rollback).
   final List<MessageModel> _pending = [];
@@ -34,6 +39,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    // Capture the realtime handle now; `ref` is safe in initState but not in
+    // dispose, where we still need to leave the conversation group.
+    _realtime = ref.read(chatRealtimeProvider);
     // Clear the unread badge for this conversation as soon as it opens, so the
     // trainer's home "unread" counter and the conversation list stay accurate
     // (parity with the trainee app).
@@ -41,13 +49,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _markAsRead();
       // Join the SignalR conversation group so messages_read / in-thread
       // message_received events arrive live.
-      ref.read(chatRealtimeProvider)?.joinConversation(widget.conversationId);
+      _realtime?.joinConversation(widget.conversationId);
     });
   }
 
   @override
   void dispose() {
-    ref.read(chatRealtimeProvider)?.leaveConversation(widget.conversationId);
+    _realtime?.leaveConversation(widget.conversationId);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
