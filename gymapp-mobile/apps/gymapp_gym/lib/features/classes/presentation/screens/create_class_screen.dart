@@ -192,7 +192,13 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                     keyboardType: TextInputType.number,
                     validator: (v) {
                       if (v == null || v.isEmpty) return isArabic ? 'مطلوب' : 'Required';
-                      if (int.tryParse(v) == null) return isArabic ? 'رقم غير صالح' : 'Invalid number';
+                      final n = int.tryParse(v);
+                      if (n == null) return isArabic ? 'رقم غير صالح' : 'Invalid number';
+                      if (n < 1) {
+                        return isArabic
+                            ? 'يجب أن تكون السعة 1 على الأقل'
+                            : 'Capacity must be at least 1';
+                      }
                       return null;
                     },
                   ),
