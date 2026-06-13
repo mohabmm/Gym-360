@@ -62,13 +62,35 @@ final bookableSessionsProvider = Provider<int?>((ref) {
       .fold<int>(0, (sum, p) => sum + p.remainingSessions);
 
   final all = allAsync.valueOrNull ?? const <SessionModel>[];
-  const pendingStatuses = {'pending', 'confirmed', 'inprogress'};
-  final pendingBookings =
-      all.where((s) => pendingStatuses.contains(s.status.toLowerCase())).length;
-
-  final bookable = totalRemaining - pendingBookings;
-  return bookable < 0 ? 0 : bookable;
+  return computeBookableSessions(totalRemaining, all, DateTime.now());
 });
+
+/// Bookable = package remaining minus the sessions that still hold a slot.
+///
+/// Only *live* commitments reserve capacity:
+///   - `inprogress` always counts (it is happening right now);
+///   - `pending`/`confirmed` count only when the session is still upcoming.
+///
+/// BUG: previously every `pending`/`confirmed`/`inprogress` session counted,
+/// regardless of date. A past-dated session left stuck in `Pending` (the
+/// backend has no auto no-show transition — `MarkNoShow` is a manual trainer
+/// action) therefore permanently subtracted a slot the member could never
+/// recover, silently locking them out of a paid session. Excluding stale
+/// past-dated pending/confirmed sessions returns that slot.
+int computeBookableSessions(
+    int totalRemaining, List<SessionModel> sessions, DateTime now) {
+  const live = {'pending', 'confirmed', 'inprogress'};
+  final reserved = sessions.where((s) {
+    final status = s.status.toLowerCase();
+    if (!live.contains(status)) return false;
+    if (status == 'inprogress') return true;
+    // pending / confirmed: only upcoming sessions reserve a slot.
+    return !s.scheduledAt.isBefore(now);
+  }).length;
+
+  final bookable = totalRemaining - reserved;
+  return bookable < 0 ? 0 : bookable;
+}
 
 /// Per-gym cancellation/no-show policy. Falls back to a sane default if the
 /// endpoint fails so the cancel flow never breaks just because the policy
