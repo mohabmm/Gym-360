@@ -278,6 +278,10 @@ class _ConversationScreenState extends ConsumerState<_ConversationScreen> {
     // Live refresh + mark-read when a message_received event lands for THIS
     // conversation, then scroll to the new bottom.
     ref.listen(incomingChatMessageProvider, (_, next) {
+      // A SignalR stream event can land while this screen is being disposed;
+      // touching `ref` after that throws "Cannot use ref after the widget was
+      // disposed". Bail if we are no longer mounted.
+      if (!mounted) return;
       final convId = next.valueOrNull?['conversationId']?.toString();
       if (convId != null && convId != widget.conversationId) return;
       ref.invalidate(messagesProvider(widget.conversationId));
@@ -287,6 +291,7 @@ class _ConversationScreenState extends ConsumerState<_ConversationScreen> {
 
     // Counterpart read our messages — refetch so ✓ flips to ✓✓ live.
     ref.listen(chatMessagesReadProvider, (_, next) {
+      if (!mounted) return;
       final convId = next.valueOrNull?['conversationId']?.toString();
       if (convId != null && convId != widget.conversationId) return;
       ref.invalidate(messagesProvider(widget.conversationId));
