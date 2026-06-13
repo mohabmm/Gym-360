@@ -165,8 +165,23 @@ class _CheckInTile extends StatelessWidget {
         '${checkIn.checkedInAt.day}/${checkIn.checkedInAt.month}/${checkIn.checkedInAt.year}',
       ),
       subtitle: Text(
-        '${checkIn.checkedInAt.hour.toString().padLeft(2, '0')}:${checkIn.checkedInAt.minute.toString().padLeft(2, '0')} • ${checkIn.method}',
+        '${checkIn.checkedInAt.hour.toString().padLeft(2, '0')}:${checkIn.checkedInAt.minute.toString().padLeft(2, '0')} • ${_methodLabel(checkIn.method, isArabic)}',
       ),
     );
+  }
+
+  /// Localizes the BE CheckInMethod enum (QR/MemberNumber/Manual) for the
+  /// Arabic-first UI; previously the raw enum string was shown.
+  String _methodLabel(String method, bool isArabic) {
+    switch (method.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '')) {
+      case 'qr':
+        return isArabic ? 'رمز QR' : 'QR';
+      case 'membernumber':
+        return isArabic ? 'رقم العضو' : 'Member number';
+      case 'manual':
+        return isArabic ? 'يدوي' : 'Manual';
+      default:
+        return method;
+    }
   }
 }
