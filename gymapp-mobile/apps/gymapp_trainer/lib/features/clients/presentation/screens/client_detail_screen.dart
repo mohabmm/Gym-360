@@ -5,6 +5,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/providers.dart';
+import '../../../../core/session_type_l10n.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../providers/client_providers.dart';
 
@@ -613,7 +614,7 @@ class _SessionsTab extends StatelessWidget {
                 Text(
                   '${DateFormat('HH:mm').format(session.scheduledAt)} • '
                   '${session.durationMinutes} ${isArabic ? 'دقيقة' : 'min'} • '
-                  '${session.sessionType}',
+                  '${sessionTypeLabel(session.sessionType, isArabic)}',
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -754,7 +755,7 @@ class _SessionRow extends StatelessWidget {
           style: theme.textTheme.titleSmall,
         ),
         subtitle: Text(
-            '${session.durationMinutes} ${isArabic ? "دقيقة" : "min"} • ${session.sessionType}'),
+            '${session.durationMinutes} ${isArabic ? "دقيقة" : "min"} • ${sessionTypeLabel(session.sessionType, isArabic)}'),
         trailing: Text(
           parent._statusLabel(session.status, isArabic),
           style: TextStyle(
