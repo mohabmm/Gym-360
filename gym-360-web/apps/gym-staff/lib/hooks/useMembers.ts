@@ -23,6 +23,7 @@ function normaliseMember(m: any): MemberListItem {
     joinDate: m.joinedAt ?? m.joinDate ?? '',
     expiryDate: m.expiryDate ?? '',
     section: m.section ?? '',
+    nationalId: m.nationalId ?? undefined,
     lastCheckIn: m.lastCheckIn ?? undefined,
     avatarUrl: m.profilePhotoUrl ?? undefined,
   };
@@ -39,6 +40,56 @@ export function useMembers() {
       const raw: unknown[] = res.data.data?.items ?? res.data.data ?? [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (raw as any[]).map(normaliseMember);
+    },
+  });
+}
+
+export interface MembersPage {
+  items: MemberListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+export interface MembersQuery {
+  page: number;
+  pageSize: number;
+  search?: string;
+  status?: string;
+  section?: string;
+}
+
+/**
+ * Server-side paged + searched member list for the Members table. The BE filters
+ * by name/email/phone/memberNumber (search) and status/section across the WHOLE
+ * roster, so members past the first page are findable — the old `useMembers()`
+ * fetched a 200-row client-side slice and hid everyone beyond it.
+ */
+export function useMembersPaged(query: MembersQuery) {
+  const { data: session } = useSession();
+  const gymId = session?.user?.gymId;
+  const { page, pageSize, search, status, section } = query;
+  return useQuery<MembersPage>({
+    queryKey: ['members', gymId, 'paged', { page, pageSize, search, status, section }],
+    enabled: !!gymId,
+    placeholderData: (prev) => prev, // keep the table populated while paging/searching
+    queryFn: async () => {
+      const params: Record<string, string | number> = { page, pageSize };
+      if (search?.trim()) params.search = search.trim();
+      if (status && status !== 'all') params.status = status;
+      if (section && section !== 'all') params.section = section;
+      const res = await apiClient.get(`/gyms/${gymId}/members`, { params });
+      const data = res.data.data ?? {};
+      const raw: unknown[] = data.items ?? (Array.isArray(data) ? data : []);
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        items: (raw as any[]).map(normaliseMember),
+        page: data.page ?? page,
+        pageSize: data.pageSize ?? pageSize,
+        totalCount: data.totalCount ?? raw.length,
+        totalPages: data.totalPages ?? 1,
+      };
     },
   });
 }
@@ -63,21 +114,25 @@ export function useCreateMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
-      name: string; email?: string; phone: string; section?: string;
+      name: string; email?: string; phone: string; section?: string; nationalId?: string;
     }) => {
       const [firstName, ...rest] = data.name.trim().split(/\s+/);
       const lastName = rest.join(' ') || firstName;
-      // staff-create is the single authoritative entry point: it creates/reuses
+      // staff-create is the authoritative entry point for NEW members: it creates
       // the Trainee user, calls AddMemberCommand (gym.MemberIds + gym_members
-      // directory row), and links the user to the gym. A separate
-      // POST /gyms/{id}/members would re-enter AddMemberCommand and trip
-      // Gyms.MemberAlreadyAdded — leaving the dashboard stale.
+      // directory row), and links the user to the gym. It now REJECTS a phone/email
+      // that already belongs to an existing member (409) instead of silently
+      // returning that other person's account — the caller handles 409 by offering
+      // the "Add existing member" re-link flow (useLinkExistingMember).
+      // Email is sent only when provided; the backend synthesizes a stable
+      // placeholder from the phone otherwise (no Date.now() churn that masked dups).
       const userRes = await apiClient.post('/identity/users/staff-create', {
         firstName,
         lastName,
         phone: data.phone,
-        email: data.email || `${firstName.toLowerCase()}.${Date.now()}@member.local`,
+        ...(data.email ? { email: data.email } : {}),
         section: data.section,
+        ...(data.nationalId ? { nationalId: data.nationalId } : {}),
       });
       const userId =
         userRes.data?.data?.userId ?? userRes.data?.data?.id ?? userRes.data?.data ?? null;
@@ -85,6 +140,49 @@ export function useCreateMember() {
         throw new Error('Identity service did not return a user id.');
       }
       return userRes.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['members', gymId] }),
+  });
+}
+
+export interface ExistingMemberLookup {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  isAlreadyMemberOfThisGym: boolean;
+}
+
+/**
+ * Resolves an existing trainee by phone so the Add Member dialog can confirm a
+ * returning member before re-linking. Called when staff-create returns 409
+ * (phone/email already registered). Backed by GET /identity/users/staff-lookup.
+ */
+export function useLookupMemberByPhone() {
+  return useMutation<ExistingMemberLookup, unknown, string>({
+    mutationFn: async (phone: string) => {
+      const res = await apiClient.get('/identity/users/staff-lookup', { params: { phone } });
+      return res.data.data as ExistingMemberLookup;
+    },
+  });
+}
+
+/**
+ * Re-links an existing trainee (resolved by phone) to the staff's gym without
+ * creating a duplicate. Backed by POST /identity/users/staff-link-existing.
+ */
+export function useLinkExistingMember() {
+  const { data: session } = useSession();
+  const gymId = session?.user?.gymId;
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { phone: string; section?: string }) => {
+      const res = await apiClient.post('/identity/users/staff-link-existing', {
+        phone: data.phone,
+        section: data.section,
+      });
+      return res.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['members', gymId] }),
   });

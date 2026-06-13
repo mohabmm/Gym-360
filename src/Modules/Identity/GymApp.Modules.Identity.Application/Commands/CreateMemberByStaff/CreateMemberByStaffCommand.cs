@@ -6,4 +6,5 @@ public sealed record CreateMemberByStaffCommand(
     string FirstName,
     string LastName,
     string Phone,
-    string? Email) : ICommand<Guid>;
+    string? Email,
+    string? NationalId = null) : ICommand<Guid>;

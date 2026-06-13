@@ -11,9 +11,16 @@ import 'core/providers.dart';
 import 'core/router.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final telemetry = TelemetryService(
+    appName: 'gymapp-gym',
+    baseUrl: ApiBaseUrl.resolve(),
+    storage: SecureStorageService(),
+  );
 
-  // Initialize Firebase (gracefully skip if not configured in dev).
+  await runWithTelemetry('gymapp-gym', telemetry, () async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // Initialize Firebase (gracefully skip if not configured in dev).
   // Without google-services.json this throws; FCMService treats that as "FCM off".
   try {
     await Firebase.initializeApp();
@@ -40,11 +47,25 @@ Future<void> main() async {
     DeviceOrientation.landscapeRight,
   ]);
 
-  runApp(
-    const ProviderScope(
-      child: GymAppGymStaff(),
-    ),
-  );
+    await telemetry.init();
+
+    runApp(
+      ProviderScope(
+        overrides: [
+          telemetryServiceProvider.overrideWithValue(telemetry),
+          // The shared FeatureGate widget watches the core `planFeaturesProvider`,
+          // which is a placeholder that throws UnimplementedError unless overridden.
+          // Without this the gym app's gated screens silently fail open. Delegate
+          // to this app's existing plan-features source so both share one cache and
+          // the FCM config_refresh invalidation (gymPlanFeaturesProvider) propagates.
+          planFeaturesProvider.overrideWith(
+            (ref) => ref.watch(gymPlanFeaturesProvider.future),
+          ),
+        ],
+        child: const GymAppGymStaff(),
+      ),
+    );
+  });
 }
 
 class GymAppGymStaff extends ConsumerWidget {

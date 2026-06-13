@@ -32,10 +32,20 @@ class NutritionRemoteDataSource {
     );
   }
 
-  /// NOTE: No BE DELETE endpoint for individual food log entries.
-  /// This is a stub — will return 404 until BE adds support.
+  /// Deletes a single logged food item.
+  ///
+  /// [entryId] is the synthetic id the food-log parser assigns each item,
+  /// `"<mealId>:<index>"` (see `_foodLogFromDto`). Food items have no stable
+  /// server id (JSON value objects), so the BE addresses them by meal + index:
+  /// `DELETE /nutrition/food-log/meals/{mealId}/items/{index}`.
   Future<void> deleteFoodEntry(String entryId) async {
-    await _apiClient.delete('${ApiEndpoints.foodLog}/$entryId');
+    final sep = entryId.lastIndexOf(':');
+    if (sep <= 0 || sep == entryId.length - 1) {
+      throw ArgumentError('Invalid food entry id: "$entryId"');
+    }
+    final mealId = entryId.substring(0, sep);
+    final index = entryId.substring(sep + 1);
+    await _apiClient.delete('${ApiEndpoints.foodLog}/meals/$mealId/items/$index');
   }
 
   Future<WaterLogModel> getWaterLog({

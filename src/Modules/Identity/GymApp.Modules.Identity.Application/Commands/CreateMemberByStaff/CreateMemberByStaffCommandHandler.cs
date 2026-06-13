@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Identity.Application.Abstractions;
+using GymApp.Modules.Identity.Application.Common;
 using GymApp.Modules.Identity.Application.Contracts;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
@@ -28,28 +29,22 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
 
     public async Task<Result<Guid>> Handle(CreateMemberByStaffCommand request, CancellationToken cancellationToken)
     {
-        var phoneResult = PhoneNumber.Create(NormalizePhone(request.Phone));
+        var phoneResult = PhoneNumber.Create(MemberPhoneNormalizer.Normalize(request.Phone));
         if (phoneResult.IsFailure)
             return Result.Failure<Guid>(phoneResult.Error);
 
-        // Staff-created members get a known default password matching the seed
-        // convention so trainees can log in immediately. Production should swap
-        // for OTP/SMS issuance.
-        const string defaultPassword = "123456";
-        var defaultHash = _passwordHasher.Hash(defaultPassword);
-
-        // If a user already exists with this phone, only reuse them when their
-        // role is Trainee (the cross-gym member scenario). Reusing an account
-        // that belongs to an Owner / Admin / Staff / Trainer would silently
-        // reset their password to the staff-create default — a critical
-        // privilege/security bug.
+        // staff-create is strictly for NEW people. If the phone/email already maps to
+        // an account we must NOT reuse it: silently returning the existing user made
+        // the staff-entered name/email vanish and surfaced a different person's identity
+        // (the reported bug). For an existing trainee we reject with 409 + a hint to use
+        // "Add existing member" (staff-link-existing). For a non-trainee we reject too,
+        // to avoid clobbering an owner/admin/trainer login.
         var existingByPhone = await _userRepository.GetByPhoneAsync(phoneResult.Value, cancellationToken);
         if (existingByPhone is not null)
         {
-            if (existingByPhone.Role != UserRole.Trainee)
-                return Result.Failure<Guid>(UserErrors.PhoneReservedForOtherRole);
-            await EnsureUsableAsync(existingByPhone, defaultHash, cancellationToken);
-            return Result.Success(existingByPhone.Id);
+            return Result.Failure<Guid>(existingByPhone.Role == UserRole.Trainee
+                ? UserErrors.MemberPhoneAlreadyExists
+                : UserErrors.PhoneReservedForOtherRole);
         }
 
         var emailInput = string.IsNullOrWhiteSpace(request.Email)
@@ -63,13 +58,16 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
         var existingByEmail = await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken);
         if (existingByEmail is not null)
         {
-            if (existingByEmail.Role != UserRole.Trainee)
-                return Result.Failure<Guid>(UserErrors.EmailReservedForOtherRole);
-            await EnsureUsableAsync(existingByEmail, defaultHash, cancellationToken);
-            return Result.Success(existingByEmail.Id);
+            return Result.Failure<Guid>(existingByEmail.Role == UserRole.Trainee
+                ? UserErrors.MemberEmailAlreadyExists
+                : UserErrors.EmailReservedForOtherRole);
         }
 
-        var passwordHash = defaultHash;
+        // Staff-created members get a known default password matching the seed
+        // convention so trainees can log in immediately. Production should swap
+        // for OTP/SMS issuance.
+        const string defaultPassword = "123456";
+        var passwordHash = _passwordHasher.Hash(defaultPassword);
 
         var user = DomainEntities.User.Create(
             emailResult.Value,
@@ -78,7 +76,8 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
             request.FirstName.Trim(),
             request.LastName.Trim(),
             Gender.Male,
-            UserRole.Trainee);
+            UserRole.Trainee,
+            nationalId: request.NationalId);
 
         user.Activate();
 
@@ -86,38 +85,6 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(user.Id);
-    }
-
-    private async Task EnsureUsableAsync(DomainEntities.User user, string defaultHash, CancellationToken ct)
-    {
-        var changed = false;
-        if (user.Status == UserStatus.PendingVerification)
-        {
-            user.Activate();
-            changed = true;
-        }
-        if (user.Status != UserStatus.Suspended && user.Status != UserStatus.Deleted)
-        {
-            user.UpdatePasswordHash(defaultHash);
-            changed = true;
-        }
-        if (changed)
-        {
-            _userRepository.Update(user);
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
-    }
-
-    private static string NormalizePhone(string raw)
-    {
-        var trimmed = raw.Trim();
-        var digits = new string(trimmed.Where(c => char.IsDigit(c) || c == '+').ToArray());
-
-        if (digits.StartsWith("+")) return digits;
-        if (digits.StartsWith("00")) return "+" + digits[2..];
-        if (digits.Length == 11 && digits.StartsWith("01")) return "+20" + digits[1..];
-        if (digits.Length == 10 && digits.StartsWith("1")) return "+20" + digits;
-        return "+" + digits;
     }
 
     private static string SynthesizePlaceholderEmail(string e164Phone)

@@ -1,13 +1,21 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { PageHeader, DataTable, StatusBadge, Modal, formatDate } from '@gym360/ui';
 import { type ColumnDef } from '@tanstack/react-table';
 import { Plus, Filter, Upload } from 'lucide-react';
-import { useMembers, useCreateMember } from '@/lib/hooks/useMembers';
+import {
+  useMembersPaged,
+  useCreateMember,
+  useLookupMemberByPhone,
+  useLinkExistingMember,
+  type ExistingMemberLookup,
+} from '@/lib/hooks/useMembers';
 import type { MemberListItem } from '@gym360/ui';
+
+const PAGE_SIZE = 20;
 
 const columns: ColumnDef<MemberListItem, unknown>[] = [
   {
@@ -51,18 +59,47 @@ const columns: ColumnDef<MemberListItem, unknown>[] = [
 
 export default function MembersPage() {
   const router = useRouter();
-  const { data: members = [], isLoading } = useMembers();
-  const createMember = useCreateMember();
+  const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sectionFilter, setSectionFilter] = useState('all');
+
+  // Debounce the search box so each keystroke doesn't fire a request; reset to
+  // page 1 whenever the term settles so results start from the top.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const { data: membersPage, isLoading, isFetching } = useMembersPaged({
+    page,
+    pageSize: PAGE_SIZE,
+    search,
+    status: statusFilter,
+    section: sectionFilter,
+  });
+  const members = membersPage?.items ?? [];
+  const totalCount = membersPage?.totalCount ?? 0;
+
+  const createMember = useCreateMember();
+  const lookupMember = useLookupMemberByPhone();
+  const linkExisting = useLinkExistingMember();
   const [showAddMember, setShowAddMember] = useState(false);
-  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', section: 'Mens' });
+  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', section: 'Mens', nationalId: '' });
   const [formError, setFormError] = useState<string | null>(null);
+  // Set when staff-create reports a duplicate (409) AND we resolved who the phone
+  // belongs to — drives the "Add existing member?" confirm prompt inside the modal.
+  const [existingMatch, setExistingMatch] = useState<ExistingMemberLookup | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
-    setNewMember({ name: '', email: '', phone: '', section: 'Mens' });
+    setNewMember({ name: '', email: '', phone: '', section: 'Mens', nationalId: '' });
     setFormError(null);
+    setExistingMatch(null);
   };
 
   const handleAddMember = () => {
@@ -70,7 +107,13 @@ export default function MembersPage() {
       setFormError('Name and phone are required.');
       return;
     }
+    const nid = newMember.nationalId.trim();
+    if (nid && !/^\d{14}$/.test(nid)) {
+      setFormError('National ID must be exactly 14 digits.');
+      return;
+    }
     setFormError(null);
+    setExistingMatch(null);
     createMember.mutate(newMember, {
       onSuccess: () => {
         toast.success(`Member ${newMember.name} added.`);
@@ -78,11 +121,41 @@ export default function MembersPage() {
         setShowAddMember(false);
       },
       onError: (err: unknown) => {
+        const status = (err as { response?: { status?: number } })?.response?.status;
         const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
           ?.response?.data?.errors?.[0]?.message ?? 'Failed to add member.';
+        // 409 = phone/email already belongs to an existing member. Resolve their
+        // identity so staff can confirm and re-link instead of creating a duplicate.
+        if (status === 409) {
+          lookupMember.mutate(newMember.phone, {
+            onSuccess: (match) => { setFormError(null); setExistingMatch(match); },
+            onError: () => setFormError(msg),
+          });
+          return;
+        }
         setFormError(msg);
       },
     });
+  };
+
+  const handleLinkExisting = () => {
+    if (!existingMatch) return;
+    setFormError(null);
+    linkExisting.mutate(
+      { phone: newMember.phone, section: newMember.section },
+      {
+        onSuccess: () => {
+          toast.success(`${existingMatch.firstName} ${existingMatch.lastName} added to your gym.`);
+          resetForm();
+          setShowAddMember(false);
+        },
+        onError: (err: unknown) => {
+          const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
+            ?.response?.data?.errors?.[0]?.message ?? 'Failed to add existing member.';
+          setFormError(msg);
+        },
+      },
+    );
   };
 
   const handleBulkImport = () => importInputRef.current?.click();
@@ -93,27 +166,11 @@ export default function MembersPage() {
     e.target.value = '';
   };
 
-  const filtered = useMemo(() => {
-    return members.filter((m) => {
-      if (statusFilter !== 'all' && m.status !== statusFilter) return false;
-      if (sectionFilter !== 'all' && m.section !== sectionFilter) return false;
-      return true;
-    });
-  }, [members, statusFilter, sectionFilter]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <p className="text-muted-foreground text-sm">Loading members…</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Members"
-        description={`${members.length} members at First Gym`}
+        description={`${totalCount} members`}
         actions={
           <div className="flex items-center gap-2">
             <input ref={importInputRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImportFile} />
@@ -129,14 +186,14 @@ export default function MembersPage() {
 
       <div className="flex items-center gap-3">
         <Filter className="h-4 w-4 text-muted-foreground" />
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
           <option value="all">All Statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
           <option value="frozen">Frozen</option>
           <option value="expired">Expired</option>
         </select>
-        <select value={sectionFilter} onChange={(e) => setSectionFilter(e.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
+        <select value={sectionFilter} onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }} className="h-9 rounded-lg border border-input bg-background px-3 text-sm">
           <option value="all">All Floors</option>
           <option value="Mens">Men&apos;s</option>
           <option value="Womens">Ladies</option>
@@ -145,10 +202,17 @@ export default function MembersPage() {
       </div>
 
       <DataTable
-        data={filtered}
+        data={members}
         columns={columns}
-        searchPlaceholder="Search members by name..."
-        searchColumn="name"
+        searchPlaceholder="Search by name, phone, email or member #..."
+        onSearchChange={setSearchInput}
+        searchValue={searchInput}
+        serverSidePagination
+        totalCount={totalCount}
+        page={page}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+        isLoading={isLoading || isFetching}
         enableExport
         onRowClick={(member) => router.push(`/members/${member.id}`)}
       />
@@ -161,14 +225,39 @@ export default function MembersPage() {
         footer={
           <>
             <button onClick={() => { resetForm(); setShowAddMember(false); }} className="rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted">Cancel</button>
-            <button onClick={handleAddMember} disabled={createMember.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
-              {createMember.isPending ? 'Adding…' : 'Add Member'}
-            </button>
+            {existingMatch ? (
+              <button
+                onClick={handleLinkExisting}
+                disabled={linkExisting.isPending || existingMatch.isAlreadyMemberOfThisGym}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+              >
+                {linkExisting.isPending ? 'Adding…' : 'Add existing member'}
+              </button>
+            ) : (
+              <button onClick={handleAddMember} disabled={createMember.isPending || lookupMember.isPending} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50">
+                {createMember.isPending || lookupMember.isPending ? 'Adding…' : 'Add Member'}
+              </button>
+            )}
           </>
         }
       >
         <div className="space-y-3">
           {formError && <p className="text-sm text-destructive">{formError}</p>}
+          {existingMatch && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+              <p className="font-medium text-amber-900">
+                {existingMatch.firstName} {existingMatch.lastName} is already registered
+              </p>
+              <p className="text-amber-800">
+                {existingMatch.email} · {existingMatch.phone}
+              </p>
+              <p className="mt-1 text-amber-800">
+                {existingMatch.isAlreadyMemberOfThisGym
+                  ? 'This person is already a member of your gym.'
+                  : 'Add this existing member to your gym instead of creating a duplicate?'}
+              </p>
+            </div>
+          )}
           <label className="block">
             <span className="text-sm font-medium">Name</span>
             <input value={newMember.name} onChange={(e) => setNewMember({ ...newMember, name: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
@@ -180,6 +269,10 @@ export default function MembersPage() {
           <label className="block">
             <span className="text-sm font-medium">Email</span>
             <input type="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">National ID</span>
+            <input inputMode="numeric" maxLength={14} value={newMember.nationalId} onChange={(e) => setNewMember({ ...newMember, nationalId: e.target.value.replace(/\D/g, '') })} placeholder="14 digits (optional)" className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
           </label>
           <label className="block">
             <span className="text-sm font-medium">Floor</span>

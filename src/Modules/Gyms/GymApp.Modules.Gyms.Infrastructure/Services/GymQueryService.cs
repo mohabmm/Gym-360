@@ -191,7 +191,7 @@ internal sealed class GymQueryService : IGymQueryService
     }
 
     public async Task<PagedResponse<MemberDto>> GetMembersAsync(
-        Guid gymId, int page, int pageSize, string? status, string? section,
+        Guid gymId, int page, int pageSize, string? status, string? section, string? search,
         CancellationToken cancellationToken = default)
     {
         var gym = await _dbContext.Gyms
@@ -201,33 +201,127 @@ internal sealed class GymQueryService : IGymQueryService
         if (gym is null)
             return new PagedResponse<MemberDto>(new List<MemberDto>(), page, pageSize, 0, 0);
 
-        var memberIds = gym.MemberIds;
-        var totalCount = memberIds.Count;
-        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        // Member ids in the gym's stored order. Filters below narrow this set BEFORE
+        // paging, so search/status/section span the whole roster — not just one fetched
+        // page (the old behaviour silently hid members past the first client-side slice).
+        // Drop a ghost id equal to the gym's own id: stale/garbage data left in
+        // member_ids resolves to no Identity profile and would surface as a null-named
+        // row (and crash strict mobile parsers). Mirrors the trainer-list ghost guard.
+        var orderedIds = gym.MemberIds.Where(id => id != gymId).ToList();
 
-        var pagedIds = memberIds
+        var statusKey = status?.Trim().ToLowerInvariant();
+        var frozenFilter = statusKey == "frozen";
+        // Only "active"/"inactive" map to an Identity profile status; "frozen" is a gym
+        // directory flag (handled here).
+        var profileStatusFilter = statusKey is "active" or "inactive" ? statusKey : null;
+
+        // Any other status value ("expired", typos) has no backing data — return an empty
+        // page rather than silently falling through to the full roster.
+        if (statusKey is not null && statusKey is not ("active" or "inactive" or "frozen"))
+            return new PagedResponse<MemberDto>(new List<MemberDto>(), page, pageSize, 0, 0);
+        var hasSection = !string.IsNullOrWhiteSpace(section);
+        var hasSearch = !string.IsNullOrWhiteSpace(search);
+        // The directory is needed for section / frozen / member-number search, and also
+        // to exclude frozen members from an "active"/"inactive" filter (frozen wins in the UI).
+        var needsDirectory = hasSection || frozenFilter || hasSearch || profileStatusFilter is not null;
+
+        // gym_members holds section / member number / frozen flag for the whole gym.
+        // Load once when a filter needs it; reuse the same dict for page enrichment.
+        var directory = new Dictionary<Guid, (string? MemberNumber, string? Section, DateTime JoinedAt, bool IsFrozen)>();
+        if (needsDirectory)
+        {
+            var rows = await _dbContext.GymMembers
+                .AsNoTracking()
+                .Where(m => m.GymId == gymId)
+                .Select(m => new { m.MemberId, m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen })
+                .ToListAsync(cancellationToken);
+            foreach (var r in rows)
+                directory[r.MemberId] = (r.MemberNumber, r.Section, r.JoinedAt, r.IsFrozen);
+        }
+
+        IEnumerable<Guid> filtered = orderedIds;
+
+        if (hasSection)
+            filtered = filtered.Where(id =>
+                directory.TryGetValue(id, out var d) &&
+                string.Equals(d.Section, section, StringComparison.OrdinalIgnoreCase));
+
+        if (frozenFilter)
+            filtered = filtered.Where(id => directory.TryGetValue(id, out var d) && d.IsFrozen);
+        else if (profileStatusFilter is not null)
+            // A frozen member always displays as "frozen", never active/inactive.
+            filtered = filtered.Where(id => !(directory.TryGetValue(id, out var d) && d.IsFrozen));
+
+        if (hasSearch || profileStatusFilter is not null)
+        {
+            var candidate = filtered.ToList();
+            var byProfile = await _userProfileLookup.FilterProfileIdsAsync(
+                candidate, hasSearch ? search : null, profileStatusFilter, cancellationToken);
+            var allowed = byProfile.ToHashSet();
+
+            if (hasSearch)
+            {
+                // Member number lives in the Gyms directory, not the Identity profile —
+                // union those matches in so "search by member number" works too. When a
+                // profile-status filter is also set, re-check the number matches against
+                // it so e.g. an inactive member never leaks into an "active" search.
+                var term = search!.Trim();
+                var numberMatches = candidate
+                    .Where(id => !allowed.Contains(id) &&
+                                 directory.TryGetValue(id, out var d) &&
+                                 d.MemberNumber is not null &&
+                                 d.MemberNumber.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (numberMatches.Count > 0)
+                {
+                    var numberAllowed = profileStatusFilter is null
+                        ? numberMatches
+                        : (await _userProfileLookup.FilterProfileIdsAsync(
+                            numberMatches, null, profileStatusFilter, cancellationToken)).ToList();
+                    foreach (var id in numberAllowed)
+                        allowed.Add(id);
+                }
+            }
+
+            filtered = candidate.Where(allowed.Contains);
+        }
+
+        var filteredIds = filtered.ToList();
+        var totalCount = filteredIds.Count;
+        var totalPages = pageSize <= 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
+
+        var pagedIds = filteredIds
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToList();
 
         var profiles = await _userProfileLookup.GetProfilesAsync(pagedIds, cancellationToken);
-        var directory = await _dbContext.GymMembers
-            .AsNoTracking()
-            .Where(m => m.GymId == gymId && pagedIds.Contains(m.MemberId))
-            .Select(m => new { m.MemberId, m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen })
-            .ToDictionaryAsync(m => m.MemberId, cancellationToken);
+
+        // Reuse the full directory when it was loaded for filtering; otherwise fetch only
+        // the page's rows (the cheap path when no filter is active).
+        if (!needsDirectory && pagedIds.Count > 0)
+        {
+            var rows = await _dbContext.GymMembers
+                .AsNoTracking()
+                .Where(m => m.GymId == gymId && pagedIds.Contains(m.MemberId))
+                .Select(m => new { m.MemberId, m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen })
+                .ToListAsync(cancellationToken);
+            foreach (var r in rows)
+                directory[r.MemberId] = (r.MemberNumber, r.Section, r.JoinedAt, r.IsFrozen);
+        }
 
         var pagedMembers = pagedIds
             .Select(id =>
             {
                 profiles.TryGetValue(id, out var profile);
-                directory.TryGetValue(id, out var dir);
+                var hasDir = directory.TryGetValue(id, out var dir);
                 return new MemberDto(
                     MemberId: id,
                     GymId: gymId,
-                    Section: dir?.Section ?? section,
-                    MemberNumber: dir?.MemberNumber,
-                    JoinedAt: dir?.JoinedAt ?? gym.CreatedAt,
+                    Section: hasDir ? dir.Section : section,
+                    MemberNumber: hasDir ? dir.MemberNumber : null,
+                    JoinedAt: hasDir ? dir.JoinedAt : gym.CreatedAt,
                     FirstName: profile?.FirstName,
                     LastName: profile?.LastName,
                     Email: profile?.Email,
@@ -235,7 +329,8 @@ internal sealed class GymQueryService : IGymQueryService
                     ProfilePhotoUrl: profile?.ProfilePhotoUrl,
                     Role: profile?.Role,
                     Status: profile?.Status,
-                    IsFrozen: dir?.IsFrozen ?? false);
+                    IsFrozen: hasDir && dir.IsFrozen,
+                    NationalId: profile?.NationalId);
             })
             .ToList();
 
@@ -248,7 +343,8 @@ internal sealed class GymQueryService : IGymQueryService
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
 
-        if (gym is null || !gym.MemberIds.Contains(memberId))
+        // memberId == gymId is a ghost id (stale data in member_ids), not a real member.
+        if (gym is null || memberId == gymId || !gym.MemberIds.Contains(memberId))
             return null;
 
         var profile = await _userProfileLookup.GetProfileAsync(memberId, cancellationToken);
@@ -271,7 +367,8 @@ internal sealed class GymQueryService : IGymQueryService
             ProfilePhotoUrl: profile?.ProfilePhotoUrl,
             Role: profile?.Role,
             Status: profile?.Status,
-            IsFrozen: directory?.IsFrozen ?? false);
+            IsFrozen: directory?.IsFrozen ?? false,
+            NationalId: profile?.NationalId);
     }
 
     public async Task<List<TrainerDto>> GetTrainersAsync(Guid gymId, string? status = null, CancellationToken cancellationToken = default)
@@ -310,7 +407,11 @@ internal sealed class GymQueryService : IGymQueryService
             clientCounts[id] = clients.Count;
         }
 
+        // An id in the gym aggregate (or a trainer request) that resolves to no
+        // Identity profile is orphaned data — e.g. a stale/garbage id left in
+        // trainer_ids. Drop it so the list never surfaces a null-named ghost row.
         var dtos = allIds
+            .Where(id => profiles.TryGetValue(id, out var p) && p is not null)
             .Select(id =>
             {
                 profiles.TryGetValue(id, out var profile);
@@ -379,6 +480,10 @@ internal sealed class GymQueryService : IGymQueryService
 
         var profile = await _userProfileLookup.GetProfileAsync(trainerId, cancellationToken);
 
+        // No backing Identity profile => orphaned id (stale/garbage data); treat as
+        // not found rather than returning a ghost trainer with null name fields.
+        if (profile is null) return null;
+
         var status = request is not null
             ? request.Status.ToString()
             : TrainerRequestStatus.Approved.ToString();
@@ -445,7 +550,8 @@ internal sealed class GymQueryService : IGymQueryService
                     ProfilePhotoUrl: profile?.ProfilePhotoUrl,
                     Role: profile?.Role,
                     Status: profile?.Status,
-                    IsFrozen: dir?.IsFrozen ?? false);
+                    IsFrozen: dir?.IsFrozen ?? false,
+                    NationalId: profile?.NationalId);
             })
             .ToList();
     }
@@ -538,7 +644,8 @@ internal sealed class GymQueryService : IGymQueryService
                     PhoneNumber: profile?.PhoneNumber,
                     ProfilePhotoUrl: profile?.ProfilePhotoUrl,
                     Role: profile?.Role,
-                    Status: profile?.Status);
+                    Status: profile?.Status,
+                    NationalId: profile?.NationalId);
             })
             .ToList();
     }

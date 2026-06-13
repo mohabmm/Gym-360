@@ -56,6 +56,16 @@ final apiClientProvider = Provider<ApiClient>((ref) {
       final current = ref.read(sessionInvalidatedProvider);
       ref.read(sessionInvalidatedProvider.notifier).state = current + 1;
     },
+    telemetry: ref.watch(telemetryServiceProvider),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Telemetry (mobile → SigNoz). Overridden in main() with the live instance.
+// ---------------------------------------------------------------------------
+final telemetryServiceProvider = Provider<TelemetryService>((ref) {
+  throw UnimplementedError(
+    'telemetryServiceProvider must be overridden in main()',
   );
 });
 

@@ -58,6 +58,13 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.DateOfBirth)
             .HasColumnName("date_of_birth");
 
+        // National ID: non-unique on purpose — dirty/duplicate legacy source data
+        // must not break a bulk migration. 14-char Egyptian NID, but allow a little
+        // slack for non-Egyptian/passport edge cases.
+        builder.Property(u => u.NationalId)
+            .HasColumnName("national_id")
+            .HasMaxLength(20);
+
         builder.Property(u => u.Gender)
             .HasColumnName("gender")
             .HasConversion<string>()

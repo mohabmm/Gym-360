@@ -16,6 +16,12 @@ class ChatListScreen extends ConsumerWidget {
     final conversationsAsync = ref.watch(conversationsProvider);
     final auth = ref.watch(authProvider);
 
+    // Refresh the list (unread badges, last-message preview) when a new_message
+    // push arrives while the list is open.
+    ref.listen(incomingChatMessageProvider, (_, __) {
+      ref.invalidate(conversationsProvider);
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isArabic ? 'المحادثات' : 'Messages'),

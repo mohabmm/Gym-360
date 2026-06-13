@@ -21,7 +21,8 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
         string LastName,
         string Phone,
         string? Email,
-        string? Section);
+        string? Section,
+        string? NationalId);
 
     internal sealed record Response(Guid UserId, string InitialPassword, string MemberNumber);
 
@@ -43,7 +44,8 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
                 request.FirstName,
                 request.LastName,
                 request.Phone,
-                request.Email);
+                request.Email,
+                request.NationalId);
 
             var createResult = await sender.Send(createCmd, ct);
             if (createResult.IsFailure)
@@ -75,7 +77,7 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
         })
         .WithTags("Identity")
         .WithSummary("Create a member user account (staff-driven) and link to gym")
-        .WithDescription("Creates a User with role=Trainee on behalf of a gym staff member, registers a unique MemberNumber for the gym, and links the user to the staff's gym. Initial password is `123456` (returned as `initialPassword`). Reuses an existing trainee with matching phone/email and resets their password. Requires staff JWT with a gym claim.")
+        .WithDescription("Creates a NEW User with role=Trainee on behalf of a gym staff member, registers a unique MemberNumber for the gym, and links the user to the staff's gym. Initial password is `123456` (returned as `initialPassword`). Returns 409 if the phone/email already belongs to a member — use `staff-lookup` + `staff-link-existing` to re-link a returning member instead. Requires staff JWT with a gym claim.")
         .Produces<ApiResponse<Response>>(StatusCodes.Status201Created)
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)

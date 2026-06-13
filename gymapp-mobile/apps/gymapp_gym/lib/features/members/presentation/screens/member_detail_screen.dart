@@ -66,6 +66,11 @@ class MemberDetailScreen extends ConsumerWidget {
                               ),
                             if (m.phone != null) Text(m.phone!),
                             if (m.email != null) Text(m.email!),
+                            if (m.nationalId != null && m.nationalId!.isNotEmpty)
+                              Text(
+                                '${isArabic ? 'الرقم القومي' : 'National ID'}: ${m.nationalId!}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
                           ],
                         ),
                       ),

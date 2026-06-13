@@ -40,31 +40,22 @@ class CommunicationRepository {
   }) =>
       _remoteDataSource.getAnnouncements(gymId: gymId);
 
-  Future<List<NotificationModel>> getNotifications({
-    required String userId,
-    String? gymId,
-  }) =>
-      _remoteDataSource.getNotifications(userId: userId, gymId: gymId);
+  Future<List<NotificationModel>> getNotifications({String? gymId}) =>
+      _remoteDataSource.getNotifications(gymId: gymId);
 
-  Future<void> markNotificationRead(String id, {required String userId}) =>
-      _remoteDataSource.markNotificationRead(id, userId: userId);
+  Future<void> markNotificationRead(String id) =>
+      _remoteDataSource.markNotificationRead(id);
 
-  Future<void> markAllNotificationsRead({required String userId}) =>
-      _remoteDataSource.markAllNotificationsRead(userId: userId);
+  Future<void> markAllNotificationsRead() =>
+      _remoteDataSource.markAllNotificationsRead();
 
-  Future<int> getUnreadNotificationCount({
-    required String userId,
-    String? gymId,
-  }) =>
-      _remoteDataSource.getUnreadNotificationCount(
-          userId: userId, gymId: gymId);
+  Future<int> getUnreadNotificationCount({String? gymId}) =>
+      _remoteDataSource.getUnreadNotificationCount(gymId: gymId);
 
   Future<NotificationPreferenceModel> getNotificationPreferences({
-    required String userId,
     String? gymId,
   }) =>
-      _remoteDataSource.getNotificationPreferences(
-          userId: userId, gymId: gymId);
+      _remoteDataSource.getNotificationPreferences(gymId: gymId);
 
   Future<void> updateNotificationPreferences(Map<String, dynamic> body) =>
       _remoteDataSource.updateNotificationPreferences(body);

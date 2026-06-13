@@ -13,4 +13,5 @@ public sealed record MemberDto(
     string? ProfilePhotoUrl = null,
     string? Role = null,
     string? Status = null,
-    bool IsFrozen = false);
+    bool IsFrozen = false,
+    string? NationalId = null);

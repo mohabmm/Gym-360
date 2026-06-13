@@ -10,6 +10,7 @@ import '../widgets/todays_workout_card.dart';
 import '../widgets/next_session_card.dart';
 import '../widgets/weekly_activity_chart.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
+import '../../../communication/presentation/widgets/notification_bell.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -125,6 +126,8 @@ class _GreetingRow extends ConsumerWidget {
             ],
           ),
         ),
+        const NotificationBell(),
+        const SizedBox(width: 4),
         const _GymLogo(),
       ],
     );

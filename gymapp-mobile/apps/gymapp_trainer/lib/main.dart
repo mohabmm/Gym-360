@@ -12,12 +12,21 @@ import 'core/providers.dart';
 import 'core/router.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Build telemetry first so the global error handlers wired by
+  // runWithTelemetry can capture failures from the rest of startup too.
+  final telemetry = TelemetryService(
+    appName: 'gymapp-trainer',
+    baseUrl: ApiBaseUrl.resolve(),
+    storage: SecureStorageService(),
+  );
 
-  // Load Arabic + English date/time symbols so DateFormat and table_calendar
-  // can render weekday/month names in the app locale instead of English.
-  await initializeDateFormatting('ar');
-  await initializeDateFormatting('en');
+  await runWithTelemetry('gymapp-trainer', telemetry, () async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // Load Arabic + English date/time symbols so DateFormat and table_calendar
+    // can render weekday/month names in the app locale instead of English.
+    await initializeDateFormatting('ar');
+    await initializeDateFormatting('en');
 
   // Firebase initialization (gracefully skip if not configured in dev).
   // Without google-services.json this throws; FCMService treats that as "FCM off".
@@ -36,17 +45,25 @@ Future<void> main() async {
   await Hive.openBox(StorageKeys.settingsBox);
   await Hive.openBox(StorageKeys.workoutCacheBox);
 
-  // Force portrait orientation
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    // Force portrait orientation
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
-  runApp(
-    const ProviderScope(
-      child: GymAppTrainer(),
-    ),
-  );
+    // Gather device/app context + start the flush timer + reflush any queued
+    // records from a previous session. Never throws.
+    await telemetry.init();
+
+    runApp(
+      ProviderScope(
+        overrides: [
+          telemetryServiceProvider.overrideWithValue(telemetry),
+        ],
+        child: const GymAppTrainer(),
+      ),
+    );
+  });
 }
 
 class GymAppTrainer extends ConsumerWidget {

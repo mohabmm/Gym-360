@@ -37,10 +37,13 @@ internal sealed class DataImportMemberIntegrationEventHandler : INotificationHan
         var existing = await _userRepository.GetByPhoneAsync(phoneResult.Value, ct);
         if (existing is not null)
         {
-            if (existing.GymMemberships.Any(m => m.GymId == n.GymId && m.IsActive))
-                return;
+            // Backfill NationalId for an already-known member so a migration import
+            // still lands the identity number even when the person pre-exists.
+            existing.SetNationalId(n.NationalId);
 
-            existing.LinkToGym(n.GymId, UserRole.Trainee, n.Section, n.MemberNumber);
+            if (!existing.GymMemberships.Any(m => m.GymId == n.GymId && m.IsActive))
+                existing.LinkToGym(n.GymId, UserRole.Trainee, n.Section, n.MemberNumber);
+
             _userRepository.Update(existing);
             await _unitOfWork.SaveChangesAsync(ct);
             return;
@@ -65,7 +68,8 @@ internal sealed class DataImportMemberIntegrationEventHandler : INotificationHan
             firstName: n.FirstName,
             lastName: n.LastName,
             gender: gender,
-            role: UserRole.Trainee);
+            role: UserRole.Trainee,
+            nationalId: n.NationalId);
 
         user.LinkToGym(n.GymId, UserRole.Trainee, n.Section, n.MemberNumber);
 

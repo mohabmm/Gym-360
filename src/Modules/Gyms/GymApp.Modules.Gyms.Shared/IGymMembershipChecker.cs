@@ -13,4 +13,11 @@ public interface IGymMembershipChecker
     Task<bool> IsGymSuspendedAsync(Guid gymId, CancellationToken cancellationToken = default);
 
     Task<bool> IsMemberFrozenAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the user ids of every member currently in the gym roster. Used by
+    /// non-Gyms handlers that need to fan a gym-wide event out per member (e.g.
+    /// announcement → personal notifications) without reaching into the Gyms domain.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetMemberIdsAsync(Guid gymId, CancellationToken cancellationToken = default);
 }

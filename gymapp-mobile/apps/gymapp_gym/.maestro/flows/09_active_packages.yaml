@@ -1,7 +1,7 @@
 appId: com.example.gymappGym
 name: 09_active_packages
 env:
-  EMAIL: staff-l3-612493@gym.local
+  EMAIL: staff@demo.local
   PASSWORD: "123456"
 ---
 - launchApp:

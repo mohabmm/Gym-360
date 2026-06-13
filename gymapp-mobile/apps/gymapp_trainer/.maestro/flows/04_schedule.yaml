@@ -1,7 +1,7 @@
 appId: com.example.gymappTrainer
 name: 04_schedule
 env:
-  EMAIL: trainer-l3-612493@gym.local
+  EMAIL: trainer@demo.local
   PASSWORD: "123456"
 ---
 - launchApp:

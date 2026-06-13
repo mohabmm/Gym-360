@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gymapp_core/gymapp_core.dart' show TelemetryNavigatorObserver;
 
 import 'providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -25,6 +26,7 @@ import '../features/sessions/presentation/screens/live_session_screen.dart';
 import '../features/sessions/presentation/screens/post_session_log_screen.dart';
 import '../features/communication/presentation/screens/chat_list_screen.dart';
 import '../features/communication/presentation/screens/chat_screen.dart';
+import '../features/communication/presentation/screens/notifications_screen.dart';
 import '../features/communication/presentation/screens/broadcast_screen.dart';
 import '../features/communication/presentation/screens/form_check_screen.dart';
 import '../features/nutrition/presentation/screens/meal_plan_builder_screen.dart';
@@ -65,6 +67,7 @@ class AppRoutes {
   static const String more = '/more';
   static const String chatList = '/more/chat';
   static const String chat = '/more/chat/:conversationId';
+  static const String notifications = '/more/notifications';
   static const String broadcast = '/more/broadcast';
   static const String formCheck = '/more/form-check';
   static const String mealPlanBuilder = '/more/nutrition/meal-plan-builder';
@@ -90,6 +93,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.home,
     debugLogDiagnostics: true,
+    observers: [TelemetryNavigatorObserver(ref.read(telemetryServiceProvider))],
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isAuth = authState.status == AuthStatus.authenticated;
@@ -289,6 +293,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           final conversationId = state.pathParameters['conversationId']!;
           return ChatScreen(conversationId: conversationId);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) => const NotificationsScreen(),
       ),
       GoRoute(
         path: AppRoutes.broadcast,

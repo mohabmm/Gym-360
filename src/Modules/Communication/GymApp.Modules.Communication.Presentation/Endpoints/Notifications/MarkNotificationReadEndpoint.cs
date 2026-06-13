@@ -9,16 +9,17 @@ namespace GymApp.Modules.Communication.Presentation.Endpoints.Notifications;
 
 internal sealed class MarkNotificationReadEndpoint : IEndpoint
 {
-    internal sealed record MarkNotificationReadRequest(Guid UserId);
-
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPut("api/v1/communication/notifications/{notificationId:guid}/read", async (
+            HttpContext httpContext,
             Guid notificationId,
-            MarkNotificationReadRequest request,
             ISender sender) =>
         {
-            var command = new MarkNotificationReadCommand(notificationId, request.UserId);
+            if (!UserContext.TryGetUserId(httpContext, out var userId))
+                return Results.Unauthorized();
+
+            var command = new MarkNotificationReadCommand(notificationId, userId);
             var result = await sender.Send(command);
 
             return result.IsSuccess
@@ -27,7 +28,7 @@ internal sealed class MarkNotificationReadEndpoint : IEndpoint
         })
         .RequireAuthorization()
         .WithSummary("Mark notification as read")
-        .WithDescription("Marks a single notification as read for the specified user.")
+        .WithDescription("Marks a single notification as read for the authenticated user. User id is derived from the JWT.")
         .Produces(204)
         .WithTags("Communication")
         .Produces<ApiResponse<object>>(400)

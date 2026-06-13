@@ -29,9 +29,19 @@ class CommunicationRemoteDataSource {
         'page': page,
         'pageSize': pageSize,
       },
-      parser: (data) => _unwrapItems(data)
-          .map<ConversationModel>((e) => ConversationModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      parser: (data) {
+        final list = _unwrapItems(data)
+            .map<ConversationModel>(
+                (e) => ConversationModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        // Most-recent conversation first.
+        list.sort((a, b) {
+          final ad = a.lastMessageAt ?? a.updatedAt;
+          final bd = b.lastMessageAt ?? b.updatedAt;
+          return bd.compareTo(ad);
+        });
+        return list;
+      },
     );
   }
 
@@ -47,9 +57,15 @@ class CommunicationRemoteDataSource {
         'page': page,
         'pageSize': pageSize,
       },
-      parser: (data) => _unwrapItems(data)
-          .map<MessageModel>((e) => MessageModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      parser: (data) {
+        final list = _unwrapItems(data)
+            .map<MessageModel>(
+                (e) => MessageModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+        // Oldest first so newest sits at the bottom of the thread.
+        list.sort((a, b) => a.sentAt.compareTo(b.sentAt));
+        return list;
+      },
     );
   }
 
@@ -98,9 +114,8 @@ class CommunicationRemoteDataSource {
     );
   }
 
-  /// BE GET /communication/notifications requires userId, gymId, page, pageSize.
+  /// BE GET /communication/notifications — caller derived from JWT.
   Future<List<NotificationModel>> getNotifications({
-    required String userId,
     String? gymId,
     int page = 1,
     int pageSize = 20,
@@ -108,7 +123,6 @@ class CommunicationRemoteDataSource {
     return _apiClient.get<List<NotificationModel>>(
       ApiEndpoints.notifications,
       queryParameters: {
-        'userId': userId,
         if (gymId != null) 'gymId': gymId,
         'page': page,
         'pageSize': pageSize,
@@ -119,50 +133,46 @@ class CommunicationRemoteDataSource {
     );
   }
 
-  /// BE PUT /communication/notifications/{id}/read requires userId in body.
-  Future<void> markNotificationRead(String id, {required String userId}) async {
-    await _apiClient.putVoid(
-      ApiEndpoints.notificationMarkRead(id),
-      data: {'userId': userId},
-    );
+  /// BE PUT /communication/notifications/{id}/read — caller derived from JWT.
+  Future<void> markNotificationRead(String id) async {
+    await _apiClient.putVoid(ApiEndpoints.notificationMarkRead(id));
   }
 
-  /// BE PUT /communication/notifications/read-all requires userId in body.
-  Future<void> markAllNotificationsRead({required String userId}) async {
-    await _apiClient.putVoid(
-      ApiEndpoints.notificationsReadAll,
-      data: {'userId': userId},
-    );
+  /// BE PUT /communication/notifications/read-all — caller derived from JWT.
+  Future<void> markAllNotificationsRead() async {
+    await _apiClient.putVoid(ApiEndpoints.notificationsReadAll);
   }
 
-  /// BE GET /communication/notifications/unread-count requires userId, gymId.
-  Future<int> getUnreadNotificationCount({
-    required String userId,
-    String? gymId,
-  }) async {
+  /// BE GET /communication/notifications/unread-count — caller derived from JWT.
+  /// Response: { unreadNotifications, unreadMessages }. Returns unread
+  /// notifications count (bell badge); tolerant of legacy/int shapes.
+  Future<int> getUnreadNotificationCount({String? gymId}) async {
     return _apiClient.get<int>(
       ApiEndpoints.notificationsUnreadCount,
       queryParameters: {
-        'userId': userId,
         if (gymId != null) 'gymId': gymId,
       },
       parser: (data) {
         if (data is int) return data;
-        if (data is Map && data['count'] is int) return data['count'] as int;
+        if (data is Map) {
+          if (data['unreadNotifications'] is int) {
+            return data['unreadNotifications'] as int;
+          }
+          if (data['notifications'] is int) return data['notifications'] as int;
+          if (data['count'] is int) return data['count'] as int;
+        }
         return 0;
       },
     );
   }
 
-  /// BE GET /communication/notification-preferences requires userId, gymId.
+  /// BE GET /communication/notification-preferences — caller derived from JWT.
   Future<NotificationPreferenceModel> getNotificationPreferences({
-    required String userId,
     String? gymId,
   }) async {
     return _apiClient.get<NotificationPreferenceModel>(
       ApiEndpoints.notificationPreferences,
       queryParameters: {
-        'userId': userId,
         if (gymId != null) 'gymId': gymId,
       },
       parser: (data) => NotificationPreferenceModel.fromJson(

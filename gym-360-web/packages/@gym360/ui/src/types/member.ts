@@ -18,6 +18,7 @@ export interface Member {
   expiryDate: string;
   gymId: string;
   section: string;
+  nationalId?: string;
   emergencyContact?: string;
   emergencyPhone?: string;
   notes?: string;
@@ -39,6 +40,7 @@ export interface MemberListItem {
   joinDate: string;
   expiryDate: string;
   section: string;
+  nationalId?: string;
   lastCheckIn?: string;
   avatarUrl?: string;
 }

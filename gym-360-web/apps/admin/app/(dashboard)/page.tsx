@@ -3,11 +3,10 @@
 import { useState } from 'react';
 import { KpiCard, ChartContainer, StatusBadge, PageHeader, ConfirmModal, formatCurrency, formatNumber } from '@gym360/ui';
 import { Building2, Users, DollarSign, Dumbbell, AlertTriangle, TrendingUp, TrendingDown, Pause } from 'lucide-react';
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import Link from 'next/link';
 import { useGyms, usePlatformAnalytics, useBulkSuspendGyms } from '@/lib/hooks';
-
-const COLORS = ['#94A3B8', '#3B82F6', '#8B5CF6', '#F59E0B'];
+import { PlanDistributionChart } from '@/components/plan-distribution-chart';
 
 export default function DashboardPage() {
   const { data: gymsData } = useGyms();
@@ -31,7 +30,6 @@ export default function DashboardPage() {
     .slice(0, 5);
   const revenueTrend = analytics?.revenueTrend ?? [];
   const gymGrowth = analytics?.gymGrowth ?? [];
-  const planDistribution = analytics?.planDistribution ?? [];
   const atRiskGyms = analytics?.atRiskGyms ?? [];
 
   const totalGyms = gyms.filter((g) => g.status !== 'terminated').length;
@@ -224,25 +222,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Plan Distribution */}
-        <ChartContainer title="Plan Distribution" height={200}>
-          <PieChart>
-            <Pie
-              data={planDistribution}
-              cx="50%"
-              cy="50%"
-              outerRadius={80}
-              innerRadius={40}
-              dataKey="count"
-              nameKey="plan"
-              label={({ plan, percentage }: { plan: string; percentage: number }) => `${plan} ${percentage}%`}
-            >
-              {planDistribution.map((entry, index) => (
-                <Cell key={entry.plan} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ChartContainer>
+        <PlanDistributionChart data={analytics?.planDistribution} height={200} />
       </div>
 
       {/* Top Gyms */}

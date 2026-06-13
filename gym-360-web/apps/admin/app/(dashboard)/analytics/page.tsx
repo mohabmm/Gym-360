@@ -2,11 +2,10 @@
 
 import { PageHeader, KpiCard, ChartContainer, formatCurrency, formatNumber } from '@gym360/ui';
 import { Building2, Users, DollarSign, Dumbbell, TrendingUp, Activity, AlertCircle } from 'lucide-react';
-import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { usePlatformAnalytics } from '@/lib/hooks';
 import { PageSkeleton } from '@gym360/ui';
-
-const COLORS = ['#94A3B8', '#3B82F6', '#8B5CF6', '#F59E0B'];
+import { PlanDistributionChart } from '@/components/plan-distribution-chart';
 
 const FALLBACK_DAU = [
   { date: 'Mon', value: 3200 }, { date: 'Tue', value: 3450 },
@@ -23,7 +22,6 @@ export default function AnalyticsPage() {
   const gymGrowth = analytics?.gymGrowth ?? [];
   const memberGrowth = analytics?.memberGrowth ?? [];
   const cityRevenue = analytics?.cityRevenue ?? [];
-  const planDistribution = analytics?.planDistribution ?? [];
   const featureUsageData = analytics?.featureUsage ?? [];
   const kpis = analytics?.kpis;
 
@@ -93,15 +91,7 @@ export default function AnalyticsPage() {
           </BarChart>
         </ChartContainer>
 
-        <ChartContainer title="Plan Distribution" height={250}>
-          <PieChart>
-            <Pie data={planDistribution} cx="50%" cy="50%" outerRadius={80} innerRadius={40} dataKey="count" nameKey="plan">
-              {planDistribution.map((entry, i) => <Cell key={entry.plan} fill={COLORS[i % COLORS.length]} />)}
-            </Pie>
-            <Tooltip />
-            <Legend />
-          </PieChart>
-        </ChartContainer>
+        <PlanDistributionChart data={analytics?.planDistribution} height={250} />
       </div>
 
       {/* DAU + Feature Usage */}

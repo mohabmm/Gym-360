@@ -20,6 +20,13 @@ public sealed class User : Entity
     public string? ProfilePhotoUrl { get; private set; }
     public DateTime? DateOfBirth { get; private set; }
     public Gender Gender { get; private set; }
+
+    /// <summary>
+    /// Egyptian National ID (14 digits) when known. Optional — captured on data
+    /// import / staff create-member to ease migration of legacy gym records.
+    /// PDPL-sensitive: exported on data export, purged on account deletion.
+    /// </summary>
+    public string? NationalId { get; private set; }
     public UserRole Role { get; private set; }
     public UserStatus Status { get; private set; }
     public Language Language { get; private set; }
@@ -43,7 +50,8 @@ public sealed class User : Entity
         string lastName,
         Gender gender,
         UserRole role,
-        Language language = Language.Arabic)
+        Language language = Language.Arabic,
+        string? nationalId = null)
     {
         var user = new User
         {
@@ -54,6 +62,7 @@ public sealed class User : Entity
             FirstName = firstName,
             LastName = lastName,
             Gender = gender,
+            NationalId = NormalizeNationalId(nationalId),
             Role = role,
             Status = UserStatus.PendingVerification,
             Language = language,
@@ -76,6 +85,28 @@ public sealed class User : Entity
         UpdatedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new UserProfileUpdatedDomainEvent(Id));
+    }
+
+    /// <summary>
+    /// Sets the National ID. By default only fills it when currently empty so a
+    /// re-run import never clobbers a value already on file; pass overwrite:true
+    /// to force-replace (e.g. staff correcting a typo).
+    /// </summary>
+    public void SetNationalId(string? nationalId, bool overwrite = false)
+    {
+        var normalized = NormalizeNationalId(nationalId);
+        if (normalized is null) return;
+        if (!overwrite && !string.IsNullOrWhiteSpace(NationalId)) return;
+
+        NationalId = normalized;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static string? NormalizeNationalId(string? nationalId)
+    {
+        if (string.IsNullOrWhiteSpace(nationalId)) return null;
+        var trimmed = nationalId.Trim();
+        return trimmed.Length == 0 ? null : trimmed;
     }
 
     public void ChangePhoneNumber(PhoneNumber phoneNumber)

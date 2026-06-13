@@ -1,5 +1,6 @@
 using System.Reflection;
 using GymApp.Modules.Gyms.Shared;
+using GymApp.Modules.Identity.Shared;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Modules.Billing.Domain.Entities;
@@ -22,6 +23,7 @@ public class GetMyPackagesQueryHandlerTests
 {
     private readonly ISessionPackageRepository _packageRepository = Substitute.For<ISessionPackageRepository>();
     private readonly IGymMembershipChecker _membershipChecker = Substitute.For<IGymMembershipChecker>();
+    private readonly IUserDisplayLookup _userDisplayLookup = Substitute.For<IUserDisplayLookup>();
 
     private const string HandlerTypeName =
         "GymApp.Modules.Billing.Application.Queries.SessionPackages.GetMyPackagesQueryHandler";
@@ -51,6 +53,7 @@ public class GetMyPackagesQueryHandlerTests
             var pt = parameters[i].ParameterType;
             if (pt == typeof(ISessionPackageRepository)) args[i] = _packageRepository;
             else if (pt == typeof(IGymMembershipChecker)) args[i] = _membershipChecker;
+            else if (pt == typeof(IUserDisplayLookup)) args[i] = _userDisplayLookup;
             else args[i] = Substitute.For(new[] { pt }, Array.Empty<object>());
         }
         return ctor.Invoke(args);
@@ -245,6 +248,46 @@ public class GetMyPackagesQueryHandlerTests
         ((bool)result.IsSuccess).Should().BeTrue();
         CountItems((object?)result.Value).Should().Be(2,
             because: "PRD requires status=All to include both Active and Expired packages");
+    }
+
+    [Fact]
+    public async Task Should_ResolveTrainerName_When_UserDisplayLookupReturnsIt()
+    {
+        // Trainer display name is resolved cross-module via IUserDisplayLookup
+        // (Identity .Shared). Previously this field was always null.
+        var userId = Guid.NewGuid();
+        var gymId = Guid.NewGuid();
+        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
+        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
+
+        var package = BuildActivePackage(gymId, userId);
+        var trainerId = package.TrainerId;
+        _packageRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
+            .Returns(new List<SessionPackage> { package });
+
+        IReadOnlyDictionary<Guid, UserDisplay> names = new Dictionary<Guid, UserDisplay>
+        {
+            [trainerId] = new UserDisplay(trainerId, "Coach Karim", null)
+        };
+        _userDisplayLookup.GetDisplayNamesAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(names);
+
+        var handler = CreateHandler();
+        var query = CreateQuery(userId, gymId, status: "All");
+
+        dynamic result = await InvokeHandleAsync(handler, query);
+
+        ((bool)result.IsSuccess).Should().BeTrue();
+        FirstItemTrainerName((object?)result.Value).Should().Be("Coach Karim");
+    }
+
+    private static string? FirstItemTrainerName(object? value)
+    {
+        var itemsProp = value?.GetType().GetProperty("Items");
+        if (itemsProp?.GetValue(value) is not System.Collections.IEnumerable items)
+            return null;
+        var first = items.Cast<object>().FirstOrDefault();
+        return first?.GetType().GetProperty("TrainerName")?.GetValue(first) as string;
     }
 
     private static int CountItems(object? value)

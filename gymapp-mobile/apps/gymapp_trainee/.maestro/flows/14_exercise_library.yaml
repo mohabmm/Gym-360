@@ -1,7 +1,7 @@
 appId: com.example.gymappTrainee
 name: 14_exercise_library
 env:
-  EMAIL: trainee-l3-612493@gym.local
+  EMAIL: trainee@demo.local
   PASSWORD: "123456"
 ---
 - launchApp:

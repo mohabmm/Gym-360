@@ -96,6 +96,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: RoutePaths.dashboard,
     debugLogDiagnostics: true,
+    observers: [TelemetryNavigatorObserver(ref.read(telemetryServiceProvider))],
     redirect: (context, state) {
       final auth = authState.valueOrNull;
       final isLoggedIn = auth?.status == AuthStatus.authenticated;
