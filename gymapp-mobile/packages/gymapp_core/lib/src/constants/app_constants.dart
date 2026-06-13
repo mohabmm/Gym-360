@@ -7,8 +7,12 @@ class AppConstants {
   static const String appNameAr = 'جيم 360';
 
   // API
-  static const int apiTimeoutSeconds = 15;
-  static const int apiConnectTimeoutSeconds = 10;
+  // Read/send timeout. Raised from 15s: a cold backend (first request after
+  // the staging/host instance has been idle) can take >15s to answer the
+  // initial /identity/profile on the login path, which aborted with a
+  // receiveTimeout and surfaced as a spurious "please log in again" error.
+  static const int apiTimeoutSeconds = 30;
+  static const int apiConnectTimeoutSeconds = 20;
   static const int paginationPageSize = 20;
 
   // Auth
