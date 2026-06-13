@@ -114,7 +114,13 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                     keyboardType: TextInputType.number,
                     validator: (v) {
                       if (v == null || v.isEmpty) return isArabic ? 'مطلوب' : 'Required';
-                      if (double.tryParse(v) == null) return isArabic ? 'رقم غير صالح' : 'Invalid amount';
+                      final amount = double.tryParse(v);
+                      if (amount == null) return isArabic ? 'رقم غير صالح' : 'Invalid amount';
+                      if (amount <= 0) {
+                        return isArabic
+                            ? 'يجب أن يكون المبلغ أكبر من صفر'
+                            : 'Amount must be greater than zero';
+                      }
                       return null;
                     },
                   ),
