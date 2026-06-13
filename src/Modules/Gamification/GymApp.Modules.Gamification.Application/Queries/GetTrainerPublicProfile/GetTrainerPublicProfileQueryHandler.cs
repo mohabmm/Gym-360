@@ -25,7 +25,20 @@ internal sealed class GetTrainerPublicProfileQueryHandler
 
         if (profile is null)
         {
-            return Result.Failure<TrainerPublicProfileResponse>(GamificationErrors.ProfileNotFound);
+            // A public profile row is only materialized on the trainer's first
+            // received rating (see SubmitTrainerRatingCommandHandler). Until then
+            // — for every brand-new or never-rated trainer — return an empty,
+            // zero-rating profile rather than a 404. The clients (trainer "My
+            // Ratings", member trainer-browse) render this as a "no ratings yet"
+            // empty state; a NotFound surfaces as a raw error screen instead.
+            var empty = new TrainerPublicProfileResponse(
+                request.TrainerId,
+                request.GymId,
+                0m,
+                0,
+                new List<TestimonialDto>());
+
+            return Result.Success(empty);
         }
 
         var testimonials = profile.Testimonials
