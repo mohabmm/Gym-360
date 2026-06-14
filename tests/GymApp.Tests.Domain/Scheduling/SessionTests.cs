@@ -11,6 +11,11 @@ public sealed class SessionTests
     private static readonly Guid TrainerId = Guid.NewGuid();
     private static readonly Guid MemberId = Guid.NewGuid();
 
+    // The default session is scheduled 2025-06-15 10:00; this clock is just
+    // before it so Confirm() passes its "not in the past" guard.
+    private static readonly DateTime ClockBeforeSchedule =
+        new(2025, 6, 14, 0, 0, 0, DateTimeKind.Utc);
+
     private static Session CreateDefaultSession()
     {
         return Session.Create(
@@ -25,7 +30,7 @@ public sealed class SessionTests
     private static Session CreateConfirmedSession()
     {
         var session = CreateDefaultSession();
-        session.Confirm();
+        session.Confirm(ClockBeforeSchedule);
         session.ClearDomainEvents();
         return session;
     }
@@ -88,7 +93,7 @@ public sealed class SessionTests
         var session = CreateDefaultSession();
         session.ClearDomainEvents();
 
-        var result = session.Confirm();
+        var result = session.Confirm(ClockBeforeSchedule);
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.Confirmed);
@@ -101,7 +106,7 @@ public sealed class SessionTests
     {
         var session = CreateConfirmedSession();
 
-        var result = session.Confirm();
+        var result = session.Confirm(ClockBeforeSchedule);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.AlreadyConfirmed");
@@ -113,10 +118,24 @@ public sealed class SessionTests
         var session = CreateInProgressSession();
         session.Complete();
 
-        var result = session.Confirm();
+        var result = session.Confirm(ClockBeforeSchedule);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidStatusTransition");
+    }
+
+    [Fact]
+    public void Confirm_WhenScheduledInPast_ShouldFail()
+    {
+        var session = CreateDefaultSession(); // scheduled 2025-06-15 10:00
+        session.ClearDomainEvents();
+
+        // Clock is after the scheduled time → confirming should be rejected.
+        var result = session.Confirm(new DateTime(2025, 6, 16, 0, 0, 0, DateTimeKind.Utc));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Scheduling.SessionInPast");
+        session.Status.Should().Be(SessionStatus.Pending);
     }
 
     [Fact]
@@ -421,7 +440,7 @@ public sealed class SessionTests
     {
         var session = CreateDefaultSession();
 
-        session.Confirm().IsSuccess.Should().BeTrue();
+        session.Confirm(ClockBeforeSchedule).IsSuccess.Should().BeTrue();
         session.StartSession(DateTime.UtcNow, 15, true).IsSuccess.Should().BeTrue();
         session.Complete().IsSuccess.Should().BeTrue();
 
