@@ -90,7 +90,7 @@ class LeaderboardScreen extends ConsumerWidget {
                                     fontWeight: FontWeight.w600),
                               ),
                               trailing: Text(
-                                '${board.myPosition!.score.toStringAsFixed(0)} pts',
+                                '${board.myPosition!.score.toStringAsFixed(0)} ${isArabic ? 'نقطة' : 'pts'}',
                                 style: TextStyle(
                                     color: Theme.of(context)
                                         .colorScheme
@@ -169,7 +169,7 @@ class _LeaderboardEntryTile extends StatelessWidget {
       title: Text(entry.memberName),
       trailing: Text(
         entry.scoreLabel ??
-            '${entry.score.toStringAsFixed(0)} pts',
+            '${entry.score.toStringAsFixed(0)} ${isArabic ? 'نقطة' : 'pts'}',
         style: TextStyle(
             color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.w600),
