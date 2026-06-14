@@ -173,7 +173,8 @@ class _MembershipCard extends StatelessWidget {
     // isActive as the authoritative "active" signal and hide the badge
     // entirely when we have nothing meaningful to show (fixes BUG-12 where
     // the card rendered with two empty rows).
-    final active = membership.isActive ?? (membership.status == 'active');
+    final active =
+        membership.isActive ?? (membership.status?.toLowerCase() == 'active');
     final statusText = active
         ? (isArabic ? 'نشط' : 'Active')
         : (membership.status != null && membership.status!.isNotEmpty
@@ -181,7 +182,9 @@ class _MembershipCard extends StatelessWidget {
             : (isArabic ? 'غير نشط' : 'Inactive'));
     final statusColor = active
         ? Colors.green
-        : (membership.status == 'frozen' ? Colors.blue : Colors.red);
+        : (membership.status?.toLowerCase() == 'frozen'
+            ? Colors.blue
+            : Colors.red);
 
     final subtitle = membership.membershipType ??
         (membership.section != null
@@ -350,7 +353,7 @@ class _PaymentTile extends StatelessWidget {
     return ListTile(
       leading: Icon(
         Icons.receipt_outlined,
-        color: payment.status == 'voided' ? Colors.red : Colors.green,
+        color: payment.status.toLowerCase() == 'voided' ? Colors.red : Colors.green,
       ),
       title: Text(_purposeLabel(payment.purpose, isArabic)),
       subtitle: Text(subtitleText),
@@ -358,7 +361,7 @@ class _PaymentTile extends StatelessWidget {
         '${payment.amount.toStringAsFixed(0)} ${payment.currency}',
         style: TextStyle(
           color:
-              payment.status == 'voided' ? Colors.red : Colors.green,
+              payment.status.toLowerCase() == 'voided' ? Colors.red : Colors.green,
           fontWeight: FontWeight.w600,
         ),
       ),
