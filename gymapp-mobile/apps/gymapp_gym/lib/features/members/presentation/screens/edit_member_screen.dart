@@ -114,6 +114,17 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
                   controller: _emailController,
                   label: isArabic ? 'البريد الالكتروني' : 'Email',
                   keyboardType: TextInputType.emailAddress,
+                  // Match add-member: the backend rejects malformed emails with
+                  // a 400, so validate inline when one is provided.
+                  validator: (v) {
+                    final t = v?.trim() ?? '';
+                    if (t.isEmpty) return null;
+                    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)
+                        ? null
+                        : (isArabic
+                            ? 'بريد إلكتروني غير صالح'
+                            : 'Invalid email address');
+                  },
                 ),
                 const SizedBox(height: 32),
                 AppButton(
