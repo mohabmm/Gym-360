@@ -93,13 +93,20 @@ public sealed class Session : Entity
         return session;
     }
 
-    public Result Confirm()
+    public Result Confirm(DateTime nowUtc)
     {
         if (Status == SessionStatus.Confirmed)
             return Result.Failure(SchedulingErrors.AlreadyConfirmed);
 
         if (Status != SessionStatus.Pending)
             return Result.Failure(SchedulingErrors.InvalidStatusTransition);
+
+        // Reject confirming a session whose scheduled time has already passed
+        // (a past booking request can still be cancelled or marked no-show).
+        // Mirrors StartSession's UTC treatment of the stored wall-clock time.
+        var scheduledStartUtc = ScheduledDate.ToDateTime(ScheduledTime, DateTimeKind.Utc);
+        if (scheduledStartUtc <= nowUtc)
+            return Result.Failure(SchedulingErrors.SessionInPast(scheduledStartUtc));
 
         Status = SessionStatus.Confirmed;
         RaiseDomainEvent(new SessionConfirmedDomainEvent(Id));

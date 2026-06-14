@@ -193,14 +193,14 @@ public sealed class SessionExerciseLogsIntegrationTests : BaseIntegrationTest
             gymId: Guid.NewGuid(),
             trainerId: trainerId,
             memberId: memberId,
-            scheduledDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
+            scheduledDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
             scheduledTime: new TimeOnly(10, 0),
             durationMinutes: 60,
             sessionType: SessionType.PersonalTraining);
 
         if (targetStatus != SessionStatus.Pending)
         {
-            session.Confirm();
+            session.Confirm(DateTime.UtcNow);
             if (targetStatus is SessionStatus.InProgress or SessionStatus.Completed)
             {
                 session.StartSession(DateTime.UtcNow, 15, true);

@@ -1,3 +1,4 @@
+using GymApp.Common.Application.Abstractions;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Domain.Errors;
@@ -10,13 +11,16 @@ internal sealed class ConfirmSessionCommandHandler : ICommandHandler<ConfirmSess
 {
     private readonly ISessionRepository _sessionRepository;
     private readonly ISchedulingUnitOfWork _unitOfWork;
+    private readonly IDateTimeProvider _dateTimeProvider;
 
     public ConfirmSessionCommandHandler(
         ISessionRepository sessionRepository,
-        ISchedulingUnitOfWork unitOfWork)
+        ISchedulingUnitOfWork unitOfWork,
+        IDateTimeProvider dateTimeProvider)
     {
         _sessionRepository = sessionRepository;
         _unitOfWork = unitOfWork;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task<Result> Handle(ConfirmSessionCommand request, CancellationToken cancellationToken)
@@ -26,7 +30,7 @@ internal sealed class ConfirmSessionCommandHandler : ICommandHandler<ConfirmSess
         if (session is null)
             return Result.Failure(SchedulingErrors.SessionNotFound(request.SessionId));
 
-        var result = session.Confirm();
+        var result = session.Confirm(_dateTimeProvider.UtcNow);
         if (result.IsFailure)
             return result;
 
