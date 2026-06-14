@@ -144,7 +144,20 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
                                 parser: (_) {},
                               );
                               ref.invalidate(gymAmenitiesProvider);
-                            } catch (_) {}
+                            } catch (e) {
+                              // Was silently swallowed; surface the failure so
+                              // the user knows the delete didn't take (parity
+                              // with the add-amenity flow).
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(isArabic
+                                        ? 'تعذر حذف المرفق. حاول مرة اخرى.'
+                                        : 'Could not remove the amenity. Please try again.'),
+                                  ),
+                                );
+                              }
+                            }
                           },
                         ),
                       ),
