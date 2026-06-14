@@ -134,10 +134,10 @@ class _NotificationSettingsScreenState
                     children: [
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(isArabic ? 'عضو جديد' : 'New Member'),
+                        title: Text(isArabic ? 'اشعارات عامة' : 'General'),
                         subtitle: Text(isArabic
-                            ? 'اشعار عند تسجيل عضو جديد'
-                            : 'Notify when a new member registers'),
+                            ? 'تحديثات عامة من النظام'
+                            : 'General system updates'),
                         value: _newMemberNotif,
                         onChanged: (v) => setState(() => _newMemberNotif = v),
                       ),
@@ -152,19 +152,20 @@ class _NotificationSettingsScreenState
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(isArabic ? 'انخفاض الحضور' : 'Low Attendance'),
+                        title: Text(
+                            isArabic ? 'انخفاض رصيد الباقة' : 'Package Running Low'),
                         subtitle: Text(isArabic
-                            ? 'اشعار عند انخفاض الحضور'
-                            : 'Notify when attendance drops'),
+                            ? 'اشعار عند قرب انتهاء جلسات باقة العضو'
+                            : "Notify when a member's package is nearly used up"),
                         value: _lowAttendanceNotif,
                         onChanged: (v) => setState(() => _lowAttendanceNotif = v),
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: Text(isArabic ? 'تسجيل حضور' : 'Check-In'),
+                        title: Text(isArabic ? 'الاعلانات' : 'Announcements'),
                         subtitle: Text(isArabic
-                            ? 'اشعار لكل تسجيل حضور'
-                            : 'Notify for every check-in (high volume)'),
+                            ? 'اشعار بالاعلانات الجديدة'
+                            : 'Notify about new announcements'),
                         value: _checkInNotif,
                         onChanged: (v) => setState(() => _checkInNotif = v),
                       ),
