@@ -6,6 +6,7 @@ using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
 using GymApp.Modules.Identity.Domain.Repositories;
 using GymApp.Modules.Identity.Domain.ValueObjects;
+using GymApp.Modules.Identity.IntegrationEvents;
 using DomainEntities = GymApp.Modules.Identity.Domain.Entities;
 
 namespace GymApp.Modules.Identity.Application.Commands.CreateTrainerByStaff;
@@ -15,16 +16,23 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
     private readonly IUserRepository _userRepository;
     private readonly IIdentityUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public CreateTrainerByStaffCommandHandler(
         IUserRepository userRepository,
         IIdentityUnitOfWork unitOfWork,
-        IPasswordHasher passwordHasher)
+        IPasswordHasher passwordHasher,
+        IIntegrationEventPublisher integrationEvents)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
+        _integrationEvents = integrationEvents;
     }
+
+    private void EnqueueTrainerLinked(Guid userId, Guid gymId) =>
+        _integrationEvents.Enqueue(new UserLinkedToGymIntegrationEvent(
+            userId, gymId, UserRole.Trainer.ToString()));
 
     public async Task<Result<Guid>> Handle(CreateTrainerByStaffCommand request, CancellationToken cancellationToken)
     {
@@ -78,6 +86,7 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
             return Result.Failure<Guid>(linkResult.Error);
 
         await _userRepository.AddAsync(user, cancellationToken);
+        EnqueueTrainerLinked(user.Id, request.GymId);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(user.Id);
@@ -94,17 +103,21 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         user.UpdatePasswordHash(_passwordHasher.Hash(DefaultTrainerPassword));
         changed = true;
 
+        var newlyLinked = false;
         if (!user.GymMemberships.Any(m => m.GymId == gymId && m.Role == UserRole.Trainer && m.IsActive))
         {
             var link = user.LinkToGym(gymId, UserRole.Trainer, section: null, memberNumber: null);
             if (link.IsFailure)
                 return Result.Failure<Guid>(link.Error);
             changed = true;
+            newlyLinked = true;
         }
 
         if (changed)
         {
             _userRepository.Update(user);
+            if (newlyLinked)
+                EnqueueTrainerLinked(user.Id, gymId);
             await _unitOfWork.SaveChangesAsync(ct);
         }
         return Result.Success(user.Id);
