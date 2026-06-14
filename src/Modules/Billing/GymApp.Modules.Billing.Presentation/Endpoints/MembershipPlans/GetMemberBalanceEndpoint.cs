@@ -33,7 +33,8 @@ internal sealed class GetMemberBalanceEndpoint : IEndpoint
                 ? ApiResults.Ok(result.Value)
                 : ApiResults.Problem(result.Error);
         })
-        .RequireAuthorization()
+        // Staff-only: a member's balance/memberships/package summary is gym-staff/owner data.
+        .RequireAuthorization("gym_staff")
         .WithSummary("Get member billing balance")
         .WithDescription("Returns a member's current balance, active memberships, and session package summary for a given gym.")
         .WithTags("Billing")

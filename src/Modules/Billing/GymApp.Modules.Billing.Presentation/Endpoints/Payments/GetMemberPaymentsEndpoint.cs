@@ -33,7 +33,9 @@ internal sealed class GetMemberPaymentsEndpoint : IEndpoint
                 ? ApiResults.Ok(result.Value)
                 : ApiResults.Problem(result.Error);
         })
-        .RequireAuthorization()
+        // Staff-only: a member's full payment history is gym-staff/owner data.
+        // Members read their own via GET /billing/payments/my (trainee policy).
+        .RequireAuthorization("gym_staff")
         .WithSummary("Get a member's payments")
         .WithDescription("Returns all payments for a single member (no pagination).")
         .WithTags("Billing")
