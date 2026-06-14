@@ -53,9 +53,9 @@ class TrainerDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(t.phone!, style: theme.textTheme.bodySmall),
                     ],
-                    if (t.email != null) ...[
+                    if (t.email.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(t.email!, style: theme.textTheme.bodySmall),
+                      Text(t.email, style: theme.textTheme.bodySmall),
                     ],
                   ],
                 ),
