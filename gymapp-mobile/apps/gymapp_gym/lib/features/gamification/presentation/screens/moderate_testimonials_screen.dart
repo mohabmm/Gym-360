@@ -96,10 +96,31 @@ class ModerateTestimonialsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => AppErrorWidget(
-          message: isArabic ? 'خطأ في التحميل' : 'Error loading testimonials',
-          onRetry: () => ref.invalidate(testimonialsProvider),
-        ),
+        error: (e, _) {
+          // This feature is Pro-gated; the backend returns
+          // PLAN.FEATURE_NOT_AVAILABLE. Showing a generic "load error + retry"
+          // is misleading (retry can't enable the feature) — show an upgrade
+          // message instead, matching the dashboard's gating handling.
+          if (e is ApiException &&
+              e.errorCode == 'PLAN.FEATURE_NOT_AVAILABLE') {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  isArabic
+                      ? 'إدارة الشهادات متاحة في باقة Pro فقط.'
+                      : 'Testimonial moderation is available on the Pro plan only.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+          return AppErrorWidget(
+            message:
+                isArabic ? 'خطأ في التحميل' : 'Error loading testimonials',
+            onRetry: () => ref.invalidate(testimonialsProvider),
+          );
+        },
       ),
     );
   }
