@@ -258,7 +258,10 @@ final clientDetailProvider =
       );
       if (packages.isNotEmpty) {
         activePackage = packages.firstWhere(
-          (p) => p.status == 'active',
+          // BE PackageStatus serializes PascalCase ("Active"); compare
+          // case-insensitively so the active package is actually selected
+          // instead of silently falling back to packages.first.
+          (p) => p.status.toLowerCase() == 'active',
           orElse: () => packages.first,
         );
       }
