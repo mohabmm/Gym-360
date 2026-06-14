@@ -1,3 +1,4 @@
+using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Progress.Application.Commands.DeleteProgressPhoto;
 using MediatR;
@@ -11,9 +12,12 @@ internal sealed class DeleteProgressPhotoEndpoint : IEndpoint
     {
         app.MapDelete("api/v1/progress/photos/{photoId:guid}", async (
             Guid photoId,
-            Guid userId,
+            HttpContext http,
             ISender sender) =>
         {
+            if (!CallerContext.TryGetUserId(http, out var userId))
+                return ApiResults.Problem(new Error("Auth.UserMissing", "Authenticated user id is missing."));
+
             var command = new DeleteProgressPhotoCommand(userId, photoId);
 
             var result = await sender.Send(command);
