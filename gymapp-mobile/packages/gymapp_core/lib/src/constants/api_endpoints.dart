@@ -269,6 +269,8 @@ class ApiEndpoints {
       '$basePrefix/billing/packages/my-clients';
   static String memberBalance(String memberId) =>
       '$basePrefix/billing/members/$memberId/balance';
+  static String billingMemberPayments(String memberId) =>
+      '$basePrefix/billing/members/$memberId/payments';
   static const String revenue = '$basePrefix/billing/revenue';
   static const String revenueByTrainer = '$basePrefix/billing/revenue/by-trainer';
   // Trainee's own packages and payments (PRD /me endpoints).
