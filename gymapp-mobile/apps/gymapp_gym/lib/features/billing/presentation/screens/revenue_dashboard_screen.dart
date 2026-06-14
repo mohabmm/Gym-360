@@ -4,6 +4,22 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../providers/billing_provider.dart';
 
+/// Localizes the BE PaymentPurpose enum (Membership/SessionPackage/Product).
+/// The revenue list previously printed the raw camelCase-spaced enum, leaking
+/// English into the Arabic-first UI. Mirrors the record-payment chip labels.
+String _purposeLabel(String purpose, bool isArabic) {
+  switch (purpose.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '')) {
+    case 'membership':
+      return isArabic ? 'اشتراك' : 'Membership';
+    case 'sessionpackage':
+      return isArabic ? 'باقة حصص' : 'Session Package';
+    case 'product':
+      return isArabic ? 'منتج' : 'Product';
+    default:
+      return purpose;
+  }
+}
+
 class RevenueDashboardScreen extends ConsumerWidget {
   const RevenueDashboardScreen({super.key});
 
@@ -85,10 +101,7 @@ class RevenueDashboardScreen extends ConsumerWidget {
                           [
                             NumberFormatter.formatCurrency(p.amount),
                             if (p.purpose.isNotEmpty)
-                              p.purpose.replaceAllMapped(
-                                RegExp(r'([a-z0-9])([A-Z])'),
-                                (m) => '${m[1]} ${m[2]}',
-                              ),
+                              _purposeLabel(p.purpose, isArabic),
                             if (p.createdAt != null)
                               DateFormatter.formatShort(p.createdAt!),
                           ].join(' · '),
