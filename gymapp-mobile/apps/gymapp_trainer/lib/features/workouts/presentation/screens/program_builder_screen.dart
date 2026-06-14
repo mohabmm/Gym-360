@@ -30,7 +30,15 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
   }
 
   Future<void> _save() async {
-    if (_nameController.text.trim().isEmpty) return;
+    if (_nameController.text.trim().isEmpty) {
+      final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic
+            ? 'ادخل اسم البرنامج (انجليزي)'
+            : 'Enter the program name (English)'),
+      ));
+      return;
+    }
     setState(() => _isSaving = true);
     try {
       final authState = ref.read(authProvider);
