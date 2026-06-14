@@ -183,7 +183,9 @@ class _GuidedWorkoutScreenState extends ConsumerState<GuidedWorkoutScreen> {
       setNumber: guidedState.currentSetIndex + 1,
       reps: _reps ?? int.tryParse(exercise.reps ?? ''),
       weight: _weight ?? exercise.weight,
-      rpe: _rpe,
+      // The field is labelled 1-10 but only filters to digits, so 0 or >10
+      // could be logged. Clamp to the valid RPE scale.
+      rpe: _rpe == null ? null : _rpe!.clamp(1, 10),
     );
 
     ref.read(guidedWorkoutProvider.notifier).completeSet(setLog);
