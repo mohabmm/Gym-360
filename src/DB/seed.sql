@@ -56,6 +56,28 @@ END
 CLOSE schema_cursor;
 DEALLOCATE schema_cursor;
 
+-- 0.1b) Backfill gyms.gyms.TrainerIds from trainer GymMemberships.
+--       Trainers created via Identity-side paths (staff-create-trainer,
+--       self-serve link-to-gym) historically were never added to the Gym
+--       aggregate's TrainerIds, so they were invisible to staff. The app now
+--       keeps them in sync (UserLinkedToGymIntegrationEvent handler), but
+--       pre-existing trainers need this one-time fill. FILL-ONLY-WHEN-EMPTY so
+--       we never overwrite a gym that already has a populated trainer list.
+IF OBJECT_ID('gyms.gyms') IS NOT NULL
+   AND OBJECT_ID('identity.user_gym_memberships') IS NOT NULL
+BEGIN
+    UPDATE g
+    SET g.TrainerIds = (
+        SELECT '[' + STRING_AGG('"' + LOWER(CONVERT(NVARCHAR(36), m.UserId)) + '"', ',') + ']'
+        FROM identity.user_gym_memberships m
+        WHERE m.GymId = g.Id AND m.Role = 'Trainer' AND m.IsActive = 1)
+    FROM gyms.gyms g
+    WHERE (g.TrainerIds IS NULL OR g.TrainerIds = '' OR g.TrainerIds = '[]')
+      AND EXISTS (
+        SELECT 1 FROM identity.user_gym_memberships m
+        WHERE m.GymId = g.Id AND m.Role = 'Trainer' AND m.IsActive = 1);
+END
+
 -- 0.2) Legacy 'Scheduled' status → 'Confirmed' (SessionStatus enum has no
 --      'Scheduled' member; EF's string-enum converter throws on read).
 DECLARE sched_cursor CURSOR LOCAL FAST_FORWARD FOR
