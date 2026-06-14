@@ -47,8 +47,13 @@ class _SessionPoliciesScreenState extends ConsumerState<SessionPoliciesScreen> {
   Future<void> _save() async {
     final threshold = int.tryParse(_noshowThresholdController.text);
     final windowDays = int.tryParse(_noshowWindowDaysController.text);
+    // The cancellation window has no backend validation, and a negative value
+    // silently inverts the late-cancellation math (hoursUntilSession < window),
+    // so guard it here: 0 (cancel anytime) .. 168h (one week).
+    final cancelWindow = int.tryParse(_cancelWindowController.text);
     if (threshold == null || threshold <= 0 ||
-        windowDays == null || windowDays <= 0) {
+        windowDays == null || windowDays <= 0 ||
+        cancelWindow == null || cancelWindow < 0 || cancelWindow > 168) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -69,8 +74,7 @@ class _SessionPoliciesScreenState extends ConsumerState<SessionPoliciesScreen> {
       await apiClient.put<void>(
         ApiEndpoints.gymSessionPolicy(gymId),
         data: {
-          'cancellationWindowHours':
-              int.tryParse(_cancelWindowController.text) ?? 24,
+          'cancellationWindowHours': cancelWindow,
           'noshowThreshold': threshold,
           'noshowWindowDays': windowDays,
           'noshowAction': _noshowAction,
