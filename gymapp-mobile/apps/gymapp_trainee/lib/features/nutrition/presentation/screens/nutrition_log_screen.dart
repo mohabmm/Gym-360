@@ -380,6 +380,15 @@ class _AddFoodSheetState extends ConsumerState<_AddFoodSheet> {
     if (food == null) return;
 
     final quantity = double.tryParse(_quantityController.text) ?? 100;
+    if (quantity <= 0) {
+      final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic
+            ? 'الرجاء إدخال كمية أكبر من صفر'
+            : 'Enter a quantity greater than zero'),
+      ));
+      return;
+    }
     final ratio = quantity / 100;
 
     setState(() => _isAdding = true);
