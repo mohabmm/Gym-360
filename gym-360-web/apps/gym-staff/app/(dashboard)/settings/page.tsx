@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@gym360/ui';
 import { Check, MapPin, Bell } from 'lucide-react';
 import { toast } from 'sonner';
-import { useGym, useUpdateGym } from '@/lib/hooks/useGym';
+import { useGym, useUpdateGym, useUpdateBranding } from '@/lib/hooks/useGym';
 
 const amenities = [
   { icon: '🅿️', label: 'Parking', checked: true },
@@ -29,6 +29,7 @@ const notificationSettings = [
 export default function SettingsPage() {
   const { data: gym } = useGym();
   const updateGym = useUpdateGym();
+  const updateBranding = useUpdateBranding();
   const [gymName, setGymName] = useState('');
   const [gymDesc, setGymDesc] = useState('');
   const [phone, setPhone] = useState('');
@@ -42,6 +43,10 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = useState(notificationSettings);
   const [primaryColor, setPrimaryColor] = useState('#C41E3A');
   const [accentColor, setAccentColor] = useState('#D4AF37');
+  // Only push branding when the user actually edits a color — branding is a
+  // Pro-gated endpoint (400 otherwise), so an untouched save must not call it
+  // and sink an otherwise-fine profile save.
+  const [colorsTouched, setColorsTouched] = useState(false);
 
   useEffect(() => {
     if (!gym) return;
@@ -53,11 +58,19 @@ export default function SettingsPage() {
     setStreet(gym.street ?? '');
     setCity(gym.city ?? '');
     setArea(gym.area ?? '');
+    if (gym.primaryColor) setPrimaryColor(gym.primaryColor);
+    if (gym.secondaryColor) setAccentColor(gym.secondaryColor);
   }, [gym]);
 
-  const handleSave = () => {
-    updateGym.mutate(
-      {
+  const errMsg = (err: unknown, fallback: string) =>
+    (err as { response?: { data?: { errors?: { message?: string }[] } } })
+      ?.response?.data?.errors?.[0]?.message ?? fallback;
+
+  const handleSave = async () => {
+    // Profile save first — independent of branding so a Pro-gated branding
+    // failure can't mask a successful profile save.
+    try {
+      await updateGym.mutateAsync({
         name: gymName,
         description: gymDesc,
         phone,
@@ -66,16 +79,31 @@ export default function SettingsPage() {
         street,
         city,
         area,
-      },
-      {
-        onSuccess: () => toast.success('Settings saved successfully!'),
-        onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-            ?.response?.data?.errors?.[0]?.message ?? 'Failed to save settings.';
-          toast.error(msg);
-        },
-      },
-    );
+      });
+    } catch (err: unknown) {
+      toast.error(errMsg(err, 'Failed to save settings.'));
+      return;
+    }
+
+    // Branding only when the user actually changed a color. Dedicated endpoint;
+    // the BE replaces the whole Branding object, so pass through existing
+    // logo/cover to avoid wiping them.
+    if (colorsTouched) {
+      try {
+        await updateBranding.mutateAsync({
+          primaryColor,
+          secondaryColor: accentColor,
+          logoUrl: gym?.logoUrl,
+          coverPhotoUrl: gym?.coverPhotoUrl,
+        });
+        setColorsTouched(false);
+      } catch (err: unknown) {
+        toast.error(errMsg(err, 'Profile saved, but branding colors need a Pro plan.'));
+        return;
+      }
+    }
+
+    toast.success('Settings saved successfully!');
   };
 
   const toggleNotification = (index: number) => {
@@ -241,7 +269,7 @@ export default function SettingsPage() {
                 <input
                   type="color"
                   value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  onChange={(e) => { setPrimaryColor(e.target.value); setColorsTouched(true); }}
                   className="w-10 h-10 rounded-lg cursor-pointer"
                 />
                 <span className="text-sm text-muted-foreground font-mono">{primaryColor}</span>
@@ -253,7 +281,7 @@ export default function SettingsPage() {
                 <input
                   type="color"
                   value={accentColor}
-                  onChange={(e) => setAccentColor(e.target.value)}
+                  onChange={(e) => { setAccentColor(e.target.value); setColorsTouched(true); }}
                   className="w-10 h-10 rounded-lg cursor-pointer"
                 />
                 <span className="text-sm text-muted-foreground font-mono">{accentColor}</span>
