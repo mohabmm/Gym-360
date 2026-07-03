@@ -52,6 +52,9 @@ internal sealed class GymQueryService : IGymQueryService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        var ownerProfiles = await _userProfileLookup.GetProfilesAsync(
+            gyms.Select(g => g.OwnerId).Distinct(), cancellationToken);
+
         var items = gyms.Select(gym => new GymResponse(
             gym.Id,
             gym.OwnerId,
@@ -83,7 +86,8 @@ internal sealed class GymQueryService : IGymQueryService
             gym.CreatedAt,
             gym.UpdatedAt,
             gym.MemberIds.Count,
-            gym.TrainerIds.Count)).ToList();
+            gym.TrainerIds.Count,
+            FormatOwnerName(ownerProfiles.GetValueOrDefault(gym.OwnerId)))).ToList();
 
         return new PagedResponse<GymResponse>(items, page, pageSize, totalCount, totalPages);
     }
@@ -95,6 +99,9 @@ internal sealed class GymQueryService : IGymQueryService
             .Where(g => g.Status == GymStatus.PendingApproval)
             .OrderBy(g => g.CreatedAt)
             .ToListAsync(cancellationToken);
+
+        var ownerProfiles = await _userProfileLookup.GetProfilesAsync(
+            gyms.Select(g => g.OwnerId).Distinct(), cancellationToken);
 
         return gyms.Select(gym => new GymResponse(
             gym.Id,
@@ -127,7 +134,8 @@ internal sealed class GymQueryService : IGymQueryService
             gym.CreatedAt,
             gym.UpdatedAt,
             gym.MemberIds.Count,
-            gym.TrainerIds.Count)).ToList();
+            gym.TrainerIds.Count,
+            FormatOwnerName(ownerProfiles.GetValueOrDefault(gym.OwnerId)))).ToList();
     }
 
     public async Task<GymResponse?> GetGymByIdAsync(Guid gymId, CancellationToken cancellationToken = default)
@@ -137,6 +145,8 @@ internal sealed class GymQueryService : IGymQueryService
             .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
 
         if (gym is null) return null;
+
+        var ownerProfile = await _userProfileLookup.GetProfileAsync(gym.OwnerId, cancellationToken);
 
         return new GymResponse(
             gym.Id,
@@ -169,7 +179,17 @@ internal sealed class GymQueryService : IGymQueryService
             gym.CreatedAt,
             gym.UpdatedAt,
             gym.MemberIds.Count,
-            gym.TrainerIds.Count);
+            gym.TrainerIds.Count,
+            FormatOwnerName(ownerProfile));
+    }
+
+    // Owner display name for gym listings/detail: "First Last", falling back to
+    // email when the name is blank, or null when the owner profile is unknown.
+    private static string? FormatOwnerName(UserProfileInfo? profile)
+    {
+        if (profile is null) return null;
+        var name = $"{profile.FirstName} {profile.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? profile.Email : name;
     }
 
     public async Task<bool> IsMemberOfGymAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default)
