@@ -76,7 +76,7 @@ export default function GymsPage() {
   const [planFilter, setPlanFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newGym, setNewGym] = useState({ name: '', gymCode: '', city: '', ownerId: '', ownerEmail: '' });
+  const [newGym, setNewGym] = useState({ name: '', city: '', ownerId: '', ownerEmail: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { invalidate } = useInvalidateQueries();
@@ -107,13 +107,12 @@ export default function GymsPage() {
   }, [allGyms, statusFilter, cityFilter, planFilter, dateRange]);
 
   const handleCreateGym = async () => {
-    if (!newGym.name.trim() || !newGym.gymCode.trim() || !newGym.ownerId) return;
+    if (!newGym.name.trim() || !newGym.ownerId) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       await apiPost(GYMS_ENDPOINTS.CREATE, {
         ownerId: newGym.ownerId,
-        gymCode: newGym.gymCode,
         name: newGym.name,
         description: null,
         address: {
@@ -130,7 +129,7 @@ export default function GymsPage() {
       });
       invalidate(['gyms']);
       setShowAddModal(false);
-      setNewGym({ name: '', gymCode: '', city: '', ownerId: '', ownerEmail: '' });
+      setNewGym({ name: '', city: '', ownerId: '', ownerEmail: '' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create gym';
       setSubmitError(msg);
@@ -238,7 +237,7 @@ export default function GymsPage() {
             </button>
             <button
               onClick={handleCreateGym}
-              disabled={submitting || !newGym.name.trim() || !newGym.gymCode.trim() || !newGym.ownerId}
+              disabled={submitting || !newGym.name.trim() || !newGym.ownerId}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
             >
               {submitting ? 'Creating...' : 'Create Gym'}
@@ -258,15 +257,6 @@ export default function GymsPage() {
               type="text"
               value={newGym.name}
               onChange={(e) => setNewGym((g) => ({ ...g, name: e.target.value }))}
-              className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Gym Code</label>
-            <input
-              type="text"
-              value={newGym.gymCode}
-              onChange={(e) => setNewGym((g) => ({ ...g, gymCode: e.target.value }))}
               className="w-full h-9 rounded-lg border border-input bg-background px-3 text-sm"
             />
           </div>
