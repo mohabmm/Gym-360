@@ -6,6 +6,7 @@ using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
 using GymApp.Modules.Identity.Domain.Repositories;
 using GymApp.Modules.Identity.Domain.ValueObjects;
+using GymApp.Modules.Identity.IntegrationEvents;
 using DomainEntities = GymApp.Modules.Identity.Domain.Entities;
 
 namespace GymApp.Modules.Identity.Application.Commands.Owners;
@@ -15,15 +16,18 @@ internal sealed class CreateGymOwnerCommandHandler : ICommandHandler<CreateGymOw
     private readonly IUserRepository _userRepository;
     private readonly IIdentityUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public CreateGymOwnerCommandHandler(
         IUserRepository userRepository,
         IIdentityUnitOfWork unitOfWork,
-        IPasswordHasher passwordHasher)
+        IPasswordHasher passwordHasher,
+        IIntegrationEventPublisher integrationEvents)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result<CreateGymOwnerResult>> Handle(CreateGymOwnerCommand request, CancellationToken cancellationToken)
@@ -61,6 +65,15 @@ internal sealed class CreateGymOwnerCommandHandler : ICommandHandler<CreateGymOw
         await _userRepository.AddContractAsync(contract, cancellationToken);
 
         user.LinkToOwner(owner.Id);
+
+        // Auto-provision the owner's first gym so they never hit a "No owned gyms
+        // found" dead-end on login. The Gyms module consumes this and registers a
+        // gym owned by this user id (idempotent — skipped if they already own one).
+        _integrationEvents.Enqueue(new GymOwnerCreatedIntegrationEvent(
+            user.Id,
+            request.CompanyName,
+            request.BillingEmail,
+            request.Phone));
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
