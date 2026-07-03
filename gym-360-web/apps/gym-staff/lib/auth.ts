@@ -109,6 +109,38 @@ async function fetchCurrentUser(accessToken: string): Promise<{
   }
 }
 
+type TenantContext = Exclude<Awaited<ReturnType<typeof fetchCurrentUser>>, 'unauthorized' | null>;
+
+// Merge freshly-fetched /identity/me tenant context into the token.
+//
+// Owners are special: /me always reports gymId='' for them (context is derived
+// from the gym registry, not the per-session selected-gym token claim). Blindly
+// copying that would wipe the owner's selected gym on every 60s context refresh
+// (and on token rotation), bouncing them back to /select-gym in an endless loop.
+// So for owners we KEEP the selected gymId as long as it is still one of their
+// ownedGyms, only clearing it when that gym is gone (deleted / access revoked) —
+// which still forces a legitimate re-pick. Staff/managers keep the /me value.
+function mergeTenantContext(token: JWT, fresh: TenantContext): void {
+  token.principalType = fresh.principalType ?? token.principalType;
+  token.ownerId = fresh.ownerId;
+  token.ownedGyms = fresh.ownedGyms;
+
+  if (token.role === 'gym_owner') {
+    const selected = token.gymId
+      ? fresh.ownedGyms.find((g) => g.gymId === token.gymId)
+      : undefined;
+    if (selected) {
+      token.gymName = selected.name ?? token.gymName; // retain the live selection
+    } else {
+      token.gymId = '';                               // gym gone → force re-pick
+      token.gymName = '';
+    }
+  } else {
+    token.gymId = fresh.gymId;
+    token.gymName = fresh.gymName;
+  }
+}
+
 // Decode the `exp` claim (seconds) of an access token into epoch ms.
 function decodeJwtExpMs(accessToken: string): number | null {
   try {
@@ -164,11 +196,7 @@ async function rotateAndRefreshContext(token: JWT): Promise<boolean> {
 
   const fresh = await fetchCurrentUser(token.accessToken);
   if (fresh && fresh !== 'unauthorized') {
-    token.gymId = fresh.gymId;
-    token.gymName = fresh.gymName;
-    token.principalType = fresh.principalType ?? token.principalType;
-    token.ownerId = fresh.ownerId;
-    token.ownedGyms = fresh.ownedGyms;
+    mergeTenantContext(token, fresh);
   }
   token.ctxRefreshedAt = Date.now();
   return true;
@@ -327,11 +355,7 @@ export const authOptions: NextAuthOptions = {
           return { ...token, accessToken: '' };
         }
         if (fresh) {
-          token.gymId = fresh.gymId;
-          token.gymName = fresh.gymName;
-          token.principalType = fresh.principalType ?? token.principalType;
-          token.ownerId = fresh.ownerId;
-          token.ownedGyms = fresh.ownedGyms;
+          mergeTenantContext(token, fresh);
         }
         token.ctxRefreshedAt = Date.now();
       }
