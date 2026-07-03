@@ -29,6 +29,13 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Surface the backend's real error message (errors[0].message) on error.message
+    // so toasts show e.g. "An account with this phone already exists..." instead of
+    // axios's generic "Request failed with status code 400".
+    const apiMsg = error?.response?.data?.errors?.[0]?.message;
+    if (typeof apiMsg === 'string' && apiMsg) {
+      error.message = apiMsg;
+    }
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       window.location.href = '/login';
     }
