@@ -144,7 +144,11 @@ class _RecurringSessionScreenState
                     style: theme.textTheme.titleSmall),
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => setState(() => _recurrenceCount++),
+                  // BE caps WeeksAhead at 12 (rejects more with a 400); keep
+                  // the stepper in range so the trainer never hits that error.
+                  onPressed: _recurrenceCount < 12
+                      ? () => setState(() => _recurrenceCount++)
+                      : null,
                 ),
               ]),
             ],

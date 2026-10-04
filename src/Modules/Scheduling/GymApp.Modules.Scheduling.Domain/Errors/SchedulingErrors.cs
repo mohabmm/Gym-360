@@ -29,6 +29,10 @@ public static class SchedulingErrors
         new("Scheduling.SessionTooEarly",
             $"Session can only be started within {allowedWindowMinutes} minutes of the scheduled time ({scheduledAt:O}). Enable the gym 'early_session_start' feature override to bypass this guard.");
 
+    public static Error SessionInPast(DateTime scheduledAt) =>
+        new("Scheduling.SessionInPast",
+            $"Cannot confirm a session whose scheduled time ({scheduledAt:O}) is already in the past.");
+
     public static readonly Error AlreadyCompleted =
         new("Scheduling.AlreadyCompleted", "The session is already completed.");
 

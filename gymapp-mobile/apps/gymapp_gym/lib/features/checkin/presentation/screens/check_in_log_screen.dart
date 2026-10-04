@@ -61,23 +61,36 @@ class CheckInLogScreen extends ConsumerWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    subtitle: Row(
-                      children: [
-                        Icon(
-                          item.method == 'qr'
-                              ? Icons.qr_code
-                              : Icons.keyboard,
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.method == 'qr'
-                              ? (isArabic ? 'QR' : 'QR')
-                              : (isArabic ? 'رقمي' : 'Manual'),
-                          style: theme.textTheme.labelSmall,
-                        ),
-                      ],
-                    ),
+                    subtitle: Builder(builder: (context) {
+                      // BE CheckInMethod enum is PascalCase (QR / MemberNumber /
+                      // Manual). The old `item.method == 'qr'` never matched, so
+                      // every check-in (incl. QR) rendered as Manual.
+                      final method = item.method
+                          .toLowerCase()
+                          .replaceAll(RegExp(r'[\s_\-]'), '');
+                      final IconData icon;
+                      final String label;
+                      switch (method) {
+                        case 'qr':
+                          icon = Icons.qr_code;
+                          label = 'QR';
+                          break;
+                        case 'membernumber':
+                          icon = Icons.badge_outlined;
+                          label = isArabic ? 'رقم العضو' : 'Member number';
+                          break;
+                        default:
+                          icon = Icons.keyboard;
+                          label = isArabic ? 'يدوي' : 'Manual';
+                      }
+                      return Row(
+                        children: [
+                          Icon(icon, size: 12),
+                          const SizedBox(width: 4),
+                          Text(label, style: theme.textTheme.labelSmall),
+                        ],
+                      );
+                    }),
                     trailing: Text(
                       DateFormatter.formatTime(item.checkedInAt,
                           locale: isArabic ? 'ar' : 'en'),

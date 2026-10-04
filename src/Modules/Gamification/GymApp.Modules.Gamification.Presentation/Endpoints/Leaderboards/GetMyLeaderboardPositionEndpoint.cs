@@ -1,3 +1,4 @@
+using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Gamification.Application.DTOs;
 using GymApp.Modules.Gamification.Application.Queries.GetMyLeaderboardPosition;
@@ -13,10 +14,13 @@ internal sealed class GetMyLeaderboardPositionEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/v1/gamification/leaderboards/my-position", async (
-            Guid userId,
             Guid gymId,
+            HttpContext http,
             ISender sender) =>
         {
+            if (!CallerContext.TryGetUserId(http, out var userId))
+                return ApiResults.Problem(new Error("Auth.UserMissing", "Authenticated user id is missing."));
+
             var query = new GetMyLeaderboardPositionQuery(userId, gymId);
             var result = await sender.Send(query);
 

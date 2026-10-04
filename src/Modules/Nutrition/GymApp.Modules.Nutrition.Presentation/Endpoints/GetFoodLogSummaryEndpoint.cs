@@ -1,3 +1,4 @@
+using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Nutrition.Application.DTOs;
 using GymApp.Modules.Nutrition.Application.Queries.GetFoodLogSummary;
@@ -11,12 +12,15 @@ internal sealed class GetFoodLogSummaryEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/v1/nutrition/food-log/summary", async (
-            Guid userId,
             Guid gymId,
             DateOnly from,
             DateOnly to,
+            HttpContext http,
             ISender sender) =>
         {
+            if (!CallerContext.TryGetUserId(http, out var userId))
+                return ApiResults.Problem(new Error("Auth.UserMissing", "Authenticated user id is missing."));
+
             var query = new GetFoodLogSummaryQuery(userId, gymId, from, to);
 
             var result = await sender.Send(query);

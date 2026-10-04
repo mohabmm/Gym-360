@@ -5,6 +5,7 @@ using GymApp.Modules.Identity.Application.Abstractions;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
 using GymApp.Modules.Identity.Domain.Repositories;
+using GymApp.Modules.Identity.IntegrationEvents;
 
 namespace GymApp.Modules.Identity.Application.Commands.LinkToGym;
 
@@ -13,15 +14,18 @@ internal sealed class LinkToGymCommandHandler : ICommandHandler<LinkToGymCommand
     private readonly IUserRepository _userRepository;
     private readonly IIdentityUnitOfWork _unitOfWork;
     private readonly IGymRegistry _gymRegistry;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public LinkToGymCommandHandler(
         IUserRepository userRepository,
         IIdentityUnitOfWork unitOfWork,
-        IGymRegistry gymRegistry)
+        IGymRegistry gymRegistry,
+        IIntegrationEventPublisher integrationEvents)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
         _gymRegistry = gymRegistry;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result> Handle(LinkToGymCommand request, CancellationToken cancellationToken)
@@ -47,6 +51,12 @@ internal sealed class LinkToGymCommandHandler : ICommandHandler<LinkToGymCommand
             return Result.Failure(link.Error);
 
         _userRepository.Update(user);
+
+        // Keep the Gym aggregate's TrainerIds in sync for self-linked trainers.
+        if (user.Role == UserRole.Trainer)
+            _integrationEvents.Enqueue(new UserLinkedToGymIntegrationEvent(
+                user.Id, registration.GymId, UserRole.Trainer.ToString()));
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

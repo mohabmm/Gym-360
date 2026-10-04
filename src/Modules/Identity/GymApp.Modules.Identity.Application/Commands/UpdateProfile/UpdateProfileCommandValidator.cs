@@ -10,10 +10,12 @@ internal sealed class UpdateProfileCommandValidator : AbstractValidator<UpdatePr
             .NotEmpty().WithMessage("User ID is required.");
 
         RuleFor(x => x.FirstName)
+            .NotEmpty().WithMessage("First name is required.")
             .MaximumLength(100).WithMessage("First name cannot exceed 100 characters.")
             .When(x => x.FirstName is not null);
 
         RuleFor(x => x.LastName)
+            .NotEmpty().WithMessage("Last name is required.")
             .MaximumLength(100).WithMessage("Last name cannot exceed 100 characters.")
             .When(x => x.LastName is not null);
 

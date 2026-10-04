@@ -55,8 +55,13 @@ class _WaterTrackerContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final percentage =
-        (log.totalMl / log.targetMl).clamp(0.0, 1.0);
+    // Guard targetMl == 0 (a user with no target set): 0/0 = NaN, and
+    // CircularPercentIndicator asserts 0 <= percent <= 1, so NaN crashes the
+    // screen.
+    final percentage = (log.targetMl > 0
+            ? log.totalMl / log.targetMl
+            : 0.0)
+        .clamp(0.0, 1.0);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),

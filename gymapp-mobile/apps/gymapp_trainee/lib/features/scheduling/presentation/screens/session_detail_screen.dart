@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../providers/scheduling_providers.dart';
+import '../session_status_l10n.dart';
 
 class SessionDetailScreen extends ConsumerWidget {
   final String sessionId;
@@ -79,9 +80,11 @@ class _Body extends ConsumerWidget {
             value:
                 '${session.durationMinutes} ${isArabic ? 'دقيقة' : 'min'}'),
         _Row(
-            label: isArabic ? 'النوع' : 'Type', value: session.sessionType),
+            label: isArabic ? 'النوع' : 'Type',
+            value: sessionTypeLabel(session.sessionType, isArabic)),
         _Row(
-            label: isArabic ? 'الحالة' : 'Status', value: session.status),
+            label: isArabic ? 'الحالة' : 'Status',
+            value: sessionStatusLabel(session.status, isArabic)),
         if (session.focus != null && session.focus!.isNotEmpty)
           _Row(
               label: isArabic ? 'التركيز' : 'Focus', value: session.focus!),

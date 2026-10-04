@@ -34,17 +34,29 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
 
   Future<void> _pickTime(bool isStart) async {
     final picked = await showDateTimePicker(context, isStart ? _startTime : _endTime);
-    if (picked != null) {
+    if (picked == null || !mounted) return;
+    if (isStart) {
       setState(() {
-        if (isStart) {
-          _startTime = picked;
-          if (_endTime.isBefore(_startTime)) {
-            _endTime = _startTime.add(const Duration(hours: 1));
-          }
-        } else {
-          _endTime = picked;
+        _startTime = picked;
+        if (!_endTime.isAfter(_startTime)) {
+          _endTime = _startTime.add(const Duration(hours: 1));
         }
       });
+    } else {
+      // Guard: the end time must be strictly after the start time. Without
+      // this the negative difference was sent to the backend as
+      // durationMinutes.
+      if (!picked.isAfter(_startTime)) {
+        final isArabic =
+            Localizations.localeOf(context).languageCode == 'ar';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isArabic
+              ? 'يجب أن يكون وقت الانتهاء بعد وقت البدء'
+              : 'End time must be after start time'),
+        ));
+        return;
+      }
+      setState(() => _endTime = picked);
     }
   }
 
@@ -82,6 +94,13 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
       }
       final trainerIdText = _selectedTrainerId!;
       final duration = _endTime.difference(_startTime).inMinutes;
+      if (duration <= 0) {
+        throw Exception(
+          Localizations.localeOf(context).languageCode == 'ar'
+              ? 'يجب أن يكون وقت الانتهاء بعد وقت البدء'
+              : 'End time must be after start time',
+        );
+      }
       final startTime = TimeOfDay.fromDateTime(_startTime);
       final startStr =
           '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}:00';
@@ -173,7 +192,13 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
                     keyboardType: TextInputType.number,
                     validator: (v) {
                       if (v == null || v.isEmpty) return isArabic ? 'مطلوب' : 'Required';
-                      if (int.tryParse(v) == null) return isArabic ? 'رقم غير صالح' : 'Invalid number';
+                      final n = int.tryParse(v);
+                      if (n == null) return isArabic ? 'رقم غير صالح' : 'Invalid number';
+                      if (n < 1) {
+                        return isArabic
+                            ? 'يجب أن تكون السعة 1 على الأقل'
+                            : 'Capacity must be at least 1';
+                      }
                       return null;
                     },
                   ),

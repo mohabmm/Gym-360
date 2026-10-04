@@ -110,20 +110,19 @@ final memberDetailProvider =
 // ---------------------------------------------------------------------------
 // Member Payments
 // ---------------------------------------------------------------------------
-// BE has no per-member payments endpoint. We fetch the gym's payments via
-// `GET /billing/payments?gymId=...` and filter by memberId client-side.
+// Per-member payments via the dedicated BE endpoint. Previously this fetched
+// only the gym's first 200 payments and filtered client-side, so a member's
+// payments were dropped once the gym had more than 200 in total.
 final memberPaymentsProvider =
     FutureProvider.autoDispose.family<List<PaymentModel>, String>(
   (ref, memberId) async {
     final apiClient = ref.watch(apiClientProvider);
-    final gymId = ref.watch(currentGymIdProvider);
-    final result = await apiClient.getPaginated<PaymentModel>(
-      '${ApiEndpoints.basePrefix}/billing/payments',
-      params: const PaginationParams(page: 1, pageSize: 200),
-      additionalParams: {'gymId': gymId},
-      itemParser: (json) => PaymentModel.fromJson(json),
+    return apiClient.get<List<PaymentModel>>(
+      ApiEndpoints.billingMemberPayments(memberId),
+      parser: (data) => (data as List)
+          .map((e) => PaymentModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
-    return result.items.where((p) => p.memberId == memberId).toList();
   },
 );
 

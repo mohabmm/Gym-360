@@ -125,9 +125,13 @@ class EarningsRecord {
     return EarningsRecord(
       sessionId: json['sessionId'] as String,
       memberId: json['memberId'] as String,
-      rateApplied: (json['rateApplied'] as num).toDouble(),
+      rateApplied: (json['rateApplied'] as num?)?.toDouble() ?? 0,
       currency: json['currency'] as String? ?? 'EGP',
-      earnedAt: DateTime.parse(json['earnedAt'] as String),
+      // Defensive: a null/malformed timestamp on one earning must not crash the
+      // entire earnings list. Fall back to now rather than throwing.
+      earnedAt:
+          DateTime.tryParse(json['earnedAt']?.toString() ?? '') ??
+              DateTime.now(),
     );
   }
 }

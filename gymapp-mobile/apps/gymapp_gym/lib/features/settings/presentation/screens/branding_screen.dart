@@ -162,8 +162,11 @@ class _ColorRow extends StatelessWidget {
   const _ColorRow({required this.label, required this.colorHex});
 
   Color _fromHex(String hex) {
-    final h = hex.replaceAll('#', '');
-    return Color(int.parse('FF$h', radix: 16));
+    // BE-supplied color strings can be empty or malformed; int.parse would
+    // throw FormatException and crash the branding screen. Fall back to grey.
+    final h = hex.replaceAll('#', '').trim();
+    final value = int.tryParse('FF$h', radix: 16);
+    return value != null ? Color(value) : Colors.grey;
   }
 
   @override

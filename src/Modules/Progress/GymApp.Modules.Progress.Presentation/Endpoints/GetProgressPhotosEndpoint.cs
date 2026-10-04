@@ -1,3 +1,4 @@
+using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Progress.Application.DTOs;
 using GymApp.Modules.Progress.Application.Queries.GetProgressPhotos;
@@ -11,12 +12,15 @@ internal sealed class GetProgressPhotosEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/v1/progress/photos", async (
-            Guid userId,
             Guid gymId,
             int page,
             int pageSize,
+            HttpContext http,
             ISender sender) =>
         {
+            if (!CallerContext.TryGetUserId(http, out var userId))
+                return ApiResults.Problem(new Error("Auth.UserMissing", "Authenticated user id is missing."));
+
             var query = new GetProgressPhotosQuery(userId, gymId, page, pageSize);
 
             var result = await sender.Send(query);

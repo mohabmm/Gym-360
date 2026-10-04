@@ -1,3 +1,4 @@
+using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Nutrition.Application.DTOs;
 using GymApp.Modules.Nutrition.Application.Queries.GetWaterLog;
@@ -11,11 +12,14 @@ internal sealed class GetWaterLogEndpoint : IEndpoint
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/v1/nutrition/water-log", async (
-            Guid userId,
             Guid gymId,
             DateOnly date,
+            HttpContext http,
             ISender sender) =>
         {
+            if (!CallerContext.TryGetUserId(http, out var userId))
+                return ApiResults.Problem(new Error("Auth.UserMissing", "Authenticated user id is missing."));
+
             var query = new GetWaterLogQuery(userId, gymId, date);
 
             var result = await sender.Send(query);

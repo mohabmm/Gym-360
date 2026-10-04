@@ -73,10 +73,10 @@ internal sealed class OwnerDashboardService : IOwnerDashboardService
                     CAST('{gym.GymId}' AS UNIQUEIDENTIFIER) AS GymId,
                     N'{gym.Name.Replace("'", "''")}' AS GymName,
                     N'{p}' AS SchemaPrefix,
-                    (SELECT COUNT(*) FROM [{p}_gyms].gyms WHERE Status = 'Active') AS ActiveMembers,
+                    (SELECT COUNT(*) FROM [{p}_gyms].gym_members WHERE IsFrozen = 0) AS ActiveMembers,
                     (SELECT COUNT(DISTINCT m.UserId) FROM [identity].user_gym_memberships m WHERE m.is_active = 1 AND m.role = 'Trainer' AND m.gym_id = '{gym.GymId}') AS Trainers,
-                    ISNULL((SELECT SUM(p.AmountCents) FROM [{p}_billing].payments p WHERE p.PaidAt >= @cutoff), 0) AS RevenueCentsLast30,
-                    (SELECT COUNT(*) FROM [{p}_scheduling].sessions s WHERE s.ScheduledAt >= @cutoff) AS SessionsLast30
+                    ISNULL((SELECT SUM(p.amount) FROM [{p}_billing].payments p WHERE p.PaidAt >= @cutoff), 0) AS RevenueLast30,
+                    (SELECT COUNT(*) FROM [{p}_scheduling].sessions s WHERE s.ScheduledDate >= CAST(@cutoff AS DATE)) AS SessionsLast30
             ");
         }
 
@@ -103,7 +103,7 @@ internal sealed class OwnerDashboardService : IOwnerDashboardService
                     reader.GetString(2),
                     reader.GetInt32(3),
                     reader.GetInt32(4),
-                    reader.GetInt64(5) / 100m,
+                    reader.GetDecimal(5),
                     reader.GetInt32(6)));
             }
         }
@@ -111,7 +111,7 @@ internal sealed class OwnerDashboardService : IOwnerDashboardService
         {
             // A single missing table (e.g. fresh gym before any tables created) shouldn't
             // tank the whole dashboard. Fall back to per-gym defaults.
-            _logger.LogWarning(ex, "OwnerDashboardService: cross-gym rollup failed; returning per-gym empties");
+            _logger.LogError(ex, "OwnerDashboardService: cross-gym rollup failed; returning per-gym empties");
             rows.Clear();
             foreach (var gym in gyms)
                 rows.Add(new OwnerDashboardGymRow(gym.GymId, gym.Name, gym.SchemaPrefix, 0, 0, 0, 0));

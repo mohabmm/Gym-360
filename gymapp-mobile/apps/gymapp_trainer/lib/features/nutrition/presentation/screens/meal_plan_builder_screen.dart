@@ -28,8 +28,8 @@ class _MealPlanBuilderScreenState
     super.dispose();
   }
 
-  Future<void> _save() async {
-    if (_nameController.text.trim().isEmpty) return;
+  Future<bool> _save() async {
+    if (_nameController.text.trim().isEmpty) return false;
     setState(() => _isSaving = true);
     try {
       final authState = ref.read(authProvider);
@@ -66,11 +66,13 @@ class _MealPlanBuilderScreenState
         },
       );
       ref.invalidate(trainerMealPlansProvider);
+      return true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.toString())));
       }
+      return false;
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -306,8 +308,18 @@ class _MealPlanBuilderScreenState
               AppButton(
                 text: isArabic ? 'انشاء الخطة' : 'Create Plan',
                 onPressed: _isSaving ? null : () async {
-                  Navigator.pop(ctx);
-                  await _save();
+                  // Validate before dismissing — popping first meant an empty
+                  // name silently did nothing and the save error/loading state
+                  // could never reach the user.
+                  if (_nameController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                      content: Text(
+                          isArabic ? 'ادخل اسم الخطة' : 'Enter a plan name'),
+                    ));
+                    return;
+                  }
+                  final ok = await _save();
+                  if (ok && ctx.mounted) Navigator.pop(ctx);
                 },
                 isLoading: _isSaving,
               ),

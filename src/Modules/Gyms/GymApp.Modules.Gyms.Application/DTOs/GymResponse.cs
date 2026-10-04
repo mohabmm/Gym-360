@@ -15,4 +15,5 @@ public sealed record GymResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     int MemberCount,
-    int TrainerCount);
+    int TrainerCount,
+    string? OwnerName = null);

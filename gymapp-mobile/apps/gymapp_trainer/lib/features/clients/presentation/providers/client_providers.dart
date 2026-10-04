@@ -59,7 +59,11 @@ class ClientNote {
   factory ClientNote.fromJson(Map<String, dynamic> json) => ClientNote(
         id: json['id'] as String,
         content: json['content'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
+        // Defensive: a null/malformed timestamp on one note must not crash the
+        // whole notes list. Fall back to now rather than throwing.
+        createdAt:
+            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+                DateTime.now(),
       );
 }
 
@@ -258,7 +262,10 @@ final clientDetailProvider =
       );
       if (packages.isNotEmpty) {
         activePackage = packages.firstWhere(
-          (p) => p.status == 'active',
+          // BE PackageStatus serializes PascalCase ("Active"); compare
+          // case-insensitively so the active package is actually selected
+          // instead of silently falling back to packages.first.
+          (p) => p.status.toLowerCase() == 'active',
           orElse: () => packages.first,
         );
       }

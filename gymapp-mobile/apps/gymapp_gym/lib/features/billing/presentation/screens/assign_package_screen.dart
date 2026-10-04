@@ -152,7 +152,8 @@ class _AssignPackageScreenState extends ConsumerState<AssignPackageScreen> {
                             color: Theme.of(context).colorScheme.primary)
                         : const Icon(Icons.radio_button_unchecked),
                     title: Text(pkg.name),
-                    subtitle: Text('${pkg.sessionCount} sessions'),
+                    subtitle: Text(
+                        '${pkg.sessionCount} ${isArabic ? 'حصة' : 'sessions'}'),
                     trailing: Text(NumberFormatter.formatCurrency(pkg.totalPrice)),
                   ),
                 );

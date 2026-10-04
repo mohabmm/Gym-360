@@ -6,6 +6,23 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/router.dart';
 import '../providers/announcements_provider.dart';
 
+/// Localizes the BE AnnouncementCategory enum (General/Schedule/Offer/
+/// Maintenance) for the Arabic-first list. Previously the list rendered the
+/// raw enum string ("General"), leaking English into the Arabic UI.
+String _categoryLabel(String? category, bool isArabic) {
+  switch ((category ?? 'general').toLowerCase()) {
+    case 'schedule':
+      return isArabic ? 'الجدول' : 'Schedule';
+    case 'offer':
+      return isArabic ? 'عرض' : 'Offer';
+    case 'maintenance':
+      return isArabic ? 'صيانة' : 'Maintenance';
+    case 'general':
+    default:
+      return isArabic ? 'عام' : 'General';
+  }
+}
+
 class AnnouncementListScreen extends ConsumerWidget {
   const AnnouncementListScreen({super.key});
 
@@ -56,7 +73,7 @@ class AnnouncementListScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              item.category ?? (isArabic ? 'عام' : 'General'),
+                              _categoryLabel(item.category, isArabic),
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.w600,

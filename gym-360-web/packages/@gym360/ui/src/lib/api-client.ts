@@ -39,8 +39,18 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      onUnauthorized?.();
+    // Surface the backend's real error message (errors[0].message) on error.message
+    // so toasts show the API error instead of axios's generic
+    // "Request failed with status code 400".
+    if (axios.isAxiosError(error)) {
+      const body = (error as AxiosError<ApiResponse<unknown>>).response?.data;
+      const apiMsg = body?.errors?.[0]?.message;
+      if (typeof apiMsg === 'string' && apiMsg) {
+        error.message = apiMsg;
+      }
+      if (error.response?.status === 401) {
+        onUnauthorized?.();
+      }
     }
     return Promise.reject(error);
   }

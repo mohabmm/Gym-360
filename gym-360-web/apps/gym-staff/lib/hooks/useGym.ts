@@ -13,6 +13,12 @@ export interface GymProfile {
   city?: string;
   area?: string;
   amenities: string[];
+  // Branding — carried through so settings can hydrate the color pickers and
+  // preserve logo/cover on a branding save (the BE replaces the whole object).
+  logoUrl?: string;
+  coverPhotoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,7 +34,18 @@ function normaliseGym(g: any): GymProfile {
     city: g.address?.city ?? '',
     area: g.address?.area ?? g.address?.state ?? '',
     amenities: g.amenities ?? [],
+    logoUrl: g.branding?.logoUrl ?? undefined,
+    coverPhotoUrl: g.branding?.coverPhotoUrl ?? undefined,
+    primaryColor: g.branding?.primaryColor ?? undefined,
+    secondaryColor: g.branding?.secondaryColor ?? undefined,
   };
+}
+
+export interface BrandingUpdate {
+  primaryColor?: string;
+  secondaryColor?: string;
+  logoUrl?: string;
+  coverPhotoUrl?: string;
 }
 
 export function useGym() {
@@ -64,6 +81,27 @@ export function useUpdateGym() {
           ? { phone: data.phone, email: data.email, website: data.website }
           : undefined,
         amenities: data.amenities,
+      });
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['gym', gymId] }),
+  });
+}
+
+// Branding (colors/logo/cover) has its own endpoint — the general UpdateGym
+// endpoint ignores branding fields. The BE replaces the whole Branding object,
+// so callers must pass through existing logo/cover to avoid wiping them.
+export function useUpdateBranding() {
+  const { data: session } = useSession();
+  const gymId = session?.user?.gymId;
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: BrandingUpdate) => {
+      const res = await apiClient.put(`/gyms/${gymId}/branding`, {
+        logoUrl: data.logoUrl ?? null,
+        primaryColor: data.primaryColor ?? null,
+        secondaryColor: data.secondaryColor ?? null,
+        coverPhotoUrl: data.coverPhotoUrl ?? null,
       });
       return res.data;
     },

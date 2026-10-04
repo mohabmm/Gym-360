@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
+import '../../../../core/session_type_l10n.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
 import '../../../communication/presentation/widgets/notification_bell.dart';
 import '../providers/trainer_dashboard_provider.dart';
@@ -377,7 +378,7 @@ class _SessionCard extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  session.sessionType,
+                  sessionTypeLabel(session.sessionType, isArabic),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color:
                         theme.colorScheme.onSurface.withOpacity(0.6),

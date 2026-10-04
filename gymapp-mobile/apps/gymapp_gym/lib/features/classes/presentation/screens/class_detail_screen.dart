@@ -174,6 +174,9 @@ class ClassDetailScreen extends ConsumerWidget {
           content: Text(isArabic ? 'تم الغاء الحصة' : 'Class cancelled'),
         ),
       );
+      // Return to the list — staying on the just-cancelled class's detail
+      // showed stale data.
+      if (context.mounted) Navigator.of(context).pop();
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
     }

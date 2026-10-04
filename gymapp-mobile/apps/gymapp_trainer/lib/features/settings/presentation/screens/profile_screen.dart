@@ -35,6 +35,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _save() async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    // First/last name are the trainer's display name everywhere; the form
+    // previously let them be saved blank (no client or server validation).
+    if (_firstNameController.text.trim().isEmpty ||
+        _lastNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic
+            ? 'الاسم الأول واسم العائلة مطلوبان'
+            : 'First and last name are required'),
+      ));
+      return;
+    }
     setState(() => _isSaving = true);
     try {
       final userId = ref.read(authProvider).user?.id;
