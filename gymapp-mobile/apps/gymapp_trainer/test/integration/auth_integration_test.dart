@@ -106,16 +106,24 @@ void main() {
       expect(body['phone'], '+201000000001');
     });
 
-    test('422 validation error maps to ValidationException with field errors',
+    test('400 validation error maps to ValidationException with field errors',
         () async {
       t.adapter.onPost(
         ApiEndpoints.register,
-        respond: (_) => t.adapter.rawResponse(422, {
+        respond: (_) => t.adapter.rawResponse(400, {
           'data': null,
           'message': 'Validation failed',
           'errors': [
-            {'code': 'Email', 'message': 'Email is already taken'},
-            {'code': 'Password', 'message': 'Password must be 8+ chars'},
+            {
+              'code': 'VALIDATION_ERROR',
+              'message': 'Email is already taken',
+              'meta': {'field': 'Email'},
+            },
+            {
+              'code': 'VALIDATION_ERROR',
+              'message': 'Password must be 8+ chars',
+              'meta': {'field': 'Password'},
+            },
           ],
         }),
       );

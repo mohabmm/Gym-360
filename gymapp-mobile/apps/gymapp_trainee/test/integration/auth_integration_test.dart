@@ -89,16 +89,24 @@ void main() {
       expect(body['marketingConsent'], false);
     });
 
-    test('422 validation error maps to ValidationException with field errors',
+    test('400 validation error maps to ValidationException with field errors',
         () async {
       t.adapter.onPost(
         ApiEndpoints.register,
-        respond: (_) => t.adapter.rawResponse(422, {
+        respond: (_) => t.adapter.rawResponse(400, {
           'data': null,
           'message': 'Validation failed',
           'errors': [
-            {'code': 'Email', 'message': 'Email is already taken'},
-            {'code': 'Password', 'message': 'Password must be 8+ chars'},
+            {
+              'code': 'VALIDATION_ERROR',
+              'message': 'Email is already taken',
+              'meta': {'field': 'Email'},
+            },
+            {
+              'code': 'VALIDATION_ERROR',
+              'message': 'Password must be 8+ chars',
+              'meta': {'field': 'Password'},
+            },
           ],
         }),
       );
@@ -189,7 +197,8 @@ void main() {
       expect(updated.firstName, 'Mona');
       expect(t.adapter.recorded.map((r) => r.method).toList(), ['PUT', 'GET']);
       final putBody = t.adapter.recorded.first.bodyAsMap!;
-      expect(putBody['userId'], 'user-1');
+      // Caller is derived from the JWT — userId must not be sent.
+      expect(putBody.containsKey('userId'), isFalse);
       expect(putBody['firstName'], 'Mona');
       expect(putBody['dateOfBirth'], '1998-02-03');
       expect(putBody['gender'], 'Female');

@@ -127,10 +127,10 @@ void main() {
         ApiEndpoints.broadcast,
         respond: (_) => t.adapter.error(
           403,
-          code: 'FEATURE_GATED',
+          code: 'PLAN.FEATURE_NOT_AVAILABLE',
           message: 'Broadcasts require Pro plan',
           extras: {
-            'featureCode': 'broadcasts',
+            'feature': 'broadcasts',
             'requiredPlan': 'Pro',
           },
         ),

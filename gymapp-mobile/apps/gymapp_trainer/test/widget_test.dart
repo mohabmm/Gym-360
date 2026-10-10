@@ -18,11 +18,14 @@ void main() {
     test('holds passed-in values', () {
       final session = SessionModel(
         id: 's1',
+        gymId: 'g1',
         trainerId: 't1',
-        traineeId: 'm1',
+        memberId: 'm1',
         scheduledAt: DateTime(2026, 4, 14, 10),
         durationMinutes: 60,
+        sessionType: 'PersonalTraining',
         status: 'scheduled',
+        createdAt: DateTime(2026, 4, 10),
       );
       final data = TrainerDashboardData(
         todaySessions: [session],

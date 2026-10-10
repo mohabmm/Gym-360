@@ -126,7 +126,7 @@ class _WorkoutBuilderScreenState extends ConsumerState<WorkoutBuilderScreen> {
                 'exerciseId': e.exerciseId,
                 'sets': e.sets,
                 'reps': e.reps.toString(),
-                if (e.restSeconds != null) 'restSeconds': e.restSeconds,
+                'restSeconds': e.restSeconds,
                 if (e.notes != null && e.notes!.isNotEmpty) 'notes': e.notes,
               })
           .toList();

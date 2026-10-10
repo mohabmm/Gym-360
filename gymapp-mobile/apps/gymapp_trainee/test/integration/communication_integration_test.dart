@@ -42,7 +42,7 @@ void main() {
         ApiEndpoints.messages('conv-1'),
         respond: (_) => t.adapter.ok([Samples.message()]),
       );
-      final msgs = await ds.getMessages('conv-1', userId: 'user-1');
+      final msgs = await ds.getMessages('conv-1');
       expect(msgs.first.content, contains('Great session'));
     });
 
@@ -54,22 +54,22 @@ void main() {
       );
       final id = await ds.sendMessage(
         conversationId: 'conv-1',
-        senderId: 'user-1',
         content: 'hey',
       );
       expect(id, 'msg-new');
       final body = t.onlyRequest.bodyAsMap!;
-      expect(body, {'senderId': 'user-1', 'content': 'hey'});
+      expect(body, {'content': 'hey'});
       expect(body.containsKey('mediaUrl'), isFalse);
     });
 
-    test('PUT mark conversation read sends userId', () async {
+    test('PUT mark conversation read sends no body (user from JWT)', () async {
       t.adapter.onPut(
         '${ApiEndpoints.conversationById('conv-1')}/read',
         respond: (_) => t.adapter.noContent(),
       );
-      await ds.markMessagesRead(conversationId: 'conv-1', userId: 'user-1');
-      expect(t.onlyRequest.bodyAsMap, {'userId': 'user-1'});
+      await ds.markMessagesRead(conversationId: 'conv-1');
+      expect(t.onlyRequest.method, 'PUT');
+      expect(t.onlyRequest.bodyAsMap, isNull);
     });
   });
 
@@ -90,21 +90,21 @@ void main() {
         ApiEndpoints.notifications,
         respond: (_) => t.adapter.ok([Samples.notification()]),
       );
-      final list =
-          await ds.getNotifications(userId: 'user-1', gymId: 'gym-1');
+      final list = await ds.getNotifications(gymId: 'gym-1');
       expect(list, hasLength(1));
       expect(list.first.type, 'session_reminder');
-      expect(t.onlyRequest.q('userId'), 'user-1');
+      expect(t.onlyRequest.query.containsKey('userId'), isFalse);
       expect(t.onlyRequest.q('gymId'), 'gym-1');
     });
 
-    test('PUT notifications/{id}/read sends userId', () async {
+    test('PUT notifications/{id}/read sends no body (user from JWT)', () async {
       t.adapter.onPut(
         ApiEndpoints.notificationMarkRead('notif-1'),
         respond: (_) => t.adapter.noContent(),
       );
-      await ds.markNotificationRead('notif-1', userId: 'user-1');
-      expect(t.onlyRequest.bodyAsMap, {'userId': 'user-1'});
+      await ds.markNotificationRead('notif-1');
+      expect(t.onlyRequest.method, 'PUT');
+      expect(t.onlyRequest.bodyAsMap, isNull);
     });
 
     test('PUT notifications/read-all', () async {
@@ -112,8 +112,9 @@ void main() {
         ApiEndpoints.notificationsReadAll,
         respond: (_) => t.adapter.noContent(),
       );
-      await ds.markAllNotificationsRead(userId: 'user-1');
-      expect(t.onlyRequest.bodyAsMap, {'userId': 'user-1'});
+      await ds.markAllNotificationsRead();
+      expect(t.onlyRequest.method, 'PUT');
+      expect(t.onlyRequest.bodyAsMap, isNull);
     });
 
     test('GET unread-count parses both int and {count: N} shapes', () async {
@@ -121,7 +122,7 @@ void main() {
         ApiEndpoints.notificationsUnreadCount,
         respond: (_) => t.adapter.ok(5),
       );
-      expect(await ds.getUnreadNotificationCount(userId: 'user-1'), 5);
+      expect(await ds.getUnreadNotificationCount(), 5);
     });
   });
 
@@ -136,10 +137,7 @@ void main() {
         respond: (_) => t.adapter.noContent(),
       );
 
-      final prefs = await ds.getNotificationPreferences(
-        userId: 'user-1',
-        gymId: 'gym-1',
-      );
+      final prefs = await ds.getNotificationPreferences(gymId: 'gym-1');
       expect(prefs.promotions, false);
       await ds.updateNotificationPreferences({
         'userId': 'user-1',
