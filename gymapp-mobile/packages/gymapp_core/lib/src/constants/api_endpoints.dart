@@ -24,6 +24,8 @@ class ApiEndpoints {
   static const String resetPassword = '$basePrefix/identity/reset-password';
   static const String changePassword = '$basePrefix/identity/change-password';
   static const String socialLogin = '$basePrefix/identity/social-login';
+  // Owner principals pick the gym their token is scoped to (returns new tokens).
+  static const String selectGym = '$basePrefix/identity/select-gym';
   static const String identityStaffCreateUser =
       '$basePrefix/identity/users/staff-create';
   static const String identityStaffLookupUser =
@@ -263,6 +265,9 @@ class ApiEndpoints {
       '$basePrefix/billing/package-templates/$id';
   // BE path is /billing/packages/assign.
   static const String assignPackage = '$basePrefix/billing/packages/assign';
+  // Ad-hoc trainer assignment without a template (member detail quick flow).
+  static const String quickAssignPackage =
+      '$basePrefix/billing/packages/quick-assign';
   static const String planFeatures = '$basePrefix/billing/plan-features';
   // Trainer's view of all their clients' active packages.
   static const String myClientPackages =

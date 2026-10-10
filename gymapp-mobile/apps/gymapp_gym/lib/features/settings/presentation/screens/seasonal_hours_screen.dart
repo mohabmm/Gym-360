@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/settings_provider.dart';
+import '../../../../core/error_text.dart';
 
 class SeasonalHoursScreen extends ConsumerWidget {
   const SeasonalHoursScreen({super.key});
@@ -41,8 +42,8 @@ class SeasonalHoursScreen extends ConsumerWidget {
               icon: Icons.wb_sunny_outlined,
               title: isArabic ? 'لا توجد تعديلات موسمية' : 'No seasonal overrides',
               subtitle: isArabic
-                  ? 'اضف مواعيد خاصة لرمضان وغيره (Q32)'
-                  : 'Add special hours for Ramadan and other seasons (Q32)',
+                  ? 'اضف مواعيد خاصة لرمضان وغيره'
+                  : 'Add special hours for Ramadan and other seasons',
             );
           }
           return RefreshIndicator(
@@ -80,7 +81,7 @@ class SeasonalHoursScreen extends ConsumerWidget {
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString())),
+                              SnackBar(content: Text(staffErrorText(e))),
                             );
                           }
                         }

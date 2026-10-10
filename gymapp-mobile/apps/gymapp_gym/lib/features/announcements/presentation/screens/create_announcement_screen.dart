@@ -5,6 +5,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/announcements_provider.dart';
+import '../../../../core/error_text.dart';
 
 class CreateAnnouncementScreen extends ConsumerStatefulWidget {
   const CreateAnnouncementScreen({super.key});
@@ -80,7 +81,7 @@ class _CreateAnnouncementScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e is ApiException ? e.message : e.toString())),
+          SnackBar(content: Text(staffErrorText(e))),
         );
       }
     } finally {

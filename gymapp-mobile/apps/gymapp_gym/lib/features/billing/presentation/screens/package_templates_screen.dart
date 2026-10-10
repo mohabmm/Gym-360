@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/billing_provider.dart';
+import '../../../../core/error_text.dart';
 
 class PackageTemplatesScreen extends ConsumerWidget {
   const PackageTemplatesScreen({super.key});
@@ -175,7 +176,7 @@ class PackageTemplatesScreen extends ConsumerWidget {
                 );
               } catch (e) {
                 messenger.showSnackBar(
-                  SnackBar(content: Text(e is ApiException ? e.message : e.toString())),
+                  SnackBar(content: Text(staffErrorText(e))),
                 );
               }
             },

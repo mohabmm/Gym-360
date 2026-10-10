@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../core/error_text.dart';
+import '../../../../core/providers.dart';
 import '../providers/settings_provider.dart';
 
 class GymSectionsScreen extends ConsumerWidget {
@@ -26,15 +28,15 @@ class GymSectionsScreen extends ConsumerWidget {
       ),
       body: sectionsAsync.when(
         data: (sections) {
-          final activeSections = sections.map((s) => s['type']?.toString()).toSet();
+          final activeSections = sections;
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               Text(
                 isArabic
-                    ? 'اختر اقسام الصالة المتاحة (Q31)'
-                    : 'Select available gym sections (Q31)',
+                    ? 'اختر اقسام الصالة المتاحة'
+                    : 'Select available gym sections',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -51,17 +53,28 @@ class GymSectionsScreen extends ConsumerWidget {
                       ),
                     ),
                     value: isActive,
-                    onChanged: (_) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              isArabic
-                                  ? 'اقسام الصالة غير متاح حاليا'
-                                  : 'Gym sections management not available',
-                            ),
-                          ),
+                    onChanged: (enabled) async {
+                      // PUT replaces the whole enabled set, so send every
+                      // section that should stay on after this toggle.
+                      final next = {...activeSections};
+                      if (enabled) {
+                        next.add(opt['value']!);
+                      } else {
+                        next.remove(opt['value']);
+                      }
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await ref.read(apiClientProvider).putVoid(
+                          ApiEndpoints.gymSections(
+                              ref.read(currentGymIdProvider)),
+                          data: {'sections': next.toList()},
                         );
+                        ref.invalidate(gymSectionsProvider);
+                      } catch (e) {
+                        messenger.showSnackBar(SnackBar(
+                          content:
+                              Text(staffErrorText(e, isArabic: isArabic)),
+                        ));
                       }
                     },
                   ),

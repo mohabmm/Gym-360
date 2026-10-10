@@ -5,7 +5,7 @@ class FeatureCodes {
 
   // Core (all plans)
   static const String memberManagement = 'member_management';
-  static const String qrCheckIn = 'qr_check_in';
+  static const String qrCheckIn = 'qr_checkin';
   static const String basicAnalytics = 'basic_analytics';
   static const String basicAnnouncements = 'basic_announcements';
 
@@ -24,24 +24,24 @@ class FeatureCodes {
   // Pro+
   static const String nutritionTracking = 'nutrition_tracking';
   static const String mealPlans = 'meal_plans';
-  static const String remoteWorkout = 'remote_workout';
+  static const String remoteWorkout = 'remote_workout_mode';
   static const String multiWeekPrograms = 'multi_week_programs';
-  static const String leaderboards = 'leaderboards';
+  static const String leaderboards = 'member_leaderboards';
   static const String trainerRatings = 'trainer_ratings';
   static const String gymBranding = 'gym_branding';
   static const String advancedAnalytics = 'advanced_analytics';
   static const String peakHoursAnalytics = 'peak_hours_analytics';
   static const String churnAlerts = 'churn_alerts';
-  static const String coachLeaderboard = 'coach_leaderboard';
+  static const String coachLeaderboard = 'coach_of_the_month';
   static const String testimonialModeration = 'testimonial_moderation';
   static const String mealPlanBuilder = 'meal_plan_builder';
 
   // Business+
-  static const String whiteLabel = 'white_label';
+  static const String whiteLabel = 'white_label_branding';
   static const String apiAccess = 'api_access';
   static const String customExerciseLibrary = 'custom_exercise_library';
   static const String pdfReports = 'pdf_reports';
-  static const String churnAi = 'churn_ai';
+  static const String churnAi = 'churn_prediction';
   static const String customPermissions = 'custom_permissions';
   static const String multiLocation = 'multi_location';
 

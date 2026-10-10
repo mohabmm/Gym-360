@@ -23,6 +23,16 @@ public static class AuthorizationExtensions
                     c.Type == "staffSubRole" &&
                     (string.Equals(c.Value, "Owner", StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(c.Value, "Manager", StringComparison.OrdinalIgnoreCase)))))
+            // Gym settings (name, contact, amenities): owner or manager per the staff
+            // permission matrix in docs/01, plus platform admins who edit gyms from
+            // the admin dashboard.
+            .AddPolicy("gym_owner_manager_or_admin", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
+                ctx.User.HasClaim(c => c.Type == "adminRole") ||
+                ctx.User.HasClaim(c => c.Type == "staffRole" && c.Value == "owner") ||
+                ctx.User.HasClaim(c =>
+                    c.Type == "staffSubRole" &&
+                    (string.Equals(c.Value, "Owner", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(c.Value, "Manager", StringComparison.OrdinalIgnoreCase)))))
             // JwtBearer remaps the JWT "role" claim to ClaimTypes.Role on the
             // ClaimsPrincipal (MapInboundClaims = true by default), so RequireClaim
             // against the raw "role" key never matches. RequireRole reads

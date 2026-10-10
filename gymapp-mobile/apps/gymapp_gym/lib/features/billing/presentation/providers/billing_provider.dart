@@ -39,8 +39,11 @@ final packageTemplatesProvider =
 final activePackagesProvider =
     FutureProvider.autoDispose<List<SessionPackageModel>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
+  // Gym-wide list (scoped by the X-Gym-Id header). `myClientPackages` is the
+  // trainer's own-clients view and is always empty for staff.
   return apiClient.get<List<SessionPackageModel>>(
-    ApiEndpoints.myClientPackages,
+    ApiEndpoints.sessionPackages,
+    queryParameters: const {'status': 'Active'},
     parser: (data) => (data as List)
         .map((e) => SessionPackageModel.fromJson(e as Map<String, dynamic>))
         .toList(),

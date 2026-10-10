@@ -108,6 +108,77 @@ Outbox and Redis cache both use `Newtonsoft.Json` intentionally. `TypeNameHandli
 **Was**: `GET /api/v1/gyms` returns the standard paginated envelope `{ data: { items: [...], page, pageSize, totalCount, totalPages } }`, but `useGyms` was typed as `useApiQuery<GymListItem[]>` so `gymsData.data` was the envelope object. Dashboard threw `TypeError: gyms.filter is not a function`.
 **Resolution**: Replaced `useApiQuery` with a custom `useQuery` that unwraps `data.items` and normalises casing (`Active` → `active`, `Paid` → `paid`) so `StatusBadge` variants match, and fills missing display fields (`ownerName`, `planName`, `city`, `monthlyRevenue`) with defaults. `usePendingGyms` now hits the real `/gyms/pending` endpoint (see #19) instead of filtering the list client-side.
 
+## Staff Mobile App — MobAI QA Run (2026-10-10)
+
+End-to-end run of `gymapp_gym` on the iOS simulator through MobAI against the remote dev environment (`https://staging-api.gym-365.com`), using a dedicated QA gym on the Pro plan with owner / manager / receptionist / trainer / member accounts. Every screen in docs/02 PART 6 was exercised and compared with PRODUCT_SPEC.md, docs/01 and docs/02. "Verified" means re-tested on the simulator against staging after the fix.
+
+### Fixed in the app (verified on device)
+
+| # | Issue | Root cause | Fix |
+|---|---|---|---|
+| S1 | Wrong password showed no error and wiped the login form (all three apps) | `AuthInterceptor` ran the refresh/sign-out flow on a 401 from the public `/identity/login`, which rebuilt the router | 401s from public auth endpoints are passed through to the caller |
+| S2 | Owner logging in landed on an empty, zeroed dashboard with no way to sign out | Mobile never called `POST /identity/select-gym`; owner tokens carry no `gymId` | Login scopes the owner to their gym (picker when they own several) |
+| S3 | Account without a gym: silent all-zero dashboard, Settings showed "no data" and no sign-out | Sign-out lived inside the gym-loaded branch only | Explicit "not linked to a gym" state on dashboard and Settings, sign-out always reachable |
+| S4 | Receptionist got the full manager UI (revenue, staff, templates, moderation) | Login mapped every `staff` to `manager`, ignoring the `staffSubRole` JWT claim | Role resolved from the token; More menu, Settings tiles and the revenue KPI are permission-gated |
+| S5 | Permission matrix disagreed with docs/01 and PRODUCT_SPEC §1.4 | Manager was denied packages / staff / branding; receptionist denied add / edit / freeze member | Matrix aligned with the docs |
+| S6 | Add Member created the member but showed "already added" and stayed on the form | Redundant `POST /gyms/{id}/members` after `staff-create` (which already links) | Link only when `staff-create` did not return a member number |
+| S7 | "All" chip could not clear the status filter | `copyWith(status: null)` keeps the old value | `MemberFilter.withStatus` |
+| S8 | Assign Trainer (member detail) always failed | Path hard-coded without `/api/v1` | `ApiEndpoints.quickAssignPackage` |
+| S9 | Frozen members had no badge and could not be reactivated | No unfreeze action | Frozen chip + Unfreeze (`POST .../unfreeze`) |
+| S10 | Record Payment / Assign Package: "member not found" for existing members | Lookup searched whatever page / filter the Members tab was showing | Server-side search across the roster; leading zeros ignored |
+| S11 | "Session package" payments were always rejected | Backend needs `trainerId` + `sessionCount`; the form had neither | Trainer and session-count inputs for that purpose |
+| S12 | Feature gates were open on every plan | Caching plan features in Hive threw (nested objects), the provider errored and `FeatureGate` fails open; several app feature codes also differed from the backend's | Network-first plan features with a JSON-safe cache; feature codes aligned (`qr_checkin`, `member_leaderboards`, `coach_of_the_month`, `remote_workout_mode`, `white_label_branding`, `churn_prediction`) |
+| S13 | Custom Exercises showed an open form on Pro | Screen not wrapped in a gate | `FeatureGate(custom_exercise_library)` |
+| S14 | Check-in log times were 3 hours off | API timestamps are UTC without `Z` and were shown as local | `DateFormatter.apiUtcToLocal` |
+| S15 | Gym sections switches did nothing | Screen was a stub | Wired to `GET` / `PUT /gyms/{id}/sections` |
+| S16 | Bottom-nav highlight was wrong on screens opened from More | Shell read its own route state, not the pushed route | Reads the top-most match |
+| S17 | Kiosk numpad was mirrored in Arabic; keys were not buttons for assistive tech | Numpad inherited RTL | Numpad forced LTR, keys expose button semantics |
+| S18 | Arabic UI issues: "اعتدال الشهادات" for testimonial moderation, founder-question tags ("(Q5…)", "(Q31)", "(Q32)") in labels, English payment methods, raw `Exception:` / `ApiException(403):` text | — | Strings corrected; one error-text helper for all staff snackbars with Arabic for common backend messages |
+| S19 | `gymapp_core` tests did not compile | Exhaustive switch over `DioExceptionType` broke on dio 5.10+ | `default` branch |
+
+### Fixed in the backend (unit + integration tests; needs deploy before the app benefits)
+
+| # | Issue | Fix |
+|---|---|---|
+| S20 | `GET /billing/packages` with only a gym returned `[]` (handler fell back to `trainerId = Guid.Empty`), so staff "Active Packages" is always empty | `ISessionPackageRepository.GetByGymAsync`; the app now calls this endpoint instead of the trainer-scoped `/packages/my-clients` |
+| S21 | `PUT /gyms/{id}` rejected managers (policy `gym_owner_or_admin`); adding an amenity as manager returned 403 | New `gym_owner_manager_or_admin` policy |
+
+### Open — backend / environment
+
+| # | Issue | Notes |
+|---|---|---|
+| S22 | **Staff sub-role is not enforced server-side.** A receptionist token gets 200 on `/billing/revenue`, `/gyms/{id}/staff`, `/gyms/{id}/analytics` and passes authorization on `POST` package-templates / classes / announcements and `PUT` session-policy; `PUT /gyms/{id}/sections` only requires authentication | The app now hides these, but the API must apply `gym_owner_or_manager` to the manager-only rows of the docs/01 matrix |
+| S23 | A staff or owner token with no gym can list other owners' gyms (including contact email) via `GET /gyms` | Tenant isolation |
+| S24 | On staging, creating an owner through `POST /admin/owners` did not auto-provision a gym (#101) within several minutes | Check outbox processing / deployed build |
+| S25 | Staging demo accounts are unusable: `staff@demo.local` and `owner@demo.local` have no gym, `receptionist@demo.local` is rejected | Re-seed or document |
+| S26 | Error messages are English regardless of `Accept-Language` | App maps the common ones; proper fix is server-side localisation |
+| S27 | `GET /gyms/{id}/analytics` returns only counts and member growth, so the dashboard's revenue chart, top classes, at-risk members, Coach of the Month and activity feed never render | docs/02 PART 6 |
+| S28 | Receipt numbers are `RCP-{yyyyMMdd}-{hex}`; PRODUCT_SPEC story 72 says `REC-{GymCode}-{YYYYMMDD}-{SEQ}` | |
+| S29 | Duplicate check-in is blocked for the whole day; AC-S27 specifies a 1-hour throttle with `409 GYMS.CHECKIN_THROTTLED` | |
+| S30 | No update-member endpoint (`PUT /gyms/{id}/members/{memberId}`) and no next-member-number endpoint | Edit Member screen stays unreachable; stories 22 / 23 |
+| S31 | `staff-create` returns `initialPassword: "123456"` for every created user | |
+
+### Open — staff app gaps against the docs
+
+| # | Gap | Doc |
+|---|---|---|
+| S32 | Add Member has no member-number suggestion / override and no section picker | Stories 22, Q31 |
+| S33 | Edit Member is unreachable (blocked by S30) | Stories 21, 23 |
+| S34 | Revenue dashboard has no today / week / month view, no memberships-vs-packages split, no void action | Story 73, Q9 |
+| S35 | No receipt is shown after recording a payment | Story 72 |
+| S36 | Create Class has no recurring option; class cards show time without date; no edit | Story 69 |
+| S37 | Package template: no expiry field, no price-per-session, no active toggle | docs/02 PART 6 |
+| S38 | Seasonal hours "add" is still a stub; no operating-hours editor; gym profile and branding colours are read-only | Q32, docs/01 matrix |
+| S39 | No language switch in the app (Arabic only in practice) | Rule 6 |
+| S40 | Manual check-in is number-only; kiosk welcome omits the gym name and photo; a frozen member is told "membership expired" | Story 26, docs/02 PART 6 |
+| S41 | Exercise library has no muscle-group / equipment filter and content is English-only | docs/02 PART 6 |
+| S42 | Cold start briefly shows the login screen while the saved session is validated | |
+| S43 | Icon-only buttons (add FABs, app-bar actions) have no accessibility labels | |
+| S44 | PDPL export shows a sandbox file path instead of a share sheet | Rule 9 |
+| S45 | The same Hive plan-features caching bug (S12) exists in the trainee and trainer apps | Not touched in this run |
+
+Not coverable in this run: QR scanning (simulator has no camera), trainer approval (owner-added trainers are auto-approved; needs a trainer self-registration), account deletion (destructive), FCM-driven plan refresh, suspension banner.
+
 ## Spec Ambiguities Found
 
 ### A1. Trainer Earnings Read-Only

@@ -5,6 +5,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/members_provider.dart';
+import '../../../../core/error_text.dart';
 
 class EditMemberScreen extends ConsumerStatefulWidget {
   final String memberId;
@@ -66,7 +67,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -131,7 +131,11 @@ class ErrorInterceptor extends Interceptor {
           errorCode: 'CERTIFICATE_ERROR',
         );
 
+      // `default` rather than `case unknown`: newer dio releases add enum
+      // values (e.g. transformTimeout in 5.10+) and an exhaustive switch stops
+      // compiling against them.
       case DioExceptionType.unknown:
+      default:
         return ApiException(
           message: err.message ?? 'An unexpected error occurred.',
           errorCode: 'UNKNOWN',

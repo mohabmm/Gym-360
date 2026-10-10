@@ -75,7 +75,7 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
                   selected: filter.status == null,
                   onSelected: (_) {
                     ref.read(memberFilterProvider.notifier).state =
-                        filter.copyWith(status: null, page: 1);
+                        filter.withStatus(null);
                   },
                 ),
                 const SizedBox(width: 8),
@@ -118,6 +118,17 @@ class _MemberListScreenState extends ConsumerState<MemberListScreen> {
             child: members.when(
               data: (result) {
                 if (result.items.isEmpty) {
+                  final isFiltered = filter.status != null ||
+                      (filter.search?.trim().isNotEmpty ?? false);
+                  if (isFiltered) {
+                    return EmptyState(
+                      icon: Icons.search_off,
+                      title: isArabic ? 'لا توجد نتائج' : 'No results',
+                      subtitle: isArabic
+                          ? 'لا يوجد اعضاء مطابقون للبحث او التصفية الحالية'
+                          : 'No members match the current search or filter',
+                    );
+                  }
                   return EmptyState(
                     icon: Icons.people_outline,
                     title: isArabic ? 'لا يوجد اعضاء' : 'No members found',

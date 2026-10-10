@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:gymapp_gym/core/permissions.dart';
@@ -42,34 +44,46 @@ void main() {
       }
     });
 
-    test('is blocked from owner-only settings and staff admin', () {
-      const denied = [
+    test('manages packages, staff and branding per the docs matrix', () {
+      const granted = [
         StaffPermission.managePackageTemplates,
         StaffPermission.addStaff,
         StaffPermission.editStaff,
         StaffPermission.editBranding,
-        StaffPermission.deleteMember,
+        StaffPermission.editGymProfile,
       ];
-      for (final p in denied) {
+      for (final p in granted) {
         expect(
           StaffPermissions.hasPermission(AppConstants.roleManager, p),
-          isFalse,
-          reason: 'Manager should NOT have $p',
+          isTrue,
+          reason: 'Manager should have $p',
         );
       }
+    });
+
+    test('cannot remove members', () {
+      expect(
+        StaffPermissions.hasPermission(
+            AppConstants.roleManager, StaffPermission.deleteMember),
+        isFalse,
+      );
     });
   });
 
   group('StaffPermissions - receptionist', () {
-    test('has front-desk permissions only', () {
+    test('has front-desk permissions', () {
       const granted = [
         StaffPermission.viewDashboard,
         StaffPermission.viewMembers,
+        StaffPermission.addMember,
+        StaffPermission.editMember,
+        StaffPermission.freezeMember,
         StaffPermission.viewCheckInLog,
         StaffPermission.manualCheckIn,
         StaffPermission.kioskMode,
         StaffPermission.recordPayment,
         StaffPermission.viewPayments,
+        StaffPermission.assignPackage,
         StaffPermission.viewClasses,
         StaffPermission.viewAnnouncements,
       ];
@@ -82,23 +96,22 @@ void main() {
       }
     });
 
-    test('is blocked from mutation / admin actions', () {
+    test('is blocked from management actions', () {
       const denied = [
-        StaffPermission.addMember,
-        StaffPermission.editMember,
         StaffPermission.deleteMember,
-        StaffPermission.freezeMember,
         StaffPermission.approveTrainer,
         StaffPermission.createClass,
         StaffPermission.cancelClass,
         StaffPermission.createAnnouncement,
         StaffPermission.viewAnalytics,
         StaffPermission.viewRevenue,
+        StaffPermission.managePackageTemplates,
         StaffPermission.viewStaff,
         StaffPermission.addStaff,
         StaffPermission.editGymProfile,
         StaffPermission.editBranding,
         StaffPermission.editSessionPolicies,
+        StaffPermission.viewTrainerRatings,
         StaffPermission.moderateTestimonials,
       ];
       for (final p in denied) {
@@ -108,6 +121,48 @@ void main() {
           reason: 'Receptionist should NOT have $p',
         );
       }
+    });
+  });
+
+  group('StaffPermissions.roleFromAccessToken', () {
+    String token(Map<String, dynamic> claims) {
+      String part(Object o) =>
+          base64Url.encode(utf8.encode(jsonEncode(o))).replaceAll('=', '');
+      return '${part({'alg': 'HS256'})}.${part(claims)}.sig';
+    }
+
+    test('reads the per-gym tier from staffSubRole', () {
+      expect(
+        StaffPermissions.roleFromAccessToken(
+            token({'staffRole': 'staff', 'staffSubRole': 'Receptionist'}),
+            'staff'),
+        AppConstants.roleReceptionist,
+      );
+      expect(
+        StaffPermissions.roleFromAccessToken(
+            token({'staffRole': 'staff', 'staffSubRole': 'Manager'}), 'staff'),
+        AppConstants.roleManager,
+      );
+    });
+
+    test('owner principals resolve to owner', () {
+      expect(
+        StaffPermissions.roleFromAccessToken(
+            token({'staffRole': 'owner'}), 'owner'),
+        AppConstants.roleOwner,
+      );
+    });
+
+    test('staff without a readable tier get least privilege', () {
+      expect(
+        StaffPermissions.roleFromAccessToken(
+            token({'staffRole': 'staff'}), 'staff'),
+        AppConstants.roleReceptionist,
+      );
+      expect(
+        StaffPermissions.roleFromAccessToken('not-a-jwt', 'staff'),
+        AppConstants.roleReceptionist,
+      );
     });
   });
 

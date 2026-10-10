@@ -307,6 +307,10 @@ Client Progress (charts, photos, log for client, PDF report). Nutrition (MealPla
 
 ## Navigation: Dashboard | Members | Trainers | Classes | More (Exercises, Billing, Announcements, Check-in, Staff, Settings)
 
+**Sign-in and roles**: staff (`role=staff`) and owners (`role=owner`) only. The per-gym tier comes from the access token's `staffSubRole` claim (Owner / Manager / Receptionist; owner principals carry `staffRole=owner`) and drives every permission check — the default matrix in docs/01 "Staff Roles & Permissions". The More sheet, Settings tiles and the revenue KPI are hidden when the role lacks the permission. Owners are scoped to a gym at login via `POST /identity/select-gym` (picker when they own several). An account with no gym gets a "not linked to a gym" state with sign-out reachable.
+
+Known gaps between this section and the shipped app are tracked in `DISCOVERED_ISSUES.md` → "Staff Mobile App — MobAI QA Run (2026-10-10)".
+
 GymDashboardScreen: 3 KPIs → revenue chart → peak hours → top classes → at-risk members → Coach of the Month spotlight.
 MemberListScreen: search + filter → list cards → detail + payment history.
 TrainerListScreen: card grid → assign to member.
@@ -322,13 +326,13 @@ CreateAnnouncementScreen, StaffManagementScreen (add staff with role: Owner/Mana
 
 **ExerciseLibraryScreen**: Browse global 200+ exercises (search, filter by muscle group/equipment). Read-only for global exercises. **CustomExerciseScreen** (feature gated: `custom_exercise_library` — Business only): Add gym-specific exercises with name, muscle groups, equipment, demo photo/video. These are only visible to this gym's trainers.
 
-**RecordPaymentScreen**: Member search → amount → method (Cash/Card/Online/Bank Transfer) → purpose (Membership/Package) → confirm → receipt generated (REC-{GymCode}-{YYYYMMDD}-{SEQ}).
+**RecordPaymentScreen**: Member search → amount → method (Cash/Card/Online/Bank Transfer) → purpose (Membership/Package) → confirm → receipt generated (REC-{GymCode}-{YYYYMMDD}-{SEQ}). Mobile: the member is entered by member number and resolved server-side (`GET /gyms/{id}/members?search=`, leading zeros ignored). A Package payment also takes the trainer and session count, which the API requires to create the package it pays for.
 
 **PackageTemplatesScreen** (gym_owner/gym_staff only): List of package templates the gym offers. Each card: Name + Sessions + Price EGP + Price/Session + Active toggle. **"Create Template"** button → Name, Session Count, Total Price, Expiry (optional). Gym owner sets the pricing — trainers cannot access this screen.
 
 **AssignPackageScreen** (gym_staff): "Assign Package" → select member (search) → select trainer (dropdown) → select package template (dropdown, shows price) → confirm → toast "Package assigned". This is done at the reception desk when member pays.
 
-**ActivePackagesScreen**: Table of all assigned packages. Client, Trainer, Package Name, Remaining/Total with progress bar, Status (Active/Low/Exhausted). Filter by trainer, status.
+**ActivePackagesScreen** (API: `GET /billing/packages?status=Active`, gym-wide via `X-Gym-Id`): Table of all assigned packages. Client, Trainer, Package Name, Remaining/Total with progress bar, Status (Active/Low/Exhausted). Filter by trainer, status.
 
 ### Gamification Management (Sprint 8-9)
 **CoachLeaderboardScreen**: All trainers ranked by monthly normalized score. Shows: rank, trainer name+photo, score, sessions this month, unique clients. Highlights Coach of the Month with badge. API: GET /gamification/trainers/leaderboard.

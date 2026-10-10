@@ -9,6 +9,19 @@ class AuthInterceptor extends Interceptor {
   final Dio _dio;
   bool _isRefreshing = false;
 
+  /// Endpoints that never carry a bearer token. A 401 from one of these is a
+  /// credential/OTP failure for the caller to display, not an expired session.
+  static const _publicPaths = [
+    ApiEndpoints.login,
+    ApiEndpoints.register,
+    ApiEndpoints.sendOtp,
+    ApiEndpoints.verifyOtp,
+    ApiEndpoints.forgotPassword,
+    ApiEndpoints.resetPassword,
+    ApiEndpoints.refreshToken,
+    ApiEndpoints.socialLogin,
+  ];
+
   /// Optional callback fired when the refresh flow fails (refresh token
   /// expired/revoked). Apps wire this to their auth notifier so the user is
   /// signed out and redirected to login instead of being stuck on screens
@@ -29,18 +42,7 @@ class AuthInterceptor extends Interceptor {
     RequestInterceptorHandler handler,
   ) async {
     // Skip auth for public endpoints
-    final publicPaths = [
-      ApiEndpoints.login,
-      ApiEndpoints.register,
-      ApiEndpoints.sendOtp,
-      ApiEndpoints.verifyOtp,
-      ApiEndpoints.forgotPassword,
-      ApiEndpoints.resetPassword,
-      ApiEndpoints.refreshToken,
-      ApiEndpoints.socialLogin,
-    ];
-
-    if (publicPaths.contains(options.path)) {
+    if (_publicPaths.contains(options.path)) {
       return handler.next(options);
     }
 
@@ -55,6 +57,13 @@ class AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     if (err.response?.statusCode != 401 || _isRefreshing) {
+      return handler.next(err);
+    }
+
+    // Wrong password / bad OTP comes back as 401 too. Running the refresh flow
+    // here would fire onAuthInvalidated and wipe the login form before the
+    // screen can show the error.
+    if (_publicPaths.contains(err.requestOptions.path)) {
       return handler.next(err);
     }
 

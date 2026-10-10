@@ -106,7 +106,7 @@ class PermissionMatrixScreen extends ConsumerWidget {
         case StaffPermission.createAnnouncement: return 'انشاء اعلان';
         case StaffPermission.viewLeaderboards: return 'عرض لوحة المتصدرين';
         case StaffPermission.viewTrainerRatings: return 'عرض تقييمات المدربين';
-        case StaffPermission.moderateTestimonials: return 'اعتدال الشهادات';
+        case StaffPermission.moderateTestimonials: return 'مراجعة آراء العملاء';
         case StaffPermission.viewStaff: return 'عرض الموظفين';
         case StaffPermission.addStaff: return 'اضافة موظف';
         case StaffPermission.editStaff: return 'تعديل موظف';

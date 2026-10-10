@@ -52,10 +52,23 @@ final gymSettingsProvider =
   );
 });
 
-// No dedicated sections sub-resource endpoint exists on the backend.
+// GET /gyms/{id}/sections → [{ id, sectionType: Mens|Womens|Mixed, name, isActive }].
+// Resolves to the lower-cased types that are currently active.
 final gymSectionsProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((_) async =>
-        const <Map<String, dynamic>>[]);
+    FutureProvider.autoDispose<Set<String>>((ref) async {
+  final apiClient = ref.watch(apiClientProvider);
+  final gymId = ref.watch(currentGymIdProvider);
+  if (gymId.isEmpty) return const <String>{};
+  return apiClient.get<Set<String>>(
+    ApiEndpoints.gymSections(gymId),
+    parser: (data) => (data as List)
+        .whereType<Map>()
+        .where((s) => s['isActive'] != false)
+        .map((s) => (s['sectionType'] ?? '').toString().toLowerCase())
+        .where((t) => t.isNotEmpty)
+        .toSet(),
+  );
+});
 
 // No dedicated seasonal-hours sub-resource endpoint exists on the backend.
 final gymSeasonalHoursProvider =

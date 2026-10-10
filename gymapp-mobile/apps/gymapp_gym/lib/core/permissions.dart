@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:gymapp_core/gymapp_core.dart';
 
 /// Staff permissions that can be checked against the user's role.
@@ -65,10 +67,13 @@ enum StaffPermission {
   editNotificationSettings,
 }
 
-/// Central permission matrix for the gym staff app.
+/// Central permission matrix for the gym staff app. Mirrors the default
+/// matrix in docs/01_GYMAPP_BACKEND_COMPLETE.md ("Staff Roles & Permissions")
+/// and PRODUCT_SPEC.md §1.4.
 /// Owner: all access
-/// Manager: all except billing settings (can still record payments)
-/// Receptionist: check-in, record payments, view members only
+/// Manager: everything except removing members (and subscription/billing
+/// settings, which this app does not expose)
+/// Receptionist: check-in, payments, view/add/edit/freeze members
 class StaffPermissions {
   StaffPermissions._();
 
@@ -103,6 +108,7 @@ class StaffPermissions {
     StaffPermission.kioskMode,
     StaffPermission.recordPayment,
     StaffPermission.viewPayments,
+    StaffPermission.managePackageTemplates,
     StaffPermission.assignPackage,
     StaffPermission.viewRevenue,
     StaffPermission.viewAnnouncements,
@@ -111,34 +117,76 @@ class StaffPermissions {
     StaffPermission.viewTrainerRatings,
     StaffPermission.moderateTestimonials,
     StaffPermission.viewStaff,
+    StaffPermission.addStaff,
+    StaffPermission.editStaff,
     StaffPermission.viewSettings,
     StaffPermission.editGymProfile,
+    StaffPermission.editBranding,
     StaffPermission.editSessionPolicies,
     StaffPermission.editSections,
     StaffPermission.editOperatingHours,
     StaffPermission.editSeasonalHours,
     StaffPermission.editAmenities,
     StaffPermission.editNotificationSettings,
-    // Manager CANNOT: managePackageTemplates, addStaff, editStaff,
-    // editBranding, deleteMember
+    // Manager CANNOT: deleteMember
   };
 
   static const Set<StaffPermission> _receptionistPermissions = {
     StaffPermission.viewDashboard,
     StaffPermission.viewMembers,
+    StaffPermission.addMember,
+    StaffPermission.editMember,
+    StaffPermission.freezeMember,
     StaffPermission.viewTrainers,
     StaffPermission.viewCheckInLog,
     StaffPermission.manualCheckIn,
     StaffPermission.kioskMode,
     StaffPermission.recordPayment,
     StaffPermission.viewPayments,
-    // Receptionist can attach a trainer to a member via the quick-assign
-    // flow (member detail → "Assign Trainer"). Existing AssignSessionPackage
-    // template flow stays manager+ since it touches pricing/templates.
+    // Receptionist assigns a template to a member at the desk when they pay
+    // (story 75). Creating/pricing templates stays manager+.
     StaffPermission.assignPackage,
     StaffPermission.viewClasses,
+    StaffPermission.viewExercises,
     StaffPermission.viewAnnouncements,
+    StaffPermission.editNotificationSettings,
   };
+
+  /// Resolves the app-side staff role from a freshly issued access token.
+  ///
+  /// The backend puts the per-gym tier in the `staffSubRole` claim
+  /// (Owner/Manager/Receptionist) and marks owner principals with
+  /// `staffRole=owner`. [identityRole] is the coarse `user.role` from the login
+  /// response (`owner` / `staff`). Staff whose tier cannot be read get the
+  /// least-privileged role rather than manager access.
+  static String roleFromAccessToken(String accessToken, String identityRole) {
+    final claims = _decodeJwtPayload(accessToken);
+    final subRole = (claims['staffSubRole'] as String?)?.toLowerCase();
+    if (subRole != null && _rolePermissions.containsKey(subRole)) {
+      return subRole;
+    }
+    final staffRole = (claims['staffRole'] as String?)?.toLowerCase();
+    final role = identityRole.toLowerCase();
+    if (staffRole == AppConstants.roleOwner ||
+        role == AppConstants.roleOwner ||
+        role == 'gym_owner') {
+      return AppConstants.roleOwner;
+    }
+    return AppConstants.roleReceptionist;
+  }
+
+  static Map<String, dynamic> _decodeJwtPayload(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return const {};
+      final decoded =
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final json = jsonDecode(decoded);
+      return json is Map<String, dynamic> ? json : const {};
+    } catch (_) {
+      return const {};
+    }
+  }
 
   /// Check if a role has a specific permission.
   static bool hasPermission(String role, StaffPermission permission) {

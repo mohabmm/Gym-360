@@ -5,6 +5,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/staff_provider.dart';
+import '../../../../core/error_text.dart';
 
 class AddStaffScreen extends ConsumerStatefulWidget {
   const AddStaffScreen({super.key});
@@ -63,7 +64,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+            .showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

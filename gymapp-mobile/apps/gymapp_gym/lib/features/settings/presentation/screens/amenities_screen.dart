@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/settings_provider.dart';
+import '../../../../core/error_text.dart';
 
 class AmenitiesScreen extends ConsumerStatefulWidget {
   const AmenitiesScreen({super.key});
@@ -44,7 +45,7 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     }
   }
