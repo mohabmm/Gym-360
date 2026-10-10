@@ -53,7 +53,7 @@ class Samples {
             'exerciseId': 'ex-1',
             'orderIndex': 0,
             'sets': 4,
-            'reps': 10,
+            'reps': '10',
             'weight': 60.0,
             'restSeconds': 90,
           },
@@ -85,14 +85,15 @@ class Samples {
 
   static Map<String, dynamic> session({String id = 'session-1'}) => {
         'id': id,
+        'gymId': 'gym-1',
         'trainerId': 'trainer-1',
-        'trainerName': 'Coach Omar',
-        'traineeId': 'user-1',
-        'traineeName': 'Mona Ali',
+        'memberId': 'user-1',
         'scheduledAt': '2026-04-20T09:00:00.000Z',
         'durationMinutes': 60,
+        'sessionType': 'PT',
         'status': 'Scheduled',
-        'type': 'PT',
+        'isRecurring': false,
+        'createdAt': '2026-04-10T08:00:00.000Z',
       };
 
   // Mirrors the BE ProgressDashboardResponse shape (Modules/Progress):
@@ -124,10 +125,16 @@ class Samples {
   static Map<String, dynamic> bodyMetric({String id = 'bm-1'}) => {
         'id': id,
         'userId': 'user-1',
-        'metricType': 'Weight',
-        'value': 72.5,
-        'unit': 'kg',
-        'recordedAt': '2026-04-15T08:00:00.000Z',
+        'gymId': 'gym-1',
+        'date': '2026-04-15',
+        'weight': 72.5,
+        'weightUnit': 'kg',
+        'bodyFatPercentage': 22.0,
+        'measurements': null,
+        'source': 'Member',
+        'loggedBy': 'user-1',
+        'notes': null,
+        'createdAt': '2026-04-15T08:00:00.000Z',
       };
 
   static Map<String, dynamic> progressPhotoSet() => {
@@ -400,10 +407,10 @@ class Samples {
   static Map<String, dynamic> exercise({String id = 'ex-1'}) => {
         'id': id,
         'name': 'Bench Press',
-        'muscleGroup': 'Chest',
+        'muscleGroups': ['Chest'],
         'equipment': 'Barbell',
         'category': 'Compound',
-        'difficulty': 'Intermediate',
-        'isCustom': false,
+        'scope': 'Global',
+        'isActive': true,
       };
 }

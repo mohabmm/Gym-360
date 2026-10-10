@@ -109,10 +109,10 @@ void main() {
       ApiEndpoints.sessionTrainerLog('session-1'),
       respond: (_) => t.adapter.error(
         403,
-        code: 'FEATURE_GATED',
+        code: 'PLAN.FEATURE_NOT_AVAILABLE',
         message: 'Not available on Free plan',
         extras: {
-          'featureCode': 'session_logging',
+          'feature': 'session_logging',
           'requiredPlan': 'Starter',
         },
       ),

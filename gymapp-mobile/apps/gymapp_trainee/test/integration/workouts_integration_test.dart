@@ -59,7 +59,7 @@ void main() {
       ApiEndpoints.workoutLogs,
       respond: (_) => t.adapter.created(Samples.workoutLog(id: 'log-new')),
     );
-    final log = await ds.logWorkout({
+    final logId = await ds.logWorkout({
       'workoutId': 'workout-1',
       'date': '2026-04-16',
       'startedAt': '2026-04-16T09:00:00.000Z',
@@ -77,7 +77,7 @@ void main() {
       ],
       'perceivedExertion': 7,
     });
-    expect(log.id, 'log-new');
+    expect(logId, 'log-new');
     final body = t.onlyRequest.bodyAsMap!;
     expect(body['date'], '2026-04-16');
     expect(body['startedAt'], '2026-04-16T09:00:00.000Z');

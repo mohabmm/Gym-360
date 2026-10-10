@@ -426,6 +426,5 @@ class _LiveSetLog {
     required this.setNumber,
     required this.reps,
     this.weight,
-    this.notes,
-  });
+  }) : notes = null;
 }

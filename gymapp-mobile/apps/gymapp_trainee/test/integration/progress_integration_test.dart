@@ -78,12 +78,12 @@ void main() {
       respond: (_) => t.adapter.rawResponse(403, {
         'data': null,
         'errors': [
-          {'code': 'STORAGE_LIMIT', 'message': 'Photo limit reached'},
+          {
+            'code': 'PLAN.STORAGE_LIMIT_REACHED',
+            'message': 'Photo limit reached',
+            'meta': {'currentUsage': 20, 'limit': 20, 'resource': 'photos'},
+          },
         ],
-        'errorCode': 'STORAGE_LIMIT',
-        'currentCount': 20,
-        'maxCount': 20,
-        'resourceType': 'photos',
       }),
     );
     await expectLater(

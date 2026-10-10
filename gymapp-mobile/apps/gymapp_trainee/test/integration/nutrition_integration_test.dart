@@ -49,13 +49,14 @@ void main() {
         150.0);
   });
 
-  test('DELETE /nutrition/food-log/{entryId} — stub BE returns 404', () async {
+  test('DELETE /nutrition/food-log/meals/{mealId}/items/{index} — 404 surfaces',
+      () async {
     t.adapter.onDelete(
-      '${ApiEndpoints.foodLog}/fle-new',
+      '${ApiEndpoints.foodLog}/meals/meal-1/items/0',
       respond: (_) => t.adapter.error(404, code: 'NOT_FOUND'),
     );
     await expectLater(
-      ds.deleteFoodEntry('fle-new'),
+      ds.deleteFoodEntry('meal-1:0'),
       throwsA(isA<NotFoundException>()),
     );
   });

@@ -71,11 +71,14 @@ void main() {
       fake.sessions = [
         SessionModel(
           id: 's1',
+          gymId: 'g1',
           trainerId: 't1',
-          traineeId: 'me',
+          memberId: 'me',
           scheduledAt: DateTime(2026, 4, 20, 9),
           durationMinutes: 60,
-          status: 'scheduled',
+          sessionType: 'PT',
+          status: 'Scheduled',
+          createdAt: DateTime(2026, 4, 10),
         ),
       ];
       final sessions =

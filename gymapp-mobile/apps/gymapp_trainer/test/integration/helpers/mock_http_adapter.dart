@@ -41,8 +41,7 @@ class _MockResponse {
   _MockResponse({
     required this.statusCode,
     required this.body,
-    this.headers = const {},
-  });
+  }) : headers = const {};
 
   final int statusCode;
   final dynamic body;

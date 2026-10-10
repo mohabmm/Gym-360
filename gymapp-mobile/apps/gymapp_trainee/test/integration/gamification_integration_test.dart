@@ -55,12 +55,12 @@ void main() {
     expect(t.onlyRequest.bodyAsMap!['stars'], 5);
   });
 
-  test('PUT leaderboards/opt-out sends userId + gymId', () async {
+  test('PUT leaderboards/opt-out sends gymId only (user from JWT)', () async {
     t.adapter.onPut(
       ApiEndpoints.leaderboardOptOut,
       respond: (_) => t.adapter.noContent(),
     );
-    await ds.toggleLeaderboardOptOut(userId: 'user-1', gymId: 'gym-1');
-    expect(t.onlyRequest.bodyAsMap, {'userId': 'user-1', 'gymId': 'gym-1'});
+    await ds.toggleLeaderboardOptOut(gymId: 'gym-1');
+    expect(t.onlyRequest.bodyAsMap, {'gymId': 'gym-1'});
   });
 }

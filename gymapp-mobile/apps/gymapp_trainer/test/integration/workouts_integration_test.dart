@@ -155,7 +155,7 @@ void main() {
       t.adapter.onGet(
         ApiEndpoints.customExercises,
         respond: (_) => t.adapter
-            .ok([Samples.exercise(id: 'custom-1')..['isCustom'] = true]),
+            .ok([Samples.exercise(id: 'custom-1')..['scope'] = 'Custom']),
       );
 
       final customs = await t.apiClient.get<List<ExerciseModel>>(
@@ -167,6 +167,7 @@ void main() {
 
       expect(t.onlyRequest.path, '/api/v1/training/exercises/custom');
       expect(customs.single.id, 'custom-1');
+      expect(customs.single.isCustom, true);
     });
 
     test('POST /training/exercises creates custom exercise', () async {
