@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../core/error_text.dart';
 import '../../../../core/providers.dart';
 import '../providers/members_provider.dart';
 
@@ -41,9 +42,9 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     final email = _emailController.text.trim();
     final nationalId = _nationalIdController.text.trim();
     try {
-      final String userId;
+      final Map<String, dynamic> created;
       try {
-        userId = await apiClient.post<String>(
+        created = await apiClient.post<Map<String, dynamic>>(
           ApiEndpoints.identityStaffCreateUser,
           data: {
             'firstName': _firstNameController.text.trim(),
@@ -52,7 +53,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
             if (email.isNotEmpty) 'email': email,
             if (nationalId.isNotEmpty) 'nationalId': nationalId,
           },
-          parser: (data) => (data as Map<String, dynamic>)['userId'] as String,
+          parser: (data) => data as Map<String, dynamic>,
         );
       } on ApiException catch (e) {
         // 409 = phone/email already belongs to an existing member. Offer to re-link
@@ -64,11 +65,16 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
         rethrow;
       }
 
-      await apiClient.post<void>(
-        ApiEndpoints.gymMembers(gymId),
-        data: {'userId': userId},
-        parser: (_) {},
-      );
+      // staff-create already links the new user to the caller's gym and
+      // answers with the assigned member number. Only link explicitly when it
+      // did not, otherwise the second call fails with "already added".
+      if (created['memberNumber'] == null) {
+        await apiClient.post<void>(
+          ApiEndpoints.gymMembers(gymId),
+          data: {'userId': created['userId']},
+          parser: (_) {},
+        );
+      }
 
       if (mounted) {
         ref.invalidate(membersProvider);
@@ -76,7 +82,10 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(staffErrorText(e,
+              isArabic: Localizations.localeOf(context).languageCode == 'ar')),
+        ));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -98,7 +107,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       );
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
       return;
     }
@@ -151,7 +160,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     }
   }

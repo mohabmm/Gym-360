@@ -18,7 +18,7 @@ wait_for ~"ادخل بريدك الالكتروني" timeout:10000
 delay 2000
 
 # Assert login screen loaded
-assert_exists ~"جيم اب"
+assert_exists ~"جيم 360"
 assert_exists ~"البريد الالكتروني"
 assert_exists ~"كلمة المرور"
 

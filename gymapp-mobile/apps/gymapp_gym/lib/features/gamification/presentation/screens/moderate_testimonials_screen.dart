@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/gamification_provider.dart';
+import '../../../../core/error_text.dart';
 
 class ModerateTestimonialsScreen extends ConsumerWidget {
   const ModerateTestimonialsScreen({super.key});
@@ -16,14 +17,14 @@ class ModerateTestimonialsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'اعتدال الشهادات' : 'Moderate Testimonials'),
+        title: Text(isArabic ? 'مراجعة آراء العملاء' : 'Moderate Testimonials'),
       ),
       body: testimonials.when(
         data: (pending) {
           if (pending.isEmpty) {
             return EmptyState(
               icon: Icons.rate_review_outlined,
-              title: isArabic ? 'لا توجد شهادات معلقة' : 'No pending testimonials',
+              title: isArabic ? 'لا توجد آراء بانتظار المراجعة' : 'No pending testimonials',
             );
           }
           return RefreshIndicator(
@@ -108,7 +109,7 @@ class ModerateTestimonialsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(24),
                 child: Text(
                   isArabic
-                      ? 'إدارة الشهادات متاحة في باقة Pro فقط.'
+                      ? 'مراجعة آراء العملاء متاحة في باقة Pro فقط.'
                       : 'Testimonial moderation is available on the Pro plan only.',
                   textAlign: TextAlign.center,
                 ),
@@ -148,7 +149,7 @@ class ModerateTestimonialsScreen extends ConsumerWidget {
       ref.invalidate(testimonialsProvider);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     }
   }

@@ -895,9 +895,13 @@ class _NumpadTabState extends State<_NumpadTab> {
           ),
         ),
 
-        // Numpad
+        // Numpad. Digits keep the phone-keypad order (1 2 3 left to right)
+        // in Arabic too; mirroring them with the RTL layout puts every key
+        // where muscle memory does not expect it.
         Expanded(
-          child: Padding(
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 60),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -946,6 +950,7 @@ class _NumpadTabState extends State<_NumpadTab> {
                 ),
               ],
             ),
+            ),
           ),
         ),
       ],
@@ -980,7 +985,12 @@ class _NumpadKey extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         height: 64,
@@ -999,6 +1009,7 @@ class _NumpadKey extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ),
+      ),
       ),
     );
   }

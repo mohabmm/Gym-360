@@ -349,7 +349,13 @@ class _MainShellState extends ConsumerState<MainShell> {
     // Update index based on current route. Match each tab to its route
     // prefix so pushed sub-screens (e.g. /members/:id) still highlight the
     // parent tab. Everything else falls through to the "More" tab.
-    final currentLocation = GoRouterState.of(context).matchedLocation;
+    // Screens opened with context.push are imperative matches that the shell's
+    // own GoRouterState does not reflect, so read the top-most leaf instead.
+    final configuration =
+        GoRouter.of(context).routerDelegate.currentConfiguration;
+    final currentLocation = configuration.isEmpty
+        ? GoRouterState.of(context).matchedLocation
+        : configuration.last.matchedLocation;
     int matchedIndex = _mainRoutes.length; // default: More
     for (int i = 0; i < _mainRoutes.length; i++) {
       final route = _mainRoutes[i];
@@ -431,38 +437,46 @@ class _MainShellState extends ConsumerState<MainShell> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _MoreMenuItem(
-                icon: Icons.sports_gymnastics,
-                label: isArabic ? 'التمارين' : 'Exercises',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.exercises);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.monetization_on_outlined,
-                label: isArabic ? 'لوحة الايرادات' : 'Revenue Dashboard',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.revenueDashboard);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.attach_money,
-                label: isArabic ? 'تسجيل دفع' : 'Record Payment',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.recordPayment);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.card_membership_outlined,
-                label: isArabic ? 'الباقات النشطة' : 'Active Packages',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.activePackages);
-                },
-              ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.viewExercises))
+                _MoreMenuItem(
+                  icon: Icons.sports_gymnastics,
+                  label: isArabic ? 'التمارين' : 'Exercises',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.exercises);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.viewRevenue))
+                _MoreMenuItem(
+                  icon: Icons.monetization_on_outlined,
+                  label: isArabic ? 'لوحة الايرادات' : 'Revenue Dashboard',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.revenueDashboard);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.recordPayment))
+                _MoreMenuItem(
+                  icon: Icons.attach_money,
+                  label: isArabic ? 'تسجيل دفع' : 'Record Payment',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.recordPayment);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.viewPayments))
+                _MoreMenuItem(
+                  icon: Icons.card_membership_outlined,
+                  label: isArabic ? 'الباقات النشطة' : 'Active Packages',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.activePackages);
+                  },
+                ),
               if (StaffPermissions.hasPermission(
                   role, StaffPermission.assignPackage))
                 _MoreMenuItem(
@@ -473,54 +487,66 @@ class _MainShellState extends ConsumerState<MainShell> {
                     context.push(RoutePaths.assignPackage);
                   },
                 ),
-              _MoreMenuItem(
-                icon: Icons.layers_outlined,
-                label: isArabic ? 'قوالب الباقات' : 'Package Templates',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.packageTemplates);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.campaign_outlined,
-                label: isArabic ? 'الاعلانات' : 'Announcements',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.announcements);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.qr_code_scanner,
-                label: isArabic ? 'تسجيل الحضور' : 'Check-in',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.checkInLog);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.leaderboard_outlined,
-                label: isArabic ? 'لوحة المدربين' : 'Coach Leaderboard',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.coachLeaderboard);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.emoji_events_outlined,
-                label: isArabic ? 'ترتيب الاعضاء' : 'Member Leaderboard',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.memberLeaderboard);
-                },
-              ),
-              _MoreMenuItem(
-                icon: Icons.reviews_outlined,
-                label: isArabic ? 'اعتدال الشهادات' : 'Moderate Testimonials',
-                onTap: () {
-                  Navigator.pop(context);
-                  context.push(RoutePaths.moderateTestimonials);
-                },
-              ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.managePackageTemplates))
+                _MoreMenuItem(
+                  icon: Icons.layers_outlined,
+                  label: isArabic ? 'قوالب الباقات' : 'Package Templates',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.packageTemplates);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.viewAnnouncements))
+                _MoreMenuItem(
+                  icon: Icons.campaign_outlined,
+                  label: isArabic ? 'الاعلانات' : 'Announcements',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.announcements);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.viewCheckInLog))
+                _MoreMenuItem(
+                  icon: Icons.qr_code_scanner,
+                  label: isArabic ? 'تسجيل الحضور' : 'Check-in',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.checkInLog);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.viewLeaderboards))
+                _MoreMenuItem(
+                  icon: Icons.leaderboard_outlined,
+                  label: isArabic ? 'لوحة المدربين' : 'Coach Leaderboard',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.coachLeaderboard);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.viewLeaderboards))
+                _MoreMenuItem(
+                  icon: Icons.emoji_events_outlined,
+                  label: isArabic ? 'ترتيب الاعضاء' : 'Member Leaderboard',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.memberLeaderboard);
+                  },
+                ),
+              if (StaffPermissions.hasPermission(
+                  role, StaffPermission.moderateTestimonials))
+                _MoreMenuItem(
+                  icon: Icons.reviews_outlined,
+                  label: isArabic ? 'مراجعة آراء العملاء' : 'Moderate Testimonials',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.moderateTestimonials);
+                  },
+                ),
               if (StaffPermissions.hasPermission(
                   role, StaffPermission.viewStaff))
                 _MoreMenuItem(

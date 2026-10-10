@@ -19,7 +19,7 @@ void main() {
     }
   });
 
-  test('only the owner can add staff', () {
+  test('owner and manager can add staff, receptionist cannot', () {
     expect(
       StaffPermissions.hasPermission(
           AppConstants.roleOwner, StaffPermission.addStaff),
@@ -28,7 +28,7 @@ void main() {
     expect(
       StaffPermissions.hasPermission(
           AppConstants.roleManager, StaffPermission.addStaff),
-      isFalse,
+      isTrue,
     );
     expect(
       StaffPermissions.hasPermission(

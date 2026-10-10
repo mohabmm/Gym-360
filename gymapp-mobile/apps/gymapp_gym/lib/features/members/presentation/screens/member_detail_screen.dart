@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/permissions.dart';
+import '../../../../core/error_text.dart';
 import '../../../../core/providers.dart';
 import '../../../trainers/presentation/providers/trainers_provider.dart';
 import '../providers/members_provider.dart';
@@ -59,6 +60,15 @@ class MemberDetailScreen extends ConsumerWidget {
                                     fontWeight: FontWeight.w700,
                                   ),
                             ),
+                            if (m.status?.toLowerCase() == AppConstants.memberFrozen)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Chip(
+                                  avatar: const Icon(Icons.ac_unit, size: 16),
+                                  label: Text(isArabic ? 'مجمد' : 'Frozen'),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
                             if (m.memberNumber != null)
                               Text(
                                 '#${m.memberNumber}',
@@ -125,11 +135,21 @@ class MemberDetailScreen extends ConsumerWidget {
                 if (canFreeze)
                   SizedBox(
                     width: double.infinity,
-                    child: AppButton.outlined(
-                      text: isArabic ? 'تجميد' : 'Freeze',
-                      icon: Icons.ac_unit,
-                      onPressed: () => _showFreezeDialog(context, ref, isArabic),
-                    ),
+                    child: m.status?.toLowerCase() == AppConstants.memberFrozen
+                        ? AppButton.outlined(
+                            text: isArabic ? 'الغاء التجميد' : 'Unfreeze',
+                            icon: Icons.play_arrow,
+                            onPressed: () => _showFreezeDialog(
+                                context, ref, isArabic,
+                                freeze: false),
+                          )
+                        : AppButton.outlined(
+                            text: isArabic ? 'تجميد' : 'Freeze',
+                            icon: Icons.ac_unit,
+                            onPressed: () => _showFreezeDialog(
+                                context, ref, isArabic,
+                                freeze: true),
+                          ),
                   ),
                 const SizedBox(height: 20),
 
@@ -259,11 +279,19 @@ class MemberDetailScreen extends ConsumerWidget {
                   value: selectedMethod,
                   isExpanded: true,
                   decoration: InputDecoration(labelText: isArabic ? 'طريقة الدفع' : 'Payment method'),
-                  items: const [
-                    DropdownMenuItem(value: 'Cash', child: Text('Cash')),
-                    DropdownMenuItem(value: 'Card', child: Text('Card')),
-                    DropdownMenuItem(value: 'BankTransfer', child: Text('Bank Transfer')),
-                    DropdownMenuItem(value: 'MobileWallet', child: Text('Mobile Wallet')),
+                  items: [
+                    DropdownMenuItem(
+                        value: 'Cash',
+                        child: Text(isArabic ? 'نقدي' : 'Cash')),
+                    DropdownMenuItem(
+                        value: 'Card',
+                        child: Text(isArabic ? 'بطاقة' : 'Card')),
+                    DropdownMenuItem(
+                        value: 'BankTransfer',
+                        child: Text(isArabic ? 'تحويل بنكي' : 'Bank Transfer')),
+                    DropdownMenuItem(
+                        value: 'MobileWallet',
+                        child: Text(isArabic ? 'محفظة الكترونية' : 'Mobile Wallet')),
                   ],
                   onChanged: (v) => setState(() => selectedMethod = v ?? 'Cash'),
                 ),
@@ -301,7 +329,7 @@ class MemberDetailScreen extends ConsumerWidget {
       final assignedBy = ref.read(authProvider).valueOrNull?.user?.id;
       if (assignedBy == null) throw const ApiException(message: 'No active session.', errorCode: 'NO_SESSION');
       await apiClient.post<void>(
-        '/billing/packages/quick-assign',
+        ApiEndpoints.quickAssignPackage,
         data: {
           'gymId': gymId,
           'trainerId': selectedTrainerId,
@@ -319,20 +347,30 @@ class MemberDetailScreen extends ConsumerWidget {
         content: Text(isArabic ? 'تم التعيين' : 'Trainer assigned'),
       ));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+      messenger.showSnackBar(SnackBar(content: Text(staffErrorText(e, isArabic: isArabic))));
     }
   }
 
   Future<void> _showFreezeDialog(
-      BuildContext context, WidgetRef ref, bool isArabic) async {
+    BuildContext context,
+    WidgetRef ref,
+    bool isArabic, {
+    required bool freeze,
+  }) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isArabic ? 'تجميد العضوية' : 'Freeze Membership'),
+        title: Text(freeze
+            ? (isArabic ? 'تجميد العضوية' : 'Freeze Membership')
+            : (isArabic ? 'الغاء تجميد العضوية' : 'Unfreeze Membership')),
         content: Text(
-          isArabic
-              ? 'هل تريد تجميد عضوية هذا العضو؟'
-              : 'Are you sure you want to freeze this membership?',
+          freeze
+              ? (isArabic
+                  ? 'هل تريد تجميد عضوية هذا العضو؟'
+                  : 'Are you sure you want to freeze this membership?')
+              : (isArabic
+                  ? 'هل تريد اعادة تفعيل عضوية هذا العضو؟'
+                  : 'Reactivate this membership?'),
         ),
         actions: [
           TextButton(
@@ -341,7 +379,9 @@ class MemberDetailScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(isArabic ? 'تجميد' : 'Freeze'),
+            child: Text(freeze
+                ? (isArabic ? 'تجميد' : 'Freeze')
+                : (isArabic ? 'الغاء التجميد' : 'Unfreeze')),
           ),
         ],
       ),
@@ -353,18 +393,23 @@ class MemberDetailScreen extends ConsumerWidget {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
       await apiClient.post<void>(
-        ApiEndpoints.gymMemberFreeze(gymId, memberId),
+        freeze
+            ? ApiEndpoints.gymMemberFreeze(gymId, memberId)
+            : ApiEndpoints.gymMemberUnfreeze(gymId, memberId),
         parser: (_) {},
       );
       ref.invalidate(memberDetailProvider(memberId));
       ref.invalidate(membersProvider);
       messenger.showSnackBar(
         SnackBar(
-          content: Text(isArabic ? 'تم التجميد' : 'Membership frozen'),
+          content: Text(freeze
+              ? (isArabic ? 'تم التجميد' : 'Membership frozen')
+              : (isArabic ? 'تم الغاء التجميد' : 'Membership reactivated')),
         ),
       );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+      messenger.showSnackBar(
+          SnackBar(content: Text(staffErrorText(e, isArabic: isArabic))));
     }
   }
 
@@ -407,7 +452,7 @@ class MemberDetailScreen extends ConsumerWidget {
       );
       if (context.mounted) context.pop();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+      messenger.showSnackBar(SnackBar(content: Text(staffErrorText(e, isArabic: isArabic))));
     }
   }
 }

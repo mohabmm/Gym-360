@@ -22,6 +22,17 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
             .FirstOrDefaultAsync(sp => sp.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<SessionPackage>> GetByGymAsync(
+        Guid gymId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.SessionPackages
+            .AsNoTracking()
+            .Where(sp => sp.GymId == gymId)
+            .OrderByDescending(sp => sp.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SessionPackage>> GetByMemberAsync(
         Guid gymId,
         Guid memberId,

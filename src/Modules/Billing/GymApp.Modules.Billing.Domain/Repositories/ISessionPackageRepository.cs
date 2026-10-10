@@ -5,6 +5,7 @@ namespace GymApp.Modules.Billing.Domain.Repositories;
 public interface ISessionPackageRepository
 {
     Task<SessionPackage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SessionPackage>> GetByGymAsync(Guid gymId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SessionPackage>> GetByMemberAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SessionPackage>> GetByTrainerAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default);
     Task<SessionPackage?> GetActiveByMemberAndTrainerAsync(Guid gymId, Guid memberId, Guid trainerId, CancellationToken cancellationToken = default);

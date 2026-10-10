@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/settings_provider.dart';
+import '../../../../core/error_text.dart';
 
 // Owner/manager toggle for the gym-level `early_session_start` feature
 // override. Drives the trainer mobile app's read-only Testing Mode indicator.
@@ -43,7 +44,7 @@ class TestingModeScreen extends ConsumerWidget {
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString())),
+                        SnackBar(content: Text(staffErrorText(e))),
                       );
                     }
                   }

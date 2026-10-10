@@ -21,7 +21,7 @@ class CoachLeaderboardScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => context.push(RoutePaths.moderateTestimonials),
-            child: Text(isArabic ? 'الشهادات' : 'Testimonials'),
+            child: Text(isArabic ? 'آراء العملاء' : 'Testimonials'),
           ),
         ],
       ),

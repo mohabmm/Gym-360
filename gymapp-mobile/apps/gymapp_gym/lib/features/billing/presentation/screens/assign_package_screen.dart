@@ -7,6 +7,7 @@ import '../../../../core/providers.dart';
 import '../providers/billing_provider.dart';
 import '../../../members/presentation/providers/members_provider.dart';
 import '../../../trainers/presentation/providers/trainers_provider.dart';
+import '../../../../core/error_text.dart';
 
 class AssignPackageScreen extends ConsumerStatefulWidget {
   const AssignPackageScreen({super.key});
@@ -39,17 +40,14 @@ class _AssignPackageScreenState extends ConsumerState<AssignPackageScreen> {
       final userId = ref.read(authProvider).valueOrNull?.user?.id ?? '';
 
       final memberInput = _memberIdController.text.trim();
-      final pagedMembers = await ref.read(membersProvider.future);
-      final match = pagedMembers.items.firstWhere(
-        (m) =>
-            (m.memberNumber?.toLowerCase() == memberInput.toLowerCase()) ||
-            m.id == memberInput,
-        orElse: () => throw Exception(
+      final match = await findMemberByNumber(apiClient, gymId, memberInput);
+      if (match == null) {
+        throw Exception(
           Localizations.localeOf(context).languageCode == 'ar'
               ? 'العضو غير موجود'
               : 'Member not found',
-        ),
-      );
+        );
+      }
 
       await apiClient.post<void>(
         ApiEndpoints.assignPackage,
@@ -77,7 +75,7 @@ class _AssignPackageScreenState extends ConsumerState<AssignPackageScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+            .showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

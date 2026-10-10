@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../core/permissions.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../providers/dashboard_provider.dart';
@@ -20,6 +21,32 @@ class GymDashboardScreen extends ConsumerWidget {
     final pagePad = context.responsivePagePadding;
 
     final gymName = gym.valueOrNull?.name ?? (isArabic ? 'الصالة' : 'Gym');
+    final hasGym = ref.watch(currentGymIdProvider).isNotEmpty;
+    final canViewRevenue = ref
+            .watch(authProvider)
+            .valueOrNull
+            ?.hasPermission(StaffPermission.viewRevenue) ??
+        false;
+
+    if (!hasGym) {
+      // Zeros here would read as "an empty gym"; say what is actually wrong
+      // and point at Settings, where sign-out lives.
+      return RtlScaffold(
+        isArabic: isArabic,
+        appBar: AppBar(title: Text(gymName)),
+        body: EmptyState(
+          icon: Icons.store_mall_directory_outlined,
+          title: isArabic
+              ? 'هذا الحساب غير مرتبط بصالة'
+              : 'This account is not linked to a gym',
+          subtitle: isArabic
+              ? 'اطلب من مالك الصالة اضافتك كموظف ثم سجل الدخول مرة اخرى.'
+              : 'Ask the gym owner to add you as staff, then sign in again.',
+          actionLabel: isArabic ? 'الاعدادات' : 'Settings',
+          onAction: () => context.push(RoutePaths.gymProfile),
+        ),
+      );
+    }
 
     return RtlScaffold(
       isArabic: isArabic,
@@ -45,7 +72,11 @@ class GymDashboardScreen extends ConsumerWidget {
             padding: EdgeInsets.all(pagePad),
             children: [
               // KPI Cards
-              _KpiRow(data: data, isArabic: isArabic),
+              _KpiRow(
+                data: data,
+                isArabic: isArabic,
+                showRevenue: canViewRevenue,
+              ),
               const SizedBox(height: 20),
 
               // Revenue Chart
@@ -53,10 +84,10 @@ class GymDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // Peak Hours Heatmap — Pro-only. FeatureGate shows an upgrade
-              // CTA when the plan doesn't include peak_hours_analytics; the
+              // CTA when the plan doesn't include advanced_analytics; the
               // provider already swallows the 403 so other tiles still render.
               FeatureGate(
-                featureCode: FeatureCodes.peakHoursAnalytics,
+                featureCode: FeatureCodes.advancedAnalytics,
                 showLoadingShimmer: false,
                 child:
                     _PeakHoursHeatmap(data: data.peakHours, isArabic: isArabic),
@@ -113,20 +144,29 @@ class _KpiRow extends StatelessWidget {
   final DashboardData data;
   final bool isArabic;
 
-  const _KpiRow({required this.data, required this.isArabic});
+  /// Revenue is manager+ (docs/01 "View analytics/revenue").
+  final bool showRevenue;
+
+  const _KpiRow({
+    required this.data,
+    required this.isArabic,
+    required this.showRevenue,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        StatCard.gradient(
-          label: isArabic ? 'ايراد الشهر' : 'Revenue this month',
-          value: NumberFormatter.formatCurrency(data.revenueThisMonth),
-          icon: Icons.trending_up_rounded,
-          trend: data.revenueTrend,
-          trendUp: true,
-        ),
-        const SizedBox(height: 12),
+        if (showRevenue) ...[
+          StatCard.gradient(
+            label: isArabic ? 'ايراد الشهر' : 'Revenue this month',
+            value: NumberFormatter.formatCurrency(data.revenueThisMonth),
+            icon: Icons.trending_up_rounded,
+            trend: data.revenueTrend,
+            trendUp: true,
+          ),
+          const SizedBox(height: 12),
+        ],
         Row(
           children: [
             Expanded(
