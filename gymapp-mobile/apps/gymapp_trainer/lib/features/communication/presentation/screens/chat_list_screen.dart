@@ -92,7 +92,8 @@ class ChatListScreen extends ConsumerWidget {
                       if (conv.lastMessage != null)
                         Text(
                           DateFormat('hh:mm a', isArabic ? 'ar' : 'en')
-                              .format(conv.lastMessage!.sentAt),
+                              .format(DateFormatter.apiUtcToLocal(
+                                  conv.lastMessage!.sentAt)),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       if (hasUnread)

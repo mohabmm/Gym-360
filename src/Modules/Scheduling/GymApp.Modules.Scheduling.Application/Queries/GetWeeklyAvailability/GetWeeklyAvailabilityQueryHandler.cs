@@ -99,19 +99,35 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
         var sessionsForDay = activeSessions.Where(s => s.ScheduledDate == date).ToList();
         var slots = new List<WeekSlotDto>();
 
+        // Arithmetic is done on TimeSpan, NOT TimeOnly: TimeOnly.AddMinutes wraps past
+        // midnight, so a window ending late in the evening (e.g. 23:59) made
+        // "start + duration <= end" true forever and the request never returned.
+        var duration = TimeSpan.FromMinutes(sessionDuration);
+        var bufferSpan = TimeSpan.FromMinutes(Math.Max(0, buffer));
+
         foreach (var window in weeklySlotsForDay)
         {
-            var current = window.StartTime;
-            while (current.AddMinutes(sessionDuration) <= window.EndTime)
+            // A non-positive duration would never advance the cursor.
+            if (duration <= TimeSpan.Zero)
+                break;
+
+            var cursor = window.StartTime.ToTimeSpan();
+            var windowEnd = window.EndTime.ToTimeSpan();
+
+            while (cursor + duration <= windowEnd)
             {
-                var end = current.AddMinutes(sessionDuration);
+                var slotStart = cursor;
+                var slotEnd = cursor + duration;
 
                 var conflicting = sessionsForDay.FirstOrDefault(s =>
                 {
-                    var sStart = s.ScheduledTime;
-                    var sEnd = s.ScheduledTime.AddMinutes(s.DurationMinutes + buffer);
-                    return current < sEnd && sStart < end.AddMinutes(buffer);
+                    var sStart = s.ScheduledTime.ToTimeSpan();
+                    var sEnd = sStart + TimeSpan.FromMinutes(s.DurationMinutes) + bufferSpan;
+                    return slotStart < sEnd && sStart < slotEnd + bufferSpan;
                 });
+
+                var current = TimeOnly.FromTimeSpan(slotStart);
+                var end = TimeOnly.FromTimeSpan(slotEnd);
 
                 if (conflicting is null)
                 {
@@ -125,7 +141,7 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
                     slots.Add(new WeekSlotDto(current, end, status, conflicting.Id));
                 }
 
-                current = current.AddMinutes(sessionDuration + buffer);
+                cursor += duration + bufferSpan;
             }
         }
 

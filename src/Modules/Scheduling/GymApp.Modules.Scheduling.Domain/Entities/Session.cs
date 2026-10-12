@@ -93,7 +93,12 @@ public sealed class Session : Entity
         return session;
     }
 
-    public Result Confirm(DateTime nowUtc)
+    /// <param name="nowGymLocal">
+    /// Current time as gym-local wall-clock — the same frame ScheduledDate/ScheduledTime
+    /// are stored in. Callers convert from UTC; passing raw UTC skews the guard by the
+    /// gym's UTC offset.
+    /// </param>
+    public Result Confirm(DateTime nowGymLocal)
     {
         if (Status == SessionStatus.Confirmed)
             return Result.Failure(SchedulingErrors.AlreadyConfirmed);
@@ -103,26 +108,26 @@ public sealed class Session : Entity
 
         // Reject confirming a session whose scheduled time has already passed
         // (a past booking request can still be cancelled or marked no-show).
-        // Mirrors StartSession's UTC treatment of the stored wall-clock time.
-        var scheduledStartUtc = ScheduledDate.ToDateTime(ScheduledTime, DateTimeKind.Utc);
-        if (scheduledStartUtc <= nowUtc)
-            return Result.Failure(SchedulingErrors.SessionInPast(scheduledStartUtc));
+        var scheduledStart = ScheduledDate.ToDateTime(ScheduledTime);
+        if (scheduledStart <= nowGymLocal)
+            return Result.Failure(SchedulingErrors.SessionInPast(scheduledStart));
 
         Status = SessionStatus.Confirmed;
         RaiseDomainEvent(new SessionConfirmedDomainEvent(Id));
         return Result.Success();
     }
 
-    public Result StartSession(DateTime nowUtc, int earlyWindowMinutes, bool allowEarlyStart)
+    /// <param name="nowGymLocal">Current time as gym-local wall-clock (see <see cref="Confirm"/>).</param>
+    public Result StartSession(DateTime nowGymLocal, int earlyWindowMinutes, bool allowEarlyStart)
     {
         if (Status != SessionStatus.Confirmed)
             return Result.Failure(SchedulingErrors.InvalidStatusTransition);
 
         if (!allowEarlyStart)
         {
-            var scheduledStartUtc = ScheduledDate.ToDateTime(ScheduledTime, DateTimeKind.Utc);
-            if (nowUtc < scheduledStartUtc.AddMinutes(-earlyWindowMinutes))
-                return Result.Failure(SchedulingErrors.SessionTooEarly(scheduledStartUtc, earlyWindowMinutes));
+            var scheduledStart = ScheduledDate.ToDateTime(ScheduledTime);
+            if (nowGymLocal < scheduledStart.AddMinutes(-earlyWindowMinutes))
+                return Result.Failure(SchedulingErrors.SessionTooEarly(scheduledStart, earlyWindowMinutes));
         }
 
         Status = SessionStatus.InProgress;

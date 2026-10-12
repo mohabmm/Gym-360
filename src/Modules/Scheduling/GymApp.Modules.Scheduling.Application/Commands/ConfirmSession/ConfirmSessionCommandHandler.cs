@@ -30,7 +30,8 @@ internal sealed class ConfirmSessionCommandHandler : ICommandHandler<ConfirmSess
         if (session is null)
             return Result.Failure(SchedulingErrors.SessionNotFound(request.SessionId));
 
-        var result = session.Confirm(_dateTimeProvider.UtcNow);
+        // Scheduled time is gym-local wall-clock; compare against gym-local "now".
+        var result = session.Confirm(GymLocalTime.FromUtc(_dateTimeProvider.UtcNow));
         if (result.IsFailure)
             return result;
 

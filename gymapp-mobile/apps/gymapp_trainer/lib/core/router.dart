@@ -56,6 +56,7 @@ class AppRoutes {
   static const String workoutBuilderEdit = '/workouts/builder/:workoutId';
   static const String templateLibrary = '/workouts/templates';
   static const String programBuilder = '/workouts/program-builder';
+  static const String programDetail = '/workouts/program-builder/:programId';
   static const String exerciseManager = '/workouts/exercises';
   static const String schedule = '/schedule';
   static const String availability = '/schedule/availability';
@@ -244,6 +245,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.programBuilder,
         builder: (context, state) => const ProgramBuilderScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.programDetail,
+        builder: (context, state) => ProgramBuilderScreen(
+          programId: state.pathParameters['programId'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.exerciseManager,

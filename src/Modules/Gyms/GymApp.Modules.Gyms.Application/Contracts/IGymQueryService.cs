@@ -9,7 +9,11 @@ public interface IGymQueryService
     Task<GymResponse?> GetGymByIdAsync(Guid gymId, CancellationToken cancellationToken = default);
     Task<bool> IsMemberOfGymAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default);
     Task<bool> IsTrainerAtGymAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default);
-    Task<PagedResponse<MemberDto>> GetMembersAsync(Guid gymId, int page, int pageSize, string? status, string? section, string? search, CancellationToken cancellationToken = default);
+    /// <param name="restrictToMemberIds">
+    /// When non-null, only these members are eligible (applied BEFORE paging so
+    /// TotalCount/TotalPages stay correct). Used for the trainer-scoped roster.
+    /// </param>
+    Task<PagedResponse<MemberDto>> GetMembersAsync(Guid gymId, int page, int pageSize, string? status, string? section, string? search, CancellationToken cancellationToken = default, IReadOnlyCollection<Guid>? restrictToMemberIds = null);
     Task<MemberDto?> GetMemberAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default);
     Task<List<TrainerDto>> GetTrainersAsync(Guid gymId, string? status = null, CancellationToken cancellationToken = default);
     Task<SessionPolicyDto> GetSessionPolicyAsync(Guid gymId, CancellationToken cancellationToken = default);
