@@ -5,6 +5,7 @@ using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.BookSession;
@@ -95,12 +96,8 @@ internal sealed class BookSessionCommandHandler : ICommandHandler<BookSessionCom
         }
 
         var session = Session.Create(
-            request.GymId,
-            request.TrainerId,
-            request.MemberId,
-            request.Date,
-            request.Time,
-            request.DurationMinutes,
+            new SessionParticipants(request.GymId, request.TrainerId, request.MemberId),
+            new SessionSchedule(request.Date, request.Time, request.DurationMinutes),
             sessionType,
             request.Focus);
 

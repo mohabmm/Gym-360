@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using GymApp.Common.Application.Tenancy;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Infrastructure.Persistence;
 using GymApp.Tests.Integration.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
@@ -190,13 +191,9 @@ public sealed class SessionExerciseLogsIntegrationTests : BaseIntegrationTest
         var ctx = scope.ServiceProvider.GetRequiredService<SchedulingDbContext>();
 
         var session = Session.Create(
-            gymId: Guid.NewGuid(),
-            trainerId: trainerId,
-            memberId: memberId,
-            scheduledDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
-            scheduledTime: new TimeOnly(10, 0),
-            durationMinutes: 60,
-            sessionType: SessionType.PersonalTraining);
+            new SessionParticipants(Guid.NewGuid(), trainerId, memberId),
+            new SessionSchedule(DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)), new TimeOnly(10, 0), 60),
+            SessionType.PersonalTraining);
 
         if (targetStatus != SessionStatus.Pending)
         {

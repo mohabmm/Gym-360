@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Domain.Errors;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 
@@ -26,15 +27,17 @@ internal sealed class LogTrainerSessionCommandHandler : ICommandHandler<LogTrain
         if (session is null)
             return Result.Failure(SchedulingErrors.SessionNotFound(request.SessionId));
 
-        var result = session.LogTrainerSession(
-            request.ExercisesPerformed,
-            request.ActualVsPlanned,
-            request.ClientEffortRating,
-            request.Feedback,
-            request.TechniqueNotes,
-            request.AreasToImprove,
-            request.NextSessionFocus,
-            request.AttendanceConfirmed);
+        var result = session.LogTrainerSession(new TrainerLogDetails
+        {
+            ExercisesPerformed = request.ExercisesPerformed,
+            ActualVsPlanned = request.ActualVsPlanned,
+            ClientEffortRating = request.ClientEffortRating,
+            Feedback = request.Feedback,
+            TechniqueNotes = request.TechniqueNotes,
+            AreasToImprove = request.AreasToImprove,
+            NextSessionFocus = request.NextSessionFocus,
+            AttendanceConfirmed = request.AttendanceConfirmed
+        });
 
         if (result.IsFailure)
             return result;

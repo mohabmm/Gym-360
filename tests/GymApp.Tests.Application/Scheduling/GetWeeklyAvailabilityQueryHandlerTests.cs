@@ -2,6 +2,7 @@ using GymApp.Modules.Scheduling.Application.Queries.GetWeeklyAvailability;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Scheduling;
 
@@ -159,10 +160,9 @@ public class GetWeeklyAvailabilityQueryHandlerTests
 
         var monday = new DateOnly(2026, 5, 11);
         var session = Session.Create(
-            _gymId, _trainerId, _memberId,
-            monday, new TimeOnly(9, 0),
-            durationMinutes: 60,
-            sessionType: SessionType.PersonalTraining);
+            new SessionParticipants(_gymId, _trainerId, _memberId),
+            new SessionSchedule(monday, new TimeOnly(9, 0), 60),
+            SessionType.PersonalTraining);
 
         _availabilityRepository
             .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
@@ -190,10 +190,9 @@ public class GetWeeklyAvailabilityQueryHandlerTests
         var monday = new DateOnly(2026, 5, 11);
         var otherMember = Guid.NewGuid();
         var session = Session.Create(
-            _gymId, _trainerId, otherMember,
-            monday, new TimeOnly(9, 0),
-            durationMinutes: 60,
-            sessionType: SessionType.PersonalTraining);
+            new SessionParticipants(_gymId, _trainerId, otherMember),
+            new SessionSchedule(monday, new TimeOnly(9, 0), 60),
+            SessionType.PersonalTraining);
 
         _availabilityRepository
             .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
@@ -220,10 +219,9 @@ public class GetWeeklyAvailabilityQueryHandlerTests
 
         var monday = new DateOnly(2026, 5, 11);
         var session = Session.Create(
-            _gymId, _trainerId, _memberId,
-            monday, new TimeOnly(9, 0),
-            durationMinutes: 60,
-            sessionType: SessionType.PersonalTraining);
+            new SessionParticipants(_gymId, _trainerId, _memberId),
+            new SessionSchedule(monday, new TimeOnly(9, 0), 60),
+            SessionType.PersonalTraining);
         session.Cancel("Changed mind", _memberId, isLateCancellation: false);
 
         _availabilityRepository

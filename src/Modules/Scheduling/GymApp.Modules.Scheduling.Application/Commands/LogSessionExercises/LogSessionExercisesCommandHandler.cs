@@ -4,6 +4,7 @@ using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Application.DTOs;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Errors;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.LogSessionExercises;
@@ -37,15 +38,17 @@ internal sealed class LogSessionExercisesCommandHandler
         var created = new List<SessionExerciseLog>();
         foreach (var item in request.Items)
         {
-            var addResult = session.AddExerciseLog(
-                item.ExerciseId,
-                item.ExerciseName,
-                item.ExerciseNameAr,
-                item.OrderIndex,
-                item.Sets,
-                item.Reps,
-                item.Weight,
-                item.Notes);
+            var addResult = session.AddExerciseLog(new ExerciseLogDetails
+            {
+                ExerciseId = item.ExerciseId,
+                ExerciseName = item.ExerciseName,
+                ExerciseNameAr = item.ExerciseNameAr,
+                OrderIndex = item.OrderIndex,
+                Sets = item.Sets,
+                Reps = item.Reps,
+                Weight = item.Weight,
+                Notes = item.Notes
+            });
 
             if (addResult.IsFailure)
                 return Result.Failure<IReadOnlyList<SessionExerciseLogDto>>(addResult.Error);
