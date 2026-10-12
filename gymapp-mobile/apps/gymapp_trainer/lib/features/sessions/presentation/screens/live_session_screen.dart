@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/providers.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
+import '../../../home/presentation/providers/trainer_dashboard_provider.dart';
+import '../../../scheduling/presentation/providers/scheduling_providers.dart';
 import '../providers/session_providers.dart';
 
 class LiveSessionScreen extends ConsumerStatefulWidget {
@@ -24,6 +26,11 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
   late Timer _timer;
   Duration _elapsed = Duration.zero;
   DateTime? _startedAt;
+  // The session is only live once the BE accepted /start. Until then the
+  // timer stays at zero; if /start is rejected the screen shows why instead
+  // of pretending the session is running.
+  bool _isStarting = true;
+  String? _startError;
   final List<_LiveSetLog> _sets = [];
   final _notesController = TextEditingController();
   bool _isCompleting = false;
@@ -31,11 +38,11 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
   @override
   void initState() {
     super.initState();
-    _startedAt = DateTime.now();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
+      final startedAt = _startedAt;
+      if (mounted && startedAt != null) {
         setState(() {
-          _elapsed = DateTime.now().difference(_startedAt!);
+          _elapsed = DateTime.now().difference(startedAt);
         });
       }
     });
@@ -59,14 +66,70 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
       } catch (_) {}
     }
 
+    if (mounted) {
+      setState(() {
+        _isStarting = true;
+        _startError = null;
+      });
+    }
+
     try {
       await apiClient.postVoid(
         ApiEndpoints.sessionStart(widget.sessionId),
         data: {},
       );
-    } catch (_) {
-      // Session may already be InProgress — ignore error
+    } catch (e) {
+      // Re-entering a session that is already InProgress is fine. Anything
+      // else (too early, not confirmed, network) means the session is NOT
+      // live — surface it rather than running a timer over a session the BE
+      // will then refuse to complete.
+      var alreadyRunning = false;
+      try {
+        final session = await apiClient.get<SessionModel>(
+          ApiEndpoints.sessionById(widget.sessionId),
+          parser: (data) =>
+              SessionModel.fromJson(data as Map<String, dynamic>),
+        );
+        alreadyRunning = session.status.toLowerCase() == 'inprogress';
+      } catch (_) {}
+
+      if (!alreadyRunning) {
+        if (mounted) {
+          setState(() {
+            _isStarting = false;
+            _startError = _describeStartError(e);
+          });
+        }
+        return;
+      }
     }
+
+    if (mounted) {
+      setState(() {
+        _isStarting = false;
+        _startedAt = DateTime.now();
+      });
+    }
+  }
+
+  String _describeStartError(Object error) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    if (error is ApiException) {
+      switch (error.errorCode) {
+        case 'Scheduling.SessionTooEarly':
+          return isArabic
+              ? 'لا يمكن بدء الجلسة الآن. يمكنك البدء قبل موعدها بـ 15 دقيقة كحد أقصى.'
+              : 'This session cannot be started yet. You can start it up to 15 minutes before its scheduled time.';
+        case 'Scheduling.InvalidStatusTransition':
+          return isArabic
+              ? 'لا يمكن بدء هذه الجلسة في حالتها الحالية.'
+              : 'This session cannot be started in its current status.';
+      }
+      return error.message;
+    }
+    return isArabic
+        ? 'تعذر بدء الجلسة. تحقق من الاتصال وحاول مرة أخرى.'
+        : 'Could not start the session. Check your connection and try again.';
   }
 
   @override
@@ -170,6 +233,8 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
       if (mounted) {
         // Forward live notes to post-session screen so trainer doesn't retype.
         // PostSessionLogScreen reads it via GoRouterState.extra.
+        ref.invalidate(trainerDashboardProvider);
+        ref.invalidate(upcomingSessionsProvider);
         context.pushReplacement(
           '/sessions/${widget.sessionId}/log',
           extra: _notesController.text.trim(),
@@ -178,8 +243,9 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isCompleting = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e is ApiException ? e.message : e.toString())),
+        );
       }
     }
   }
@@ -190,6 +256,19 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     final theme = Theme.of(context);
     final sessionAsync =
         ref.watch(sessionDetailProvider(widget.sessionId));
+
+    final startError = _startError;
+    if (startError != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(isArabic ? 'تعذر بدء الجلسة' : 'Session not started'),
+        ),
+        body: AppErrorWidget(
+          message: startError,
+          onRetry: _startSession,
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -208,7 +287,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
             )
           else
             TextButton(
-              onPressed: _completeSession,
+              onPressed: _isStarting ? null : _completeSession,
               style:
                   TextButton.styleFrom(foregroundColor: Colors.white),
               child: Text(isArabic ? 'اتمام' : 'Complete'),
@@ -334,7 +413,8 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
                 const SizedBox(height: 24),
                 AppButton(
                   text: isArabic ? 'اتمام الجلسة' : 'Complete Session',
-                  onPressed: _isCompleting ? null : _completeSession,
+                  onPressed:
+                      _isCompleting || _isStarting ? null : _completeSession,
                   isLoading: _isCompleting,
                 ),
               ],

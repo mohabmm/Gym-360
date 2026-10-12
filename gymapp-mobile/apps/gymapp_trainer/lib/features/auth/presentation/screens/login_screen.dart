@@ -53,6 +53,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   String _localizeApiError(ApiException e, bool isArabic) {
+    // A 401 from /login only ever means wrong email/password; the BE message
+    // is English-only, so localize it here.
+    if (e is UnauthorizedException) {
+      return isArabic
+          ? 'البريد الالكتروني او كلمة المرور غير صحيحة.'
+          : 'Incorrect email or password.';
+    }
     switch (e.errorCode) {
       case 'ROLE_TRAINEE_NOT_ALLOWED':
         return isArabic

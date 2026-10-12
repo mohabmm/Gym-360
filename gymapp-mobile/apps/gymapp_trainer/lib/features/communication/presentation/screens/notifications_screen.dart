@@ -175,7 +175,9 @@ class _NotificationTile extends ConsumerWidget {
   }
 
   String _formatTime(DateTime createdAt) {
-    final local = createdAt.toLocal();
+    // API timestamps are UTC without a `Z` suffix; plain toLocal() is a no-op
+    // on them and showed UTC wall-clock time.
+    final local = DateFormatter.apiUtcToLocal(createdAt);
     final now = DateTime.now();
     final isToday = now.year == local.year &&
         now.month == local.month &&

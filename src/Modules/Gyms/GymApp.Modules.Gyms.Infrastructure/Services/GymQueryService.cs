@@ -212,7 +212,8 @@ internal sealed class GymQueryService : IGymQueryService
 
     public async Task<PagedResponse<MemberDto>> GetMembersAsync(
         Guid gymId, int page, int pageSize, string? status, string? section, string? search,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? restrictToMemberIds = null)
     {
         var gym = await _dbContext.Gyms
             .AsNoTracking()
@@ -228,6 +229,14 @@ internal sealed class GymQueryService : IGymQueryService
         // member_ids resolves to no Identity profile and would surface as a null-named
         // row (and crash strict mobile parsers). Mirrors the trainer-list ghost guard.
         var orderedIds = gym.MemberIds.Where(id => id != gymId).ToList();
+
+        // Trainer-scoped roster: narrow to the caller-supplied ids up front so paging
+        // and totals below are computed over the trainer's clients, not the whole gym.
+        if (restrictToMemberIds is not null)
+        {
+            var restrictTo = restrictToMemberIds.ToHashSet();
+            orderedIds = orderedIds.Where(restrictTo.Contains).ToList();
+        }
 
         var statusKey = status?.Trim().ToLowerInvariant();
         var frozenFilter = statusKey == "frozen";

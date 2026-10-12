@@ -443,7 +443,10 @@ class _OverviewTab extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
+                            // BE SessionPackageDto carries the label as `name`;
+                            // `packageName` only exists on older payloads.
                             data.activePackage!.packageName ??
+                                data.activePackage!.name ??
                                 (isArabic ? 'باقة' : 'Package'),
                             style: theme.textTheme.titleSmall,
                           ),
@@ -873,7 +876,8 @@ class _NotesTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  DateFormat('dd/MM/yyyy hh:mm a', isArabic ? 'ar' : 'en').format(note.createdAt),
+                  DateFormat('dd/MM/yyyy hh:mm a', isArabic ? 'ar' : 'en')
+                      .format(DateFormatter.apiUtcToLocal(note.createdAt)),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: AppColors.grey400,
                   ),

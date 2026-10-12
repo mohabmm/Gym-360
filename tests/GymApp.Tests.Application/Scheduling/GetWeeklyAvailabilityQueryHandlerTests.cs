@@ -97,6 +97,34 @@ public class GetWeeklyAvailabilityQueryHandlerTests
         day.Slots.Should().BeEmpty();
     }
 
+    // Regression: TimeOnly.AddMinutes wraps past midnight, so a window ending late in
+    // the evening made the slot loop spin forever.
+    [Fact]
+    public async Task Handle_WindowEndingNearMidnight_TerminatesWithoutWrapping()
+    {
+        var availability = TrainerAvailability.Create(_trainerId, _gymId);
+        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(6, 0), new TimeOnly(23, 59));
+
+        _availabilityRepository
+            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
+            .Returns(availability);
+        _sessionRepository
+            .GetByTrainerAsync(_trainerId, _gymId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<Session>());
+
+        var monday = new DateOnly(2026, 5, 11);
+        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, monday, monday, _memberId);
+
+        var handle = Task.Run(() => _sut.Handle(query, CancellationToken.None));
+        var finished = await Task.WhenAny(handle, Task.Delay(TimeSpan.FromSeconds(5)));
+
+        finished.Should().BeSameAs(handle, "slot generation must terminate");
+        var slots = (await handle).Value.Days.Single().Slots;
+        slots.Should().NotBeEmpty();
+        slots.Count.Should().BeLessThan(24);
+        slots.Should().AllSatisfy(s => s.EndTime.Should().BeAfter(s.StartTime));
+    }
+
     [Fact]
     public async Task Handle_AvailableSlots_AllMarkedAvailable()
     {

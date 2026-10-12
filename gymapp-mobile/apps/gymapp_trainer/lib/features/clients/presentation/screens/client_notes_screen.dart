@@ -135,7 +135,7 @@ class _ClientNotesScreenState extends ConsumerState<ClientNotesScreen> {
                             const SizedBox(height: 8),
                             Text(
                               DateFormat('dd/MM/yyyy hh:mm a', isArabic ? 'ar' : 'en')
-                                  .format(note.createdAt),
+                                  .format(DateFormatter.apiUtcToLocal(note.createdAt)),
                               style:
                                   Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: AppColors.grey400,

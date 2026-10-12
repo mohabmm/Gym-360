@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'providers.dart';
 import 'router.dart';
 
 /// Bottom navigation shell wrapping the 5 main tabs.
@@ -27,8 +28,17 @@ class ShellScreen extends ConsumerWidget {
     final isArabic =
         Localizations.localeOf(context).languageCode == 'ar';
 
+    // Cold start: the stored token is still being validated via /profile.
+    // Rendering the tabs now would show a nameless greeting and zeroed stats
+    // (no user / gym yet), so hold a loader until auth resolves.
+    final authResolving = ref.watch(
+      authProvider.select((s) => s.status == AuthStatus.initial),
+    );
+
     return Scaffold(
-      body: child,
+      body: authResolving
+          ? const Center(child: CircularProgressIndicator())
+          : child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) {

@@ -21,6 +21,20 @@ internal sealed class GetGymMembersQueryHandler : IQueryHandler<GetGymMembersQue
 
     public async Task<Result<PagedResponse<MemberDto>>> Handle(GetGymMembersQuery request, CancellationToken cancellationToken)
     {
+        // Trainer-scoped filter: when caller supplies a TrainerId, narrow the
+        // roster to members on that trainer's Active session packages. Avoids
+        // exposing every gym member as a "client" of every trainer (which is
+        // what trainer mobile saw before this filter existed). The restriction
+        // is applied inside the query BEFORE paging — filtering the fetched page
+        // afterwards dropped clients that fell on later pages and reported a
+        // TotalCount no larger than the page size.
+        IReadOnlyCollection<Guid>? restrictToMemberIds = null;
+        if (request.TrainerId.HasValue)
+        {
+            restrictToMemberIds = await _trainerAssignmentLookup.GetClientsForTrainerAsync(
+                request.TrainerId.Value, request.GymId, cancellationToken);
+        }
+
         var result = await _gymQueryService.GetMembersAsync(
             request.GymId,
             request.Page,
@@ -28,27 +42,8 @@ internal sealed class GetGymMembersQueryHandler : IQueryHandler<GetGymMembersQue
             request.Status,
             request.Section,
             request.Search,
-            cancellationToken);
-
-        // Trainer-scoped filter: when caller supplies a TrainerId, narrow the
-        // page to members on that trainer's Active session packages. Avoids
-        // exposing every gym member as a "client" of every trainer (which is
-        // what trainer mobile saw before this filter existed).
-        if (request.TrainerId.HasValue)
-        {
-            var clientIds = await _trainerAssignmentLookup.GetClientsForTrainerAsync(
-                request.TrainerId.Value, request.GymId, cancellationToken);
-            var allowed = clientIds.ToHashSet();
-            var filtered = result.Items.Where(m => allowed.Contains(m.MemberId)).ToList();
-            return Result.Success(new PagedResponse<MemberDto>(
-                filtered,
-                Page: request.Page,
-                PageSize: request.PageSize,
-                TotalCount: filtered.Count,
-                TotalPages: filtered.Count == 0
-                    ? 0
-                    : (int)Math.Ceiling(filtered.Count / (double)request.PageSize)));
-        }
+            cancellationToken,
+            restrictToMemberIds);
 
         return Result.Success(result);
     }

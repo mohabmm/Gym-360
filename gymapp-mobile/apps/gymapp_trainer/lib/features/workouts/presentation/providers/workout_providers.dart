@@ -58,23 +58,40 @@ final workoutDetailProvider =
 final exerciseLibraryProvider =
     FutureProvider.autoDispose<List<ExerciseModel>>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
-  return apiClient.get<List<ExerciseModel>>(
-    ApiEndpoints.exercises,
-    queryParameters: {'page': 1, 'pageSize': 100},
-    parser: (data) {
-      final List<dynamic> list;
-      if (data is List) {
-        list = data;
-      } else if (data is Map<String, dynamic> && data['items'] is List) {
-        list = data['items'] as List<dynamic>;
-      } else {
-        return <ExerciseModel>[];
-      }
-      return list
-          .map((e) => ExerciseModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-    },
-  );
+
+  // The library is searched client-side, so every page has to be loaded:
+  // fetching only page 1 left everything past the first 100 names
+  // (alphabetically) impossible to find or add to a workout.
+  const pageSize = 100;
+  const maxPages = 20; // safety net against a misbehaving totalPages
+  final all = <ExerciseModel>[];
+  for (var page = 1; page <= maxPages; page++) {
+    final result = await apiClient.get<({List<ExerciseModel> items, int totalPages})>(
+      ApiEndpoints.exercises,
+      queryParameters: {'page': page, 'pageSize': pageSize},
+      parser: (data) {
+        final List<dynamic> list;
+        var totalPages = 1;
+        if (data is List) {
+          list = data;
+        } else if (data is Map<String, dynamic> && data['items'] is List) {
+          list = data['items'] as List<dynamic>;
+          totalPages = (data['totalPages'] as num?)?.toInt() ?? 1;
+        } else {
+          list = const [];
+        }
+        return (
+          items: list
+              .map((e) => ExerciseModel.fromJson(e as Map<String, dynamic>))
+              .toList(),
+          totalPages: totalPages,
+        );
+      },
+    );
+    all.addAll(result.items);
+    if (result.items.isEmpty || page >= result.totalPages) break;
+  }
+  return all;
 });
 
 /// Custom exercises created by this trainer.

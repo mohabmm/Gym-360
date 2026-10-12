@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
+import '../../../home/presentation/providers/trainer_dashboard_provider.dart';
+import '../../../scheduling/presentation/providers/scheduling_providers.dart';
 import '../providers/session_providers.dart';
 
 class PostSessionLogScreen extends ConsumerStatefulWidget {
@@ -99,6 +101,8 @@ class _PostSessionLogScreenState
         );
       }
 
+      ref.invalidate(trainerDashboardProvider);
+      ref.invalidate(upcomingSessionsProvider);
       if (mounted) context.go(AppRoutes.home);
     } catch (e) {
       if (mounted) {

@@ -149,6 +149,34 @@ public sealed class SessionTests
         session.Status.Should().Be(SessionStatus.InProgress);
     }
 
+    // The default session is scheduled 2025-06-15 10:00 gym-local; the clock passed in
+    // is gym-local wall-clock too (handlers convert from UTC).
+    [Fact]
+    public void StartSession_InsideEarlyWindow_ShouldSucceed()
+    {
+        var session = CreateConfirmedSession();
+
+        var result = session.StartSession(new DateTime(2025, 6, 15, 9, 50, 0), 15, allowEarlyStart: false);
+
+        result.IsSuccess.Should().BeTrue();
+        session.Status.Should().Be(SessionStatus.InProgress);
+    }
+
+    [Fact]
+    public void StartSession_BeforeEarlyWindow_ShouldFailUnlessEarlyStartAllowed()
+    {
+        var session = CreateConfirmedSession();
+        var tooEarly = new DateTime(2025, 6, 15, 9, 30, 0);
+
+        var blocked = session.StartSession(tooEarly, 15, allowEarlyStart: false);
+
+        blocked.IsFailure.Should().BeTrue();
+        blocked.Error.Code.Should().Be("Scheduling.SessionTooEarly");
+        session.Status.Should().Be(SessionStatus.Confirmed);
+
+        session.StartSession(tooEarly, 15, allowEarlyStart: true).IsSuccess.Should().BeTrue();
+    }
+
     [Fact]
     public void StartSession_WhenPending_ShouldFail()
     {

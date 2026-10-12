@@ -90,8 +90,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 CalendarFormat.month: isArabic ? 'شهر' : 'Month',
                 CalendarFormat.week: isArabic ? 'اسبوع' : 'Week',
               },
+              // scheduledAt is gym-local wall-clock (same frame the day list
+              // below uses). toLocal() shifted it by the UTC offset and put
+              // late-evening sessions' markers on the following day.
               eventLoader: (day) => sessions
-                  .where((s) => isSameDay(s.scheduledAt.toLocal(), day))
+                  .where((s) => isSameDay(s.scheduledAt, day))
                   .toList(),
               onDaySelected: (selectedDay, focusedDay) {
                 setState(() {
@@ -135,12 +138,26 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     .toList();
 
                 if (daySessions.isEmpty) {
-                  return EmptyState(
-                    icon: Icons.event_available,
-                    title: isArabic ? 'لا توجد جلسات' : 'No sessions',
-                    subtitle: isArabic
-                        ? 'لا توجد جلسات في هذا اليوم'
-                        : 'No sessions on this day',
+                  // Scrollable so pull-to-refresh also works on an empty day
+                  // (e.g. right after a booking request was accepted).
+                  return RefreshIndicator(
+                    onRefresh: () async =>
+                        ref.invalidate(upcomingSessionsProvider),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: constraints.maxHeight,
+                          child: EmptyState(
+                            icon: Icons.event_available,
+                            title: isArabic ? 'لا توجد جلسات' : 'No sessions',
+                            subtitle: isArabic
+                                ? 'لا توجد جلسات في هذا اليوم'
+                                : 'No sessions on this day',
+                          ),
+                        ),
+                      ),
+                    ),
                   );
                 }
 
@@ -149,6 +166,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   onRefresh: () async =>
                       ref.invalidate(upcomingSessionsProvider),
                   child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: daySessions.length,
                     itemBuilder: (context, index) {
