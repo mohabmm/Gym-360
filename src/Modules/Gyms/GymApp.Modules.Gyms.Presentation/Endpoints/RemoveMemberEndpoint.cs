@@ -28,6 +28,7 @@ internal sealed class RemoveMemberEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(401)
         .Produces<ApiResponse<object>>(403)
         .Produces<ApiResponse<object>>(404)
-        .RequireAuthorization("gym_owner_or_admin");
+        .RequireAuthorization("gym_owner_or_admin")
+        .RequireMemberAccess(MemberAccessLevel.Staff);
     }
 }

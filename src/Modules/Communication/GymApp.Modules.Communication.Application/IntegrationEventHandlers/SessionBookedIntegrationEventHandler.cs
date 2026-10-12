@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -31,10 +32,8 @@ internal sealed class SessionBookedIntegrationEventHandler : INotificationHandle
             ["scheduledAt"] = notification.ScheduledAt.ToString("O")
         };
 
-        var notif = Notification.Create(
+        var notif = NotificationTexts.SessionBooked(notification.ScheduledAt).ToNotification(
             notification.TrainerId,
-            "New Session Booked",
-            $"A member has booked a session with you on {notification.ScheduledAt:MMM dd, yyyy 'at' HH:mm}.",
             NotificationType.SessionReminder,
             notification.GymId,
             data);

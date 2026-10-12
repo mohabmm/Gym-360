@@ -42,6 +42,9 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ProcessedOnUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -137,6 +140,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Barbell Bench Press",
+                            NameAr = "ضغط الصدر بالبار",
                             Scope = "Global"
                         },
                         new
@@ -147,6 +151,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Incline Barbell Bench Press",
+                            NameAr = "ضغط الصدر العلوي بالبار",
                             Scope = "Global"
                         },
                         new
@@ -157,6 +162,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Decline Barbell Bench Press",
+                            NameAr = "ضغط الصدر السفلي بالبار",
                             Scope = "Global"
                         },
                         new
@@ -167,6 +173,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Close-Grip Bench Press",
+                            NameAr = "ضغط الصدر بقبضة ضيقة",
                             Scope = "Global"
                         },
                         new
@@ -177,6 +184,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Dumbbell Bench Press",
+                            NameAr = "ضغط الصدر بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -187,6 +195,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Incline Dumbbell Bench Press",
+                            NameAr = "ضغط الصدر العلوي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -197,6 +206,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Decline Dumbbell Bench Press",
+                            NameAr = "ضغط الصدر السفلي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -207,6 +217,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Dumbbell Fly",
+                            NameAr = "تفتيح الصدر بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -217,6 +228,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Incline Dumbbell Fly",
+                            NameAr = "تفتيح الصدر العلوي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -227,6 +239,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Decline Dumbbell Fly",
+                            NameAr = "تفتيح الصدر السفلي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -237,6 +250,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Dumbbell Pullover",
+                            NameAr = "بول أوفر بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -247,6 +261,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Cable Crossover",
+                            NameAr = "تقاطع الكابل",
                             Scope = "Global"
                         },
                         new
@@ -257,6 +272,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Low Cable Crossover",
+                            NameAr = "تقاطع الكابل السفلي",
                             Scope = "Global"
                         },
                         new
@@ -267,6 +283,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Cable Fly",
+                            NameAr = "تفتيح الصدر بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -277,6 +294,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Machine Chest Press",
+                            NameAr = "ضغط الصدر على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -287,6 +305,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Machine Incline Chest Press",
+                            NameAr = "ضغط الصدر العلوي على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -297,6 +316,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Pec Deck Machine",
+                            NameAr = "جهاز الفراشة",
                             Scope = "Global"
                         },
                         new
@@ -307,6 +327,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Smith Machine Bench Press",
+                            NameAr = "ضغط الصدر على جهاز سميث",
                             Scope = "Global"
                         },
                         new
@@ -317,6 +338,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Push-Ups",
+                            NameAr = "تمرين الضغط",
                             Scope = "Global"
                         },
                         new
@@ -327,6 +349,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Wide Push-Ups",
+                            NameAr = "تمرين الضغط الواسع",
                             Scope = "Global"
                         },
                         new
@@ -337,6 +360,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Diamond Push-Ups",
+                            NameAr = "تمرين الضغط الماسي",
                             Scope = "Global"
                         },
                         new
@@ -347,6 +371,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Decline Push-Ups",
+                            NameAr = "تمرين الضغط المائل للأسفل",
                             Scope = "Global"
                         },
                         new
@@ -357,6 +382,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Chest Dips",
+                            NameAr = "متوازي للصدر",
                             Scope = "Global"
                         },
                         new
@@ -367,6 +393,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Chest",
                             Name = "Svend Press",
+                            NameAr = "ضغط سفيند",
                             Scope = "Global"
                         },
                         new
@@ -377,6 +404,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Conventional Deadlift",
+                            NameAr = "الرفعة الميتة التقليدية",
                             Scope = "Global"
                         },
                         new
@@ -387,6 +415,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Sumo Deadlift",
+                            NameAr = "الرفعة الميتة سومو",
                             Scope = "Global"
                         },
                         new
@@ -397,6 +426,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Romanian Deadlift",
+                            NameAr = "الرفعة الميتة الرومانية",
                             Scope = "Global"
                         },
                         new
@@ -407,6 +437,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Bent-Over Barbell Row",
+                            NameAr = "سحب البار مع الانحناء",
                             Scope = "Global"
                         },
                         new
@@ -417,6 +448,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Pendlay Row",
+                            NameAr = "سحب بندلاي",
                             Scope = "Global"
                         },
                         new
@@ -427,6 +459,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "T-Bar Row",
+                            NameAr = "سحب تي بار",
                             Scope = "Global"
                         },
                         new
@@ -437,6 +470,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Dumbbell Row",
+                            NameAr = "سحب الدمبل",
                             Scope = "Global"
                         },
                         new
@@ -447,6 +481,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Dumbbell Deadlift",
+                            NameAr = "الرفعة الميتة بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -457,6 +492,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Dumbbell Shrug",
+                            NameAr = "هز الأكتاف بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -467,6 +503,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Barbell Shrug",
+                            NameAr = "هز الأكتاف بالبار",
                             Scope = "Global"
                         },
                         new
@@ -477,6 +514,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Lat Pulldown",
+                            NameAr = "السحب العالي",
                             Scope = "Global"
                         },
                         new
@@ -487,6 +525,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Wide-Grip Lat Pulldown",
+                            NameAr = "السحب العالي بقبضة واسعة",
                             Scope = "Global"
                         },
                         new
@@ -497,6 +536,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Close-Grip Lat Pulldown",
+                            NameAr = "السحب العالي بقبضة ضيقة",
                             Scope = "Global"
                         },
                         new
@@ -507,6 +547,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Reverse-Grip Lat Pulldown",
+                            NameAr = "السحب العالي بقبضة معكوسة",
                             Scope = "Global"
                         },
                         new
@@ -517,6 +558,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Seated Cable Row",
+                            NameAr = "السحب الأرضي بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -527,6 +569,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Single-Arm Cable Row",
+                            NameAr = "سحب الكابل بذراع واحدة",
                             Scope = "Global"
                         },
                         new
@@ -537,6 +580,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Straight-Arm Pulldown",
+                            NameAr = "السحب بذراعين مستقيمتين",
                             Scope = "Global"
                         },
                         new
@@ -547,6 +591,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Machine Row",
+                            NameAr = "السحب على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -557,6 +602,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Machine Lat Pulldown",
+                            NameAr = "السحب العالي على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -567,6 +613,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Chest-Supported Row Machine",
+                            NameAr = "جهاز السحب بدعم الصدر",
                             Scope = "Global"
                         },
                         new
@@ -577,6 +624,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Smith Machine Bent-Over Row",
+                            NameAr = "سحب مع الانحناء على جهاز سميث",
                             Scope = "Global"
                         },
                         new
@@ -587,6 +635,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Pull-Ups",
+                            NameAr = "العقلة",
                             Scope = "Global"
                         },
                         new
@@ -597,6 +646,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Chin-Ups",
+                            NameAr = "العقلة بقبضة معكوسة",
                             Scope = "Global"
                         },
                         new
@@ -607,6 +657,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Neutral-Grip Pull-Ups",
+                            NameAr = "العقلة بقبضة محايدة",
                             Scope = "Global"
                         },
                         new
@@ -617,6 +668,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Inverted Row",
+                            NameAr = "السحب المقلوب",
                             Scope = "Global"
                         },
                         new
@@ -627,6 +679,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Back Extension",
+                            NameAr = "تمديد الظهر",
                             Scope = "Global"
                         },
                         new
@@ -637,6 +690,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Hyperextension",
+                            NameAr = "هايبر إكستنشن",
                             Scope = "Global"
                         },
                         new
@@ -647,6 +701,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Back",
                             Name = "Kettlebell Swing",
+                            NameAr = "أرجحة الكيتل بل",
                             Scope = "Global"
                         },
                         new
@@ -657,6 +712,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Overhead Press (Military Press)",
+                            NameAr = "الضغط فوق الرأس (الضغط العسكري)",
                             Scope = "Global"
                         },
                         new
@@ -667,6 +723,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Seated Barbell Press",
+                            NameAr = "ضغط الأكتاف بالبار جالساً",
                             Scope = "Global"
                         },
                         new
@@ -677,6 +734,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Push Press",
+                            NameAr = "بوش برس",
                             Scope = "Global"
                         },
                         new
@@ -687,6 +745,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Barbell Upright Row",
+                            NameAr = "السحب العمودي بالبار",
                             Scope = "Global"
                         },
                         new
@@ -697,6 +756,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Dumbbell Shoulder Press",
+                            NameAr = "ضغط الأكتاف بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -707,6 +767,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Seated Dumbbell Press",
+                            NameAr = "ضغط الأكتاف بالدمبل جالساً",
                             Scope = "Global"
                         },
                         new
@@ -717,6 +778,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Arnold Press",
+                            NameAr = "ضغط أرنولد",
                             Scope = "Global"
                         },
                         new
@@ -727,6 +789,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Dumbbell Lateral Raise",
+                            NameAr = "الرفع الجانبي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -737,6 +800,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Dumbbell Front Raise",
+                            NameAr = "الرفع الأمامي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -747,6 +811,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Dumbbell Rear Delt Fly",
+                            NameAr = "تفتيح الكتف الخلفي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -757,6 +822,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Dumbbell Upright Row",
+                            NameAr = "السحب العمودي بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -767,6 +833,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Cable Lateral Raise",
+                            NameAr = "الرفع الجانبي بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -777,6 +844,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Cable Front Raise",
+                            NameAr = "الرفع الأمامي بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -787,6 +855,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Cable Face Pull",
+                            NameAr = "سحب الوجه بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -797,6 +866,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Cable Rear Delt Fly",
+                            NameAr = "تفتيح الكتف الخلفي بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -807,6 +877,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Machine Shoulder Press",
+                            NameAr = "ضغط الأكتاف على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -817,6 +888,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Machine Lateral Raise",
+                            NameAr = "الرفع الجانبي على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -827,6 +899,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Machine Rear Delt Fly",
+                            NameAr = "تفتيح الكتف الخلفي على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -837,6 +910,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Smith Machine Shoulder Press",
+                            NameAr = "ضغط الأكتاف على جهاز سميث",
                             Scope = "Global"
                         },
                         new
@@ -847,6 +921,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Landmine Press",
+                            NameAr = "ضغط لاند ماين",
                             Scope = "Global"
                         },
                         new
@@ -857,6 +932,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Pike Push-Ups",
+                            NameAr = "تمرين الضغط بوضع القمة",
                             Scope = "Global"
                         },
                         new
@@ -867,6 +943,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Handstand Push-Ups",
+                            NameAr = "تمرين الضغط بالوقوف على اليدين",
                             Scope = "Global"
                         },
                         new
@@ -877,6 +954,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Plate Front Raise",
+                            NameAr = "الرفع الأمامي بالطارة",
                             Scope = "Global"
                         },
                         new
@@ -887,6 +965,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Band Pull-Apart",
+                            NameAr = "شد المطاط للخارج",
                             Scope = "Global"
                         },
                         new
@@ -897,6 +976,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Shoulders",
                             Name = "Kettlebell Press",
+                            NameAr = "ضغط الكيتل بل",
                             Scope = "Global"
                         },
                         new
@@ -907,6 +987,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Barbell Curl",
+                            NameAr = "تبادل بالبار",
                             Scope = "Global"
                         },
                         new
@@ -917,6 +998,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "EZ-Bar Curl",
+                            NameAr = "تبادل بالبار المتعرج",
                             Scope = "Global"
                         },
                         new
@@ -927,6 +1009,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Preacher Curl (Barbell)",
+                            NameAr = "تبادل على المسند (بار)",
                             Scope = "Global"
                         },
                         new
@@ -937,6 +1020,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Reverse Barbell Curl",
+                            NameAr = "تبادل معكوس بالبار",
                             Scope = "Global"
                         },
                         new
@@ -947,6 +1031,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Drag Curl",
+                            NameAr = "تبادل السحب",
                             Scope = "Global"
                         },
                         new
@@ -957,6 +1042,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Dumbbell Curl",
+                            NameAr = "تبادل بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -967,6 +1053,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Hammer Curl",
+                            NameAr = "تبادل المطرقة",
                             Scope = "Global"
                         },
                         new
@@ -977,6 +1064,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Incline Dumbbell Curl",
+                            NameAr = "تبادل بالدمبل على مقعد مائل",
                             Scope = "Global"
                         },
                         new
@@ -987,6 +1075,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Concentration Curl",
+                            NameAr = "تبادل التركيز",
                             Scope = "Global"
                         },
                         new
@@ -997,6 +1086,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Zottman Curl",
+                            NameAr = "تبادل زوتمان",
                             Scope = "Global"
                         },
                         new
@@ -1007,6 +1097,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Cross-Body Hammer Curl",
+                            NameAr = "تبادل المطرقة عبر الجسم",
                             Scope = "Global"
                         },
                         new
@@ -1017,6 +1108,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Preacher Curl (Dumbbell)",
+                            NameAr = "تبادل على المسند (دمبل)",
                             Scope = "Global"
                         },
                         new
@@ -1027,6 +1119,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Cable Curl",
+                            NameAr = "تبادل بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -1037,6 +1130,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Cable Hammer Curl (Rope)",
+                            NameAr = "تبادل المطرقة بالكابل (حبل)",
                             Scope = "Global"
                         },
                         new
@@ -1047,6 +1141,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "High Cable Curl",
+                            NameAr = "تبادل بالكابل العالي",
                             Scope = "Global"
                         },
                         new
@@ -1057,6 +1152,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Machine Preacher Curl",
+                            NameAr = "تبادل على جهاز المسند",
                             Scope = "Global"
                         },
                         new
@@ -1067,6 +1163,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Machine Bicep Curl",
+                            NameAr = "تبادل البايسبس على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -1077,6 +1174,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Spider Curl",
+                            NameAr = "تبادل العنكبوت",
                             Scope = "Global"
                         },
                         new
@@ -1087,6 +1185,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "21s Curl",
+                            NameAr = "تبادل 21",
                             Scope = "Global"
                         },
                         new
@@ -1097,6 +1196,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Biceps",
                             Name = "Kettlebell Curl",
+                            NameAr = "تبادل بالكيتل بل",
                             Scope = "Global"
                         },
                         new
@@ -1107,6 +1207,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Tricep Pushdown (Cable)",
+                            NameAr = "ضغط الترايسبس للأسفل (كابل)",
                             Scope = "Global"
                         },
                         new
@@ -1117,6 +1218,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Tricep Rope Pushdown",
+                            NameAr = "ضغط الترايسبس بالحبل",
                             Scope = "Global"
                         },
                         new
@@ -1127,6 +1229,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Overhead Cable Tricep Extension",
+                            NameAr = "تمديد الترايسبس فوق الرأس بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -1137,6 +1240,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Single-Arm Cable Pushdown",
+                            NameAr = "ضغط الكابل للأسفل بذراع واحدة",
                             Scope = "Global"
                         },
                         new
@@ -1147,6 +1251,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Skull Crusher (EZ-Bar)",
+                            NameAr = "سكل كراشر (بار متعرج)",
                             Scope = "Global"
                         },
                         new
@@ -1157,6 +1262,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Close-Grip Barbell Bench Press",
+                            NameAr = "ضغط البار بقبضة ضيقة",
                             Scope = "Global"
                         },
                         new
@@ -1167,6 +1273,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Barbell Overhead Tricep Extension",
+                            NameAr = "تمديد الترايسبس فوق الرأس بالبار",
                             Scope = "Global"
                         },
                         new
@@ -1177,6 +1284,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Dumbbell Overhead Tricep Extension",
+                            NameAr = "تمديد الترايسبس فوق الرأس بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1187,6 +1295,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Dumbbell Kickback",
+                            NameAr = "الركلة الخلفية بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1197,6 +1306,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Dumbbell Skull Crusher",
+                            NameAr = "سكل كراشر بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1207,6 +1317,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Tate Press",
+                            NameAr = "ضغط تيت",
                             Scope = "Global"
                         },
                         new
@@ -1217,6 +1328,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Tricep Dips",
+                            NameAr = "متوازي للترايسبس",
                             Scope = "Global"
                         },
                         new
@@ -1227,6 +1339,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Bench Dips",
+                            NameAr = "الغطس على المقعد",
                             Scope = "Global"
                         },
                         new
@@ -1237,6 +1350,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Diamond Push-Ups (Triceps)",
+                            NameAr = "تمرين الضغط الماسي (ترايسبس)",
                             Scope = "Global"
                         },
                         new
@@ -1247,6 +1361,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Machine Tricep Extension",
+                            NameAr = "تمديد الترايسبس على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -1257,6 +1372,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Machine Dip",
+                            NameAr = "الغطس على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -1267,6 +1383,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "JM Press",
+                            NameAr = "ضغط جي إم",
                             Scope = "Global"
                         },
                         new
@@ -1277,6 +1394,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Triceps",
                             Name = "Kettlebell Tricep Extension",
+                            NameAr = "تمديد الترايسبس بالكيتل بل",
                             Scope = "Global"
                         },
                         new
@@ -1287,6 +1405,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Barbell Back Squat",
+                            NameAr = "سكوات خلفي بالبار",
                             Scope = "Global"
                         },
                         new
@@ -1297,6 +1416,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Barbell Front Squat",
+                            NameAr = "سكوات أمامي بالبار",
                             Scope = "Global"
                         },
                         new
@@ -1307,6 +1427,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Overhead Squat",
+                            NameAr = "سكوات فوق الرأس",
                             Scope = "Global"
                         },
                         new
@@ -1317,6 +1438,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Zercher Squat",
+                            NameAr = "سكوات زيرشر",
                             Scope = "Global"
                         },
                         new
@@ -1327,6 +1449,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Barbell Lunge",
+                            NameAr = "الطعن بالبار",
                             Scope = "Global"
                         },
                         new
@@ -1337,6 +1460,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Barbell Step-Up",
+                            NameAr = "الصعود على الصندوق بالبار",
                             Scope = "Global"
                         },
                         new
@@ -1347,6 +1471,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Dumbbell Squat",
+                            NameAr = "سكوات بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1357,6 +1482,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Dumbbell Lunge",
+                            NameAr = "الطعن بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1367,6 +1493,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Dumbbell Walking Lunge",
+                            NameAr = "الطعن المتحرك بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1377,6 +1504,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Dumbbell Step-Up",
+                            NameAr = "الصعود على الصندوق بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1387,6 +1515,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Dumbbell Bulgarian Split Squat",
+                            NameAr = "سكوات بلغاري بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1397,6 +1526,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Goblet Squat",
+                            NameAr = "سكوات الكأس",
                             Scope = "Global"
                         },
                         new
@@ -1407,6 +1537,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Leg Press",
+                            NameAr = "ضغط الأرجل",
                             Scope = "Global"
                         },
                         new
@@ -1417,6 +1548,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Hack Squat Machine",
+                            NameAr = "جهاز هاك سكوات",
                             Scope = "Global"
                         },
                         new
@@ -1427,6 +1559,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Leg Extension Machine",
+                            NameAr = "جهاز تمديد الأرجل",
                             Scope = "Global"
                         },
                         new
@@ -1437,6 +1570,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Smith Machine Squat",
+                            NameAr = "سكوات على جهاز سميث",
                             Scope = "Global"
                         },
                         new
@@ -1447,6 +1581,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "V-Squat Machine",
+                            NameAr = "جهاز في سكوات",
                             Scope = "Global"
                         },
                         new
@@ -1457,6 +1592,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Pendulum Squat",
+                            NameAr = "سكوات البندول",
                             Scope = "Global"
                         },
                         new
@@ -1467,6 +1603,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Sissy Squat",
+                            NameAr = "سيسي سكوات",
                             Scope = "Global"
                         },
                         new
@@ -1477,6 +1614,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Pistol Squat",
+                            NameAr = "سكوات على رجل واحدة",
                             Scope = "Global"
                         },
                         new
@@ -1487,6 +1625,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Wall Sit",
+                            NameAr = "الجلوس على الحائط",
                             Scope = "Global"
                         },
                         new
@@ -1497,6 +1636,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Jump Squat",
+                            NameAr = "سكوات مع القفز",
                             Scope = "Global"
                         },
                         new
@@ -1507,6 +1647,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Box Jump",
+                            NameAr = "القفز على الصندوق",
                             Scope = "Global"
                         },
                         new
@@ -1517,6 +1658,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Kettlebell Goblet Squat",
+                            NameAr = "سكوات الكأس بالكيتل بل",
                             Scope = "Global"
                         },
                         new
@@ -1527,6 +1669,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Lying Leg Curl Machine",
+                            NameAr = "جهاز ثني الأرجل مستلقياً",
                             Scope = "Global"
                         },
                         new
@@ -1537,6 +1680,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Seated Leg Curl Machine",
+                            NameAr = "جهاز ثني الأرجل جالساً",
                             Scope = "Global"
                         },
                         new
@@ -1547,6 +1691,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Standing Leg Curl Machine",
+                            NameAr = "جهاز ثني الأرجل واقفاً",
                             Scope = "Global"
                         },
                         new
@@ -1557,6 +1702,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Stiff-Leg Deadlift",
+                            NameAr = "الرفعة الميتة بأرجل مستقيمة",
                             Scope = "Global"
                         },
                         new
@@ -1567,6 +1713,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Dumbbell Romanian Deadlift",
+                            NameAr = "الرفعة الميتة الرومانية بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1577,6 +1724,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Single-Leg Romanian Deadlift",
+                            NameAr = "الرفعة الميتة الرومانية برجل واحدة",
                             Scope = "Global"
                         },
                         new
@@ -1587,6 +1735,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Good Morning",
+                            NameAr = "تمرين صباح الخير",
                             Scope = "Global"
                         },
                         new
@@ -1597,6 +1746,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Glute-Ham Raise",
+                            NameAr = "رفع الجلوت والخلفية",
                             Scope = "Global"
                         },
                         new
@@ -1607,6 +1757,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Nordic Hamstring Curl",
+                            NameAr = "ثني الخلفية النوردي",
                             Scope = "Global"
                         },
                         new
@@ -1617,6 +1768,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Cable Pull-Through",
+                            NameAr = "السحب بين الأرجل بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -1627,6 +1779,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Standing Calf Raise (Machine)",
+                            NameAr = "رفع السمانة واقفاً (جهاز)",
                             Scope = "Global"
                         },
                         new
@@ -1637,6 +1790,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Seated Calf Raise (Machine)",
+                            NameAr = "رفع السمانة جالساً (جهاز)",
                             Scope = "Global"
                         },
                         new
@@ -1647,6 +1801,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Leg Press Calf Raise",
+                            NameAr = "رفع السمانة على جهاز ضغط الأرجل",
                             Scope = "Global"
                         },
                         new
@@ -1657,6 +1812,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Smith Machine Calf Raise",
+                            NameAr = "رفع السمانة على جهاز سميث",
                             Scope = "Global"
                         },
                         new
@@ -1667,6 +1823,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Donkey Calf Raise",
+                            NameAr = "رفع السمانة بوضع الانحناء",
                             Scope = "Global"
                         },
                         new
@@ -1677,6 +1834,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Barbell Calf Raise",
+                            NameAr = "رفع السمانة بالبار",
                             Scope = "Global"
                         },
                         new
@@ -1687,6 +1845,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Dumbbell Calf Raise",
+                            NameAr = "رفع السمانة بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1697,6 +1856,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Single-Leg Calf Raise",
+                            NameAr = "رفع السمانة برجل واحدة",
                             Scope = "Global"
                         },
                         new
@@ -1707,6 +1867,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Legs",
                             Name = "Bodyweight Calf Raise",
+                            NameAr = "رفع السمانة بوزن الجسم",
                             Scope = "Global"
                         },
                         new
@@ -1717,6 +1878,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Barbell Hip Thrust",
+                            NameAr = "دفع الورك بالبار",
                             Scope = "Global"
                         },
                         new
@@ -1727,6 +1889,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Dumbbell Hip Thrust",
+                            NameAr = "دفع الورك بالدمبل",
                             Scope = "Global"
                         },
                         new
@@ -1737,6 +1900,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Glute Bridge",
+                            NameAr = "جسر الجلوت",
                             Scope = "Global"
                         },
                         new
@@ -1747,6 +1911,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Single-Leg Glute Bridge",
+                            NameAr = "جسر الجلوت برجل واحدة",
                             Scope = "Global"
                         },
                         new
@@ -1757,6 +1922,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Cable Kickback",
+                            NameAr = "الركلة الخلفية بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -1767,6 +1933,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Cable Hip Abduction",
+                            NameAr = "إبعاد الورك بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -1777,6 +1944,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Machine Hip Thrust",
+                            NameAr = "دفع الورك على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -1787,6 +1955,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Machine Hip Abduction",
+                            NameAr = "جهاز إبعاد الورك",
                             Scope = "Global"
                         },
                         new
@@ -1797,6 +1966,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Machine Hip Adduction",
+                            NameAr = "جهاز ضم الورك",
                             Scope = "Global"
                         },
                         new
@@ -1807,6 +1977,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Banded Clamshell",
+                            NameAr = "تمرين المحارة بالمطاط",
                             Scope = "Global"
                         },
                         new
@@ -1817,6 +1988,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Banded Lateral Walk",
+                            NameAr = "المشي الجانبي بالمطاط",
                             Scope = "Global"
                         },
                         new
@@ -1827,6 +1999,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Sumo Squat",
+                            NameAr = "سكوات سومو",
                             Scope = "Global"
                         },
                         new
@@ -1837,6 +2010,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Kettlebell Sumo Deadlift",
+                            NameAr = "الرفعة الميتة سومو بالكيتل بل",
                             Scope = "Global"
                         },
                         new
@@ -1847,6 +2021,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Glutes",
                             Name = "Frog Pump",
+                            NameAr = "تمرين الضفدع",
                             Scope = "Global"
                         },
                         new
@@ -1857,6 +2032,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Plank",
+                            NameAr = "البلانك",
                             Scope = "Global"
                         },
                         new
@@ -1867,6 +2043,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Side Plank",
+                            NameAr = "البلانك الجانبي",
                             Scope = "Global"
                         },
                         new
@@ -1877,6 +2054,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Crunches",
+                            NameAr = "تمرين البطن (كرانش)",
                             Scope = "Global"
                         },
                         new
@@ -1887,6 +2065,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Bicycle Crunches",
+                            NameAr = "كرانش الدراجة",
                             Scope = "Global"
                         },
                         new
@@ -1897,6 +2076,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Reverse Crunches",
+                            NameAr = "الكرانش العكسي",
                             Scope = "Global"
                         },
                         new
@@ -1907,6 +2087,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Sit-Ups",
+                            NameAr = "تمرين المعدة",
                             Scope = "Global"
                         },
                         new
@@ -1917,6 +2098,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "V-Ups",
+                            NameAr = "تمرين V للبطن",
                             Scope = "Global"
                         },
                         new
@@ -1927,6 +2109,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Leg Raises (Lying)",
+                            NameAr = "رفع الأرجل (مستلقياً)",
                             Scope = "Global"
                         },
                         new
@@ -1937,6 +2120,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Hanging Leg Raises",
+                            NameAr = "رفع الأرجل معلقاً",
                             Scope = "Global"
                         },
                         new
@@ -1947,6 +2131,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Hanging Knee Raises",
+                            NameAr = "رفع الركبتين معلقاً",
                             Scope = "Global"
                         },
                         new
@@ -1957,6 +2142,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Russian Twist",
+                            NameAr = "اللف الروسي",
                             Scope = "Global"
                         },
                         new
@@ -1967,6 +2153,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Mountain Climbers",
+                            NameAr = "تسلق الجبل",
                             Scope = "Global"
                         },
                         new
@@ -1977,6 +2164,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Dead Bug",
+                            NameAr = "تمرين الحشرة الميتة",
                             Scope = "Global"
                         },
                         new
@@ -1987,6 +2175,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Bird Dog",
+                            NameAr = "تمرين الطائر والكلب",
                             Scope = "Global"
                         },
                         new
@@ -1997,6 +2186,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Ab Wheel Rollout",
+                            NameAr = "عجلة البطن",
                             Scope = "Global"
                         },
                         new
@@ -2007,6 +2197,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Cable Crunch",
+                            NameAr = "كرانش بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -2017,6 +2208,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Cable Woodchop",
+                            NameAr = "تمرين الحطاب بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -2027,6 +2219,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Cable Pallof Press",
+                            NameAr = "ضغط بالوف بالكابل",
                             Scope = "Global"
                         },
                         new
@@ -2037,6 +2230,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Machine Crunch",
+                            NameAr = "كرانش على الجهاز",
                             Scope = "Global"
                         },
                         new
@@ -2047,6 +2241,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Decline Sit-Ups",
+                            NameAr = "تمرين المعدة على مقعد مائل",
                             Scope = "Global"
                         },
                         new
@@ -2057,6 +2252,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Dragon Flag",
+                            NameAr = "علم التنين",
                             Scope = "Global"
                         },
                         new
@@ -2067,6 +2263,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Flutter Kicks",
+                            NameAr = "ركلات الرفرفة",
                             Scope = "Global"
                         },
                         new
@@ -2077,6 +2274,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Toe Touches",
+                            NameAr = "لمس أصابع القدم",
                             Scope = "Global"
                         },
                         new
@@ -2087,6 +2285,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Core",
                             Name = "Hollow Body Hold",
+                            NameAr = "ثبات الجسم المجوف",
                             Scope = "Global"
                         },
                         new
@@ -2097,6 +2296,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Treadmill Running",
+                            NameAr = "الجري على المشاية",
                             Scope = "Global"
                         },
                         new
@@ -2107,6 +2307,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Treadmill Walking",
+                            NameAr = "المشي على المشاية",
                             Scope = "Global"
                         },
                         new
@@ -2117,6 +2318,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Treadmill Incline Walking",
+                            NameAr = "المشي المائل على المشاية",
                             Scope = "Global"
                         },
                         new
@@ -2127,6 +2329,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Stationary Bike",
+                            NameAr = "الدراجة الثابتة",
                             Scope = "Global"
                         },
                         new
@@ -2137,6 +2340,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Recumbent Bike",
+                            NameAr = "الدراجة المستلقية",
                             Scope = "Global"
                         },
                         new
@@ -2147,6 +2351,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Elliptical Trainer",
+                            NameAr = "جهاز الأوربتراك",
                             Scope = "Global"
                         },
                         new
@@ -2157,6 +2362,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Rowing Machine",
+                            NameAr = "جهاز التجديف",
                             Scope = "Global"
                         },
                         new
@@ -2167,6 +2373,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Stair Climber",
+                            NameAr = "جهاز صعود السلالم",
                             Scope = "Global"
                         },
                         new
@@ -2177,6 +2384,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "StairMaster",
+                            NameAr = "ستير ماستر",
                             Scope = "Global"
                         },
                         new
@@ -2187,6 +2395,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Assault Bike",
+                            NameAr = "دراجة الهواء",
                             Scope = "Global"
                         },
                         new
@@ -2197,6 +2406,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Ski Erg",
+                            NameAr = "جهاز التزلج",
                             Scope = "Global"
                         },
                         new
@@ -2207,6 +2417,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Jump Rope",
+                            NameAr = "نط الحبل",
                             Scope = "Global"
                         },
                         new
@@ -2217,6 +2428,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Double Unders",
+                            NameAr = "نط الحبل المزدوج",
                             Scope = "Global"
                         },
                         new
@@ -2227,6 +2439,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Burpees",
+                            NameAr = "بيربي",
                             Scope = "Global"
                         },
                         new
@@ -2237,6 +2450,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "High Knees",
+                            NameAr = "رفع الركبتين عالياً",
                             Scope = "Global"
                         },
                         new
@@ -2247,6 +2461,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Jumping Jacks",
+                            NameAr = "القفز مع فتح الذراعين والأرجل",
                             Scope = "Global"
                         },
                         new
@@ -2257,6 +2472,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Sprints",
+                            NameAr = "العدو السريع",
                             Scope = "Global"
                         },
                         new
@@ -2267,6 +2483,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Outdoor Running",
+                            NameAr = "الجري في الهواء الطلق",
                             Scope = "Global"
                         },
                         new
@@ -2277,6 +2494,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Outdoor Cycling",
+                            NameAr = "ركوب الدراجة في الهواء الطلق",
                             Scope = "Global"
                         },
                         new
@@ -2287,6 +2505,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Swimming",
+                            NameAr = "السباحة",
                             Scope = "Global"
                         },
                         new
@@ -2297,6 +2516,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "Cardio",
                             Name = "Battle Ropes",
+                            NameAr = "حبال المعركة",
                             Scope = "Global"
                         },
                         new
@@ -2307,6 +2527,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Hamstring Stretch",
+                            NameAr = "إطالة العضلة الخلفية",
                             Scope = "Global"
                         },
                         new
@@ -2317,6 +2538,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Quad Stretch",
+                            NameAr = "إطالة العضلة الأمامية",
                             Scope = "Global"
                         },
                         new
@@ -2327,6 +2549,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Hip Flexor Stretch",
+                            NameAr = "إطالة ثنيات الورك",
                             Scope = "Global"
                         },
                         new
@@ -2337,6 +2560,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Chest Stretch (Doorway)",
+                            NameAr = "إطالة الصدر (عند الباب)",
                             Scope = "Global"
                         },
                         new
@@ -2347,6 +2571,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Shoulder Stretch (Cross-Body)",
+                            NameAr = "إطالة الكتف (عبر الجسم)",
                             Scope = "Global"
                         },
                         new
@@ -2357,6 +2582,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Tricep Stretch (Overhead)",
+                            NameAr = "إطالة الترايسبس (فوق الرأس)",
                             Scope = "Global"
                         },
                         new
@@ -2367,6 +2593,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Lat Stretch",
+                            NameAr = "إطالة عضلة الظهر العريضة",
                             Scope = "Global"
                         },
                         new
@@ -2377,6 +2604,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Cat-Cow Stretch",
+                            NameAr = "إطالة القطة والبقرة",
                             Scope = "Global"
                         },
                         new
@@ -2387,6 +2615,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Child's Pose",
+                            NameAr = "وضعية الطفل",
                             Scope = "Global"
                         },
                         new
@@ -2397,6 +2626,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Pigeon Pose",
+                            NameAr = "وضعية الحمامة",
                             Scope = "Global"
                         },
                         new
@@ -2407,6 +2637,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Seated Forward Fold",
+                            NameAr = "الانحناء للأمام جالساً",
                             Scope = "Global"
                         },
                         new
@@ -2417,6 +2648,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Standing Calf Stretch",
+                            NameAr = "إطالة السمانة واقفاً",
                             Scope = "Global"
                         },
                         new
@@ -2427,6 +2659,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Foam Rolling (Full Body)",
+                            NameAr = "الفوم رولر (الجسم كامل)",
                             Scope = "Global"
                         },
                         new
@@ -2437,6 +2670,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Foam Rolling (IT Band)",
+                            NameAr = "الفوم رولر (جانب الفخذ)",
                             Scope = "Global"
                         },
                         new
@@ -2447,6 +2681,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Foam Rolling (Back)",
+                            NameAr = "الفوم رولر (الظهر)",
                             Scope = "Global"
                         },
                         new
@@ -2457,6 +2692,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Box Jump",
+                            NameAr = "القفز على الصندوق",
                             Scope = "Global"
                         },
                         new
@@ -2467,6 +2703,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Depth Jump",
+                            NameAr = "قفزة العمق",
                             Scope = "Global"
                         },
                         new
@@ -2477,6 +2714,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Broad Jump",
+                            NameAr = "الوثب الطويل",
                             Scope = "Global"
                         },
                         new
@@ -2487,6 +2725,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Tuck Jump",
+                            NameAr = "القفز مع ضم الركبتين",
                             Scope = "Global"
                         },
                         new
@@ -2497,6 +2736,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Lateral Bound",
+                            NameAr = "الوثب الجانبي",
                             Scope = "Global"
                         },
                         new
@@ -2507,6 +2747,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Plyo Push-Up",
+                            NameAr = "تمرين الضغط الانفجاري",
                             Scope = "Global"
                         },
                         new
@@ -2517,6 +2758,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Medicine Ball Slam",
+                            NameAr = "رمي الكرة الطبية على الأرض",
                             Scope = "Global"
                         },
                         new
@@ -2527,6 +2769,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Medicine Ball Chest Pass",
+                            NameAr = "تمرير الكرة الطبية من الصدر",
                             Scope = "Global"
                         },
                         new
@@ -2537,6 +2780,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Medicine Ball Rotational Throw",
+                            NameAr = "رمي الكرة الطبية بالدوران",
                             Scope = "Global"
                         },
                         new
@@ -2547,6 +2791,7 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                             IsActive = true,
                             MuscleGroups = "FullBody",
                             Name = "Skater Jump",
+                            NameAr = "قفزة المتزلج",
                             Scope = "Global"
                         });
                 });

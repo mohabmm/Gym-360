@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -30,10 +31,8 @@ internal sealed class WorkoutAssignedIntegrationEventHandler : INotificationHand
             ["workoutName"] = notification.WorkoutName
         };
 
-        var notif = Notification.Create(
+        var notif = NotificationTexts.WorkoutAssigned(notification.WorkoutName).ToNotification(
             notification.ClientId,
-            "New Workout Assigned",
-            $"Your trainer assigned a new workout: {notification.WorkoutName}",
             NotificationType.WorkoutAssigned,
             notification.GymId,
             data);

@@ -36,7 +36,7 @@ public sealed class OutboxDbContext : DbContext
         {
             entity.ToTable("outbox_message_consumers", schema);
             // Name is part of the clustered PK; keep it well under the 900-byte key limit.
-            // Handler type names are short (< 100 chars in practice).
+            // Namespace-qualified handler names run ~100 chars; OutboxConsumerName caps at 200.
             entity.HasKey(e => new { e.OutboxMessageId, e.Name });
             entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
         });

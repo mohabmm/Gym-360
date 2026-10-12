@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -32,14 +33,9 @@ internal sealed class RemoteWorkoutActivatedIntegrationEventHandler : INotificat
         if (notification.Reason is not null)
             data["reason"] = notification.Reason;
 
-        var body = notification.Reason is not null
-            ? $"Your trainer has activated remote workout mode. Reason: {notification.Reason}"
-            : "Your trainer has activated remote workout mode for you.";
 
-        var notif = Notification.Create(
+        var notif = NotificationTexts.RemoteWorkoutActivated(notification.Reason).ToNotification(
             notification.ClientId,
-            "Remote Workout Activated",
-            body,
             NotificationType.RemoteWorkoutActivated,
             notification.GymId,
             data);

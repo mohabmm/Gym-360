@@ -55,11 +55,9 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
               data: (items) {
                 final filtered = _search.isEmpty
                     ? items
-                    : items.where((e) {
-                        return e.name.toLowerCase().contains(_search) ||
-                            (e.nameAr?.contains(_search) ?? false) ||
-                            e.muscleGroup.toLowerCase().contains(_search);
-                      }).toList();
+                    : items
+                        .where((e) => ExerciseLabels.matches(e, _search))
+                        .toList();
 
                 if (filtered.isEmpty) {
                   return EmptyState(
@@ -100,7 +98,10 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
                                   fontWeight: FontWeight.w600,
                                 ),
                           ),
-                          subtitle: Text(ex.muscleGroup),
+                          subtitle: Text(ExerciseLabels.muscleGroups(
+                            ex.muscleGroups,
+                            isArabic: isArabic,
+                          )),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
@@ -109,7 +110,8 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              ex.category,
+                              ExerciseLabels.category(ex.category,
+                                  isArabic: isArabic),
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ),

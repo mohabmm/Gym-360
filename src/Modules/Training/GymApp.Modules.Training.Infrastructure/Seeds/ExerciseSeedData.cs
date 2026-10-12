@@ -336,6 +336,7 @@ internal static class ExerciseSeedData
             {
                 Id = CreateDeterministicGuid(index),
                 Name = name,
+                NameAr = ExerciseArabicNames.For(name),
                 Description = (string?)null,
                 Instructions = (string?)null,
                 DemoMediaUrl = (string?)null,

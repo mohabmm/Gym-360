@@ -41,7 +41,9 @@ internal sealed class ExerciseRepository : IExerciseRepository
             query = query.Where(e => e.Equipment == equipment.Value);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
-            query = query.Where(e => e.Name.Contains(searchTerm));
+            // Match either language: Arabic-UI users search by the Arabic name.
+            query = query.Where(e =>
+                e.Name.Contains(searchTerm) || (e.NameAr != null && e.NameAr.Contains(searchTerm)));
 
         var exercises = await query
             .OrderBy(e => e.Name)

@@ -51,7 +51,7 @@ internal sealed class CreateRecurringSessionsCommandHandler
             return Result.Failure<List<Guid>>(SchedulingErrors.SlotNotAvailable);
 
         var sessionIds = new List<Guid>();
-        var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
+        var today = GymLocalTime.Today(_dateTimeProvider.UtcNow);
 
         // Find the next occurrence of the requested day of week
         var daysUntilTarget = ((int)request.DayOfWeek - (int)today.DayOfWeek + 7) % 7;

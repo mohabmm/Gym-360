@@ -80,8 +80,8 @@ public sealed class ProcessOutboxMessagesJob : IJob
         var consumed = (await dbContext.OutboxMessageConsumers
                 .Where(c => messageIds.Contains(c.OutboxMessageId))
                 .ToListAsync(cancellationToken))
-            .Select(c => (c.OutboxMessageId, c.Name))
-            .ToHashSet();
+            .GroupBy(c => c.OutboxMessageId)
+            .ToDictionary(g => g.Key, g => g.Select(c => c.Name).ToHashSet());
 
         foreach (var message in messages)
         {
@@ -110,17 +110,21 @@ public sealed class ProcessOutboxMessagesJob : IJob
             var eventType = integrationEvent.GetType();
             var handlerType = typeof(INotificationHandler<>).MakeGenericType(eventType);
             var handleMethod = handlerType.GetMethod("Handle")!;
-            var handlers = sp.GetServices(handlerType);
+            var handlers = sp.GetServices(handlerType).Where(h => h is not null).Select(h => h!).ToList();
+            var handlerTypes = handlers.Select(h => h.GetType()).ToList();
+            if (!consumed.TryGetValue(message.Id, out var consumedNames))
+                consumed[message.Id] = consumedNames = new HashSet<string>();
 
             var failed = false;
             Exception? lastError = null;
 
             foreach (var handler in handlers)
             {
-                if (handler is null) continue;
-                var handlerName = handler.GetType().Name;
+                // Namespace-qualified: several modules declare handlers with the same short
+                // type name for one event, and each of them must run.
+                var handlerName = OutboxConsumerName.For(handler.GetType());
 
-                if (consumed.Contains((message.Id, handlerName)))
+                if (OutboxConsumerName.IsConsumed(handler.GetType(), consumedNames, handlerTypes))
                     continue; // already ran on a previous attempt
 
                 try
@@ -135,7 +139,7 @@ public sealed class ProcessOutboxMessagesJob : IJob
                         Name = handlerName
                     });
                     await dbContext.SaveChangesAsync(cancellationToken);
-                    consumed.Add((message.Id, handlerName));
+                    consumedNames.Add(handlerName);
                 }
                 catch (Exception ex)
                 {

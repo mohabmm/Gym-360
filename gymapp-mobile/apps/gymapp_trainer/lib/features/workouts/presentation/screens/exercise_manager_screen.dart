@@ -240,7 +240,7 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
               children: _muscleGroups.map((m) {
                 final selected = _selectedMuscles.contains(m);
                 return FilterChip(
-                  label: Text(m),
+                  label: Text(ExerciseLabels.muscleGroup(m, isArabic: isArabic)),
                   selected: selected,
                   onSelected: (on) => setState(() {
                     if (on) {
@@ -273,7 +273,11 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
                 labelText: isArabic ? 'المعدات' : 'Equipment',
               ),
               items: _equipmentOptions
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map((e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(
+                            ExerciseLabels.equipment(e, isArabic: isArabic)),
+                      ))
                   .toList(),
               onChanged: (v) => setState(() => _equipment = v ?? 'None'),
             ),
@@ -284,7 +288,11 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
                 labelText: isArabic ? 'التصنيف' : 'Category',
               ),
               items: _categoryOptions
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .map((c) => DropdownMenuItem(
+                        value: c,
+                        child: Text(
+                            ExerciseLabels.category(c, isArabic: isArabic)),
+                      ))
                   .toList(),
               onChanged: (v) => setState(() => _category = v ?? 'Strength'),
             ),
@@ -387,10 +395,9 @@ class _AllExercisesTab extends ConsumerWidget {
       data: (exercises) {
         final filtered = searchQuery.isEmpty
             ? exercises
-            : exercises.where((e) {
-                final name = (e.nameAr ?? e.name).toLowerCase();
-                return name.contains(searchQuery.toLowerCase());
-              }).toList();
+            : exercises
+                .where((e) => ExerciseLabels.matches(e, searchQuery))
+                .toList();
 
         if (filtered.isEmpty) {
           return EmptyState(
@@ -443,10 +450,9 @@ class _CustomExercisesTab extends ConsumerWidget {
       data: (exercises) {
         final filtered = searchQuery.isEmpty
             ? exercises
-            : exercises.where((e) {
-                final name = (e.nameAr ?? e.name).toLowerCase();
-                return name.contains(searchQuery.toLowerCase());
-              }).toList();
+            : exercises
+                .where((e) => ExerciseLabels.matches(e, searchQuery))
+                .toList();
 
         if (filtered.isEmpty) {
           return EmptyState(
@@ -500,12 +506,11 @@ class _ExerciseTile extends StatelessWidget {
             size: 18,
           ),
         ),
-        title: Text(
-          isArabic && exercise.nameAr != null
-              ? exercise.nameAr!
-              : exercise.name,
-        ),
-        subtitle: Text(exercise.muscleGroup),
+        title: Text(ExerciseLabels.name(exercise, isArabic: isArabic)),
+        subtitle: Text(ExerciseLabels.muscleGroups(
+          exercise.muscleGroups,
+          isArabic: isArabic,
+        )),
       ),
     );
   }

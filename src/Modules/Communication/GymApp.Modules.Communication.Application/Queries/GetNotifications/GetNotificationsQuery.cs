@@ -7,4 +7,5 @@ public sealed record GetNotificationsQuery(
     Guid UserId,
     Guid? GymId,
     int Page,
-    int PageSize) : IQuery<PagedResponse<NotificationDto>>;
+    int PageSize,
+    string? Language = null) : IQuery<PagedResponse<NotificationDto>>;
