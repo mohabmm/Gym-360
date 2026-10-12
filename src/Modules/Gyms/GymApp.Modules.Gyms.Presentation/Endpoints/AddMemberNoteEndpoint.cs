@@ -41,7 +41,9 @@ internal sealed class AddMemberNoteEndpoint : IEndpoint
         .Produces<ApiResponse<Guid>>(201)
         .Produces<ApiResponse<object>>(400)
         .Produces<ApiResponse<object>>(401)
-        .RequireAuthorization();
+        .Produces<ApiResponse<object>>(403)
+        .RequireAuthorization()
+        .RequireMemberAccess(MemberAccessLevel.StaffOrTrainer);
 
         app.MapGet("api/v1/gyms/{gymId:guid}/members/{memberId:guid}/notes",
             async (Guid gymId, Guid memberId, ISender sender) =>
@@ -58,6 +60,8 @@ internal sealed class AddMemberNoteEndpoint : IEndpoint
         .WithDescription("Retrieves all private notes about a gym member.")
         .Produces<ApiResponse<List<MemberNoteDto>>>(200)
         .Produces<ApiResponse<object>>(401)
-        .RequireAuthorization();
+        .Produces<ApiResponse<object>>(403)
+        .RequireAuthorization()
+        .RequireMemberAccess(MemberAccessLevel.StaffOrTrainer);
     }
 }
