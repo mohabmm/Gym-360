@@ -1,3 +1,4 @@
+using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Application.DTOs;
@@ -20,8 +21,9 @@ internal sealed class GetSessionsQueryHandler
         GetSessionsQuery request,
         CancellationToken cancellationToken)
     {
-        var from = request.From ?? DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-1));
-        var to = request.To ?? DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(1));
+        var today = GymLocalTime.Today();
+        var from = request.From ?? today.AddMonths(-1);
+        var to = request.To ?? today.AddMonths(1);
 
         IReadOnlyList<Domain.Entities.Session> sessions;
 

@@ -22,7 +22,12 @@ internal sealed class GetNotificationsEndpoint : IEndpoint
             if (!UserContext.TryGetUserId(httpContext, out var userId))
                 return Results.Unauthorized();
 
-            var query = new GetNotificationsQuery(userId, gymId, page, pageSize);
+            // First tag of Accept-Language ("ar", "en-US;q=0.9", …) picks the text language.
+            var language = httpContext.Request.Headers.AcceptLanguage.ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault()?.Split(';')[0];
+
+            var query = new GetNotificationsQuery(userId, gymId, page, pageSize, language);
             var result = await sender.Send(query);
 
             return result.IsSuccess

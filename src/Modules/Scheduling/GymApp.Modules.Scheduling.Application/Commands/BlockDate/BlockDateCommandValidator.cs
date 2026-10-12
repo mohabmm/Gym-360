@@ -1,3 +1,4 @@
+using GymApp.Modules.Scheduling.Application.Abstractions;
 using FluentValidation;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.BlockDate;
@@ -13,7 +14,7 @@ internal sealed class BlockDateCommandValidator : AbstractValidator<BlockDateCom
             .NotEmpty().WithMessage("Gym ID is required.");
 
         RuleFor(x => x.Date)
-            .Must(d => d >= DateOnly.FromDateTime(DateTime.UtcNow.Date))
+            .Must(d => d >= GymLocalTime.Today())
             .WithMessage("Cannot block a date in the past.");
     }
 }

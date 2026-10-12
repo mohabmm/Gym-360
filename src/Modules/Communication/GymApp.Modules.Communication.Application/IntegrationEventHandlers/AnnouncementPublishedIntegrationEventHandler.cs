@@ -1,4 +1,5 @@
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -59,10 +60,8 @@ internal sealed class AnnouncementPublishedIntegrationEventHandler
 
         foreach (var memberId in memberIds)
         {
-            var notif = Notification.Create(
+            var notif = NotificationTexts.Announcement(notification.Title).ToNotification(
                 memberId,
-                notification.Title,
-                $"New announcement: {notification.Title}",
                 NotificationType.Announcement,
                 notification.GymId,
                 // Each notification carries its own copy of the metadata.

@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.IntegrationEvents;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -30,10 +31,8 @@ internal sealed class PaymentReceivedIntegrationEventHandler : INotificationHand
             ["amount"] = notification.Amount.ToString("F2")
         };
 
-        var notif = Notification.Create(
+        var notif = NotificationTexts.PaymentReceived(notification.Amount).ToNotification(
             notification.MemberId,
-            "Payment Received",
-            $"Your payment of {notification.Amount:F2} EGP has been received.",
             NotificationType.PaymentReceived,
             notification.GymId,
             data);

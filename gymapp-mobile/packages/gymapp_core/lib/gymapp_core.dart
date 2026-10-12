@@ -85,6 +85,7 @@ export 'src/utils/number_formatter.dart';
 export 'src/utils/validators.dart';
 export 'src/utils/extensions.dart';
 export 'src/utils/debouncer.dart';
+export 'src/utils/exercise_labels.dart';
 export 'src/utils/telemetry_navigator_observer.dart';
 
 // Widgets

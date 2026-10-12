@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -30,10 +31,8 @@ internal sealed class StreakMilestoneReachedIntegrationEventHandler : INotificat
             ["gymId"] = notification.GymId.ToString()
         };
 
-        var notif = Notification.Create(
+        var notif = NotificationTexts.StreakMilestone(notification.MilestoneDay, notification.StreakType).ToNotification(
             notification.UserId,
-            "Streak Milestone!",
-            $"Congratulations! You've reached a {notification.MilestoneDay}-day {notification.StreakType} streak!",
             NotificationType.StreakMilestone,
             notification.GymId,
             data);

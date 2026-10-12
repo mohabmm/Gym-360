@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.IntegrationEvents;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -31,10 +32,8 @@ internal sealed class SessionPackageLowIntegrationEventHandler : INotificationHa
         };
 
         // Notify member
-        var memberNotif = Notification.Create(
+        var memberNotif = NotificationTexts.SessionPackageLow(notification.Remaining).ToNotification(
             notification.MemberId,
-            "Session Package Running Low",
-            $"You have only {notification.Remaining} sessions remaining in your package.",
             NotificationType.PackageLow,
             notification.GymId,
             data);

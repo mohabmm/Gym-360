@@ -61,7 +61,7 @@ class _WorkoutBuilderScreenState extends ConsumerState<WorkoutBuilderScreen> {
             final fallback = isArabic ? 'تمرين' : 'Exercise';
             final name = ex == null
                 ? fallback
-                : (ex.nameAr ?? ex.name);
+                : ExerciseLabels.name(ex, isArabic: isArabic);
             return _ExerciseEntry(
               exerciseId: e.exerciseId,
               exerciseName: name,
@@ -182,7 +182,10 @@ class _WorkoutBuilderScreenState extends ConsumerState<WorkoutBuilderScreen> {
     setState(() {
       _exercises.add(_ExerciseEntry(
         exerciseId: exercise.id,
-        exerciseName: exercise.nameAr ?? exercise.name,
+        exerciseName: ExerciseLabels.name(
+          exercise,
+          isArabic: Localizations.localeOf(context).languageCode == 'ar',
+        ),
         sets: 3,
         reps: 12,
         restSeconds: 60,
@@ -614,12 +617,10 @@ class _ExercisePickerSheetState
               data: (exercises) {
                 final filtered = _searchQuery.isEmpty
                     ? exercises
-                    : exercises.where((e) {
-                        final name =
-                            (e.nameAr ?? e.name).toLowerCase();
-                        return name
-                            .contains(_searchQuery.toLowerCase());
-                      }).toList();
+                    : exercises
+                        .where((e) =>
+                            ExerciseLabels.matches(e, _searchQuery))
+                        .toList();
 
                 return ListView.builder(
                   controller: scrollController,
@@ -628,12 +629,14 @@ class _ExercisePickerSheetState
                   itemBuilder: (context, index) {
                     final exercise = filtered[index];
                     return ListTile(
-                      title: Text(
-                        widget.isArabic && exercise.nameAr != null
-                            ? exercise.nameAr!
-                            : exercise.name,
-                      ),
-                      subtitle: Text(exercise.muscleGroup),
+                      title: Text(ExerciseLabels.name(
+                        exercise,
+                        isArabic: widget.isArabic,
+                      )),
+                      subtitle: Text(ExerciseLabels.muscleGroups(
+                        exercise.muscleGroups,
+                        isArabic: widget.isArabic,
+                      )),
                       onTap: () => widget.onSelected(exercise),
                     );
                   },

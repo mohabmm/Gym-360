@@ -14,6 +14,16 @@ internal static class GymLocalTime
     public static DateTime FromUtc(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), EgyptTimeZone);
 
+    /// <summary>
+    /// The gym's calendar date at the given UTC instant. Use this — not the UTC date —
+    /// wherever "today" is compared with a session's (gym-local) ScheduledDate: between
+    /// midnight and 02:00/03:00 Cairo time the UTC date is still yesterday.
+    /// </summary>
+    public static DateOnly Today(DateTime utcNow) => DateOnly.FromDateTime(FromUtc(utcNow));
+
+    /// <summary>The gym's calendar date right now.</summary>
+    public static DateOnly Today() => Today(DateTime.UtcNow);
+
     /// <summary>UTC instant for the given gym-local wall-clock value.</summary>
     public static DateTime ToUtc(DateTime gymLocal) =>
         TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(gymLocal, DateTimeKind.Unspecified), EgyptTimeZone);

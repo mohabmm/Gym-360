@@ -1,3 +1,4 @@
+using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Application.Contracts;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Infrastructure.Persistence;
@@ -53,7 +54,7 @@ internal sealed class SchedulingQueryService : ISchedulingQueryService
         Guid gymId,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = GymLocalTime.Today();
 
         var session = await _dbContext.Sessions
             .AsNoTracking()

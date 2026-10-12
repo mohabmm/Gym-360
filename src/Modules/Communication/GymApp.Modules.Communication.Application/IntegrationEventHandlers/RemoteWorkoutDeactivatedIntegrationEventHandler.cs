@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -29,10 +30,8 @@ internal sealed class RemoteWorkoutDeactivatedIntegrationEventHandler : INotific
             ["gymId"] = notification.GymId.ToString()
         };
 
-        var notif = Notification.Create(
+        var notif = NotificationTexts.RemoteWorkoutDeactivated().ToNotification(
             notification.ClientId,
-            "Remote Workout Deactivated",
-            "Your trainer has deactivated remote workout mode. You are back to in-gym training.",
             NotificationType.RemoteWorkoutActivated,
             notification.GymId,
             data);

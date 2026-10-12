@@ -1,3 +1,4 @@
+using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Repositories;
@@ -70,7 +71,7 @@ internal sealed class SessionRepository : ISessionRepository
         Guid trainerId,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = GymLocalTime.Today();
 
         return await _dbContext.Sessions
             .AsNoTracking()
@@ -89,7 +90,7 @@ internal sealed class SessionRepository : ISessionRepository
         Guid memberId,
         CancellationToken cancellationToken = default)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = GymLocalTime.Today();
 
         return await _dbContext.Sessions
             .AsNoTracking()

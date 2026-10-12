@@ -52,4 +52,14 @@ public static class TrainingModuleRegistration
 
         return services;
     }
+
+    /// <summary>
+    /// Fills in Arabic names for the global exercise library in the current tenant scope.
+    /// Safe to run on every startup (no-op once the names are in place).
+    /// </summary>
+    public static Task<int> BackfillExerciseArabicNamesAsync(
+        IServiceProvider serviceProvider,
+        CancellationToken cancellationToken = default) =>
+        Seeds.ExerciseArabicNameBackfill.RunAsync(
+            serviceProvider.GetRequiredService<TrainingDbContext>(), cancellationToken);
 }
