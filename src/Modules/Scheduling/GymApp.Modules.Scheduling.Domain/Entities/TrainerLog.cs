@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Domain.Entities;
 
@@ -41,30 +42,21 @@ public sealed class TrainerLog : Entity
     public bool AttendanceConfirmed { get; private set; }
     public DateTime LoggedAt { get; private set; }
 
-    public static TrainerLog Create(
-        Guid sessionId,
-        string exercisesPerformed,
-        string? actualVsPlanned,
-        int clientEffortRating,
-        string? feedback,
-        string? techniqueNotes,
-        string? areasToImprove,
-        string? nextSessionFocus,
-        bool attendanceConfirmed)
+    public static TrainerLog Create(Guid sessionId, TrainerLogDetails details)
     {
-        if (clientEffortRating < 1 || clientEffortRating > 5)
-            throw new ArgumentOutOfRangeException(nameof(clientEffortRating), "Client effort rating must be between 1 and 5.");
+        if (details.ClientEffortRating < 1 || details.ClientEffortRating > 5)
+            throw new ArgumentOutOfRangeException(nameof(details), "Client effort rating must be between 1 and 5.");
 
         return new TrainerLog(
             Guid.NewGuid(),
             sessionId,
-            exercisesPerformed,
-            actualVsPlanned,
-            clientEffortRating,
-            feedback,
-            techniqueNotes,
-            areasToImprove,
-            nextSessionFocus,
-            attendanceConfirmed);
+            details.ExercisesPerformed,
+            details.ActualVsPlanned,
+            details.ClientEffortRating,
+            details.Feedback,
+            details.TechniqueNotes,
+            details.AreasToImprove,
+            details.NextSessionFocus,
+            details.AttendanceConfirmed);
     }
 }

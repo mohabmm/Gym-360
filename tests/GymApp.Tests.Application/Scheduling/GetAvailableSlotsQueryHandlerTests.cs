@@ -2,6 +2,7 @@ using GymApp.Modules.Scheduling.Application.Queries.GetAvailableSlots;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Scheduling;
 
@@ -81,8 +82,10 @@ public class GetAvailableSlotsQueryHandlerTests
         var availability = TrainerAvailability.Create(_trainerId, _gymId);
         availability.AddSlot(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(12, 0));
         var booked = Session.Create(
-            _gymId, _trainerId, Guid.NewGuid(), Monday, new TimeOnly(9, 0),
-            60, SessionType.PersonalTraining, "Legs");
+            new SessionParticipants(_gymId, _trainerId, Guid.NewGuid()),
+            new SessionSchedule(Monday, new TimeOnly(9, 0), 60),
+            SessionType.PersonalTraining,
+            "Legs");
         Arrange(availability, booked);
 
         var result = await _sut.Handle(
@@ -100,8 +103,10 @@ public class GetAvailableSlotsQueryHandlerTests
         var availability = TrainerAvailability.Create(_trainerId, _gymId, 60, 15);
         availability.AddSlot(DayOfWeek.Monday, new TimeOnly(21, 45), new TimeOnly(23, 59));
         var booked = Session.Create(
-            _gymId, _trainerId, Guid.NewGuid(), Monday, new TimeOnly(21, 45),
-            60, SessionType.PersonalTraining, "Core");
+            new SessionParticipants(_gymId, _trainerId, Guid.NewGuid()),
+            new SessionSchedule(Monday, new TimeOnly(21, 45), 60),
+            SessionType.PersonalTraining,
+            "Core");
         Arrange(availability, booked);
 
         var result = await _sut.Handle(

@@ -6,6 +6,7 @@ using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Common.Application.Messaging;
 
@@ -30,8 +31,10 @@ public class CancelSessionCommandHandlerTests
     {
         var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(daysFromNow));
         return Session.Create(
-            gymId, Guid.NewGuid(), Guid.NewGuid(),
-            futureDate, new TimeOnly(10, 0), 60, SessionType.PersonalTraining, "General");
+            new SessionParticipants(gymId, Guid.NewGuid(), Guid.NewGuid()),
+            new SessionSchedule(futureDate, new TimeOnly(10, 0), 60),
+            SessionType.PersonalTraining,
+            "General");
     }
 
     [Fact]
@@ -117,8 +120,10 @@ public class CancelSessionCommandHandlerTests
         var sessionTime = TimeOnly.FromDateTime(now.AddHours(2));
 
         var session = Session.Create(
-            gymId, Guid.NewGuid(), Guid.NewGuid(),
-            sessionDate, sessionTime, 60, SessionType.PersonalTraining, "General");
+            new SessionParticipants(gymId, Guid.NewGuid(), Guid.NewGuid()),
+            new SessionSchedule(sessionDate, sessionTime, 60),
+            SessionType.PersonalTraining,
+            "General");
 
         var sessionId = Guid.NewGuid();
         _sessionRepository.GetByIdAsync(sessionId, Arg.Any<CancellationToken>())

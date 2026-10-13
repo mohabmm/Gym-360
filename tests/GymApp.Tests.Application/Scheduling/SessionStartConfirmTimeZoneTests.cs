@@ -6,6 +6,7 @@ using GymApp.Modules.Scheduling.Application.Commands.StartSession;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Scheduling;
 
@@ -34,8 +35,10 @@ public class SessionStartConfirmTimeZoneTests
     private Session ArrangeSession(bool confirmed)
     {
         var session = Session.Create(
-            GymId, Guid.NewGuid(), Guid.NewGuid(),
-            SessionDate, SessionTime, 60, SessionType.PersonalTraining, "General");
+            new SessionParticipants(GymId, Guid.NewGuid(), Guid.NewGuid()),
+            new SessionSchedule(SessionDate, SessionTime, 60),
+            SessionType.PersonalTraining,
+            "General");
         if (confirmed)
             session.Confirm(new DateTime(2026, 10, 1)).IsSuccess.Should().BeTrue();
 

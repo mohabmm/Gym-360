@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Domain.Errors;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 
@@ -29,12 +30,14 @@ internal sealed class LogMemberSessionCommandHandler : ICommandHandler<LogMember
         if (session.MemberId != request.MemberId)
             return Result.Failure(SchedulingErrors.NotSessionOwner);
 
-        var result = session.LogMemberSession(
-            request.Rating,
-            request.PerceivedExertion,
-            request.PersonalNotes,
-            request.Discomfort,
-            request.Satisfaction);
+        var result = session.LogMemberSession(new MemberLogDetails
+        {
+            Rating = request.Rating,
+            PerceivedExertion = request.PerceivedExertion,
+            PersonalNotes = request.PersonalNotes,
+            Discomfort = request.Discomfort,
+            Satisfaction = request.Satisfaction
+        });
 
         if (result.IsFailure)
             return result;

@@ -2,6 +2,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Events;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Domain.Entities;
 
@@ -18,29 +19,18 @@ public sealed class Session : Entity
     private Session() : base() { }
 
     private Session(
-        Guid id,
-        Guid gymId,
-        Guid trainerId,
-        Guid memberId,
-        DateOnly scheduledDate,
-        TimeOnly scheduledTime,
-        int durationMinutes,
-        SessionType sessionType,
-        string? focus,
-        bool isRecurring,
-        string? recurrenceRule) : base(id)
+        SessionParticipants participants,
+        SessionSchedule schedule,
+        SessionType sessionType) : base(Guid.NewGuid())
     {
-        GymId = gymId;
-        TrainerId = trainerId;
-        MemberId = memberId;
-        ScheduledDate = scheduledDate;
-        ScheduledTime = scheduledTime;
-        DurationMinutes = durationMinutes;
+        GymId = participants.GymId;
+        TrainerId = participants.TrainerId;
+        MemberId = participants.MemberId;
+        ScheduledDate = schedule.Date;
+        ScheduledTime = schedule.Time;
+        DurationMinutes = schedule.DurationMinutes;
         SessionType = sessionType;
-        Focus = focus;
         Status = SessionStatus.Pending;
-        IsRecurring = isRecurring;
-        RecurrenceRule = recurrenceRule;
         CreatedAt = DateTime.UtcNow;
     }
 
@@ -63,35 +53,33 @@ public sealed class Session : Entity
     public DateTime CreatedAt { get; private set; }
 
     public static Session Create(
-        Guid gymId,
-        Guid trainerId,
-        Guid memberId,
-        DateOnly scheduledDate,
-        TimeOnly scheduledTime,
-        int durationMinutes,
+        SessionParticipants participants,
+        SessionSchedule schedule,
         SessionType sessionType,
-        string? focus = null,
-        bool isRecurring = false,
-        string? recurrenceRule = null)
+        string? focus = null)
     {
-        var session = new Session(
-            Guid.NewGuid(),
-            gymId,
-            trainerId,
-            memberId,
-            scheduledDate,
-            scheduledTime,
-            durationMinutes,
-            sessionType,
-            focus,
-            isRecurring,
-            recurrenceRule);
-
-        session.RaiseDomainEvent(new SessionBookedDomainEvent(
-            session.Id, trainerId, memberId, gymId));
-
+        var session = new Session(participants, schedule, sessionType) { Focus = focus };
+        session.RaiseBooked();
         return session;
     }
+
+    public static Session CreateRecurring(
+        SessionParticipants participants,
+        SessionSchedule schedule,
+        SessionType sessionType,
+        string? recurrenceRule)
+    {
+        var session = new Session(participants, schedule, sessionType)
+        {
+            IsRecurring = true,
+            RecurrenceRule = recurrenceRule
+        };
+        session.RaiseBooked();
+        return session;
+    }
+
+    private void RaiseBooked() =>
+        RaiseDomainEvent(new SessionBookedDomainEvent(Id, TrainerId, MemberId, GymId));
 
     /// <param name="nowGymLocal">
     /// Current time as gym-local wall-clock — the same frame ScheduledDate/ScheduledTime
@@ -183,43 +171,21 @@ public sealed class Session : Entity
         return Result.Success();
     }
 
-    public Result LogTrainerSession(
-        string exercisesPerformed,
-        string? actualVsPlanned,
-        int clientEffortRating,
-        string? feedback,
-        string? techniqueNotes,
-        string? areasToImprove,
-        string? nextSessionFocus,
-        bool attendanceConfirmed)
+    public Result LogTrainerSession(TrainerLogDetails details)
     {
         if (TrainerLog is not null)
             return Result.Failure(SchedulingErrors.TrainerLogAlreadyExists);
 
-        if (clientEffortRating < 1 || clientEffortRating > 5)
+        if (!IsInRange(details.ClientEffortRating, 1, 5))
             return Result.Failure(SchedulingErrors.InvalidRating);
 
-        TrainerLog = TrainerLog.Create(
-            Id,
-            exercisesPerformed,
-            actualVsPlanned,
-            clientEffortRating,
-            feedback,
-            techniqueNotes,
-            areasToImprove,
-            nextSessionFocus,
-            attendanceConfirmed);
+        TrainerLog = TrainerLog.Create(Id, details);
 
         RaiseDomainEvent(new TrainerLoggedSessionDomainEvent(Id, TrainerId));
         return Result.Success();
     }
 
-    public Result LogMemberSession(
-        int rating,
-        int perceivedExertion,
-        string? personalNotes,
-        string? discomfort,
-        int satisfaction)
+    public Result LogMemberSession(MemberLogDetails details)
     {
         if (Status != SessionStatus.Completed)
             return Result.Failure(SchedulingErrors.MemberLogRequiresCompletedSession);
@@ -227,58 +193,29 @@ public sealed class Session : Entity
         if (MemberLog is not null)
             return Result.Failure(SchedulingErrors.MemberLogAlreadyExists);
 
-        if (rating < 1 || rating > 5)
-            return Result.Failure(SchedulingErrors.InvalidRating);
+        var validation = ValidateMemberLog(details);
+        if (validation.IsFailure)
+            return validation;
 
-        if (perceivedExertion < 1 || perceivedExertion > 10)
-            return Result.Failure(SchedulingErrors.InvalidExertion);
-
-        if (satisfaction < 1 || satisfaction > 5)
-            return Result.Failure(SchedulingErrors.InvalidRating);
-
-        MemberLog = MemberLog.Create(
-            Id,
-            rating,
-            perceivedExertion,
-            personalNotes,
-            discomfort,
-            satisfaction);
+        MemberLog = MemberLog.Create(Id, details);
 
         RaiseDomainEvent(new MemberLoggedSessionDomainEvent(Id, MemberId));
         return Result.Success();
     }
 
-    public Result<SessionExerciseLog> AddExerciseLog(
-        Guid? exerciseId,
-        string exerciseName,
-        string? exerciseNameAr,
-        int orderIndex,
-        int sets,
-        string reps,
-        decimal? weight,
-        string? notes)
+    public Result<SessionExerciseLog> AddExerciseLog(ExerciseLogDetails details)
     {
         if (Status != SessionStatus.Completed)
             return Result.Failure<SessionExerciseLog>(SchedulingErrors.ExerciseLogRequiresCompletedSession);
 
-        var log = SessionExerciseLog.Create(
-            Id, exerciseId, exerciseName, exerciseNameAr, orderIndex, sets, reps, weight, notes);
+        var log = SessionExerciseLog.Create(Id, details);
 
         _exerciseLogs.Add(log);
         RaiseDomainEvent(new ExerciseLoggedDomainEvent(Id, log.Id, TrainerId, MemberId));
         return Result.Success(log);
     }
 
-    public Result UpdateExerciseLog(
-        Guid logId,
-        Guid? exerciseId,
-        string exerciseName,
-        string? exerciseNameAr,
-        int orderIndex,
-        int sets,
-        string reps,
-        decimal? weight,
-        string? notes)
+    public Result UpdateExerciseLog(Guid logId, ExerciseLogDetails details)
     {
         if (Status != SessionStatus.Completed)
             return Result.Failure(SchedulingErrors.ExerciseLogRequiresCompletedSession);
@@ -287,7 +224,7 @@ public sealed class Session : Entity
         if (log is null)
             return Result.Failure(SchedulingErrors.ExerciseLogNotFound(logId));
 
-        log.Apply(exerciseId, exerciseName, exerciseNameAr, orderIndex, sets, reps, weight, notes);
+        log.Apply(details);
         return Result.Success();
     }
 
@@ -300,4 +237,20 @@ public sealed class Session : Entity
         _exerciseLogs.Remove(log);
         return Result.Success();
     }
+
+    private static Result ValidateMemberLog(MemberLogDetails details)
+    {
+        if (!IsInRange(details.Rating, 1, 5))
+            return Result.Failure(SchedulingErrors.InvalidRating);
+
+        if (!IsInRange(details.PerceivedExertion, 1, 10))
+            return Result.Failure(SchedulingErrors.InvalidExertion);
+
+        if (!IsInRange(details.Satisfaction, 1, 5))
+            return Result.Failure(SchedulingErrors.InvalidRating);
+
+        return Result.Success();
+    }
+
+    private static bool IsInRange(int value, int min, int max) => value >= min && value <= max;
 }
