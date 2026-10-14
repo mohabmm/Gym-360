@@ -37,13 +37,9 @@ internal sealed class GetGymMembersQueryHandler : IQueryHandler<GetGymMembersQue
 
         var result = await _gymQueryService.GetMembersAsync(
             request.GymId,
-            request.Page,
-            request.PageSize,
-            request.Status,
-            request.Section,
-            request.Search,
-            cancellationToken,
-            restrictToMemberIds);
+            new MemberRosterRequest(
+                request.Page, request.PageSize, request.Status, request.Section, request.Search, restrictToMemberIds),
+            cancellationToken);
 
         return Result.Success(result);
     }

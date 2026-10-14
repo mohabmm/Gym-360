@@ -99,15 +99,14 @@ internal sealed class GymQueryService : IGymQueryService
     }
 
     public async Task<PagedResponse<MemberDto>> GetMembersAsync(
-        Guid gymId, int page, int pageSize, string? status, string? section, string? search,
-        CancellationToken cancellationToken = default,
-        IReadOnlyCollection<Guid>? restrictToMemberIds = null)
+        Guid gymId, MemberRosterRequest request, CancellationToken cancellationToken = default)
     {
+        var (page, pageSize) = (request.Page, request.PageSize);
         var gym = await FindGymAsync(gymId, cancellationToken);
 
         // An unsupported status value has no backing data — return an empty page rather
         // than silently falling through to the full roster.
-        var filter = MemberRosterFilter.Parse(status, section, search);
+        var filter = MemberRosterFilter.Parse(request.Status, request.Section, request.Search);
         if (gym is null || !filter.IsStatusSupported)
             return new PagedResponse<MemberDto>(new List<MemberDto>(), page, pageSize, 0, 0);
 
@@ -121,7 +120,7 @@ internal sealed class GymQueryService : IGymQueryService
         // whole roster — not just one fetched page (the old behaviour silently hid
         // members past the first client-side slice).
         var filteredIds = await FilterRosterAsync(
-            RosterMemberIds(gym, restrictToMemberIds), filter, directory, cancellationToken);
+            RosterMemberIds(gym, request.RestrictToMemberIds), filter, directory, cancellationToken);
 
         var pagedIds = filteredIds
             .Skip((page - 1) * pageSize)
@@ -137,12 +136,16 @@ internal sealed class GymQueryService : IGymQueryService
 
         var pagedMembers = pagedIds
             .Select(id => GymQueryMappings.ToMemberDto(
-                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), gym.CreatedAt, section))
+                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), gym.CreatedAt, request.Section))
             .ToList();
 
         return new PagedResponse<MemberDto>(
             pagedMembers, page, pageSize, filteredIds.Count, TotalPages(filteredIds.Count, pageSize));
     }
+
+    // A member id equal to the gym's own id is a ghost (stale data in member_ids), not a real member.
+    private static bool IsRealMember(Gym gym, Guid memberId) =>
+        memberId != gym.Id && gym.MemberIds.Contains(memberId);
 
     // Member ids in the gym's stored order.
     private static List<Guid> RosterMemberIds(Gym gym, IReadOnlyCollection<Guid>? restrictToMemberIds)
@@ -203,8 +206,7 @@ internal sealed class GymQueryService : IGymQueryService
     {
         var gym = await FindGymAsync(gymId, cancellationToken);
 
-        // memberId == gymId is a ghost id (stale data in member_ids), not a real member.
-        if (gym is null || memberId == gymId || !gym.MemberIds.Contains(memberId))
+        if (gym is null || !IsRealMember(gym, memberId))
             return null;
 
         var profile = await _userProfileLookup.GetProfileAsync(memberId, cancellationToken);

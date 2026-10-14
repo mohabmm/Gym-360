@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
 using GymApp.Modules.Identity.Domain.Repositories;
+using GymApp.Modules.Identity.Domain.ValueObjects;
 using GymApp.Modules.Identity.Application.Abstractions;
 
 namespace GymApp.Modules.Identity.Application.Commands.UpdateProfile;
@@ -42,7 +43,7 @@ internal sealed class UpdateProfileCommandHandler : ICommandHandler<UpdateProfil
             language = parsedLanguage;
         }
 
-        user.UpdateProfile(firstName, lastName, profilePhotoUrl, dateOfBirth, language);
+        user.UpdateProfile(new UserProfile(firstName, lastName, profilePhotoUrl, dateOfBirth, language));
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 

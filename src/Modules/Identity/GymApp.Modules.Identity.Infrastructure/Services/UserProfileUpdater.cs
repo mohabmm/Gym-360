@@ -28,12 +28,12 @@ internal sealed class UserProfileUpdater : IUserProfileUpdater
 
         if (firstName is not null || lastName is not null)
         {
-            user.UpdateProfile(
+            user.UpdateProfile(new UserProfile(
                 firstName ?? user.FirstName,
                 lastName ?? user.LastName,
                 user.ProfilePhotoUrl,
                 user.DateOfBirth,
-                user.Language);
+                user.Language));
         }
 
         if (phone is not null)

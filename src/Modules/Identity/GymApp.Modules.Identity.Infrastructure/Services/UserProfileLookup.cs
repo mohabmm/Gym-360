@@ -1,4 +1,5 @@
 using GymApp.Modules.Identity.Shared;
+using GymApp.Modules.Identity.Domain.Entities;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -99,26 +100,9 @@ internal sealed class UserProfileLookup : IUserProfileLookup
         if (ids.Length == 0)
             return Array.Empty<Guid>();
 
-        var query = _dbContext.Users
-            .AsNoTracking()
-            .Where(u => ids.Contains(u.Id));
-
-        // Status is value-converted to a string column, so an enum equality predicate
-        // translates to SQL cleanly. Map the staff UI's member-status vocabulary onto
-        // UserStatus: "frozen" is a gym-directory flag handled by the caller (never
-        // reaches here); "expired" has no UserStatus backing (no profile constraint).
-        if (!string.IsNullOrWhiteSpace(status))
-        {
-            switch (status.Trim().ToLowerInvariant())
-            {
-                case "active":
-                    query = query.Where(u => u.Status == UserStatus.Active);
-                    break;
-                case "inactive":
-                    query = query.Where(u => u.Status != UserStatus.Active && u.Status != UserStatus.Deleted);
-                    break;
-            }
-        }
+        var query = WhereStatus(
+            _dbContext.Users.AsNoTracking().Where(u => ids.Contains(u.Id)),
+            status);
 
         var term = search?.Trim();
         if (string.IsNullOrEmpty(term))
@@ -140,12 +124,23 @@ internal sealed class UserProfileLookup : IUserProfileLookup
             .ToListAsync(cancellationToken);
 
         return rows
-            .Where(r =>
-                (r.FirstName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (r.LastName?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (r.Email?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (r.Phone?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Where(r => AnyContains(term, r.FirstName, r.LastName, r.Email, r.Phone))
             .Select(r => r.Id)
             .ToList();
     }
+
+    // Status is value-converted to a string column, so an enum equality predicate
+    // translates to SQL cleanly. Map the staff UI's member-status vocabulary onto
+    // UserStatus: "frozen" is a gym-directory flag handled by the caller (never
+    // reaches here); "expired" has no UserStatus backing (no profile constraint).
+    private static IQueryable<User> WhereStatus(IQueryable<User> query, string? status) =>
+        status?.Trim().ToLowerInvariant() switch
+        {
+            "active" => query.Where(u => u.Status == UserStatus.Active),
+            "inactive" => query.Where(u => u.Status != UserStatus.Active && u.Status != UserStatus.Deleted),
+            _ => query
+        };
+
+    private static bool AnyContains(string term, params string?[] fields) =>
+        fields.Any(field => field?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false);
 }
