@@ -32,7 +32,8 @@ internal sealed class TrainerRatedIntegrationEventHandler : INotificationHandler
         };
 
         // Notify the trainer about the new rating
-        var notif = NotificationTexts.TrainerRated(notification.Stars).ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.TrainerRated(notification.Stars),
             notification.TrainerId,
             NotificationType.TrainerFeedback,
             notification.GymId,

@@ -30,7 +30,8 @@ internal sealed class RemoteWorkoutDeactivatedIntegrationEventHandler : INotific
             ["gymId"] = notification.GymId.ToString()
         };
 
-        var notif = NotificationTexts.RemoteWorkoutDeactivated().ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.RemoteWorkoutDeactivated(),
             notification.ClientId,
             NotificationType.RemoteWorkoutActivated,
             notification.GymId,

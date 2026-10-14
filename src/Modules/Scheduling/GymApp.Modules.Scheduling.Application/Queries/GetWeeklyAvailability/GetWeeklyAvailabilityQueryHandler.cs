@@ -2,7 +2,6 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Application.DTOs;
 using GymApp.Modules.Scheduling.Domain.Entities;
-using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 
@@ -42,12 +41,7 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
         var sessions = await _sessionRepository.GetByTrainerAsync(
             request.TrainerId, request.GymId, request.StartDate, request.EndDate, cancellationToken);
 
-        var activeSessions = sessions
-            .Where(s => s.Status is not (SessionStatus.CancelledByTrainer
-                or SessionStatus.CancelledByMember
-                or SessionStatus.LateCancelled
-                or SessionStatus.NoShow))
-            .ToList();
+        var activeSessions = sessions.Where(SlotGrid.HoldsSlot).ToList();
 
         var sessionDuration = availability?.SessionDurationMinutes ?? 60;
         var buffer = availability?.BufferMinutes ?? 15;
@@ -55,7 +49,7 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
 
         for (var date = request.StartDate; date <= request.EndDate; date = date.AddDays(1))
         {
-            days.Add(BuildDay(date, availability, activeSessions, request.RequestingMemberId, sessionDuration, buffer));
+            days.Add(BuildDay(date, availability, activeSessions, request.RequestingMemberId));
         }
 
         return Result.Success(new WeeklyAvailabilityDto(
@@ -72,9 +66,7 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
         DateOnly date,
         TrainerAvailability? availability,
         List<Session> activeSessions,
-        Guid? requestingMemberId,
-        int sessionDuration,
-        int buffer)
+        Guid? requestingMemberId)
     {
         if (availability is null)
         {
@@ -87,64 +79,30 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
             return new DayAvailabilityDto(date, date.DayOfWeek, IsOffDay: false, IsBlocked: true, blocked.Reason, new List<WeekSlotDto>());
         }
 
-        var weeklySlotsForDay = availability.WeeklySlots
-            .Where(s => s.IsActive && s.DayOfWeek == date.DayOfWeek)
-            .ToList();
-
-        if (!weeklySlotsForDay.Any())
+        var windows = availability.ActiveSlotsOn(date.DayOfWeek);
+        if (windows.Count == 0)
         {
             return new DayAvailabilityDto(date, date.DayOfWeek, IsOffDay: true, IsBlocked: false, null, new List<WeekSlotDto>());
         }
 
+        var grid = SlotGrid.For(availability);
         var sessionsForDay = activeSessions.Where(s => s.ScheduledDate == date).ToList();
-        var slots = new List<WeekSlotDto>();
-
-        // Arithmetic is done on TimeSpan, NOT TimeOnly: TimeOnly.AddMinutes wraps past
-        // midnight, so a window ending late in the evening (e.g. 23:59) made
-        // "start + duration <= end" true forever and the request never returned.
-        var duration = TimeSpan.FromMinutes(sessionDuration);
-        var bufferSpan = TimeSpan.FromMinutes(Math.Max(0, buffer));
-
-        foreach (var window in weeklySlotsForDay)
-        {
-            // A non-positive duration would never advance the cursor.
-            if (duration <= TimeSpan.Zero)
-                break;
-
-            var cursor = window.StartTime.ToTimeSpan();
-            var windowEnd = window.EndTime.ToTimeSpan();
-
-            while (cursor + duration <= windowEnd)
-            {
-                var slotStart = cursor;
-                var slotEnd = cursor + duration;
-
-                var conflicting = sessionsForDay.FirstOrDefault(s =>
-                {
-                    var sStart = s.ScheduledTime.ToTimeSpan();
-                    var sEnd = sStart + TimeSpan.FromMinutes(s.DurationMinutes) + bufferSpan;
-                    return slotStart < sEnd && sStart < slotEnd + bufferSpan;
-                });
-
-                var current = TimeOnly.FromTimeSpan(slotStart);
-                var end = TimeOnly.FromTimeSpan(slotEnd);
-
-                if (conflicting is null)
-                {
-                    slots.Add(new WeekSlotDto(current, end, StatusAvailable, null));
-                }
-                else
-                {
-                    var status = (requestingMemberId.HasValue && conflicting.MemberId == requestingMemberId.Value)
-                        ? StatusBookedByMe
-                        : StatusBookedByOther;
-                    slots.Add(new WeekSlotDto(current, end, status, conflicting.Id));
-                }
-
-                cursor += duration + bufferSpan;
-            }
-        }
+        var slots = grid.SlotsIn(windows)
+            .Select(slot => ToWeekSlot(slot, sessionsForDay.FirstOrDefault(s => grid.Overlaps(s, slot)), requestingMemberId))
+            .ToList();
 
         return new DayAvailabilityDto(date, date.DayOfWeek, IsOffDay: false, IsBlocked: false, null, slots);
+    }
+
+    private static WeekSlotDto ToWeekSlot((TimeSpan Start, TimeSpan End) slot, Session? conflicting, Guid? requestingMemberId)
+    {
+        var start = TimeOnly.FromTimeSpan(slot.Start);
+        var end = TimeOnly.FromTimeSpan(slot.End);
+
+        if (conflicting is null)
+            return new WeekSlotDto(start, end, StatusAvailable, null);
+
+        var status = conflicting.MemberId == requestingMemberId ? StatusBookedByMe : StatusBookedByOther;
+        return new WeekSlotDto(start, end, status, conflicting.Id);
     }
 }

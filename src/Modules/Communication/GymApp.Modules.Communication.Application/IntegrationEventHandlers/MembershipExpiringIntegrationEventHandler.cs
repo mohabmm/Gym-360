@@ -30,7 +30,8 @@ internal sealed class MembershipExpiringIntegrationEventHandler : INotificationH
             ["expiresAt"] = notification.ExpiresAt.ToString("O")
         };
 
-        var notif = NotificationTexts.MembershipExpiring(notification.ExpiresAt).ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.MembershipExpiring(notification.ExpiresAt),
             notification.MemberId,
             NotificationType.MembershipExpiry,
             notification.GymId,

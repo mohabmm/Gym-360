@@ -31,7 +31,8 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
         };
 
         // Notify trainer
-        var trainerNotif = NotificationTexts.SessionCompletedForTrainer().ToNotification(
+        var trainerNotif = Notification.CreateLocalized(
+            NotificationTexts.SessionCompletedForTrainer(),
             notification.TrainerId,
             NotificationType.TrainerFeedback,
             notification.GymId,
@@ -40,7 +41,8 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
         await _notificationRepository.AddAsync(trainerNotif, cancellationToken);
 
         // Notify member
-        var memberNotif = NotificationTexts.SessionCompletedForMember().ToNotification(
+        var memberNotif = Notification.CreateLocalized(
+            NotificationTexts.SessionCompletedForMember(),
             notification.MemberId,
             NotificationType.SessionReminder,
             notification.GymId,

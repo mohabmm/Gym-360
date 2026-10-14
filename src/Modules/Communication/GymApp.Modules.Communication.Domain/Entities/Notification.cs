@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Events;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Domain.Entities;
 
@@ -68,18 +69,15 @@ public sealed class Notification : Entity
     /// <see cref="Data"/> so English-locale clients can be served via <see cref="TextFor"/>.
     /// </summary>
     public static Notification CreateLocalized(
+        NotificationText text,
         Guid userId,
-        string titleAr,
-        string bodyAr,
-        string titleEn,
-        string bodyEn,
         NotificationType type,
         Guid? gymId = null,
         Dictionary<string, string>? data = null)
     {
-        var notification = Create(userId, titleAr, bodyAr, type, gymId, data);
-        notification._data[TitleEnKey] = titleEn;
-        notification._data[BodyEnKey] = bodyEn;
+        var notification = Create(userId, text.TitleAr, text.BodyAr, type, gymId, data);
+        notification._data[TitleEnKey] = text.TitleEn;
+        notification._data[BodyEnKey] = text.BodyEn;
         return notification;
     }
 
@@ -89,16 +87,13 @@ public sealed class Notification : Entity
     /// </summary>
     public (string Title, string Body) TextFor(string? language)
     {
-        var wantsEnglish = language is not null
-            && language.TrimStart().StartsWith("en", StringComparison.OrdinalIgnoreCase);
-        if (wantsEnglish
-            && _data.TryGetValue(TitleEnKey, out var titleEn)
-            && _data.TryGetValue(BodyEnKey, out var bodyEn))
-        {
-            return (titleEn, bodyEn);
-        }
+        var wantsEnglish = language?.TrimStart().StartsWith("en", StringComparison.OrdinalIgnoreCase) == true;
+        if (!wantsEnglish)
+            return (Title, Body);
 
-        return (Title, Body);
+        return _data.TryGetValue(TitleEnKey, out var titleEn) && _data.TryGetValue(BodyEnKey, out var bodyEn)
+            ? (titleEn, bodyEn)
+            : (Title, Body);
     }
 
     /// <summary>Client-facing metadata: <see cref="Data"/> without the reserved text keys.</summary>

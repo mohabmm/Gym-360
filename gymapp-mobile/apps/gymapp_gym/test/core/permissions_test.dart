@@ -5,15 +5,24 @@ import 'package:gymapp_core/gymapp_core.dart';
 import 'package:gymapp_gym/core/permissions.dart';
 
 void main() {
+  /// Asserts [role] has (or, with `granted: false`, lacks) every permission in [permissions].
+  void expectPermissions(
+    String role,
+    Iterable<StaffPermission> permissions, {
+    bool granted = true,
+  }) {
+    for (final permission in permissions) {
+      expect(
+        StaffPermissions.hasPermission(role, permission),
+        granted,
+        reason: '$role should ${granted ? '' : 'NOT '}have $permission',
+      );
+    }
+  }
+
   group('StaffPermissions - owner', () {
     test('has every permission', () {
-      for (final permission in StaffPermission.values) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleOwner, permission),
-          isTrue,
-          reason: 'Owner must have $permission',
-        );
-      }
+      expectPermissions(AppConstants.roleOwner, StaffPermission.values);
     });
   });
 
@@ -35,13 +44,7 @@ void main() {
         StaffPermission.createAnnouncement,
         StaffPermission.moderateTestimonials,
       ];
-      for (final p in granted) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleManager, p),
-          isTrue,
-          reason: 'Manager should have $p',
-        );
-      }
+      expectPermissions(AppConstants.roleManager, granted);
     });
 
     test('manages packages, staff and branding per the docs matrix', () {
@@ -52,13 +55,7 @@ void main() {
         StaffPermission.editBranding,
         StaffPermission.editGymProfile,
       ];
-      for (final p in granted) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleManager, p),
-          isTrue,
-          reason: 'Manager should have $p',
-        );
-      }
+      expectPermissions(AppConstants.roleManager, granted);
     });
 
     test('cannot remove members', () {
@@ -87,13 +84,7 @@ void main() {
         StaffPermission.viewClasses,
         StaffPermission.viewAnnouncements,
       ];
-      for (final p in granted) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleReceptionist, p),
-          isTrue,
-          reason: 'Receptionist should have $p',
-        );
-      }
+      expectPermissions(AppConstants.roleReceptionist, granted);
     });
 
     test('is blocked from management actions', () {
@@ -114,13 +105,7 @@ void main() {
         StaffPermission.viewTrainerRatings,
         StaffPermission.moderateTestimonials,
       ];
-      for (final p in denied) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleReceptionist, p),
-          isFalse,
-          reason: 'Receptionist should NOT have $p',
-        );
-      }
+      expectPermissions(AppConstants.roleReceptionist, denied, granted: false);
     });
   });
 

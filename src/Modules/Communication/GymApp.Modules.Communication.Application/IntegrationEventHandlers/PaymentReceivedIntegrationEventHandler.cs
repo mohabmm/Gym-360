@@ -31,7 +31,8 @@ internal sealed class PaymentReceivedIntegrationEventHandler : INotificationHand
             ["amount"] = notification.Amount.ToString("F2")
         };
 
-        var notif = NotificationTexts.PaymentReceived(notification.Amount).ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.PaymentReceived(notification.Amount),
             notification.MemberId,
             NotificationType.PaymentReceived,
             notification.GymId,
