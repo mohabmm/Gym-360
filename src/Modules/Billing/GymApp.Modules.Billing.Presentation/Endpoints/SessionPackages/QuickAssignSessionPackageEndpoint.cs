@@ -42,9 +42,10 @@ internal sealed class QuickAssignSessionPackageEndpoint : IEndpoint
                 : ApiResults.Problem(result.Error);
         })
         // Owner / manager / receptionist can all assign trainers to members
-        // per product spec (admin-or-staff-or-owner). Hardcoded staff sub-role
-        // checks belong on the FE; the BE policy gates the principal type.
-        .RequireAuthorization()
+        // per product spec. Sub-role checks belong on the FE; the BE policy
+        // gates the principal type so a trainee or trainer cannot grant
+        // themselves a free package.
+        .RequireAuthorization("gym_staff")
         .WithTags("Billing")
         .WithSummary("Quick-assign a trainer to a member with a session count (multiple of 4).")
         .WithDescription("Creates an Active SessionPackage with the given SessionCount (multiples of 4, 4..40), no template required. Used by the staff app/web 'Assign Trainer' flow on the member detail screen. TotalPrice is the lump-sum package price (per-session is derived); leave null for free assignments.")

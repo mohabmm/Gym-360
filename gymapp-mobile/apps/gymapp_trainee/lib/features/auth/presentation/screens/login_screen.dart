@@ -94,8 +94,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
+        final isArabic = Localizations.localeOf(context).languageCode == 'ar';
         ref.read(loginFormProvider.notifier).state =
-            LoginFormState(error: e.message);
+            LoginFormState(error: localizeLoginError(e, isArabic));
       }
     } catch (e) {
       if (mounted) {
@@ -242,4 +243,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+}
+
+/// A 401 from /login only ever means wrong email/password; the BE message is
+/// English-only, so localize it here.
+@visibleForTesting
+String localizeLoginError(ApiException e, bool isArabic) {
+  if (e is UnauthorizedException) {
+    return isArabic
+        ? 'البريد الالكتروني او كلمة المرور غير صحيحة.'
+        : 'Incorrect email or password.';
+  }
+  return e.message;
 }

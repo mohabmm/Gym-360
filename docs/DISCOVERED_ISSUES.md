@@ -179,6 +179,33 @@ End-to-end run of `gymapp_gym` on the iOS simulator through MobAI against the re
 
 Not coverable in this run: QR scanning (simulator has no camera), trainer approval (owner-added trainers are auto-approved; needs a trainer self-registration), account deletion (destructive), FCM-driven plan refresh, suspension banner.
 
+## Trainee Mobile App — MobAI QA Run (2026-10-14)
+
+Full member cycle of `gymapp_trainee` on the iOS simulator through MobAI against the remote dev environment (`https://staging-api.gym-365.com`) with the demo trainee + trainer (gym `g1`): login (wrong + right password), Home, ad-hoc workout log, weight log, booking a session against the trainer's availability, trainer confirmation, cancellation, sign-out. Trainer-side steps (availability, confirm) were driven through the API because the trainer app on the shared simulator was signed in to another gym.
+
+### Fixed
+
+| # | Issue | Root cause | Fix |
+|---|---|---|---|
+| M1 | **Any authenticated user could grant session packages.** A trainee token got `201` on `POST /billing/packages/quick-assign` for a free 8-session package with their trainer, then booked against it | `quick-assign` and `assign` only called `RequireAuthorization()` | Both require the `gym_staff` policy (owner / manager / receptionist); functional tests for trainee / trainer `403` |
+| M2 | Workout streak, Home weekly activity and Progress "current streak" stayed at 0 after logging workouts | `WorkoutLog` raised a domain event but nothing published `WorkoutLoggedIntegrationEvent`, which Progress's streak handler listens to | `LogWorkoutCommandHandler` enqueues the event (workout date, not UTC clock) in the same transaction; unit + outbox integration test |
+| M3 | Home "next session" card stayed empty after booking (and kept a cancelled session) until the app was restarted | Home cached its own copy of `/scheduling/sessions/upcoming`; booking / cancel / feedback only invalidate the Schedule tab's provider | Home's provider mirrors the Schedule provider; verified on device (cancel clears the card) |
+| M4 | Wrong password showed the backend's English "The provided credentials are invalid." on the Arabic login screen | Trainee login showed `ApiException.message` as-is (trainer app was fixed in #105) | 401 localized |
+
+### Open
+
+| # | Issue | Notes |
+|---|---|---|
+| M5 | Start Workout: template picker vanished on the first visit after login and never retried | `workoutsProvider` error branch renders `SizedBox.shrink()`; not reproduced on a second visit |
+| M6 | Numeric keypads (reps / kg / RPE, weight) have no Done key, so the keyboard can only be dismissed by tapping Save | |
+| M7 | Units and package names are English on the Arabic UI: `82.4 kg`, `0.0L`, quick-assigned packages are named `Custom: 8 sessions` | |
+| M8 | Weight curve is blank with a single entry | |
+| M9 | Booking slot chips and the week-navigation arrows have no button semantics / labels | Assistive tech and automation see plain text |
+| M10 | `quick-assign` / `assign` still trust `AssignedBy` from the request body | Should come from the caller's token |
+| M11 | Session `scheduledAt` is gym-local time serialized with a `Z` suffix | Apps display it as-is; any client converting UTC→local will be off by 2–3 h |
+
+Staging data left behind: the demo trainee holds an 8-session package with Demo Trainer (created through M1), the demo trainer has availability 09:00–23:00 every day, and one cancelled session on 16 Oct.
+
 ## Spec Ambiguities Found
 
 ### A1. Trainer Earnings Read-Only
