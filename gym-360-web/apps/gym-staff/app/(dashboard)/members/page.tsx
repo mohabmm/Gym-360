@@ -13,9 +13,20 @@ import {
   useLinkExistingMember,
   type ExistingMemberLookup,
 } from '@/lib/hooks/useMembers';
+import { apiErrorMessage, apiErrorStatus } from '@/lib/api-error';
 import type { MemberListItem } from '@gym360/ui';
 
 const PAGE_SIZE = 20;
+
+const EMPTY_MEMBER = { name: '', email: '', phone: '', section: 'Mens', nationalId: '' };
+
+// Validation message for the Add Member form, or null when it can be submitted.
+function validateNewMember(member: typeof EMPTY_MEMBER): string | null {
+  if (!member.name.trim() || !member.phone.trim()) return 'Name and phone are required.';
+  const nid = member.nationalId.trim();
+  if (nid && !/^\d{14}$/.test(nid)) return 'National ID must be exactly 14 digits.';
+  return null;
+}
 
 const columns: ColumnDef<MemberListItem, unknown>[] = [
   {
@@ -89,7 +100,7 @@ export default function MembersPage() {
   const lookupMember = useLookupMemberByPhone();
   const linkExisting = useLinkExistingMember();
   const [showAddMember, setShowAddMember] = useState(false);
-  const [newMember, setNewMember] = useState({ name: '', email: '', phone: '', section: 'Mens', nationalId: '' });
+  const [newMember, setNewMember] = useState(EMPTY_MEMBER);
   const [formError, setFormError] = useState<string | null>(null);
   // Set when staff-create reports a duplicate (409) AND we resolved who the phone
   // belongs to — drives the "Add existing member?" confirm prompt inside the modal.
@@ -97,19 +108,15 @@ export default function MembersPage() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
-    setNewMember({ name: '', email: '', phone: '', section: 'Mens', nationalId: '' });
+    setNewMember(EMPTY_MEMBER);
     setFormError(null);
     setExistingMatch(null);
   };
 
   const handleAddMember = () => {
-    if (!newMember.name.trim() || !newMember.phone.trim()) {
-      setFormError('Name and phone are required.');
-      return;
-    }
-    const nid = newMember.nationalId.trim();
-    if (nid && !/^\d{14}$/.test(nid)) {
-      setFormError('National ID must be exactly 14 digits.');
+    const invalid = validateNewMember(newMember);
+    if (invalid) {
+      setFormError(invalid);
       return;
     }
     setFormError(null);
@@ -121,19 +128,17 @@ export default function MembersPage() {
         setShowAddMember(false);
       },
       onError: (err: unknown) => {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-          ?.response?.data?.errors?.[0]?.message ?? 'Failed to add member.';
-        // 409 = phone/email already belongs to an existing member. Resolve their
-        // identity so staff can confirm and re-link instead of creating a duplicate.
-        if (status === 409) {
-          lookupMember.mutate(newMember.phone, {
-            onSuccess: (match) => { setFormError(null); setExistingMatch(match); },
-            onError: () => setFormError(msg),
-          });
+        const msg = apiErrorMessage(err, 'Failed to add member.');
+        if (apiErrorStatus(err) !== 409) {
+          setFormError(msg);
           return;
         }
-        setFormError(msg);
+        // 409 = phone/email already belongs to an existing member. Resolve their
+        // identity so staff can confirm and re-link instead of creating a duplicate.
+        lookupMember.mutate(newMember.phone, {
+          onSuccess: (match) => { setFormError(null); setExistingMatch(match); },
+          onError: () => setFormError(msg),
+        });
       },
     });
   };
@@ -149,11 +154,7 @@ export default function MembersPage() {
           resetForm();
           setShowAddMember(false);
         },
-        onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-            ?.response?.data?.errors?.[0]?.message ?? 'Failed to add existing member.';
-          setFormError(msg);
-        },
+        onError: (err: unknown) => setFormError(apiErrorMessage(err, 'Failed to add existing member.')),
       },
     );
   };
