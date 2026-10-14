@@ -6,6 +6,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/providers.dart';
 import '../providers/classes_provider.dart';
 import '../../../trainers/presentation/providers/trainers_provider.dart';
+import '../../../../core/error_text.dart';
 
 class CreateClassScreen extends ConsumerStatefulWidget {
   const CreateClassScreen({super.key});
@@ -131,7 +132,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+            .showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

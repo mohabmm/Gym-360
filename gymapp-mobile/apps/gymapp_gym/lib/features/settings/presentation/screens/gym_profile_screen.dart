@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../core/permissions.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 
@@ -15,6 +16,9 @@ class GymProfileScreen extends ConsumerWidget {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final theme = Theme.of(context);
     final apiClient = ref.read(apiClientProvider);
+    final auth = ref.watch(authProvider).valueOrNull;
+    bool can(StaffPermission permission) =>
+        auth?.hasPermission(permission) ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -23,8 +27,39 @@ class GymProfileScreen extends ConsumerWidget {
       body: gym.when(
         data: (g) {
           if (g == null) {
-            return Center(
-              child: Text(isArabic ? 'لا توجد بيانات' : 'No gym data'),
+            // Account not linked to a gym (or the gym failed to load). Keep
+            // sign-out reachable so the user is never stuck in the app.
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                const SizedBox(height: 48),
+                Icon(Icons.store_mall_directory_outlined,
+                    size: 56, color: theme.colorScheme.outline),
+                const SizedBox(height: 16),
+                Text(
+                  isArabic
+                      ? 'هذا الحساب غير مرتبط بصالة'
+                      : 'This account is not linked to a gym',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isArabic
+                      ? 'اطلب من مالك الصالة اضافتك كموظف ثم سجل الدخول مرة اخرى.'
+                      : 'Ask the gym owner to add you as staff, then sign in again.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 32),
+                _SettingsTile(
+                  icon: Icons.logout,
+                  title: isArabic ? 'تسجيل الخروج' : 'Sign Out',
+                  iconColor: AppColors.error,
+                  titleColor: AppColors.error,
+                  onTap: () => _confirmLogout(context, ref, isArabic),
+                ),
+              ],
             );
           }
           return ListView(
@@ -79,47 +114,53 @@ class GymProfileScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-
-              _SettingsTile(
-                icon: Icons.palette_outlined,
-                title: isArabic ? 'العلامة التجارية' : 'Branding',
-                onTap: () => context.push(RoutePaths.branding),
-              ),
-              _SettingsTile(
-                icon: Icons.hotel_outlined,
-                title: isArabic ? 'مرافق الصالة' : 'Gym Amenities',
-                onTap: () => context.push(RoutePaths.amenities),
-              ),
-              _SettingsTile(
-                icon: Icons.policy_outlined,
-                title: isArabic ? 'سياسات الحصص' : 'Session Policies',
-                onTap: () => context.push(RoutePaths.sessionPolicies),
-              ),
-              _SettingsTile(
-                icon: Icons.meeting_room_outlined,
-                title: isArabic ? 'اقسام الصالة' : 'Gym Sections',
-                onTap: () => context.push(RoutePaths.gymSections),
-              ),
-              _SettingsTile(
-                icon: Icons.wb_sunny_outlined,
-                title: isArabic ? 'ساعات موسمية' : 'Seasonal Hours',
-                onTap: () => context.push(RoutePaths.seasonalHours),
-              ),
+              if (can(StaffPermission.editBranding))
+                _SettingsTile(
+                  icon: Icons.palette_outlined,
+                  title: isArabic ? 'العلامة التجارية' : 'Branding',
+                  onTap: () => context.push(RoutePaths.branding),
+                ),
+              if (can(StaffPermission.editAmenities))
+                _SettingsTile(
+                  icon: Icons.hotel_outlined,
+                  title: isArabic ? 'مرافق الصالة' : 'Gym Amenities',
+                  onTap: () => context.push(RoutePaths.amenities),
+                ),
+              if (can(StaffPermission.editSessionPolicies))
+                _SettingsTile(
+                  icon: Icons.policy_outlined,
+                  title: isArabic ? 'سياسات الحصص' : 'Session Policies',
+                  onTap: () => context.push(RoutePaths.sessionPolicies),
+                ),
+              if (can(StaffPermission.editSections))
+                _SettingsTile(
+                  icon: Icons.meeting_room_outlined,
+                  title: isArabic ? 'اقسام الصالة' : 'Gym Sections',
+                  onTap: () => context.push(RoutePaths.gymSections),
+                ),
+              if (can(StaffPermission.editSeasonalHours))
+                _SettingsTile(
+                  icon: Icons.wb_sunny_outlined,
+                  title: isArabic ? 'ساعات موسمية' : 'Seasonal Hours',
+                  onTap: () => context.push(RoutePaths.seasonalHours),
+                ),
               _SettingsTile(
                 icon: Icons.notifications_outlined,
                 title: isArabic ? 'اعدادات الاشعارات' : 'Notification Settings',
                 onTap: () => context.push(RoutePaths.notificationSettings),
               ),
-              _SettingsTile(
-                icon: Icons.lock_outline,
-                title: isArabic ? 'رقم PIN الكيوسك' : 'Kiosk PIN',
-                onTap: () => context.push(RoutePaths.kioskPin),
-              ),
-              _SettingsTile(
-                icon: Icons.bug_report_outlined,
-                title: isArabic ? 'وضع الاختبار' : 'Testing Mode',
-                onTap: () => context.push(RoutePaths.testingMode),
-              ),
+              if (can(StaffPermission.editGymProfile))
+                _SettingsTile(
+                  icon: Icons.lock_outline,
+                  title: isArabic ? 'رقم PIN الكيوسك' : 'Kiosk PIN',
+                  onTap: () => context.push(RoutePaths.kioskPin),
+                ),
+              if (can(StaffPermission.editGymProfile))
+                _SettingsTile(
+                  icon: Icons.bug_report_outlined,
+                  title: isArabic ? 'وضع الاختبار' : 'Testing Mode',
+                  onTap: () => context.push(RoutePaths.testingMode),
+                ),
               const SizedBox(height: 16),
               PdplSettingsSection(
                 apiClient: apiClient,

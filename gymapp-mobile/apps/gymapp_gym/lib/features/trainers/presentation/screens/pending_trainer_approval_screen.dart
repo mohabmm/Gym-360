@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/trainers_provider.dart';
+import '../../../../core/error_text.dart';
 
 class PendingTrainerApprovalScreen extends ConsumerWidget {
   const PendingTrainerApprovalScreen({super.key});
@@ -100,7 +101,7 @@ class PendingTrainerApprovalScreen extends ConsumerWidget {
       ref.invalidate(trainersProvider);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     }
   }
@@ -118,7 +119,7 @@ class PendingTrainerApprovalScreen extends ConsumerWidget {
       ref.invalidate(pendingTrainersProvider);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     }
   }

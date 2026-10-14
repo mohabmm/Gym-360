@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -234,8 +235,13 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
       await storage.saveCurrentGymId(gymId);
     }
 
-    // Save staff role
-    final savedRole = staffRole ?? response.user.role;
+    // The per-gym tier (owner / manager / receptionist) drives every
+    // permission check in the app; read it from the token the BE just issued.
+    final savedRole = staffRole ??
+        StaffPermissions.roleFromAccessToken(
+          response.accessToken,
+          response.user.role,
+        );
     await storage.saveUserRole(savedRole);
 
     state = AsyncData(AuthState(
@@ -386,26 +392,36 @@ final gymPlanFeaturesProvider = FutureProvider<PlanFeaturesModel>((ref) async {
     throw Exception('Not authenticated');
   }
 
-  // Try cache first
+  // Network first: an admin Deploy (FCM config_refresh) invalidates this
+  // provider and must see the new plan, not the copy cached at login. The
+  // cache only serves offline launches.
   final planBox = Hive.box(StorageKeys.planFeaturesBox);
-  final cachedJson = planBox.get(StorageKeys.cachedPlanFeatures);
-  if (cachedJson != null) {
+  try {
+    final features = await apiClient.get<PlanFeaturesModel>(
+      ApiEndpoints.planFeatures,
+      parser: (data) =>
+          PlanFeaturesModel.fromJson(data as Map<String, dynamic>),
+    );
     try {
-      return PlanFeaturesModel.fromJson(
-        Map<String, dynamic>.from(cachedJson as Map),
+      // toJson() leaves the nested feature items as objects, which Hive
+      // cannot store; round-trip through JSON to get plain maps.
+      await planBox.put(
+        StorageKeys.cachedPlanFeatures,
+        jsonDecode(jsonEncode(features.toJson())),
       );
-    } catch (_) {
-      // Fall through to API
+    } catch (e) {
+      debugPrint('[planFeatures] cache write failed: $e');
     }
+    return features;
+  } catch (_) {
+    final cachedJson = planBox.get(StorageKeys.cachedPlanFeatures);
+    if (cachedJson != null) {
+      return PlanFeaturesModel.fromJson(
+        jsonDecode(jsonEncode(cachedJson)) as Map<String, dynamic>,
+      );
+    }
+    rethrow;
   }
-
-  final features = await apiClient.get<PlanFeaturesModel>(
-    ApiEndpoints.planFeatures,
-    parser: (data) => PlanFeaturesModel.fromJson(data as Map<String, dynamic>),
-  );
-
-  await planBox.put(StorageKeys.cachedPlanFeatures, features.toJson());
-  return features;
 });
 
 // ---------------------------------------------------------------------------

@@ -356,7 +356,7 @@ class _SessionCard extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  '${session.durationMinutes}m',
+                  '${session.durationMinutes} ${isArabic ? 'د' : 'min'}',
                   style: theme.textTheme.bodySmall,
                 ),
               ],

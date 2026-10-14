@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -32,10 +33,8 @@ internal sealed class CoachOfTheMonthSelectedIntegrationEventHandler : INotifica
         };
 
         // Notify the trainer
-        var trainerNotif = Notification.Create(
+        var trainerNotif = NotificationTexts.CoachOfTheMonth(notification.Month, notification.Year).ToNotification(
             notification.TrainerId,
-            "Coach of the Month!",
-            $"Congratulations! You have been selected as Coach of the Month for {notification.Month}/{notification.Year}!",
             NotificationType.CoachOfTheMonth,
             notification.GymId,
             data);

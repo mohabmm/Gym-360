@@ -49,6 +49,12 @@ class MemberFilter {
       page: page ?? this.page,
     );
   }
+
+  /// Switches the status filter and returns to page 1. Unlike [copyWith],
+  /// passing null clears the filter ("All").
+  MemberFilter withStatus(String? status) {
+    return MemberFilter(search: search, status: status, plan: plan);
+  }
 }
 
 final memberFilterProvider = StateProvider<MemberFilter>((ref) {
@@ -89,6 +95,45 @@ final membersProvider =
     itemParser: (json) => UserModel.fromJson(_normalizeMemberJson(json)),
   );
 });
+
+// ---------------------------------------------------------------------------
+// Member lookup by number (payment / package desks)
+// ---------------------------------------------------------------------------
+/// Finds the member whose member number (or id) staff typed, searching the
+/// whole roster server-side. Returns null when nobody matches.
+///
+/// Numbers are compared ignoring leading zeros so "2" finds "0002".
+Future<UserModel?> findMemberByNumber(
+  ApiClient apiClient,
+  String gymId,
+  String input,
+) async {
+  final query = input.trim();
+  if (query.isEmpty || gymId.isEmpty) return null;
+
+  final result = await apiClient.getPaginated<UserModel>(
+    ApiEndpoints.gymMembers(gymId),
+    params: const PaginationParams(page: 1, pageSize: 50),
+    additionalParams: {'search': query},
+    itemParser: (json) => UserModel.fromJson(_normalizeMemberJson(json)),
+  );
+
+  String canonical(String value) {
+    final trimmed = value.trim().toLowerCase();
+    final asInt = int.tryParse(trimmed);
+    return asInt?.toString() ?? trimmed;
+  }
+
+  final wanted = canonical(query);
+  for (final member in result.items) {
+    final number = member.memberNumber;
+    if (member.id == query ||
+        (number != null && canonical(number) == wanted)) {
+      return member;
+    }
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Member Detail

@@ -6,7 +6,13 @@ import '../../../../core/providers.dart';
 import '../providers/workout_providers.dart';
 
 class ProgramBuilderScreen extends ConsumerStatefulWidget {
-  const ProgramBuilderScreen({super.key});
+  /// When set, the screen opens an existing program read-only. The BE has no
+  /// program-update endpoint, so an existing program can be viewed but not
+  /// edited — opening the blank builder for it (the old behaviour) made
+  /// "Save" silently create a duplicate.
+  final String? programId;
+
+  const ProgramBuilderScreen({super.key, this.programId});
 
   @override
   ConsumerState<ProgramBuilderScreen> createState() =>
@@ -20,6 +26,80 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
   int _durationWeeks = 4;
   bool _isSaving = false;
   final Map<String, String?> _weekDayWorkouts = {};
+  bool _isLoading = false;
+  String? _loadError;
+
+  bool get _isViewing => widget.programId != null;
+
+  static const _dayNames = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isViewing) {
+      _isLoading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadProgram());
+    }
+  }
+
+  Future<void> _loadProgram() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      final raw = await apiClient.get<Map<String, dynamic>>(
+        ApiEndpoints.programById(widget.programId!),
+        parser: (data) =>
+            data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{},
+      );
+      if (!mounted) return;
+
+      final schedule = <String, String?>{};
+      final weeks = raw['weeks'];
+      if (weeks is List) {
+        for (final week in weeks.whereType<Map>()) {
+          final weekNumber = (week['weekNumber'] as num?)?.toInt();
+          final dayWorkouts = week['dayWorkouts'];
+          if (weekNumber == null || dayWorkouts is! List) continue;
+          for (final day in dayWorkouts.whereType<Map>()) {
+            final dayIndex = _dayNames.indexWhere((d) =>
+                d.toLowerCase() == day['dayOfWeek']?.toString().toLowerCase());
+            final workoutId = day['workoutId']?.toString();
+            if (dayIndex < 0 || workoutId == null) continue;
+            schedule['$weekNumber-$dayIndex'] = workoutId;
+          }
+        }
+      }
+
+      setState(() {
+        _nameController.text = raw['name']?.toString() ?? '';
+        _nameArController.text = raw['nameAr']?.toString() ?? '';
+        _descriptionController.text = raw['description']?.toString() ?? '';
+        _durationWeeks =
+            ((raw['durationWeeks'] as num?)?.toInt() ?? 4).clamp(1, 52);
+        _weekDayWorkouts
+          ..clear()
+          ..addAll(schedule);
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = e is ApiException ? e.message : e.toString();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -48,15 +128,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
         throw Exception('No authenticated trainer or active gym');
       }
 
-      const dayNames = [
-        'Sunday',
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-      ];
+      const dayNames = _dayNames;
 
       // Group day-workouts per week.
       final weeksMap = <int, List<Map<String, dynamic>>>{};
@@ -119,9 +191,13 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'بناء برنامج' : 'Build Program'),
+        title: Text(_isViewing
+            ? (isArabic ? 'تفاصيل البرنامج' : 'Program Details')
+            : (isArabic ? 'بناء برنامج' : 'Build Program')),
         actions: [
-          if (_isSaving)
+          if (_isViewing)
+            const SizedBox.shrink()
+          else if (_isSaving)
             const Padding(
               padding: EdgeInsets.all(16),
               child: SizedBox(
@@ -136,129 +212,148 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          AppTextField(
-            label: isArabic ? 'اسم البرنامج (عربي)' : 'Program Name (Arabic)',
-            controller: _nameArController,
-          ),
-          const SizedBox(height: 12),
-          AppTextField(
-            label: isArabic ? 'اسم البرنامج (انجليزي)' : 'Program Name (English)',
-            controller: _nameController,
-          ),
-          const SizedBox(height: 12),
-          AppTextField(
-            label: isArabic ? 'الوصف' : 'Description',
-            controller: _descriptionController,
-            maxLines: 2,
-          ),
-          const SizedBox(height: 16),
-
-          // Duration weeks
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                isArabic ? 'المدة (اسابيع)' : 'Duration (weeks)',
-                style: theme.textTheme.titleSmall,
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline),
-                    onPressed: _durationWeeks > 1
-                        ? () => setState(() => _durationWeeks--)
-                        : null,
-                  ),
-                  Text(
-                    '$_durationWeeks',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    onPressed: _durationWeeks < 52
-                        ? () => setState(() => _durationWeeks++)
-                        : null,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const Divider(),
-          const SizedBox(height: 8),
-
-          // Weekly schedule grid
-          Text(
-            isArabic ? 'جدول الاسبوع' : 'Weekly Schedule',
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          workoutsAsync.when(
-            data: (workouts) => Column(
-              children: List.generate(_durationWeeks, (weekIndex) {
-                final week = weekIndex + 1;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _loadError != null
+              ? AppErrorWidget(message: _loadError!, onRetry: _loadProgram)
+              : ListView(
+                  padding: const EdgeInsets.all(16),
                   children: [
+                    AppTextField(
+                      label: isArabic
+                          ? 'اسم البرنامج (عربي)'
+                          : 'Program Name (Arabic)',
+                      controller: _nameArController,
+                      readOnly: _isViewing,
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      label: isArabic
+                          ? 'اسم البرنامج (انجليزي)'
+                          : 'Program Name (English)',
+                      controller: _nameController,
+                      readOnly: _isViewing,
+                    ),
+                    const SizedBox(height: 12),
+                    AppTextField(
+                      label: isArabic ? 'الوصف' : 'Description',
+                      controller: _descriptionController,
+                      readOnly: _isViewing,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Duration weeks
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isArabic ? 'المدة (اسابيع)' : 'Duration (weeks)',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed: !_isViewing && _durationWeeks > 1
+                                  ? () => setState(() => _durationWeeks--)
+                                  : null,
+                            ),
+                            Text(
+                              '$_durationWeeks',
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: !_isViewing && _durationWeeks < 52
+                                  ? () => setState(() => _durationWeeks++)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Weekly schedule grid
                     Text(
-                      isArabic ? 'الاسبوع $week' : 'Week $week',
-                      style: theme.textTheme.titleSmall
+                      isArabic ? 'جدول الاسبوع' : 'Weekly Schedule',
+                      style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
-                    ...List.generate(7, (dayIndex) {
-                      final key = '$week-$dayIndex';
-                      final selectedWorkoutId = _weekDayWorkouts[key];
-                      final selectedWorkout = selectedWorkoutId != null
-                          ? workouts
-                              .where((w) => w.id == selectedWorkoutId)
-                              .firstOrNull
-                          : null;
+                    workoutsAsync.when(
+                      data: (workouts) => Column(
+                        children: List.generate(_durationWeeks, (weekIndex) {
+                          final week = weekIndex + 1;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isArabic ? 'الاسبوع $week' : 'Week $week',
+                                style: theme.textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              ...List.generate(7, (dayIndex) {
+                                final key = '$week-$dayIndex';
+                                final selectedWorkoutId = _weekDayWorkouts[key];
+                                final selectedWorkout = selectedWorkoutId !=
+                                        null
+                                    ? workouts
+                                        .where((w) => w.id == selectedWorkoutId)
+                                        .firstOrNull
+                                    : null;
 
-                      return ListTile(
-                        dense: true,
-                        leading: Text(
-                          dayNames[dayIndex],
-                          style: theme.textTheme.labelMedium,
-                        ),
-                        title: Text(
-                          selectedWorkout != null
-                              ? (isArabic && selectedWorkout.nameAr != null
-                                  ? selectedWorkout.nameAr!
-                                  : selectedWorkout.name)
-                              : (isArabic ? 'يوم راحة' : 'Rest day'),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: selectedWorkout != null
-                                ? theme.colorScheme.primary
-                                : AppColors.grey400,
-                          ),
-                        ),
-                        trailing: const Icon(Icons.edit, size: 16),
-                        onTap: () => _pickWorkout(
-                            context, key, workouts, isArabic),
-                      );
-                    }),
-                    const Divider(),
+                                return ListTile(
+                                  dense: true,
+                                  leading: Text(
+                                    dayNames[dayIndex],
+                                    style: theme.textTheme.labelMedium,
+                                  ),
+                                  title: Text(
+                                    selectedWorkout != null
+                                        ? (isArabic &&
+                                                selectedWorkout.nameAr != null
+                                            ? selectedWorkout.nameAr!
+                                            : selectedWorkout.name)
+                                        : (isArabic ? 'يوم راحة' : 'Rest day'),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: selectedWorkout != null
+                                          ? theme.colorScheme.primary
+                                          : AppColors.grey400,
+                                    ),
+                                  ),
+                                  trailing: _isViewing
+                                      ? null
+                                      : const Icon(Icons.edit, size: 16),
+                                  onTap: _isViewing
+                                      ? null
+                                      : () => _pickWorkout(
+                                          context, key, workouts, isArabic),
+                                );
+                              }),
+                              const Divider(),
+                            ],
+                          );
+                        }),
+                      ),
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (e, _) => AppErrorWidget(message: e.toString()),
+                    ),
+
+                    const SizedBox(height: 24),
+                    if (!_isViewing)
+                      AppButton(
+                        text: isArabic ? 'حفظ البرنامج' : 'Save Program',
+                        onPressed: _isSaving ? null : _save,
+                        isLoading: _isSaving,
+                      ),
                   ],
-                );
-              }),
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => AppErrorWidget(message: e.toString()),
-          ),
-
-          const SizedBox(height: 24),
-          AppButton(
-            text: isArabic ? 'حفظ البرنامج' : 'Save Program',
-            onPressed: _isSaving ? null : _save,
-            isLoading: _isSaving,
-          ),
-        ],
-      ),
+                ),
     );
   }
 

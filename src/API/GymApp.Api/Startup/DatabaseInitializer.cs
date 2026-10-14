@@ -2,6 +2,7 @@ using GymApp.Api.Seed;
 using GymApp.Modules.Billing.Infrastructure.Seed;
 using GymApp.Modules.Identity.Infrastructure.Seed;
 using GymApp.Modules.Nutrition.Infrastructure;
+using GymApp.Modules.Training.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymApp.Api.Startup;
@@ -331,5 +332,40 @@ IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
         }
 
         await RunPerGymSeedersAsync();
+
+        // Arabic names for the global exercise library. Unlike the dev seeders above this
+        // is a data fix every tenant needs (the library shipped English-only), so it runs
+        // for all gyms in Hard mode too. Idempotent and non-fatal.
+        async Task BackfillExerciseNamesAsync(IServiceProvider scoped, string label)
+        {
+            try
+            {
+                var updated = await TrainingModuleRegistration.BackfillExerciseArabicNamesAsync(scoped);
+                if (updated > 0)
+                    logger.LogInformation("Backfilled {Count} Arabic exercise names [{Label}]", updated, label);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Exercise Arabic-name backfill failed [{Label}]", label);
+            }
+        }
+
+        if (tenancy.Mode == GymApp.Common.Infrastructure.Tenancy.TenancyMode.Hard)
+        {
+            var registry = sp.GetRequiredService<GymApp.Common.Application.Tenancy.IGymRegistry>();
+            foreach (var gym in await registry.GetActiveAsync())
+            {
+                using var gymScope = app.Services.CreateScope();
+                gymScope.ServiceProvider
+                    .GetRequiredService<GymApp.Common.Application.Tenancy.ITenantContextAccessor>()
+                    .Set(gym.GymId, gym.SchemaPrefix, isOwnerScope: false);
+                await BackfillExerciseNamesAsync(gymScope.ServiceProvider, $"gym {gym.SchemaPrefix}");
+            }
+        }
+        else
+        {
+            using var softScope = app.Services.CreateScope();
+            await BackfillExerciseNamesAsync(softScope.ServiceProvider, "soft");
+        }
     }
 }

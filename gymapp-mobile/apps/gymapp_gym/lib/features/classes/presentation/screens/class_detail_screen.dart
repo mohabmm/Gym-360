@@ -5,6 +5,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/permissions.dart';
 import '../../../../core/providers.dart';
 import '../providers/classes_provider.dart';
+import '../../../../core/error_text.dart';
 
 class ClassDetailScreen extends ConsumerWidget {
   final String classId;
@@ -178,7 +179,7 @@ class ClassDetailScreen extends ConsumerWidget {
       // showed stale data.
       if (context.mounted) Navigator.of(context).pop();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+      messenger.showSnackBar(SnackBar(content: Text(staffErrorText(e))));
     }
   }
 }

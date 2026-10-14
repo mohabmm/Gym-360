@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/settings_provider.dart';
+import '../../../../core/error_text.dart';
 
 class SessionPoliciesScreen extends ConsumerStatefulWidget {
   const SessionPoliciesScreen({super.key});
@@ -96,7 +97,7 @@ class _SessionPoliciesScreenState extends ConsumerState<SessionPoliciesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+            .showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -138,8 +139,8 @@ class _SessionPoliciesScreenState extends ConsumerState<SessionPoliciesScreen> {
                     const SizedBox(height: 8),
                     Text(
                       isArabic
-                          ? 'يمكن للاعضاء الغاء الحصة قبل: (Q5: قابل للضبط)'
-                          : 'Members can cancel sessions within: (Q5: Configurable)',
+                          ? 'يمكن للاعضاء الغاء الحصة قبل موعدها بـ:'
+                          : 'Members can cancel sessions up to this long before the start:',
                       style: theme.textTheme.bodySmall,
                     ),
                     const SizedBox(height: 12),

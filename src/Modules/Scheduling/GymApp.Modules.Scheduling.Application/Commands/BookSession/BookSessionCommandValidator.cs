@@ -1,3 +1,4 @@
+using GymApp.Modules.Scheduling.Application.Abstractions;
 using FluentValidation;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.BookSession;
@@ -16,7 +17,7 @@ internal sealed class BookSessionCommandValidator : AbstractValidator<BookSessio
             .NotEmpty().WithMessage("Member ID is required.");
 
         RuleFor(x => x.Date)
-            .Must(d => d >= DateOnly.FromDateTime(DateTime.UtcNow.Date))
+            .Must(d => d >= GymLocalTime.Today())
             .WithMessage("Cannot book a session in the past.");
 
         RuleFor(x => x.DurationMinutes)

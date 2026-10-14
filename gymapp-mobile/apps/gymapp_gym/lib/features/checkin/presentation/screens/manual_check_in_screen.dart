@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/checkin_provider.dart';
+import '../../../../core/error_text.dart';
 
 class ManualCheckInScreen extends ConsumerStatefulWidget {
   const ManualCheckInScreen({super.key});
@@ -56,7 +57,7 @@ class _ManualCheckInScreenState extends ConsumerState<ManualCheckInScreen> {
       setState(() => _result = CheckInResultModel(
             success: false,
             errorCode: 'error',
-            errorMessage: e is ApiException ? e.message : e.toString(),
+            errorMessage: staffErrorText(e),
           ));
     } finally {
       if (mounted) setState(() => _loading = false);

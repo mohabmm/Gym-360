@@ -66,7 +66,7 @@ class AppTheme {
           );
         }),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -165,7 +165,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
         ),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
         ),
@@ -180,7 +180,7 @@ class AppTheme {
           ),
         ),
       ),
-      tabBarTheme: TabBarTheme(
+      tabBarTheme: TabBarThemeData(
         indicatorColor: branding.primaryColor,
         indicatorSize: TabBarIndicatorSize.label,
         labelColor: branding.primaryColor,
@@ -245,7 +245,7 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.cardDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -306,7 +306,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
         ),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge),
         ),

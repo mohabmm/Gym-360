@@ -86,7 +86,7 @@ void main() {
       final req = t.onlyRequest;
       expect(req.q('memberId'), kClientId);
       expect(req.q('gymId'), kGymId);
-      expect(sessions.single.traineeId, 'client-1');
+      expect(sessions.single.memberId, kClientId);
     });
 
     test('GET /progress/clients/{clientId} returns body metrics', () async {
@@ -103,8 +103,8 @@ void main() {
       );
 
       expect(t.onlyRequest.path, '/api/v1/progress/clients/$kClientId');
-      expect(metrics.single.metricType, 'Weight');
-      expect(metrics.single.value, 72.5);
+      expect(metrics.single.weight, 72.5);
+      expect(metrics.single.weightUnit, 'kg');
     });
 
     test('GET /training/remote-workout/status returns RemoteWorkoutStatus',
@@ -236,6 +236,54 @@ void main() {
   });
 
   group('OnboardingFormScreen', () {
+    Map<String, dynamic>? parseSaved(dynamic data) =>
+        data is Map && data['memberId'] != null
+            ? Map<String, dynamic>.from(data)
+            : null;
+
+    test('GET /gyms/{gymId}/members/{clientId}/onboarding returns saved form',
+        () async {
+      t.adapter.onGet(
+        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        respond: (_) => t.adapter.ok({
+          'id': 'onb-1',
+          'gymId': kGymId,
+          'memberId': kClientId,
+          'medicalHistory': 'none',
+          'fitnessGoals': 'lose 5kg',
+          'injuries': 'old knee injury',
+          'medications': null,
+          'fitnessLevel': 'intermediate',
+        }),
+      );
+
+      final saved = await t.apiClient.get<Map<String, dynamic>?>(
+        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        parser: parseSaved,
+      );
+
+      expect(t.onlyRequest.method, 'GET');
+      expect(t.onlyRequest.path,
+          '/api/v1/gyms/$kGymId/members/$kClientId/onboarding');
+      expect(saved!['fitnessGoals'], 'lose 5kg');
+      expect(saved['injuries'], 'old knee injury');
+      expect(saved['fitnessLevel'], 'intermediate');
+    });
+
+    test('GET onboarding with null data means nothing saved yet', () async {
+      t.adapter.onGet(
+        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        respond: (_) => t.adapter.ok(null),
+      );
+
+      final saved = await t.apiClient.get<Map<String, dynamic>?>(
+        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        parser: parseSaved,
+      );
+
+      expect(saved, isNull);
+    });
+
     test('POST /gyms/{gymId}/members/{clientId}/onboarding sends form fields',
         () async {
       t.adapter.onPost(

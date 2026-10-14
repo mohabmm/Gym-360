@@ -6,6 +6,8 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/providers.dart';
 import '../providers/billing_provider.dart';
 import '../../../members/presentation/providers/members_provider.dart';
+import '../../../trainers/presentation/providers/trainers_provider.dart';
+import '../../../../core/error_text.dart';
 
 class RecordPaymentScreen extends ConsumerStatefulWidget {
   const RecordPaymentScreen({super.key});
@@ -21,6 +23,12 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
   final _amountController = TextEditingController();
   String _method = 'Cash';
   String _purpose = 'Membership';
+
+  // A session-package payment creates the package for a trainer, so the
+  // backend needs both of these alongside the amount.
+  static const _sessionCountOptions = [4, 8, 12, 16, 20, 24];
+  String? _trainerId;
+  int _sessionCount = _sessionCountOptions.first;
   bool _loading = false;
 
   @override
@@ -32,23 +40,31 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final isPackage = _purpose == 'SessionPackage';
+    if (isPackage && _trainerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          Localizations.localeOf(context).languageCode == 'ar'
+              ? 'اختر المدرب لباقة الحصص'
+              : 'Pick the trainer for this session package',
+        ),
+      ));
+      return;
+    }
     setState(() => _loading = true);
     try {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
 
       final memberInput = _memberIdController.text.trim();
-      final pagedMembers = await ref.read(membersProvider.future);
-      final match = pagedMembers.items.firstWhere(
-        (m) =>
-            (m.memberNumber?.toLowerCase() == memberInput.toLowerCase()) ||
-            m.id == memberInput,
-        orElse: () => throw Exception(
+      final match = await findMemberByNumber(apiClient, gymId, memberInput);
+      if (match == null) {
+        throw Exception(
           Localizations.localeOf(context).languageCode == 'ar'
               ? 'العضو غير موجود'
               : 'Member not found',
-        ),
-      );
+        );
+      }
 
       await apiClient.post<void>(
         ApiEndpoints.payments,
@@ -58,6 +74,8 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
           'amount': double.tryParse(_amountController.text) ?? 0,
           'paymentMethod': _method,
           'purpose': _purpose,
+          if (isPackage) 'trainerId': _trainerId,
+          if (isPackage) 'sessionCount': _sessionCount,
         },
         parser: (_) {},
       );
@@ -77,7 +95,7 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+            .showSnackBar(SnackBar(content: Text(staffErrorText(e))));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -88,6 +106,9 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final theme = Theme.of(context);
+    final trainers = (ref.watch(trainersProvider).valueOrNull ?? const [])
+        .where((t) => (t.status ?? '').toLowerCase() == 'approved')
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -162,6 +183,41 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
                       );
                     }).toList(),
                   ),
+                  if (_purpose == 'SessionPackage') ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _trainerId,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: isArabic ? 'المدرب' : 'Trainer',
+                      ),
+                      items: [
+                        for (final t in trainers)
+                          DropdownMenuItem(
+                            value: t.id,
+                            child: Text('${t.firstName} ${t.lastName}'.trim()),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _trainerId = v),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      initialValue: _sessionCount,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: isArabic ? 'عدد الحصص' : 'Sessions',
+                      ),
+                      items: [
+                        for (final n in _sessionCountOptions)
+                          DropdownMenuItem(
+                            value: n,
+                            child: Text(isArabic ? '$n حصة' : '$n sessions'),
+                          ),
+                      ],
+                      onChanged: (v) => setState(
+                          () => _sessionCount = v ?? _sessionCountOptions.first),
+                    ),
+                  ],
                 ],
               ),
             ),

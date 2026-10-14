@@ -99,7 +99,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       conversationId: widget.conversationId,
       senderId: myId,
       content: content,
-      sentAt: DateTime.now(),
+      // UTC so it goes through the same UTC→local display path as server
+      // timestamps (which arrive zone-less in UTC).
+      sentAt: DateTime.now().toUtc(),
     );
 
     setState(() {
@@ -337,7 +339,7 @@ class _MessageBubble extends StatelessWidget {
               children: [
                 Text(
                   DateFormat('hh:mm a', isArabic ? 'ar' : 'en')
-                      .format(message.sentAt.toLocal()),
+                      .format(DateFormatter.apiUtcToLocal(message.sentAt)),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: isMe
                         ? Colors.white.withOpacity(0.7)

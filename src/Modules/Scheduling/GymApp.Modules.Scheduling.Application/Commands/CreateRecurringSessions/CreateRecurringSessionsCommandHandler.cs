@@ -5,6 +5,7 @@ using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.CreateRecurringSessions;
@@ -51,7 +52,7 @@ internal sealed class CreateRecurringSessionsCommandHandler
             return Result.Failure<List<Guid>>(SchedulingErrors.SlotNotAvailable);
 
         var sessionIds = new List<Guid>();
-        var today = DateOnly.FromDateTime(_dateTimeProvider.UtcNow);
+        var today = GymLocalTime.Today(_dateTimeProvider.UtcNow);
 
         // Find the next occurrence of the requested day of week
         var daysUntilTarget = ((int)request.DayOfWeek - (int)today.DayOfWeek + 7) % 7;
@@ -97,17 +98,11 @@ internal sealed class CreateRecurringSessionsCommandHandler
             if (hasConflict)
                 continue;
 
-            var session = Session.Create(
-                request.GymId,
-                request.TrainerId,
-                request.MemberId,
-                sessionDate,
-                request.Time,
-                request.DurationMinutes,
+            var session = Session.CreateRecurring(
+                new SessionParticipants(request.GymId, request.TrainerId, request.MemberId),
+                new SessionSchedule(sessionDate, request.Time, request.DurationMinutes),
                 sessionType,
-                null,
-                isRecurring: true,
-                recurrenceRule: recurrenceRule);
+                recurrenceRule);
 
             await _sessionRepository.AddAsync(session, cancellationToken);
             sessionIds.Add(session.Id);

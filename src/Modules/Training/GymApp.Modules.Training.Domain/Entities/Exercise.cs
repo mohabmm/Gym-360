@@ -58,6 +58,9 @@ public sealed class Exercise : Entity
         return exercise;
     }
 
+    public void SetArabicName(string? nameAr) =>
+        NameAr = string.IsNullOrWhiteSpace(nameAr) ? null : nameAr.Trim();
+
     public void Deactivate() => IsActive = false;
 
     public void Activate() => IsActive = true;

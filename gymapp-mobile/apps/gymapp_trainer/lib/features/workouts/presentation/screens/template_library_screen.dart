@@ -345,8 +345,8 @@ class _ProgramsTab extends ConsumerWidget {
                         : '${program.durationWeeks} weeks',
                   ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () =>
-                      context.push(AppRoutes.programBuilder),
+                  onTap: () => context
+                      .push('${AppRoutes.programBuilder}/${program.id}'),
                 ),
               );
             },

@@ -30,7 +30,9 @@ internal sealed class GetGymMemberByIdEndpoint : IEndpoint
         .WithDescription("Returns a single member of the gym with enriched identity fields (name, email, phone, photo, role, status).")
         .Produces<ApiResponse<MemberDto>>(200)
         .Produces<ApiResponse<object>>(401)
+        .Produces<ApiResponse<object>>(403)
         .Produces<ApiResponse<object>>(404)
-        .RequireAuthorization();
+        .RequireAuthorization()
+        .RequireMemberAccess(MemberAccessLevel.StaffTrainerOrSelf);
     }
 }

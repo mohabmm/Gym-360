@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../core/error_text.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 
@@ -38,44 +39,71 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final apiClient = ref.read(apiClientProvider);
-      final response = await apiClient.post<AuthResponse>(
+      List<dynamic> ownedGyms = const [];
+      var response = await apiClient.post<AuthResponse>(
         ApiEndpoints.login,
         data: LoginRequest(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         ).toJson(),
-        parser: (data) => AuthResponse.fromJson(data as Map<String, dynamic>),
+        parser: (data) {
+          final json = data as Map<String, dynamic>;
+          final user = json['user'];
+          if (user is Map && user['ownedGyms'] is List) {
+            ownedGyms = user['ownedGyms'] as List<dynamic>;
+          }
+          return AuthResponse.fromJson(json);
+        },
       );
 
-      // Check that the user has a staff role.
-      // Identity module emits canonical role strings: 'owner', 'staff' (and
-      // legacy 'gym_owner'/'gym_staff'). Granular staff tier (manager,
-      // receptionist) is stored per-gym in the Gyms module.
+      // Identity emits canonical role strings: 'owner', 'staff' (and legacy
+      // 'gym_owner'/'gym_staff'). The granular staff tier (manager,
+      // receptionist) travels in the access token and is resolved by
+      // AuthNotifier.login.
       final role = response.user.role;
-      final isStaff = role == AppConstants.roleOwner ||
-          role == AppConstants.roleManager ||
-          role == AppConstants.roleReceptionist ||
-          role == 'owner' ||
-          role == 'staff' ||
-          role == 'gym_owner' ||
-          role == 'gym_staff';
+      final isOwner = role == 'owner' || role == 'gym_owner';
+      final isStaff = isOwner || role == 'staff' || role == 'gym_staff';
 
       if (!isStaff) {
         if (!mounted) return;
         setState(() {
           _errorMessage = _isArabic
-              ? 'هذا الحساب ليس حساب موظف. يرجى استخدام تطبيق المتدرب.'
-              : 'This account is not a staff account. Please use the Trainee app.';
+              ? 'هذا الحساب ليس حساب موظف. يرجى استخدام التطبيق الخاص بدورك.'
+              : 'This account is not a staff account. Please use the app for your role.';
           _isLoading = false;
         });
         return;
       }
 
-      final staffRole = _mapRole(role);
-      await ref.read(authProvider.notifier).login(
-            response,
-            staffRole: staffRole,
+      // Owners log in without a gym-scoped token. Scope it to one of their
+      // gyms before entering the app, otherwise every gym screen is empty.
+      if (isOwner &&
+          (response.user.gymId ?? '').isEmpty &&
+          ownedGyms.isNotEmpty) {
+        final gymId = await _chooseOwnedGym(ownedGyms);
+        if (gymId == null) {
+          if (mounted) setState(() => _isLoading = false);
+          return;
+        }
+        final storage = ref.read(secureStorageProvider);
+        await storage.saveTokens(
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+        );
+        try {
+          response = await apiClient.post<AuthResponse>(
+            ApiEndpoints.selectGym,
+            data: {'gymId': gymId},
+            parser: (data) =>
+                AuthResponse.fromJson(data as Map<String, dynamic>),
           );
+        } catch (_) {
+          await storage.clearTokens();
+          rethrow;
+        }
+      }
+
+      await ref.read(authProvider.notifier).login(response);
 
       if (mounted) {
         context.go(RoutePaths.dashboard);
@@ -83,7 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = e.message;
+        _errorMessage = staffErrorText(e, isArabic: _isArabic);
         _isLoading = false;
       });
     } catch (e) {
@@ -97,21 +125,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  String _mapRole(String role) {
-    switch (role) {
-      case 'owner':
-      case 'gym_owner':
-        return AppConstants.roleOwner;
-      case 'staff':
-      case 'gym_staff':
-        // Identity backend stores a single GymStaff tier; the granular
-        // manager/receptionist split lives in the Gyms module per-gym.
-        // Default seeded staff to manager so the app surfaces its full
-        // staff feature set; per-gym role can refine later.
-        return AppConstants.roleManager;
-      default:
-        return role;
-    }
+  /// Returns the gym the owner wants to manage: the only one they own, or
+  /// their pick when they own several. Null when the picker is dismissed.
+  Future<String?> _chooseOwnedGym(List<dynamic> ownedGyms) async {
+    final gyms = ownedGyms
+        .whereType<Map>()
+        .map((g) => (
+              id: (g['gymId'] ?? g['id'] ?? '').toString(),
+              name: (g['name'] ?? '').toString(),
+            ))
+        .where((g) => g.id.isNotEmpty)
+        .toList();
+    if (gyms.isEmpty) return null;
+    if (gyms.length == 1) return gyms.first.id;
+    if (!mounted) return null;
+
+    final isArabic = _isArabic;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(isArabic ? 'اختر الصالة' : 'Choose a gym'),
+        children: [
+          for (final gym in gyms)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(gym.id),
+              child: Text(gym.name.isEmpty ? gym.id : gym.name),
+            ),
+        ],
+      ),
+    );
   }
 
   bool get _isArabic =>

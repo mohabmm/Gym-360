@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
+import '../../../../core/error_text.dart';
 
 class BrandingScreen extends ConsumerWidget {
   const BrandingScreen({super.key});
@@ -151,7 +152,7 @@ Future<void> _updateLogo(
       SnackBar(content: Text(isArabic ? 'تم تحديث الشعار' : 'Logo updated')),
     );
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text(e is ApiException ? e.message : e.toString())));
+    messenger.showSnackBar(SnackBar(content: Text(staffErrorText(e))));
   }
 }
 

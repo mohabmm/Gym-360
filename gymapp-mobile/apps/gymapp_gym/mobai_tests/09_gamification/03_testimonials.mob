@@ -12,11 +12,11 @@ delay 1000
 wait_for ~"الاعضاء النشطين" timeout:8000 on_fail:skip
 
 tap ~"المزيد" bounds:bottom_half
-wait_for ~"اعتدال الشهادات" timeout:4000
-tap ~"اعتدال الشهادات"
-wait_for ~"اعتدال الشهادات" timeout:5000
+wait_for ~"مراجعة آراء العملاء" timeout:4000
+tap ~"مراجعة آراء العملاء"
+wait_for ~"مراجعة آراء العملاء" timeout:5000
 
-assert_exists ~"اعتدال الشهادات"
+assert_exists ~"مراجعة آراء العملاء"
 assert_not_exists ~"خطأ في التحميل"
 
 tap ~"رجوع" on_fail:skip

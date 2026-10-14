@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -31,10 +32,8 @@ internal sealed class TrainerRatedIntegrationEventHandler : INotificationHandler
         };
 
         // Notify the trainer about the new rating
-        var notif = Notification.Create(
+        var notif = NotificationTexts.TrainerRated(notification.Stars).ToNotification(
             notification.TrainerId,
-            "New Rating Received",
-            $"You received a {notification.Stars}-star rating.",
             NotificationType.TrainerFeedback,
             notification.GymId,
             data);

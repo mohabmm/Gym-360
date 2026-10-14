@@ -52,7 +52,8 @@ void main() {
       respond: (_) => t.adapter.ok(Samples.session()),
     );
     final s = await ds.getSessionById('session-1');
-    expect(s.trainerName, 'Coach Omar');
+    expect(s.trainerId, 'trainer-1');
+    expect(s.sessionType, 'PT');
   });
 
   test('POST /scheduling/sessions books a session', () async {
@@ -79,11 +80,15 @@ void main() {
       respond: (_) => t.adapter.rawResponse(403, {
         'data': null,
         'errors': [
-          {'code': 'FEATURE_GATED', 'message': 'Upgrade to book trainers'},
+          {
+            'code': 'PLAN.FEATURE_NOT_AVAILABLE',
+            'message': 'Upgrade to book trainers',
+            'meta': {
+              'feature': 'BOOK_TRAINER_SESSIONS',
+              'requiredPlan': 'Pro',
+            },
+          },
         ],
-        'errorCode': 'FEATURE_GATED',
-        'featureCode': 'BOOK_TRAINER_SESSIONS',
-        'requiredPlan': 'Pro',
       }),
     );
     await expectLater(

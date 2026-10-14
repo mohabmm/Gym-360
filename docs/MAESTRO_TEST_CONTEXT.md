@@ -3,7 +3,7 @@
 > **Purpose:** Single document to feed Claude (project context) so it can generate, expand, and maintain Maestro edge-case test flows for the 3 Flutter apps.
 > **Audience:** Claude project / QA engineer
 > **Stack:** Flutter 3 monorepo (Melos) × 3 apps + .NET 8 backend
-> **Last refreshed:** 2026-05-12
+> **Last refreshed:** 2026-10-10
 
 ---
 
@@ -19,7 +19,9 @@ GymApp is a B2B SaaS gym management platform for the Egyptian market. One .NET 8
 | Trainer | `gymapp-mobile/apps/gymapp_trainer` | `com.example.gymapp_trainer` | Personal trainer (gym-approved) |
 | Gym Staff | `gymapp-mobile/apps/gymapp_gym` | `com.example.gymapp_gym` | Owner / manager / receptionist (also kiosk mode) |
 
-Backend dev URL: `http://localhost:8080` (Docker). API restart: `docker compose build gymapp-api && docker compose up -d gymapp-api`.
+Backend: the mobile apps default to the remote dev environment `https://staging-api.gym-365.com` (`ApiBaseUrl` in `gymapp_core`); pass `--dart-define=API_BASE_URL=http://localhost:8080` to target a local Docker stack. API restart (local): `docker compose build gymapp-api && docker compose up -d gymapp-api`.
+
+iOS bundle ids: `com.example.gymappTrainee`, `com.example.gymappTrainer`, `com.example.gymappGym`.
 
 ---
 
@@ -37,6 +39,8 @@ Password for every seeded user: **`123456`**.
 | Platform admin | `admin@demo.local` |
 
 Gym code (linking flow): `GYM001`. Sample member number (kiosk): `1001`.
+
+These accounts exist with a linked gym only where the demo seeders run (local stack with `SEED_RUN_DEMO_DATA=true`). On the remote dev environment `staff@demo.local` / `owner@demo.local` have no gym and `receptionist@demo.local` does not exist, so provision a gym first: admin `POST /admin/owners` → `POST /gyms` → `POST /admin/gyms/{id}/staff/create` (`staffSubRole`: `Manager` / `Receptionist`) → owner `POST /identity/users/staff-create-trainer` + `/gyms/{id}/trainers` → `POST /identity/users/staff-create` (see `scripts/phase1_bootstrap.sh`).
 
 ---
 
@@ -135,7 +139,9 @@ Key screens:
 
 ### 4.3 Gym Staff app (`gymapp_gym`)
 
-Bottom nav: Dashboard · Members · Classes · Check-In · More.
+Bottom nav: Dashboard · Members · Trainers · Classes · More. The More sheet holds Exercises, Revenue, Record Payment, Active Packages, Assign Package, Package Templates, Announcements, Check-in, Coach / Member leaderboards, Testimonial moderation, Staff and Settings — filtered by the signed-in role (owner / manager / receptionist, read from the `staffSubRole` token claim). Kiosk mode opens from the dashboard app bar or the check-in log.
+
+Owners are scoped to a gym at login (`POST /identity/select-gym`; a picker appears when they own several).
 
 Key screens:
 - `auth/login_screen.dart`
@@ -156,7 +162,7 @@ Key screens:
 ## 5. Maestro target conventions
 
 - **Element identification preference order:** semantic `text`, then visible `text:` substring, then `id` (Flutter `Semantics` label or `Key`). The apps were not built with Maestro in mind, so most flows must lean on visible text. When a screen has duplicate text, scope with `containerId` or `tapOn: { text: "X", index: 0 }`.
-- **Arabic locale**: many strings differ in Arabic. Pin English first (`Settings → Language → English`) at flow start, OR provide Arabic variants.
+- **Arabic locale**: many strings differ in Arabic. The trainee/trainer apps can pin English first (`Settings → Language → English`); the staff app has no language switch, so staff flows must target the Arabic strings.
 - **Network**: backend must be reachable from the device/emulator. iOS sim → `localhost:8080`. Android emulator → `10.0.2.2:8080`. Real device → host LAN IP. The trainer/trainee mobile apps point at the configured API host in `lib/core/network/api_client.dart`.
 - **Reset state between flows**: `clearState` at start; for kiosk flows, also `clearKeychain` to drop kiosk PIN. Long-running suites should re-seed via `scripts/reset_demo.sh` between runs.
 - **Test directory layout**: `tests/maestro/{trainee,trainer,staff}/NN_*.yaml` + `tests/maestro/config.yaml` for `appId`/env vars.

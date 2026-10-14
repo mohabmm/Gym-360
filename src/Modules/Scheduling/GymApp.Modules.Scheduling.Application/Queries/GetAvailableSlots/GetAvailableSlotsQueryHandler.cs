@@ -54,32 +54,45 @@ internal sealed class GetAvailableSlotsQueryHandler
                 or SessionStatus.NoShow))
             .ToList();
 
-        var sessionDuration = availability.SessionDurationMinutes;
-        var buffer = availability.BufferMinutes;
         var timeSlots = new List<TimeSlotDto>();
 
-        // Generate time slots from availability windows
+        // Guard: a non-positive duration would never advance the cursor below.
+        if (availability.SessionDurationMinutes <= 0)
+            return Result.Success(timeSlots);
+
+        var sessionDuration = TimeSpan.FromMinutes(availability.SessionDurationMinutes);
+        var buffer = TimeSpan.FromMinutes(Math.Max(0, availability.BufferMinutes));
+
+        // Generate time slots from availability windows.
+        // Arithmetic is done on TimeSpan, NOT TimeOnly: TimeOnly.AddMinutes wraps past
+        // midnight, so a window ending late in the evening (e.g. 23:59) made
+        // "start + duration <= end" true forever — the request never returned and the
+        // slot list grew until the process ran out of memory.
         foreach (var slot in activeSlots)
         {
-            var currentTime = slot.StartTime;
-            var slotEnd = slot.EndTime;
+            var cursor = slot.StartTime.ToTimeSpan();
+            var windowEnd = slot.EndTime.ToTimeSpan();
 
-            while (currentTime.AddMinutes(sessionDuration) <= slotEnd)
+            while (cursor + sessionDuration <= windowEnd)
             {
-                var endTime = currentTime.AddMinutes(sessionDuration);
+                var slotStart = cursor;
+                var slotEnd = cursor + sessionDuration;
 
                 // Check if this slot conflicts with any booked session (including buffer)
                 var isBooked = activeSessions.Any(s =>
                 {
-                    var sessionStart = s.ScheduledTime;
-                    var sessionEnd = s.ScheduledTime.AddMinutes(s.DurationMinutes + buffer);
-                    return currentTime < sessionEnd && sessionStart < endTime.AddMinutes(buffer);
+                    var sessionStart = s.ScheduledTime.ToTimeSpan();
+                    var sessionEnd = sessionStart + TimeSpan.FromMinutes(s.DurationMinutes) + buffer;
+                    return slotStart < sessionEnd && sessionStart < slotEnd + buffer;
                 });
 
-                timeSlots.Add(new TimeSlotDto(currentTime, endTime, !isBooked));
+                timeSlots.Add(new TimeSlotDto(
+                    TimeOnly.FromTimeSpan(slotStart),
+                    TimeOnly.FromTimeSpan(slotEnd),
+                    !isBooked));
 
                 // Move to next slot (session duration + buffer)
-                currentTime = currentTime.AddMinutes(sessionDuration + buffer);
+                cursor += sessionDuration + buffer;
             }
         }
 

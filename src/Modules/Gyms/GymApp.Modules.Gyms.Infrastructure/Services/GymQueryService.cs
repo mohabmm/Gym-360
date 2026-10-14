@@ -3,6 +3,7 @@ using GymApp.Modules.Identity.Shared;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
+using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,11 @@ namespace GymApp.Modules.Gyms.Infrastructure.Services;
 
 internal sealed class GymQueryService : IGymQueryService
 {
+    private const int MemberGrowthMonths = 6;
+
+    private static readonly string[] MonthLabels =
+        { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+
     private readonly GymsDbContext _dbContext;
     private readonly IUserProfileLookup _userProfileLookup;
     private readonly ITrainerAssignmentLookup _trainerAssignmentLookup;
@@ -44,7 +50,6 @@ internal sealed class GymQueryService : IGymQueryService
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 
         var gyms = await query
             .OrderBy(g => g.Name)
@@ -52,44 +57,9 @@ internal sealed class GymQueryService : IGymQueryService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var ownerProfiles = await _userProfileLookup.GetProfilesAsync(
-            gyms.Select(g => g.OwnerId).Distinct(), cancellationToken);
+        var items = await ToGymResponsesAsync(gyms, cancellationToken);
 
-        var items = gyms.Select(gym => new GymResponse(
-            gym.Id,
-            gym.OwnerId,
-            gym.Name,
-            gym.Description,
-            new AddressDto(
-                gym.Address.Street,
-                gym.Address.City,
-                gym.Address.State,
-                gym.Address.Country,
-                gym.Address.ZipCode,
-                gym.Address.Latitude,
-                gym.Address.Longitude),
-            new ContactInfoDto(
-                gym.ContactInfo.Email,
-                gym.ContactInfo.Phone,
-                gym.ContactInfo.Website),
-            gym.GymCode.Value,
-            gym.Status.ToString(),
-            gym.PaymentStatus.ToString(),
-            gym.Amenities.ToList(),
-            gym.Branding is not null
-                ? new BrandingResponse(
-                    gym.Branding.LogoUrl,
-                    gym.Branding.PrimaryColor,
-                    gym.Branding.SecondaryColor,
-                    gym.Branding.CoverPhotoUrl)
-                : null,
-            gym.CreatedAt,
-            gym.UpdatedAt,
-            gym.MemberIds.Count,
-            gym.TrainerIds.Count,
-            FormatOwnerName(ownerProfiles.GetValueOrDefault(gym.OwnerId)))).ToList();
-
-        return new PagedResponse<GymResponse>(items, page, pageSize, totalCount, totalPages);
+        return new PagedResponse<GymResponse>(items, page, pageSize, totalCount, TotalPages(totalCount, pageSize));
     }
 
     public async Task<List<GymResponse>> ListPendingGymsAsync(CancellationToken cancellationToken = default)
@@ -100,216 +70,58 @@ internal sealed class GymQueryService : IGymQueryService
             .OrderBy(g => g.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        var ownerProfiles = await _userProfileLookup.GetProfilesAsync(
-            gyms.Select(g => g.OwnerId).Distinct(), cancellationToken);
-
-        return gyms.Select(gym => new GymResponse(
-            gym.Id,
-            gym.OwnerId,
-            gym.Name,
-            gym.Description,
-            new AddressDto(
-                gym.Address.Street,
-                gym.Address.City,
-                gym.Address.State,
-                gym.Address.Country,
-                gym.Address.ZipCode,
-                gym.Address.Latitude,
-                gym.Address.Longitude),
-            new ContactInfoDto(
-                gym.ContactInfo.Email,
-                gym.ContactInfo.Phone,
-                gym.ContactInfo.Website),
-            gym.GymCode.Value,
-            gym.Status.ToString(),
-            gym.PaymentStatus.ToString(),
-            gym.Amenities.ToList(),
-            gym.Branding is not null
-                ? new BrandingResponse(
-                    gym.Branding.LogoUrl,
-                    gym.Branding.PrimaryColor,
-                    gym.Branding.SecondaryColor,
-                    gym.Branding.CoverPhotoUrl)
-                : null,
-            gym.CreatedAt,
-            gym.UpdatedAt,
-            gym.MemberIds.Count,
-            gym.TrainerIds.Count,
-            FormatOwnerName(ownerProfiles.GetValueOrDefault(gym.OwnerId)))).ToList();
+        return await ToGymResponsesAsync(gyms, cancellationToken);
     }
 
     public async Task<GymResponse?> GetGymByIdAsync(Guid gymId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         if (gym is null) return null;
 
         var ownerProfile = await _userProfileLookup.GetProfileAsync(gym.OwnerId, cancellationToken);
 
-        return new GymResponse(
-            gym.Id,
-            gym.OwnerId,
-            gym.Name,
-            gym.Description,
-            new AddressDto(
-                gym.Address.Street,
-                gym.Address.City,
-                gym.Address.State,
-                gym.Address.Country,
-                gym.Address.ZipCode,
-                gym.Address.Latitude,
-                gym.Address.Longitude),
-            new ContactInfoDto(
-                gym.ContactInfo.Email,
-                gym.ContactInfo.Phone,
-                gym.ContactInfo.Website),
-            gym.GymCode.Value,
-            gym.Status.ToString(),
-            gym.PaymentStatus.ToString(),
-            gym.Amenities.ToList(),
-            gym.Branding is not null
-                ? new BrandingResponse(
-                    gym.Branding.LogoUrl,
-                    gym.Branding.PrimaryColor,
-                    gym.Branding.SecondaryColor,
-                    gym.Branding.CoverPhotoUrl)
-                : null,
-            gym.CreatedAt,
-            gym.UpdatedAt,
-            gym.MemberIds.Count,
-            gym.TrainerIds.Count,
-            FormatOwnerName(ownerProfile));
-    }
-
-    // Owner display name for gym listings/detail: "First Last", falling back to
-    // email when the name is blank, or null when the owner profile is unknown.
-    private static string? FormatOwnerName(UserProfileInfo? profile)
-    {
-        if (profile is null) return null;
-        var name = $"{profile.FirstName} {profile.LastName}".Trim();
-        return string.IsNullOrWhiteSpace(name) ? profile.Email : name;
+        return GymQueryMappings.ToGymResponse(gym, ownerProfile);
     }
 
     public async Task<bool> IsMemberOfGymAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         return gym?.MemberIds.Contains(memberId) ?? false;
     }
 
     public async Task<bool> IsTrainerAtGymAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         return gym?.TrainerIds.Contains(trainerId) ?? false;
     }
 
     public async Task<PagedResponse<MemberDto>> GetMembersAsync(
         Guid gymId, int page, int pageSize, string? status, string? section, string? search,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyCollection<Guid>? restrictToMemberIds = null)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
-        if (gym is null)
+        // An unsupported status value has no backing data — return an empty page rather
+        // than silently falling through to the full roster.
+        var filter = MemberRosterFilter.Parse(status, section, search);
+        if (gym is null || !filter.IsStatusSupported)
             return new PagedResponse<MemberDto>(new List<MemberDto>(), page, pageSize, 0, 0);
-
-        // Member ids in the gym's stored order. Filters below narrow this set BEFORE
-        // paging, so search/status/section span the whole roster — not just one fetched
-        // page (the old behaviour silently hid members past the first client-side slice).
-        // Drop a ghost id equal to the gym's own id: stale/garbage data left in
-        // member_ids resolves to no Identity profile and would surface as a null-named
-        // row (and crash strict mobile parsers). Mirrors the trainer-list ghost guard.
-        var orderedIds = gym.MemberIds.Where(id => id != gymId).ToList();
-
-        var statusKey = status?.Trim().ToLowerInvariant();
-        var frozenFilter = statusKey == "frozen";
-        // Only "active"/"inactive" map to an Identity profile status; "frozen" is a gym
-        // directory flag (handled here).
-        var profileStatusFilter = statusKey is "active" or "inactive" ? statusKey : null;
-
-        // Any other status value ("expired", typos) has no backing data — return an empty
-        // page rather than silently falling through to the full roster.
-        if (statusKey is not null && statusKey is not ("active" or "inactive" or "frozen"))
-            return new PagedResponse<MemberDto>(new List<MemberDto>(), page, pageSize, 0, 0);
-        var hasSection = !string.IsNullOrWhiteSpace(section);
-        var hasSearch = !string.IsNullOrWhiteSpace(search);
-        // The directory is needed for section / frozen / member-number search, and also
-        // to exclude frozen members from an "active"/"inactive" filter (frozen wins in the UI).
-        var needsDirectory = hasSection || frozenFilter || hasSearch || profileStatusFilter is not null;
 
         // gym_members holds section / member number / frozen flag for the whole gym.
         // Load once when a filter needs it; reuse the same dict for page enrichment.
-        var directory = new Dictionary<Guid, (string? MemberNumber, string? Section, DateTime JoinedAt, bool IsFrozen)>();
-        if (needsDirectory)
-        {
-            var rows = await _dbContext.GymMembers
-                .AsNoTracking()
-                .Where(m => m.GymId == gymId)
-                .Select(m => new { m.MemberId, m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen })
-                .ToListAsync(cancellationToken);
-            foreach (var r in rows)
-                directory[r.MemberId] = (r.MemberNumber, r.Section, r.JoinedAt, r.IsFrozen);
-        }
+        var directory = filter.NeedsDirectory
+            ? await LoadMemberDirectoryAsync(gymId, null, cancellationToken)
+            : new Dictionary<Guid, MemberDirectoryEntry>();
 
-        IEnumerable<Guid> filtered = orderedIds;
-
-        if (hasSection)
-            filtered = filtered.Where(id =>
-                directory.TryGetValue(id, out var d) &&
-                string.Equals(d.Section, section, StringComparison.OrdinalIgnoreCase));
-
-        if (frozenFilter)
-            filtered = filtered.Where(id => directory.TryGetValue(id, out var d) && d.IsFrozen);
-        else if (profileStatusFilter is not null)
-            // A frozen member always displays as "frozen", never active/inactive.
-            filtered = filtered.Where(id => !(directory.TryGetValue(id, out var d) && d.IsFrozen));
-
-        if (hasSearch || profileStatusFilter is not null)
-        {
-            var candidate = filtered.ToList();
-            var byProfile = await _userProfileLookup.FilterProfileIdsAsync(
-                candidate, hasSearch ? search : null, profileStatusFilter, cancellationToken);
-            var allowed = byProfile.ToHashSet();
-
-            if (hasSearch)
-            {
-                // Member number lives in the Gyms directory, not the Identity profile —
-                // union those matches in so "search by member number" works too. When a
-                // profile-status filter is also set, re-check the number matches against
-                // it so e.g. an inactive member never leaks into an "active" search.
-                var term = search!.Trim();
-                var numberMatches = candidate
-                    .Where(id => !allowed.Contains(id) &&
-                                 directory.TryGetValue(id, out var d) &&
-                                 d.MemberNumber is not null &&
-                                 d.MemberNumber.Contains(term, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                if (numberMatches.Count > 0)
-                {
-                    var numberAllowed = profileStatusFilter is null
-                        ? numberMatches
-                        : (await _userProfileLookup.FilterProfileIdsAsync(
-                            numberMatches, null, profileStatusFilter, cancellationToken)).ToList();
-                    foreach (var id in numberAllowed)
-                        allowed.Add(id);
-                }
-            }
-
-            filtered = candidate.Where(allowed.Contains);
-        }
-
-        var filteredIds = filtered.ToList();
-        var totalCount = filteredIds.Count;
-        var totalPages = pageSize <= 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
+        // Filters narrow the roster BEFORE paging, so search/status/section span the
+        // whole roster — not just one fetched page (the old behaviour silently hid
+        // members past the first client-side slice).
+        var filteredIds = await FilterRosterAsync(
+            RosterMemberIds(gym, restrictToMemberIds), filter, directory, cancellationToken);
 
         var pagedIds = filteredIds
             .Skip((page - 1) * pageSize)
@@ -320,146 +132,140 @@ internal sealed class GymQueryService : IGymQueryService
 
         // Reuse the full directory when it was loaded for filtering; otherwise fetch only
         // the page's rows (the cheap path when no filter is active).
-        if (!needsDirectory && pagedIds.Count > 0)
-        {
-            var rows = await _dbContext.GymMembers
-                .AsNoTracking()
-                .Where(m => m.GymId == gymId && pagedIds.Contains(m.MemberId))
-                .Select(m => new { m.MemberId, m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen })
-                .ToListAsync(cancellationToken);
-            foreach (var r in rows)
-                directory[r.MemberId] = (r.MemberNumber, r.Section, r.JoinedAt, r.IsFrozen);
-        }
+        if (!filter.NeedsDirectory && pagedIds.Count > 0)
+            directory = await LoadMemberDirectoryAsync(gymId, pagedIds, cancellationToken);
 
         var pagedMembers = pagedIds
-            .Select(id =>
-            {
-                profiles.TryGetValue(id, out var profile);
-                var hasDir = directory.TryGetValue(id, out var dir);
-                return new MemberDto(
-                    MemberId: id,
-                    GymId: gymId,
-                    Section: hasDir ? dir.Section : section,
-                    MemberNumber: hasDir ? dir.MemberNumber : null,
-                    JoinedAt: hasDir ? dir.JoinedAt : gym.CreatedAt,
-                    FirstName: profile?.FirstName,
-                    LastName: profile?.LastName,
-                    Email: profile?.Email,
-                    PhoneNumber: profile?.PhoneNumber,
-                    ProfilePhotoUrl: profile?.ProfilePhotoUrl,
-                    Role: profile?.Role,
-                    Status: profile?.Status,
-                    IsFrozen: hasDir && dir.IsFrozen,
-                    NationalId: profile?.NationalId);
-            })
+            .Select(id => GymQueryMappings.ToMemberDto(
+                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), gym.CreatedAt, section))
             .ToList();
 
-        return new PagedResponse<MemberDto>(pagedMembers, page, pageSize, totalCount, totalPages);
+        return new PagedResponse<MemberDto>(
+            pagedMembers, page, pageSize, filteredIds.Count, TotalPages(filteredIds.Count, pageSize));
+    }
+
+    // Member ids in the gym's stored order.
+    private static List<Guid> RosterMemberIds(Gym gym, IReadOnlyCollection<Guid>? restrictToMemberIds)
+    {
+        // Drop a ghost id equal to the gym's own id: stale/garbage data left in
+        // member_ids resolves to no Identity profile and would surface as a null-named
+        // row (and crash strict mobile parsers). Mirrors the trainer-list ghost guard.
+        var memberIds = gym.MemberIds.Where(id => id != gym.Id);
+
+        // Trainer-scoped roster: narrow to the caller-supplied ids up front so paging
+        // and totals are computed over the trainer's clients, not the whole gym.
+        if (restrictToMemberIds is not null)
+        {
+            var restrictTo = restrictToMemberIds.ToHashSet();
+            memberIds = memberIds.Where(restrictTo.Contains);
+        }
+
+        return memberIds.ToList();
+    }
+
+    private async Task<List<Guid>> FilterRosterAsync(
+        List<Guid> memberIds,
+        MemberRosterFilter filter,
+        IReadOnlyDictionary<Guid, MemberDirectoryEntry> directory,
+        CancellationToken cancellationToken)
+    {
+        var candidates = filter.ApplyDirectoryFilters(memberIds, directory).ToList();
+        if (!filter.NeedsProfileLookup)
+            return candidates;
+
+        var byProfile = await _userProfileLookup.FilterProfileIdsAsync(
+            candidates, filter.HasSearch ? filter.Search : null, filter.ProfileStatus, cancellationToken);
+        var allowed = byProfile.ToHashSet();
+
+        // Union member-number matches in so "search by member number" works too.
+        if (filter.HasSearch)
+        {
+            var numberMatches = filter.MatchMemberNumbers(
+                candidates.Where(id => !allowed.Contains(id)), directory);
+            allowed.UnionWith(await RestrictToProfileStatusAsync(numberMatches, filter.ProfileStatus, cancellationToken));
+        }
+
+        return candidates.Where(allowed.Contains).ToList();
+    }
+
+    // When a profile-status filter is set, re-check member-number matches against it
+    // so e.g. an inactive member never leaks into an "active" search.
+    private async Task<IReadOnlyCollection<Guid>> RestrictToProfileStatusAsync(
+        List<Guid> memberIds, string? profileStatus, CancellationToken cancellationToken)
+    {
+        if (memberIds.Count == 0 || profileStatus is null)
+            return memberIds;
+
+        return await _userProfileLookup.FilterProfileIdsAsync(memberIds, null, profileStatus, cancellationToken);
     }
 
     public async Task<MemberDto?> GetMemberAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         // memberId == gymId is a ghost id (stale data in member_ids), not a real member.
         if (gym is null || memberId == gymId || !gym.MemberIds.Contains(memberId))
             return null;
 
         var profile = await _userProfileLookup.GetProfileAsync(memberId, cancellationToken);
-        var directory = await _dbContext.GymMembers
-            .AsNoTracking()
-            .Where(m => m.GymId == gymId && m.MemberId == memberId)
-            .Select(m => new { m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen })
-            .FirstOrDefaultAsync(cancellationToken);
+        var directory = await LoadMemberDirectoryAsync(gymId, new[] { memberId }, cancellationToken);
 
-        return new MemberDto(
-            MemberId: memberId,
-            GymId: gymId,
-            Section: directory?.Section,
-            MemberNumber: directory?.MemberNumber,
-            JoinedAt: directory?.JoinedAt ?? gym.CreatedAt,
-            FirstName: profile?.FirstName,
-            LastName: profile?.LastName,
-            Email: profile?.Email,
-            PhoneNumber: profile?.PhoneNumber,
-            ProfilePhotoUrl: profile?.ProfilePhotoUrl,
-            Role: profile?.Role,
-            Status: profile?.Status,
-            IsFrozen: directory?.IsFrozen ?? false,
-            NationalId: profile?.NationalId);
+        return GymQueryMappings.ToMemberDto(
+            memberId, gymId, profile, directory.GetValueOrDefault(memberId), gym.CreatedAt);
     }
 
     public async Task<List<TrainerDto>> GetTrainersAsync(Guid gymId, string? status = null, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         if (gym is null) return new List<TrainerDto>();
 
-        var requests = await _dbContext.GymTrainerRequests
-            .AsNoTracking()
-            .Where(r => r.GymId == gymId)
-            .Select(r => new { r.TrainerId, r.Status, r.Bio, Specializations = r.Specializations.ToList() })
-            .ToListAsync(cancellationToken);
-
+        var requests = await TrainerRequests(gymId).ToListAsync(cancellationToken);
         var requestMap = requests.ToDictionary(r => r.TrainerId);
 
         var activeIds = gym.TrainerIds.ToList();
         var pendingIds = requests
             .Where(r => r.Status == TrainerRequestStatus.Pending)
             .Select(r => r.TrainerId)
-            .Where(id => !activeIds.Contains(id))
-            .ToList();
+            .Where(id => !activeIds.Contains(id));
 
         var allIds = activeIds.Concat(pendingIds).Distinct().ToList();
         if (allIds.Count == 0) return new List<TrainerDto>();
 
         var profiles = await _userProfileLookup.GetProfilesAsync(allIds, cancellationToken);
         var statsMap = await _trainerStatsLookup.GetBatchAsync(allIds, gymId, cancellationToken);
-
-        var clientCounts = new Dictionary<Guid, int>();
-        foreach (var id in allIds)
-        {
-            var clients = await _trainerAssignmentLookup.GetClientsForTrainerAsync(id, gymId, cancellationToken);
-            clientCounts[id] = clients.Count;
-        }
+        var clientCounts = await CountClientsAsync(allIds, gymId, cancellationToken);
 
         // An id in the gym aggregate (or a trainer request) that resolves to no
         // Identity profile is orphaned data — e.g. a stale/garbage id left in
         // trainer_ids. Drop it so the list never surfaces a null-named ghost row.
         var dtos = allIds
-            .Where(id => profiles.TryGetValue(id, out var p) && p is not null)
-            .Select(id =>
-            {
-                profiles.TryGetValue(id, out var profile);
-                var hasRequest = requestMap.TryGetValue(id, out var req);
-                var trainerStatus = hasRequest
-                    ? req!.Status.ToString()
-                    : TrainerRequestStatus.Approved.ToString();
-                var stats = statsMap.TryGetValue(id, out var s) ? s : new TrainerStats(0m, 0m);
-                return new TrainerDto(
-                    TrainerId: id,
-                    GymId: gymId,
-                    FirstName: profile?.FirstName,
-                    LastName: profile?.LastName,
-                    Email: profile?.Email,
-                    PhoneNumber: profile?.PhoneNumber,
-                    ProfilePhotoUrl: profile?.ProfilePhotoUrl,
-                    Status: trainerStatus,
-                    Specializations: hasRequest ? req!.Specializations : Array.Empty<string>(),
-                    Bio: hasRequest ? req!.Bio : null,
-                    ActiveMemberCount: clientCounts.TryGetValue(id, out var count) ? count : 0,
-                    Rating: stats.Rating,
-                    MonthlyScore: stats.MonthlyScore);
-            })
+            .Where(id => profiles.GetValueOrDefault(id) is not null)
+            .Select(id => GymQueryMappings.ToTrainerDto(
+                id,
+                gymId,
+                profiles.GetValueOrDefault(id),
+                requestMap.GetValueOrDefault(id),
+                clientCounts.GetValueOrDefault(id),
+                statsMap.GetValueOrDefault(id) ?? new TrainerStats(0m, 0m)))
             .ToList();
 
         return string.IsNullOrWhiteSpace(status)
             ? dtos
             : dtos.Where(d => string.Equals(d.Status, status, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    private async Task<Dictionary<Guid, int>> CountClientsAsync(
+        IEnumerable<Guid> trainerIds, Guid gymId, CancellationToken cancellationToken)
+    {
+        var clientCounts = new Dictionary<Guid, int>();
+        foreach (var id in trainerIds)
+        {
+            var clients = await _trainerAssignmentLookup.GetClientsForTrainerAsync(id, gymId, cancellationToken);
+            clientCounts[id] = clients.Count;
+        }
+
+        return clientCounts;
     }
 
     public async Task<SessionPolicyDto> GetSessionPolicyAsync(Guid gymId, CancellationToken cancellationToken = default)
@@ -482,21 +288,13 @@ internal sealed class GymQueryService : IGymQueryService
 
     public async Task<TrainerDto?> GetTrainerByIdAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         if (gym is null) return null;
 
-        var isActive = gym.TrainerIds.Contains(trainerId);
+        var request = await TrainerRequests(gymId, trainerId).FirstOrDefaultAsync(cancellationToken);
 
-        var request = await _dbContext.GymTrainerRequests
-            .AsNoTracking()
-            .Where(r => r.GymId == gymId && r.TrainerId == trainerId)
-            .Select(r => new { r.Status, r.Bio, Specializations = r.Specializations.ToList() })
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (!isActive && request is null) return null;
+        if (!gym.TrainerIds.Contains(trainerId) && request is null) return null;
 
         var profile = await _userProfileLookup.GetProfileAsync(trainerId, cancellationToken);
 
@@ -504,34 +302,15 @@ internal sealed class GymQueryService : IGymQueryService
         // not found rather than returning a ghost trainer with null name fields.
         if (profile is null) return null;
 
-        var status = request is not null
-            ? request.Status.ToString()
-            : TrainerRequestStatus.Approved.ToString();
-
         var clients = await _trainerAssignmentLookup.GetClientsForTrainerAsync(trainerId, gymId, cancellationToken);
         var stats = await _trainerStatsLookup.GetAsync(trainerId, gymId, cancellationToken);
 
-        return new TrainerDto(
-            TrainerId: trainerId,
-            GymId: gymId,
-            FirstName: profile?.FirstName,
-            LastName: profile?.LastName,
-            Email: profile?.Email,
-            PhoneNumber: profile?.PhoneNumber,
-            ProfilePhotoUrl: profile?.ProfilePhotoUrl,
-            Status: status,
-            Specializations: request?.Specializations ?? (IReadOnlyList<string>)Array.Empty<string>(),
-            Bio: request?.Bio,
-            ActiveMemberCount: clients.Count,
-            Rating: stats.Rating,
-            MonthlyScore: stats.MonthlyScore);
+        return GymQueryMappings.ToTrainerDto(trainerId, gymId, profile, request, clients.Count, stats);
     }
 
     public async Task<List<MemberDto>?> GetTrainerClientsAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         if (gym is null) return null;
 
@@ -546,33 +325,11 @@ internal sealed class GymQueryService : IGymQueryService
         if (memberIds.Count == 0) return new List<MemberDto>();
 
         var profiles = await _userProfileLookup.GetProfilesAsync(memberIds, cancellationToken);
-        var directory = await _dbContext.GymMembers
-            .AsNoTracking()
-            .Where(m => m.GymId == gymId && memberIds.Contains(m.MemberId))
-            .Select(m => new { m.MemberId, m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen })
-            .ToDictionaryAsync(m => m.MemberId, cancellationToken);
+        var directory = await LoadMemberDirectoryAsync(gymId, memberIds, cancellationToken);
 
         return memberIds
-            .Select(id =>
-            {
-                profiles.TryGetValue(id, out var profile);
-                directory.TryGetValue(id, out var dir);
-                return new MemberDto(
-                    MemberId: id,
-                    GymId: gymId,
-                    Section: dir?.Section,
-                    MemberNumber: dir?.MemberNumber,
-                    JoinedAt: dir?.JoinedAt ?? DateTime.UtcNow,
-                    FirstName: profile?.FirstName,
-                    LastName: profile?.LastName,
-                    Email: profile?.Email,
-                    PhoneNumber: profile?.PhoneNumber,
-                    ProfilePhotoUrl: profile?.ProfilePhotoUrl,
-                    Role: profile?.Role,
-                    Status: profile?.Status,
-                    IsFrozen: dir?.IsFrozen ?? false,
-                    NationalId: profile?.NationalId);
-            })
+            .Select(id => GymQueryMappings.ToMemberDto(
+                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), DateTime.UtcNow))
             .ToList();
     }
 
@@ -587,29 +344,8 @@ internal sealed class GymQueryService : IGymQueryService
             return null;
 
         var profiles = await _userProfileLookup.GetProfilesAsync(new[] { c.TrainerId }, cancellationToken);
-        string? trainerName = null;
-        if (profiles is not null && profiles.TryGetValue(c.TrainerId, out var trainer) && trainer is not null)
-        {
-            trainerName = $"{trainer.FirstName} {trainer.LastName}".Trim();
-        }
 
-        return new GymClassDto(
-            c.Id,
-            c.GymId,
-            c.Name,
-            c.Description,
-            c.TrainerId,
-            string.IsNullOrWhiteSpace(trainerName) ? null : trainerName,
-            new ClassScheduleDto(
-                c.Schedule.DayOfWeek,
-                c.Schedule.StartTime,
-                c.Schedule.DurationMinutes,
-                c.Schedule.IsRecurring),
-            c.Capacity,
-            c.WaitlistEnabled,
-            c.Status.ToString(),
-            c.Bookings.Count(b => b.Status == BookingStatus.Confirmed),
-            c.CreatedAt);
+        return GymQueryMappings.ToGymClassDto(c, profiles?.GetValueOrDefault(c.TrainerId));
     }
 
     public Task<List<MemberDto>?> GetClassWaitlistAsync(Guid gymId, Guid classId, CancellationToken cancellationToken = default)
@@ -641,32 +377,13 @@ internal sealed class GymQueryService : IGymQueryService
             return new List<MemberDto>();
 
         var profiles = await _userProfileLookup.GetProfilesAsync(memberIds, cancellationToken);
-        var directory = await _dbContext.GymMembers
-            .AsNoTracking()
-            .Where(m => m.GymId == gymId && memberIds.Contains(m.MemberId))
-            .Select(m => new { m.MemberId, m.MemberNumber, m.Section, m.JoinedAt })
-            .ToDictionaryAsync(m => m.MemberId, cancellationToken);
+        var directory = await LoadMemberDirectoryAsync(gymId, memberIds, cancellationToken);
 
+        // Class rosters do not report the frozen flag.
         return memberIds
-            .Select(id =>
-            {
-                profiles.TryGetValue(id, out var profile);
-                directory.TryGetValue(id, out var dir);
-                return new MemberDto(
-                    MemberId: id,
-                    GymId: gymId,
-                    Section: dir?.Section,
-                    MemberNumber: dir?.MemberNumber,
-                    JoinedAt: dir?.JoinedAt ?? DateTime.UtcNow,
-                    FirstName: profile?.FirstName,
-                    LastName: profile?.LastName,
-                    Email: profile?.Email,
-                    PhoneNumber: profile?.PhoneNumber,
-                    ProfilePhotoUrl: profile?.ProfilePhotoUrl,
-                    Role: profile?.Role,
-                    Status: profile?.Status,
-                    NationalId: profile?.NationalId);
-            })
+            .Select(id => GymQueryMappings.ToMemberDto(
+                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), DateTime.UtcNow)
+                with { IsFrozen = false })
             .ToList();
     }
 
@@ -678,36 +395,12 @@ internal sealed class GymQueryService : IGymQueryService
             .Where(c => c.GymId == gymId && c.Status != GymClassStatus.Cancelled)
             .ToListAsync(cancellationToken);
 
-        var trainerIds = classes.Select(c => c.TrainerId).Distinct().ToList();
-        var profiles = trainerIds.Count == 0
-            ? null
-            : await _userProfileLookup.GetProfilesAsync(trainerIds, cancellationToken);
+        var profiles = await GetProfilesOrEmptyAsync(
+            classes.Select(c => c.TrainerId).Distinct().ToList(), cancellationToken);
 
-        return classes.Select(c =>
-        {
-            string? trainerName = null;
-            if (profiles is not null && profiles.TryGetValue(c.TrainerId, out var trainer) && trainer is not null)
-            {
-                trainerName = $"{trainer.FirstName} {trainer.LastName}".Trim();
-            }
-            return new GymClassDto(
-                c.Id,
-                c.GymId,
-                c.Name,
-                c.Description,
-                c.TrainerId,
-                string.IsNullOrWhiteSpace(trainerName) ? null : trainerName,
-                new ClassScheduleDto(
-                    c.Schedule.DayOfWeek,
-                    c.Schedule.StartTime,
-                    c.Schedule.DurationMinutes,
-                    c.Schedule.IsRecurring),
-                c.Capacity,
-                c.WaitlistEnabled,
-                c.Status.ToString(),
-                c.Bookings.Count(b => b.Status == BookingStatus.Confirmed),
-                c.CreatedAt);
-        }).ToList();
+        return classes
+            .Select(c => GymQueryMappings.ToGymClassDto(c, profiles.GetValueOrDefault(c.TrainerId)))
+            .ToList();
     }
 
     public async Task<PagedResponse<CheckInDto>> GetCheckInHistoryAsync(
@@ -733,31 +426,12 @@ internal sealed class GymQueryService : IGymQueryService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var memberIds = checkIns.Select(c => c.MemberId).Distinct().ToList();
-        var profiles = memberIds.Count == 0
-            ? null
-            : await _userProfileLookup.GetProfilesAsync(memberIds, cancellationToken);
+        var profiles = await GetProfilesOrEmptyAsync(
+            checkIns.Select(c => c.MemberId).Distinct().ToList(), cancellationToken);
 
-        var items = checkIns.Select(c =>
-        {
-            string? memberName = null;
-            string? photoUrl = null;
-            if (profiles is not null && profiles.TryGetValue(c.MemberId, out var p) && p is not null)
-            {
-                memberName = $"{p.FirstName} {p.LastName}".Trim();
-                photoUrl = p.ProfilePhotoUrl;
-            }
-            return new CheckInDto(
-                c.Id,
-                c.GymId,
-                c.MemberId,
-                c.Method.ToString(),
-                c.CheckedInAt,
-                c.StaffId,
-                string.IsNullOrWhiteSpace(memberName) ? null : memberName,
-                photoUrl,
-                null);
-        }).ToList();
+        var items = checkIns
+            .Select(c => GymQueryMappings.ToCheckInDto(c, profiles.GetValueOrDefault(c.MemberId)))
+            .ToList();
 
         return new PagedResponse<CheckInDto>(items, page, pageSize, totalCount, totalPages);
     }
@@ -795,9 +469,7 @@ internal sealed class GymQueryService : IGymQueryService
 
     public async Task<GymAnalyticsResponse?> GetAnalyticsAsync(Guid gymId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         if (gym is null) return null;
 
@@ -806,17 +478,9 @@ internal sealed class GymQueryService : IGymQueryService
         var weekStart = todayStart.AddDays(-(int)todayStart.DayOfWeek);
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var checkInsToday = await _dbContext.CheckIns
-            .AsNoTracking()
-            .CountAsync(c => c.GymId == gymId && c.CheckedInAt >= todayStart, cancellationToken);
-
-        var checkInsThisWeek = await _dbContext.CheckIns
-            .AsNoTracking()
-            .CountAsync(c => c.GymId == gymId && c.CheckedInAt >= weekStart, cancellationToken);
-
-        var checkInsThisMonth = await _dbContext.CheckIns
-            .AsNoTracking()
-            .CountAsync(c => c.GymId == gymId && c.CheckedInAt >= monthStart, cancellationToken);
+        var checkInsToday = await CountCheckInsSinceAsync(gymId, todayStart, cancellationToken);
+        var checkInsThisWeek = await CountCheckInsSinceAsync(gymId, weekStart, cancellationToken);
+        var checkInsThisMonth = await CountCheckInsSinceAsync(gymId, monthStart, cancellationToken);
 
         var totalClasses = await _dbContext.GymClasses
             .AsNoTracking()
@@ -831,27 +495,13 @@ internal sealed class GymQueryService : IGymQueryService
                 (b, c) => b)
             .CountAsync(b => b.Status == BookingStatus.Confirmed, cancellationToken);
 
-        var totalStaff = await _dbContext.StaffRoles
-            .AsNoTracking()
-            .CountAsync(s => s.GymId == gymId, cancellationToken);
+        var totalStaff = await GetStaffCountAsync(gymId, cancellationToken);
 
-        var sixMonthsAgo = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-5);
         var memberJoins = await _dbContext.GymMembers
             .AsNoTracking()
             .Where(m => m.GymId == gymId)
             .Select(m => m.JoinedAt)
             .ToListAsync(cancellationToken);
-
-        var monthLabels = new[] { "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec" };
-        var memberGrowth = new List<MemberGrowthPoint>();
-        for (var i = 0; i < 6; i++)
-        {
-            var bucketStart = sixMonthsAgo.AddMonths(i);
-            var bucketEnd = bucketStart.AddMonths(1);
-            var newCount = memberJoins.Count(d => d >= bucketStart && d < bucketEnd);
-            var activeCount = memberJoins.Count(d => d < bucketEnd);
-            memberGrowth.Add(new MemberGrowthPoint(monthLabels[bucketStart.Month - 1], activeCount, newCount));
-        }
 
         return new GymAnalyticsResponse(
             gymId,
@@ -863,7 +513,29 @@ internal sealed class GymQueryService : IGymQueryService
             checkInsThisWeek,
             checkInsThisMonth,
             activeBookings,
-            memberGrowth);
+            BuildMemberGrowth(memberJoins, monthStart.AddMonths(-(MemberGrowthMonths - 1))));
+    }
+
+    private Task<int> CountCheckInsSinceAsync(Guid gymId, DateTime since, CancellationToken cancellationToken)
+        => _dbContext.CheckIns
+            .AsNoTracking()
+            .CountAsync(c => c.GymId == gymId && c.CheckedInAt >= since, cancellationToken);
+
+    // One point per calendar month starting at firstMonthStart: members who joined in
+    // that month, and the running total of members joined up to its end.
+    private static List<MemberGrowthPoint> BuildMemberGrowth(List<DateTime> memberJoins, DateTime firstMonthStart)
+    {
+        var memberGrowth = new List<MemberGrowthPoint>();
+        for (var i = 0; i < MemberGrowthMonths; i++)
+        {
+            var bucketStart = firstMonthStart.AddMonths(i);
+            var bucketEnd = bucketStart.AddMonths(1);
+            var newCount = memberJoins.Count(d => d >= bucketStart && d < bucketEnd);
+            var activeCount = memberJoins.Count(d => d < bucketEnd);
+            memberGrowth.Add(new MemberGrowthPoint(MonthLabels[bucketStart.Month - 1], activeCount, newCount));
+        }
+
+        return memberGrowth;
     }
 
     public async Task<PeakHoursAnalyticsResponse?> GetPeakHoursAsync(
@@ -932,33 +604,21 @@ internal sealed class GymQueryService : IGymQueryService
 
     public async Task<BrandingResponse?> GetBrandingAsync(Guid gymId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
-        if (gym?.Branding is null) return null;
-
-        return new BrandingResponse(
-            gym.Branding.LogoUrl,
-            gym.Branding.PrimaryColor,
-            gym.Branding.SecondaryColor,
-            gym.Branding.CoverPhotoUrl);
+        return gym?.Branding is null ? null : GymQueryMappings.ToBrandingResponse(gym.Branding);
     }
 
     public async Task<int> GetMemberCountAsync(Guid gymId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         return gym?.MemberIds.Count ?? 0;
     }
 
     public async Task<int> GetTrainerCountAsync(Guid gymId, CancellationToken cancellationToken = default)
     {
-        var gym = await _dbContext.Gyms
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+        var gym = await FindGymAsync(gymId, cancellationToken);
 
         return gym?.TrainerIds.Count ?? 0;
     }
@@ -969,4 +629,62 @@ internal sealed class GymQueryService : IGymQueryService
             .AsNoTracking()
             .CountAsync(s => s.GymId == gymId, cancellationToken);
     }
+
+    private Task<Gym?> FindGymAsync(Guid gymId, CancellationToken cancellationToken)
+        => _dbContext.Gyms
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
+
+    private async Task<List<GymResponse>> ToGymResponsesAsync(List<Gym> gyms, CancellationToken cancellationToken)
+    {
+        var ownerProfiles = await _userProfileLookup.GetProfilesAsync(
+            gyms.Select(g => g.OwnerId).Distinct(), cancellationToken);
+
+        return gyms
+            .Select(gym => GymQueryMappings.ToGymResponse(gym, ownerProfiles.GetValueOrDefault(gym.OwnerId)))
+            .ToList();
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, UserProfileInfo>> GetProfilesOrEmptyAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+        => userIds.Count == 0
+            ? new Dictionary<Guid, UserProfileInfo>()
+            : await _userProfileLookup.GetProfilesAsync(userIds, cancellationToken);
+
+    // gym_members rows for the gym, keyed by member id; all members when memberIds is null.
+    private async Task<Dictionary<Guid, MemberDirectoryEntry>> LoadMemberDirectoryAsync(
+        Guid gymId, IReadOnlyCollection<Guid>? memberIds, CancellationToken cancellationToken)
+    {
+        var members = _dbContext.GymMembers
+            .AsNoTracking()
+            .Where(m => m.GymId == gymId);
+
+        if (memberIds is not null)
+            members = members.Where(m => memberIds.Contains(m.MemberId));
+
+        var rows = await members
+            .Select(m => new MemberDirectoryEntry(m.MemberId, m.MemberNumber, m.Section, m.JoinedAt, m.IsFrozen))
+            .ToListAsync(cancellationToken);
+
+        var directory = new Dictionary<Guid, MemberDirectoryEntry>();
+        foreach (var row in rows)
+            directory[row.MemberId] = row;
+
+        return directory;
+    }
+
+    private IQueryable<TrainerRequestInfo> TrainerRequests(Guid gymId, Guid? trainerId = null)
+    {
+        var requests = _dbContext.GymTrainerRequests
+            .AsNoTracking()
+            .Where(r => r.GymId == gymId);
+
+        if (trainerId.HasValue)
+            requests = requests.Where(r => r.TrainerId == trainerId.Value);
+
+        return requests.Select(r => new TrainerRequestInfo(r.TrainerId, r.Status, r.Bio, r.Specializations.ToList()));
+    }
+
+    private static int TotalPages(int totalCount, int pageSize)
+        => pageSize <= 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
 }

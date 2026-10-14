@@ -122,6 +122,20 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
         response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task GetSessionPackages_GymWideWithoutMemberOrTrainer_ReturnsOk()
+    {
+        // The staff "Active Packages" screen lists the whole gym: only the gym
+        // context is supplied, no member/trainer filter.
+        var gymId = Guid.NewGuid();
+        var client = CreateStaffClient(gymId: gymId);
+        client.DefaultRequestHeaders.Add("X-Gym-Id", gymId.ToString());
+
+        var response = await client.GetAsync("api/v1/billing/packages?status=Active");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     #endregion
 
     #region Payments

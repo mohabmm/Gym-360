@@ -32,9 +32,10 @@ internal sealed class GetSessionPackagesQueryHandler : IQueryHandler<GetSessionP
         }
         else
         {
-            // Fallback: get by trainer with empty - will need repo extension for gym-wide
-            packages = await _packageRepository.GetByTrainerAsync(
-                request.GymId, Guid.Empty, cancellationToken);
+            // No member/trainer filter: the staff "Active Packages" view lists
+            // every package in the gym.
+            packages = await _packageRepository.GetByGymAsync(
+                request.GymId, cancellationToken);
         }
 
         var filteredPackages = packages.AsEnumerable();

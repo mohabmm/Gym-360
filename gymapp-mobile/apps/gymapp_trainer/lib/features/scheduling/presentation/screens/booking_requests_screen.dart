@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/providers.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
+import '../../../home/presentation/providers/trainer_dashboard_provider.dart';
 import '../providers/scheduling_providers.dart';
 
 class BookingRequestsScreen extends ConsumerWidget {
@@ -95,6 +96,10 @@ class BookingRequestsScreen extends ConsumerWidget {
         );
       }
       ref.invalidate(pendingBookingRequestsProvider);
+      // An accepted request becomes a scheduled session — without these the
+      // Schedule tab and Home's "today" list kept showing the stale state.
+      ref.invalidate(upcomingSessionsProvider);
+      ref.invalidate(trainerDashboardProvider);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

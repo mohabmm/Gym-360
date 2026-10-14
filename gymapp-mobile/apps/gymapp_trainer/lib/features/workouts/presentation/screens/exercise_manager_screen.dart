@@ -76,11 +76,33 @@ class _ExerciseManagerScreenState
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateExerciseDialog(context, isArabic),
+        onPressed: () => _onCreateExercisePressed(context, isArabic),
         child: const Icon(Icons.add),
         tooltip: isArabic ? 'تمرين مخصص' : 'Custom Exercise',
       ),
     );
+  }
+
+  // Custom exercises are plan-gated on the BE (`custom_exercise_library`).
+  // Check up front so the trainer is told why instead of filling in the form
+  // and having the save rejected with a 403.
+  Future<void> _onCreateExercisePressed(
+      BuildContext context, bool isArabic) async {
+    var enabled = true;
+    try {
+      final features = await ref.read(trainerPlanFeaturesProvider.future);
+      enabled = features.isEnabled(_customExerciseFeature);
+    } catch (_) {
+      // Unknown plan state: let the BE decide; the form surfaces its answer.
+    }
+    if (!context.mounted) return;
+    if (!enabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_featureUnavailableMessage(isArabic))),
+      );
+      return;
+    }
+    _showCreateExerciseDialog(context, isArabic);
   }
 
   void _showCreateExerciseDialog(BuildContext context, bool isArabic) {
@@ -92,6 +114,12 @@ class _ExerciseManagerScreenState
     );
   }
 }
+
+const _customExerciseFeature = 'custom_exercise_library';
+
+String _featureUnavailableMessage(bool isArabic) => isArabic
+    ? 'التمارين المخصصة غير متاحة في باقة الصالة الحالية. تواصل مع ادارة الصالة للترقية.'
+    : "Custom exercises aren't included in your gym's current plan. Ask the gym to upgrade.";
 
 // Matches backend enum names in src/Modules/Training/.../Enums — these must
 // be exact: the API Parse<T> is case-insensitive but the string has to map to
@@ -127,6 +155,7 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
   String _category = 'Strength';
   bool _muscleGroupError = false;
   bool _submitting = false;
+  String? _submitError;
 
   @override
   void dispose() {
@@ -211,7 +240,7 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
               children: _muscleGroups.map((m) {
                 final selected = _selectedMuscles.contains(m);
                 return FilterChip(
-                  label: Text(m),
+                  label: Text(ExerciseLabels.muscleGroup(m, isArabic: isArabic)),
                   selected: selected,
                   onSelected: (on) => setState(() {
                     if (on) {
@@ -244,7 +273,11 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
                 labelText: isArabic ? 'المعدات' : 'Equipment',
               ),
               items: _equipmentOptions
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .map((e) => DropdownMenuItem(
+                        value: e,
+                        child: Text(
+                            ExerciseLabels.equipment(e, isArabic: isArabic)),
+                      ))
                   .toList(),
               onChanged: (v) => setState(() => _equipment = v ?? 'None'),
             ),
@@ -255,11 +288,24 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
                 labelText: isArabic ? 'التصنيف' : 'Category',
               ),
               items: _categoryOptions
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .map((c) => DropdownMenuItem(
+                        value: c,
+                        child: Text(
+                            ExerciseLabels.category(c, isArabic: isArabic)),
+                      ))
                   .toList(),
               onChanged: (v) => setState(() => _category = v ?? 'Strength'),
             ),
             const SizedBox(height: 16),
+            // Shown inline: a SnackBar would render on the Scaffold underneath
+            // this sheet, i.e. invisible, so a failed save looked like a no-op.
+            if (_submitError != null) ...[
+              Text(
+                _submitError!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              const SizedBox(height: 12),
+            ],
             AppButton(
               text: isArabic ? 'اضافة' : 'Add',
               onPressed: _submitting || missingContext
@@ -288,7 +334,10 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
     setState(() => _muscleGroupError = !hasMuscles);
     if (!isFormValid || !hasMuscles) return;
 
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _submitError = null;
+    });
     try {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.postVoid(
@@ -316,15 +365,17 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isArabic ? 'فشل الحفظ: $e' : 'Failed to save: $e',
-          ),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      final String reason;
+      if (e is FeatureGatedException) {
+        reason = _featureUnavailableMessage(isArabic);
+      } else {
+        final detail = e is ApiException ? e.message : e.toString();
+        reason = isArabic ? 'فشل الحفظ: $detail' : 'Failed to save: $detail';
+      }
+      setState(() {
+        _submitting = false;
+        _submitError = reason;
+      });
     }
   }
 }
@@ -344,10 +395,9 @@ class _AllExercisesTab extends ConsumerWidget {
       data: (exercises) {
         final filtered = searchQuery.isEmpty
             ? exercises
-            : exercises.where((e) {
-                final name = (e.nameAr ?? e.name).toLowerCase();
-                return name.contains(searchQuery.toLowerCase());
-              }).toList();
+            : exercises
+                .where((e) => ExerciseLabels.matches(e, searchQuery))
+                .toList();
 
         if (filtered.isEmpty) {
           return EmptyState(
@@ -400,10 +450,9 @@ class _CustomExercisesTab extends ConsumerWidget {
       data: (exercises) {
         final filtered = searchQuery.isEmpty
             ? exercises
-            : exercises.where((e) {
-                final name = (e.nameAr ?? e.name).toLowerCase();
-                return name.contains(searchQuery.toLowerCase());
-              }).toList();
+            : exercises
+                .where((e) => ExerciseLabels.matches(e, searchQuery))
+                .toList();
 
         if (filtered.isEmpty) {
           return EmptyState(
@@ -457,12 +506,11 @@ class _ExerciseTile extends StatelessWidget {
             size: 18,
           ),
         ),
-        title: Text(
-          isArabic && exercise.nameAr != null
-              ? exercise.nameAr!
-              : exercise.name,
-        ),
-        subtitle: Text(exercise.muscleGroup),
+        title: Text(ExerciseLabels.name(exercise, isArabic: isArabic)),
+        subtitle: Text(ExerciseLabels.muscleGroups(
+          exercise.muscleGroups,
+          isArabic: isArabic,
+        )),
       ),
     );
   }

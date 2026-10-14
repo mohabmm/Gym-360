@@ -4,6 +4,23 @@ import 'package:intl/intl.dart';
 class DateFormatter {
   DateFormatter._();
 
+  /// The API serialises timestamps in UTC without a `Z` suffix, so
+  /// `DateTime.parse` reads them as local wall-clock time. Re-interpret such a
+  /// value as UTC and convert it to the device's zone before display.
+  static DateTime apiUtcToLocal(DateTime value) {
+    if (value.isUtc) return value.toLocal();
+    return DateTime.utc(
+      value.year,
+      value.month,
+      value.day,
+      value.hour,
+      value.minute,
+      value.second,
+      value.millisecond,
+      value.microsecond,
+    ).toLocal();
+  }
+
   /// Format date as "12 يناير 2024" (Arabic) or "12 January 2024" (English).
   static String formatLong(DateTime date, {String locale = 'ar'}) {
     return DateFormat('dd MMMM yyyy', locale).format(date);

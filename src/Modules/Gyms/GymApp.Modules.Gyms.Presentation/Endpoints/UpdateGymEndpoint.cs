@@ -42,6 +42,6 @@ internal sealed class UpdateGymEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(400)
         .Produces<ApiResponse<object>>(401)
         .Produces<ApiResponse<object>>(404)
-        .RequireAuthorization("gym_owner_or_admin");
+        .RequireAuthorization("gym_owner_manager_or_admin");
     }
 }

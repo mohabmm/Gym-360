@@ -92,7 +92,8 @@ class CheckInLogScreen extends ConsumerWidget {
                       );
                     }),
                     trailing: Text(
-                      DateFormatter.formatTime(item.checkedInAt,
+                      DateFormatter.formatTime(
+                          DateFormatter.apiUtcToLocal(item.checkedInAt),
                           locale: isArabic ? 'ar' : 'en'),
                       style: theme.textTheme.bodySmall,
                     ),

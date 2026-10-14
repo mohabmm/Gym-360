@@ -23,11 +23,13 @@ internal sealed class UpdateMemberEndpoint : IEndpoint
                     : ApiResults.Problem(result.Error);
             })
             .RequireAuthorization()
+            .RequireMemberAccess(MemberAccessLevel.Staff)
             .WithSummary("Update a gym member profile (name/phone/section)")
             .WithTags("Gyms")
             .Produces<ApiResponse<object>>(200)
             .Produces<ApiResponse<object>>(400)
             .Produces<ApiResponse<object>>(401)
+            .Produces<ApiResponse<object>>(403)
             .Produces<ApiResponse<object>>(404);
     }
 }

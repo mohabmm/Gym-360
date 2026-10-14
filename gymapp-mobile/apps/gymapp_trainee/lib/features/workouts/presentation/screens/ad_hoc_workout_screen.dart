@@ -467,7 +467,10 @@ class _ExercisePickerSheetState extends ConsumerState<_ExercisePickerSheet> {
                         ),
                         subtitle: ex.muscleGroups.isEmpty
                             ? null
-                            : Text(ex.muscleGroups.join(', ')),
+                            : Text(ExerciseLabels.muscleGroups(
+                                ex.muscleGroups,
+                                isArabic: isArabic,
+                              )),
                         onTap: () => widget.onPick(ex),
                       );
                     },

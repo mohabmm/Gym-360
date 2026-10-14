@@ -15,14 +15,14 @@ tap "لوحة المدربين"
 wait_for ~"لوحة المدربين" timeout:8000
 
 assert_exists ~"لوحة المدربين"
-assert_exists ~"الشهادات"
+assert_exists ~"آراء العملاء"
 assert_not_exists ~"خطأ في التحميل"
 
 # Navigate to Testimonials tab
-tap ~"الشهادات"
-wait_for ~"اعتدال الشهادات" timeout:5000
+tap ~"آراء العملاء"
+wait_for ~"مراجعة آراء العملاء" timeout:5000
 
-assert_exists ~"اعتدال الشهادات"
+assert_exists ~"مراجعة آراء العملاء"
 assert_not_exists ~"خطأ في التحميل"
 
 tap ~"رجوع"

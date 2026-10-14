@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
@@ -30,10 +31,8 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
         };
 
         // Notify trainer
-        var trainerNotif = Notification.Create(
+        var trainerNotif = NotificationTexts.SessionCompletedForTrainer().ToNotification(
             notification.TrainerId,
-            "Session Completed",
-            "A training session has been marked as completed.",
             NotificationType.TrainerFeedback,
             notification.GymId,
             data);
@@ -41,10 +40,8 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
         await _notificationRepository.AddAsync(trainerNotif, cancellationToken);
 
         // Notify member
-        var memberNotif = Notification.Create(
+        var memberNotif = NotificationTexts.SessionCompletedForMember().ToNotification(
             notification.MemberId,
-            "Session Completed",
-            "Your training session has been completed. Great work!",
             NotificationType.SessionReminder,
             notification.GymId,
             data);

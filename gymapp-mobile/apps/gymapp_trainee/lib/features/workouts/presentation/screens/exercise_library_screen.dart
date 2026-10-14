@@ -322,7 +322,10 @@ class _ExerciseTile extends StatelessWidget {
       title: Text(name),
       subtitle: exercise.muscleGroups.isEmpty
           ? null
-          : Text(exercise.muscleGroups.join(', ')),
+          : Text(ExerciseLabels.muscleGroups(
+              exercise.muscleGroups,
+              isArabic: isArabic,
+            )),
     );
   }
 }

@@ -42,6 +42,8 @@ internal sealed class SaveMemberOnboardingEndpoint : IEndpoint
         .Produces<ApiResponse<Guid>>(201)
         .Produces<ApiResponse<object>>(400)
         .Produces<ApiResponse<object>>(401)
-        .RequireAuthorization();
+        .Produces<ApiResponse<object>>(403)
+        .RequireAuthorization()
+        .RequireMemberAccess(MemberAccessLevel.StaffTrainerOrSelf);
     }
 }

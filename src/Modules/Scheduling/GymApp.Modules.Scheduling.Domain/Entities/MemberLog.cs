@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Domain.Entities;
 
@@ -32,30 +33,24 @@ public sealed class MemberLog : Entity
     public int Satisfaction { get; private set; }
     public DateTime LoggedAt { get; private set; }
 
-    public static MemberLog Create(
-        Guid sessionId,
-        int rating,
-        int perceivedExertion,
-        string? personalNotes,
-        string? discomfort,
-        int satisfaction)
+    public static MemberLog Create(Guid sessionId, MemberLogDetails details)
     {
-        if (rating < 1 || rating > 5)
-            throw new ArgumentOutOfRangeException(nameof(rating), "Rating must be between 1 and 5.");
+        if (details.Rating < 1 || details.Rating > 5)
+            throw new ArgumentOutOfRangeException(nameof(details), "Rating must be between 1 and 5.");
 
-        if (perceivedExertion < 1 || perceivedExertion > 10)
-            throw new ArgumentOutOfRangeException(nameof(perceivedExertion), "Perceived exertion (RPE) must be between 1 and 10.");
+        if (details.PerceivedExertion < 1 || details.PerceivedExertion > 10)
+            throw new ArgumentOutOfRangeException(nameof(details), "Perceived exertion (RPE) must be between 1 and 10.");
 
-        if (satisfaction < 1 || satisfaction > 5)
-            throw new ArgumentOutOfRangeException(nameof(satisfaction), "Satisfaction must be between 1 and 5.");
+        if (details.Satisfaction < 1 || details.Satisfaction > 5)
+            throw new ArgumentOutOfRangeException(nameof(details), "Satisfaction must be between 1 and 5.");
 
         return new MemberLog(
             Guid.NewGuid(),
             sessionId,
-            rating,
-            perceivedExertion,
-            personalNotes,
-            discomfort,
-            satisfaction);
+            details.Rating,
+            details.PerceivedExertion,
+            details.PersonalNotes,
+            details.Discomfort,
+            details.Satisfaction);
     }
 }

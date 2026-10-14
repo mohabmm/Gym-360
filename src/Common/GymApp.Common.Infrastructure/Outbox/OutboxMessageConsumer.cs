@@ -11,6 +11,9 @@ public sealed class OutboxMessageConsumer
 {
     public Guid OutboxMessageId { get; set; }
 
-    /// <summary>The consuming handler's type name (e.g. "GymApprovedIntegrationEventHandler").</summary>
+    /// <summary>
+    /// The consuming handler's namespace-qualified type name (see <see cref="OutboxConsumerName"/>).
+    /// Rows written by older builds hold the short type name.
+    /// </summary>
     public string Name { get; set; } = string.Empty;
 }
