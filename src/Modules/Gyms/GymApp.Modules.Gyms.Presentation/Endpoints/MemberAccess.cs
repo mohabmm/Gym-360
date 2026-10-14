@@ -64,6 +64,13 @@ internal static class MemberAccess
             "trainer",
             StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>A trainer who is neither gym staff nor a platform admin.</summary>
+    public static bool IsTrainerOnly(ClaimsPrincipal user) =>
+        IsTrainer(user) && !IsStaffOrAdmin(user);
+
+    private static bool IsStaffOrAdmin(ClaimsPrincipal user) =>
+        IsStaff(user) || IsPlatformAdmin(user);
+
     public static bool TryGetUserId(ClaimsPrincipal user, out Guid userId) =>
         Guid.TryParse(
             user.FindFirstValue(ClaimTypes.NameIdentifier) ?? user.FindFirstValue("sub"),

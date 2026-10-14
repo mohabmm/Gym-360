@@ -13,6 +13,15 @@ void main() {
     t = buildTestApiClient();
   });
 
+  /// Asserts the single recorded request was a GET (to [path], when given)
+  /// carrying each of [query]'s parameters.
+  void expectGet({String? path, Map<String, String> query = const {}}) {
+    final req = t.onlyRequest;
+    expect(req.method, 'GET');
+    if (path != null) expect(req.path, path);
+    expect({for (final key in query.keys) key: req.q(key)}, query);
+  }
+
   group('ClientRosterScreen', () {
     test('GET /gyms/{gymId}/members with page+pageSize parses UserModel list',
         () async {
@@ -35,12 +44,11 @@ void main() {
         },
       );
 
-      final req = t.onlyRequest;
-      expect(req.method, 'GET');
-      expect(req.path, '/api/v1/gyms/$kGymId/members');
-      expect(req.q('page'), '1');
-      expect(req.q('pageSize'), '100');
-      expect(users, hasLength(2));
+      expectGet(
+        path: '/api/v1/gyms/$kGymId/members',
+        query: {'page': '1', 'pageSize': '100'},
+      );
+      expect(users.map((u) => u.id), ['client-1', 'client-2']);
       expect(users.first.goals, ['WeightLoss', 'Toning']);
     });
   });
@@ -83,9 +91,7 @@ void main() {
             .toList(),
       );
 
-      final req = t.onlyRequest;
-      expect(req.q('memberId'), kClientId);
-      expect(req.q('gymId'), kGymId);
+      expectGet(query: {'memberId': kClientId, 'gymId': kGymId});
       expect(sessions.single.memberId, kClientId);
     });
 
@@ -121,10 +127,10 @@ void main() {
             RemoteWorkoutStatusModel.fromJson(d as Map<String, dynamic>),
       );
 
-      final req = t.onlyRequest;
-      expect(req.path, '/api/v1/training/remote-workout/status');
-      expect(req.q('clientId'), kClientId);
-      expect(req.q('gymId'), kGymId);
+      expectGet(
+        path: '/api/v1/training/remote-workout/status',
+        query: {'clientId': kClientId, 'gymId': kGymId},
+      );
       expect(status.isActive, true);
     });
 
@@ -146,9 +152,7 @@ void main() {
             .toList(),
       );
 
-      final req = t.onlyRequest;
-      expect(req.q('status'), 'active');
-      expect(req.q('memberId'), kClientId);
+      expectGet(query: {'status': 'active', 'memberId': kClientId});
       expect(packages.single.remainingSessions, 7);
       expect(packages.single.price, 3000.0);
     });
@@ -262,12 +266,15 @@ void main() {
         parser: parseSaved,
       );
 
-      expect(t.onlyRequest.method, 'GET');
-      expect(t.onlyRequest.path,
-          '/api/v1/gyms/$kGymId/members/$kClientId/onboarding');
-      expect(saved!['fitnessGoals'], 'lose 5kg');
-      expect(saved['injuries'], 'old knee injury');
-      expect(saved['fitnessLevel'], 'intermediate');
+      expectGet(path: '/api/v1/gyms/$kGymId/members/$kClientId/onboarding');
+      expect(
+        saved,
+        allOf(
+          containsPair('fitnessGoals', 'lose 5kg'),
+          containsPair('injuries', 'old knee injury'),
+          containsPair('fitnessLevel', 'intermediate'),
+        ),
+      );
     });
 
     test('GET onboarding with null data means nothing saved yet', () async {

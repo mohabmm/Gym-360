@@ -32,7 +32,8 @@ internal sealed class SessionPackageLowIntegrationEventHandler : INotificationHa
         };
 
         // Notify member
-        var memberNotif = NotificationTexts.SessionPackageLow(notification.Remaining).ToNotification(
+        var memberNotif = Notification.CreateLocalized(
+            NotificationTexts.SessionPackageLow(notification.Remaining),
             notification.MemberId,
             NotificationType.PackageLow,
             notification.GymId,

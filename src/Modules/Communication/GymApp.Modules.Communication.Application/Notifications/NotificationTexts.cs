@@ -1,19 +1,7 @@
 using System.Globalization;
-using GymApp.Modules.Communication.Domain.Entities;
-using GymApp.Modules.Communication.Domain.Enums;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.Notifications;
-
-/// <summary>Arabic (primary) and English text of a system notification.</summary>
-internal sealed record NotificationText(string TitleAr, string BodyAr, string TitleEn, string BodyEn)
-{
-    public Notification ToNotification(
-        Guid userId,
-        NotificationType type,
-        Guid? gymId = null,
-        Dictionary<string, string>? data = null) =>
-        Notification.CreateLocalized(userId, TitleAr, BodyAr, TitleEn, BodyEn, type, gymId, data);
-}
 
 /// <summary>
 /// Wording of every system-generated notification, Arabic first (the product's primary

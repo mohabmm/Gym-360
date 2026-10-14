@@ -5,6 +5,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Repositories;
+using GymApp.Modules.Training.Domain.ValueObjects;
 using GymApp.Modules.Training.Application.Abstractions;
 
 namespace GymApp.Modules.Training.Application.Commands.CreateExercise;
@@ -43,24 +44,21 @@ internal sealed class CreateExerciseCommandHandler : ICommandHandler<CreateExerc
             }
         }
 
-        var equipment = Enum.Parse<Equipment>(request.Equipment, ignoreCase: true);
-        var category = Enum.Parse<ExerciseCategory>(request.Category, ignoreCase: true);
-        var muscleGroups = request.MuscleGroups
-            .Select(mg => Enum.Parse<MuscleGroup>(mg, ignoreCase: true))
-            .ToList();
+        var details = new ExerciseDetails
+        {
+            Name = request.Name,
+            NameAr = request.NameAr,
+            Description = request.Description,
+            Instructions = request.Instructions,
+            DemoMediaUrl = request.DemoMediaUrl,
+            Equipment = Enum.Parse<Equipment>(request.Equipment, ignoreCase: true),
+            Category = Enum.Parse<ExerciseCategory>(request.Category, ignoreCase: true),
+            MuscleGroups = request.MuscleGroups
+                .Select(mg => Enum.Parse<MuscleGroup>(mg, ignoreCase: true))
+                .ToList()
+        };
 
-        var exercise = Exercise.Create(
-            request.Name,
-            equipment,
-            category,
-            scope,
-            muscleGroups,
-            request.NameAr,
-            request.Description,
-            request.Instructions,
-            request.DemoMediaUrl,
-            request.GymId,
-            request.CreatedBy);
+        var exercise = Exercise.Create(details, scope, request.GymId, request.CreatedBy);
 
         await _exerciseRepository.AddAsync(exercise, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

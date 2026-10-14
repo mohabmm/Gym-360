@@ -1,14 +1,16 @@
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Tests.Domain.Communication;
 
 public sealed class NotificationLocalizationTests
 {
     private static Notification Localized() => Notification.CreateLocalized(
+        new NotificationText(
+            "اكتملت الجلسة", "اكتملت جلستك التدريبية.",
+            "Session Completed", "Your training session has been completed."),
         Guid.NewGuid(),
-        "اكتملت الجلسة", "اكتملت جلستك التدريبية.",
-        "Session Completed", "Your training session has been completed.",
         NotificationType.SessionReminder,
         Guid.NewGuid(),
         new Dictionary<string, string> { ["sessionId"] = "abc" });

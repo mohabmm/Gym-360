@@ -106,6 +106,9 @@ public sealed class TrainerAvailability : Entity
         return _blockedDates.Any(b => b.Date == date);
     }
 
+    public List<AvailabilitySlot> ActiveSlotsOn(DayOfWeek dayOfWeek) =>
+        _weeklySlots.Where(s => s.IsActive && s.DayOfWeek == dayOfWeek).ToList();
+
     public bool HasAvailableSlot(DayOfWeek dayOfWeek, TimeOnly time)
     {
         return _weeklySlots.Any(s =>

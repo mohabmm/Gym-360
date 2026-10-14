@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
+using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Events;
 using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
@@ -26,20 +27,18 @@ public sealed class SessionTests
             "Upper body");
     }
 
-    private static TrainerLogDetails TrainerLog(string exercisesPerformed, int clientEffortRating) => new()
+    private static readonly TrainerLogDetails ValidTrainerLog = new()
     {
-        ExercisesPerformed = exercisesPerformed,
-        ClientEffortRating = clientEffortRating,
+        ExercisesPerformed = "Exercises",
+        ClientEffortRating = 3,
         AttendanceConfirmed = true
     };
 
-    private static MemberLogDetails MemberLog(
-        int rating, int perceivedExertion, int satisfaction, string? personalNotes = null) => new()
+    private static readonly MemberLogDetails ValidMemberLog = new()
     {
-        Rating = rating,
-        PerceivedExertion = perceivedExertion,
-        Satisfaction = satisfaction,
-        PersonalNotes = personalNotes
+        Rating = 5,
+        PerceivedExertion = 7,
+        Satisfaction = 5
     };
 
     private static Session CreateConfirmedSession()
@@ -384,22 +383,27 @@ public sealed class SessionTests
     public void LogTrainerSession_DuplicateLog_ShouldFail()
     {
         var session = CreateDefaultSession();
-        session.LogTrainerSession(TrainerLog("Exercises", 3));
+        session.LogTrainerSession(ValidTrainerLog);
 
-        var result = session.LogTrainerSession(TrainerLog("More", 4));
+        var result = session.LogTrainerSession(ValidTrainerLog with { ExercisesPerformed = "More", ClientEffortRating = 4 });
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.TrainerLogAlreadyExists");
     }
 
+    public static TheoryData<TrainerLogDetails> TrainerLogsWithInvalidRating => new()
+    {
+        ValidTrainerLog with { ClientEffortRating = 0 },
+        ValidTrainerLog with { ClientEffortRating = 6 },
+    };
+
     [Theory]
-    [InlineData(0)]
-    [InlineData(6)]
-    public void LogTrainerSession_InvalidRating_ShouldFail(int rating)
+    [MemberData(nameof(TrainerLogsWithInvalidRating))]
+    public void LogTrainerSession_InvalidRating_ShouldFail(TrainerLogDetails log)
     {
         var session = CreateDefaultSession();
 
-        var result = session.LogTrainerSession(TrainerLog("Ex", rating));
+        var result = session.LogTrainerSession(log);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidRating");
@@ -412,7 +416,7 @@ public sealed class SessionTests
     {
         var session = CreateCompletedSession();
 
-        var result = session.LogMemberSession(MemberLog(5, 7, 5, "Felt great"));
+        var result = session.LogMemberSession(ValidMemberLog with { PersonalNotes = "Felt great" });
 
         result.IsSuccess.Should().BeTrue();
         session.MemberLog.Should().NotBeNull();
@@ -427,9 +431,9 @@ public sealed class SessionTests
     public void LogMemberSession_DuplicateLog_ShouldFail()
     {
         var session = CreateCompletedSession();
-        session.LogMemberSession(MemberLog(4, 6, 4));
+        session.LogMemberSession(ValidMemberLog with { Rating = 4, PerceivedExertion = 6, Satisfaction = 4 });
 
-        var result = session.LogMemberSession(MemberLog(5, 7, 5));
+        var result = session.LogMemberSession(ValidMemberLog);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.MemberLogAlreadyExists");
@@ -440,50 +444,34 @@ public sealed class SessionTests
     {
         var session = CreateDefaultSession();
 
-        var result = session.LogMemberSession(MemberLog(5, 7, 5));
+        var result = session.LogMemberSession(ValidMemberLog);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.MemberLogRequiresCompletedSession");
         session.MemberLog.Should().BeNull();
     }
 
+    // Rating and satisfaction share the 1-5 scale (and its error); exertion is RPE 1-10.
+    public static TheoryData<MemberLogDetails, Error> MemberLogsOutOfRange => new()
+    {
+        { ValidMemberLog with { Rating = 0 }, SchedulingErrors.InvalidRating },
+        { ValidMemberLog with { Rating = 6 }, SchedulingErrors.InvalidRating },
+        { ValidMemberLog with { PerceivedExertion = 0 }, SchedulingErrors.InvalidExertion },
+        { ValidMemberLog with { PerceivedExertion = 11 }, SchedulingErrors.InvalidExertion },
+        { ValidMemberLog with { Satisfaction = 0 }, SchedulingErrors.InvalidRating },
+        { ValidMemberLog with { Satisfaction = 6 }, SchedulingErrors.InvalidRating },
+    };
+
     [Theory]
-    [InlineData(0, 5, 3)]
-    [InlineData(6, 5, 3)]
-    public void LogMemberSession_InvalidRating_ShouldFail(int rating, int exertion, int satisfaction)
+    [MemberData(nameof(MemberLogsOutOfRange))]
+    public void LogMemberSession_OutOfRangeScore_ShouldFail(MemberLogDetails log, Error expected)
     {
         var session = CreateCompletedSession();
 
-        var result = session.LogMemberSession(MemberLog(rating, exertion, satisfaction));
+        var result = session.LogMemberSession(log);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.InvalidRating");
-    }
-
-    [Theory]
-    [InlineData(3, 0, 3)]
-    [InlineData(3, 11, 3)]
-    public void LogMemberSession_InvalidExertion_ShouldFail(int rating, int exertion, int satisfaction)
-    {
-        var session = CreateCompletedSession();
-
-        var result = session.LogMemberSession(MemberLog(rating, exertion, satisfaction));
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.InvalidExertion");
-    }
-
-    [Theory]
-    [InlineData(3, 5, 0)]
-    [InlineData(3, 5, 6)]
-    public void LogMemberSession_InvalidSatisfaction_ShouldFail(int rating, int exertion, int satisfaction)
-    {
-        var session = CreateCompletedSession();
-
-        var result = session.LogMemberSession(MemberLog(rating, exertion, satisfaction));
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.InvalidRating");
+        result.Error.Code.Should().Be(expected.Code);
     }
 
     // --- Full lifecycle ---
