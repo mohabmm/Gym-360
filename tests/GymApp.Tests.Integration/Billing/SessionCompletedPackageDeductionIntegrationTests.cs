@@ -34,17 +34,19 @@ public sealed class SessionCompletedPackageDeductionIntegrationTests : BaseInteg
         using var scope = Factory.Services.CreateScope();
         var repo = scope.ServiceProvider.GetRequiredService<ISessionPackageRepository>();
         var uow = scope.ServiceProvider.GetRequiredService<IBillingUnitOfWork>();
-        var pkg = SessionPackage.Create(
-            gymId: _gymId,
-            trainerId: _trainerId,
-            memberId: _memberId,
-            templateId: Guid.NewGuid(),
-            name: "10 Sessions",
-            totalSessions: 10,
-            pricePerSession: Money.Create(500m),
-            totalPrice: Money.Create(5000m),
-            assignedBy: Guid.NewGuid(),
-            expiresAt: DateTime.UtcNow.AddMonths(3));
+        var pkg = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = _gymId,
+            TrainerId = _trainerId,
+            MemberId = _memberId,
+            TemplateId = Guid.NewGuid(),
+            Name = "10 Sessions",
+            TotalSessions = 10,
+            PricePerSession = Money.Create(500m),
+            TotalPrice = Money.Create(5000m),
+            AssignedBy = Guid.NewGuid(),
+            ExpiresAt = DateTime.UtcNow.AddMonths(3)
+        });
         await repo.AddAsync(pkg);
         await uow.SaveChangesAsync();
         return pkg.Id;

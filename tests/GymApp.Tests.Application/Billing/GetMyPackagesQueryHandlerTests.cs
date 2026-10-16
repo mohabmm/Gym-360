@@ -103,17 +103,19 @@ public class GetMyPackagesQueryHandlerTests
     }
 
     private static SessionPackage BuildActivePackage(Guid gymId, Guid memberId) =>
-        SessionPackage.Create(
-            gymId: gymId,
-            trainerId: Guid.NewGuid(),
-            memberId: memberId,
-            templateId: Guid.NewGuid(),
-            name: "10 Sessions — PT",
-            totalSessions: 10,
-            pricePerSession: Money.Create(500m),
-            totalPrice: Money.Create(5000m),
-            assignedBy: Guid.NewGuid(),
-            expiresAt: DateTime.UtcNow.AddMonths(3));
+        SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = gymId,
+            TrainerId = Guid.NewGuid(),
+            MemberId = memberId,
+            TemplateId = Guid.NewGuid(),
+            Name = "10 Sessions — PT",
+            TotalSessions = 10,
+            PricePerSession = Money.Create(500m),
+            TotalPrice = Money.Create(5000m),
+            AssignedBy = Guid.NewGuid(),
+            ExpiresAt = DateTime.UtcNow.AddMonths(3)
+        });
 
     [Fact]
     public async Task Should_ReturnGymSuspendedError_When_GymIsSuspended()

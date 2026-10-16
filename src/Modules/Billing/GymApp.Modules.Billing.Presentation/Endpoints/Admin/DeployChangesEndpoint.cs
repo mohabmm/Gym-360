@@ -16,25 +16,20 @@ internal sealed class DeployChangesEndpoint : IEndpoint
     // user id.
     internal sealed record DeployChangesRequest(Guid? DeployedBy);
 
+    /// <summary>Route values identifying what to deploy.</summary>
+    internal sealed record DeployTarget(string Scope, Guid? TargetId);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("api/v1/admin/deploy/{scope}/{targetId:guid?}", async (
-            string scope,
-            Guid? targetId,
+            [AsParameters] DeployTarget target,
             DeployChangesRequest? request,
             HttpContext httpContext,
             ISender sender) =>
         {
-            Guid deployedBy = request?.DeployedBy ?? Guid.Empty;
-            if (deployedBy == Guid.Empty)
-            {
-                var sub = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
-                          ?? httpContext.User.FindFirstValue("sub");
-                if (Guid.TryParse(sub, out var fromJwt))
-                    deployedBy = fromJwt;
-            }
+            var deployedBy = ResolveDeployedBy(request, httpContext.User);
 
-            var command = new DeployChangesCommand(scope, targetId, deployedBy);
+            var command = new DeployChangesCommand(target.Scope, target.TargetId, deployedBy);
             var result = await sender.Send(command);
 
             return result.IsSuccess
@@ -49,5 +44,16 @@ internal sealed class DeployChangesEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(400)
         .Produces<ApiResponse<object>>(401)
         .Produces<ApiResponse<object>>(403);
+    }
+
+    private static Guid ResolveDeployedBy(DeployChangesRequest? request, ClaimsPrincipal user)
+    {
+        Guid deployedBy = request?.DeployedBy ?? Guid.Empty;
+        if (deployedBy != Guid.Empty)
+            return deployedBy;
+
+        var sub = user.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? user.FindFirstValue("sub");
+        return Guid.TryParse(sub, out var fromJwt) ? fromJwt : deployedBy;
     }
 }

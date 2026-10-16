@@ -13,6 +13,7 @@ using GymApp.Modules.Identity.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Api.Seed;
 
@@ -126,7 +127,8 @@ public static class DemoGymSeeder
 
         if (!await billingCtx.GymSubscriptions.AnyAsync(s => s.GymId == gym.Id, ct))
         {
-            billingCtx.GymSubscriptions.Add(GymSubscription.Create(gym.Id, BillingSeedData.ProPlanId));
+            billingCtx.GymSubscriptions.Add(GymSubscription.Create(
+                new GymSubscriptionDetails { GymId = gym.Id, PlanId = BillingSeedData.ProPlanId }));
             await billingCtx.SaveChangesAsync(ct);
             logger.LogInformation("DemoGymSeeder: subscribed gym {GymId} to Pro plan", gym.Id);
         }

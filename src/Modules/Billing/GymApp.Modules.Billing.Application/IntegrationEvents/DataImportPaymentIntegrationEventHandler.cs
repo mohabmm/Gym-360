@@ -48,14 +48,16 @@ internal sealed class DataImportPaymentIntegrationEventHandler : INotificationHa
 
         var amount = Money.Create(n.Amount, n.Currency);
 
-        var payment = Payment.Create(
-            n.GymId,
-            memberId.Value,
-            amount,
-            method,
-            purpose,
-            n.ReceiptNumber,
-            recordedBy: memberId.Value);
+        var payment = Payment.Create(new PaymentDetails
+        {
+            GymId = n.GymId,
+            MemberId = memberId.Value,
+            Amount = amount,
+            PaymentMethod = method,
+            Purpose = purpose,
+            ReceiptNumber = n.ReceiptNumber,
+            RecordedBy = memberId.Value
+        });
 
         await _paymentRepository.AddAsync(payment, ct);
         await _unitOfWork.SaveChangesAsync(ct);

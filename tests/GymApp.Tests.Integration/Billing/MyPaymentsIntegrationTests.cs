@@ -59,15 +59,17 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         var repo = Scope.ServiceProvider.GetRequiredService<IPaymentRepository>();
         var uow = Scope.ServiceProvider.GetRequiredService<IBillingUnitOfWork>();
 
-        var payment = Payment.Create(
-            gymId,
-            memberId,
-            Money.Create(amount),
-            PaymentMethod.Cash,
-            PaymentPurpose.Membership,
-            $"{receiptPrefix}-{Guid.NewGuid():N}".Substring(0, 20),
-            Guid.NewGuid(),
-            null);
+        var payment = Payment.Create(new PaymentDetails
+        {
+            GymId = gymId,
+            MemberId = memberId,
+            Amount = Money.Create(amount),
+            PaymentMethod = PaymentMethod.Cash,
+            Purpose = PaymentPurpose.Membership,
+            ReceiptNumber = $"{receiptPrefix}-{Guid.NewGuid():N}".Substring(0, 20),
+            RecordedBy = Guid.NewGuid(),
+            ReferenceId = null
+        });
 
         if (voided)
         {

@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -31,11 +32,14 @@ internal sealed class MembershipExpiringIntegrationEventHandler : INotificationH
         };
 
         var notif = Notification.CreateLocalized(
-            NotificationTexts.MembershipExpiring(notification.ExpiresAt),
-            notification.MemberId,
-            NotificationType.MembershipExpiry,
-            notification.GymId,
-            data);
+            new NotificationDetails
+            {
+                UserId = notification.MemberId,
+                Type = NotificationType.MembershipExpiry,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.MembershipExpiring(notification.ExpiresAt));
 
         await _notificationRepository.AddAsync(notif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

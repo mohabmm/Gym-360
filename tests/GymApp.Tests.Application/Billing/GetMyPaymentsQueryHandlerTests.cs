@@ -95,15 +95,17 @@ public class GetMyPaymentsQueryHandlerTests
 
     private static Payment BuildCompletedPayment(Guid gymId, Guid memberId, DateTime? paidAt = null, decimal amount = 500m)
     {
-        var payment = Payment.Create(
-            gymId,
-            memberId,
-            Money.Create(amount),
-            PaymentMethod.Cash,
-            PaymentPurpose.Membership,
-            $"REC-TEST-{Guid.NewGuid():N}".Substring(0, 20),
-            Guid.NewGuid(),
-            null);
+        var payment = Payment.Create(new PaymentDetails
+        {
+            GymId = gymId,
+            MemberId = memberId,
+            Amount = Money.Create(amount),
+            PaymentMethod = PaymentMethod.Cash,
+            Purpose = PaymentPurpose.Membership,
+            ReceiptNumber = $"REC-TEST-{Guid.NewGuid():N}".Substring(0, 20),
+            RecordedBy = Guid.NewGuid(),
+            ReferenceId = null
+        });
 
         if (paidAt is not null)
         {

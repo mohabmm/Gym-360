@@ -18,28 +18,22 @@ public sealed class MembershipPlan : Entity
     public int SortOrder { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public static MembershipPlan Create(
-        Guid gymId,
-        string name,
-        int durationDays,
-        Money price,
-        List<string>? features = null,
-        int sortOrder = 0)
+    public static MembershipPlan Create(MembershipPlanDetails details)
     {
         var plan = new MembershipPlan
         {
             Id = Guid.NewGuid(),
-            GymId = gymId,
-            Name = name,
-            DurationDays = durationDays,
-            Price = price,
+            GymId = details.GymId,
+            Name = details.Name,
+            DurationDays = details.DurationDays,
+            Price = details.Price,
             IsActive = true,
-            SortOrder = sortOrder,
+            SortOrder = details.SortOrder,
             CreatedAt = DateTime.UtcNow
         };
 
-        if (features is not null)
-            plan._features.AddRange(features);
+        if (details.Features is not null)
+            plan._features.AddRange(details.Features);
 
         return plan;
     }

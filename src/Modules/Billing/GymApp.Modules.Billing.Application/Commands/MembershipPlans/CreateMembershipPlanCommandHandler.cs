@@ -24,12 +24,14 @@ internal sealed class CreateMembershipPlanCommandHandler : ICommandHandler<Creat
     {
         var price = Money.Create(request.Price);
 
-        var plan = MembershipPlan.Create(
-            request.GymId,
-            request.Name,
-            request.DurationDays,
-            price,
-            request.Features);
+        var plan = MembershipPlan.Create(new MembershipPlanDetails
+        {
+            GymId = request.GymId,
+            Name = request.Name,
+            DurationDays = request.DurationDays,
+            Price = price,
+            Features = request.Features
+        });
 
         await _membershipPlanRepository.AddAsync(plan, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

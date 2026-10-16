@@ -52,17 +52,19 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
     {
         var repo = Scope.ServiceProvider.GetRequiredService<ISessionPackageRepository>();
         var uow = Scope.ServiceProvider.GetRequiredService<IBillingUnitOfWork>();
-        var pkg = SessionPackage.Create(
-            gymId: gymId,
-            trainerId: Guid.NewGuid(),
-            memberId: memberId,
-            templateId: Guid.NewGuid(),
-            name: name,
-            totalSessions: 10,
-            pricePerSession: Money.Create(500m),
-            totalPrice: Money.Create(5000m),
-            assignedBy: Guid.NewGuid(),
-            expiresAt: DateTime.UtcNow.AddMonths(3));
+        var pkg = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = gymId,
+            TrainerId = Guid.NewGuid(),
+            MemberId = memberId,
+            TemplateId = Guid.NewGuid(),
+            Name = name,
+            TotalSessions = 10,
+            PricePerSession = Money.Create(500m),
+            TotalPrice = Money.Create(5000m),
+            AssignedBy = Guid.NewGuid(),
+            ExpiresAt = DateTime.UtcNow.AddMonths(3)
+        });
         await repo.AddAsync(pkg);
         await uow.SaveChangesAsync();
     }

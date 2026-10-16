@@ -1,4 +1,5 @@
 using GymApp.Modules.Gamification.Domain.Entities;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Domain.Repositories;
 
@@ -7,8 +8,7 @@ public interface ITrainerMonthlyScoreRepository
     Task<TrainerMonthlyScore?> GetByTrainerAsync(
         Guid gymId,
         Guid trainerId,
-        int month,
-        int year,
+        LeaderboardPeriod period,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TrainerMonthlyScore>> GetByGymAsync(
