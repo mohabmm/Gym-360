@@ -83,94 +83,129 @@ public sealed class ProcessOutboxMessagesJob : IJob
             .GroupBy(c => c.OutboxMessageId)
             .ToDictionary(g => g.Key, g => g.Select(c => c.Name).ToHashSet());
 
+        var batch = new Batch(sp, dbContext, gymRegistration?.SchemaPrefix ?? "soft", cancellationToken);
         foreach (var message in messages)
         {
-            object? integrationEvent;
-            try
-            {
-                integrationEvent = JsonConvert.DeserializeObject(message.Content, JsonSettings);
-            }
-            catch (Exception ex)
-            {
-                // Undeserializable content never succeeds — dead-letter immediately.
-                _logger.LogError(ex, "Unable to deserialize outbox message {MessageId}", message.Id);
-                message.Error = ex.ToString();
-                message.ProcessedOnUtc = DateTime.UtcNow;
-                continue;
-            }
-
-            if (integrationEvent is null)
-            {
-                _logger.LogWarning("Null payload for outbox message {MessageId}", message.Id);
-                message.Error = "Deserialized payload was null.";
-                message.ProcessedOnUtc = DateTime.UtcNow;
-                continue;
-            }
-
-            var eventType = integrationEvent.GetType();
-            var handlerType = typeof(INotificationHandler<>).MakeGenericType(eventType);
-            var handleMethod = handlerType.GetMethod("Handle")!;
-            var handlers = sp.GetServices(handlerType).Where(h => h is not null).Select(h => h!).ToList();
-            var handlerTypes = handlers.Select(h => h.GetType()).ToList();
-            if (!consumed.TryGetValue(message.Id, out var consumedNames))
-                consumed[message.Id] = consumedNames = new HashSet<string>();
-
-            var failed = false;
-            Exception? lastError = null;
-
-            foreach (var handler in handlers)
-            {
-                // Namespace-qualified: several modules declare handlers with the same short
-                // type name for one event, and each of them must run.
-                var handlerName = OutboxConsumerName.For(handler.GetType());
-
-                if (OutboxConsumerName.IsConsumed(handler.GetType(), consumedNames, handlerTypes))
-                    continue; // already ran on a previous attempt
-
-                try
-                {
-                    await (Task)handleMethod.Invoke(handler, new[] { integrationEvent, cancellationToken })!;
-
-                    // Record consumption immediately so a crash/failure after this handler does not
-                    // re-run it on the next tick (shrinks the at-least-once double-fire window).
-                    dbContext.OutboxMessageConsumers.Add(new OutboxMessageConsumer
-                    {
-                        OutboxMessageId = message.Id,
-                        Name = handlerName
-                    });
-                    await dbContext.SaveChangesAsync(cancellationToken);
-                    consumedNames.Add(handlerName);
-                }
-                catch (Exception ex)
-                {
-                    // Keep going so independent handlers still run; this handler retries next tick.
-                    failed = true;
-                    lastError = ex;
-                    _logger.LogError(ex,
-                        "Handler {Handler} failed for outbox message {MessageId} (type {Type}, gym {Prefix})",
-                        handlerName, message.Id, message.Type, gymRegistration?.SchemaPrefix ?? "soft");
-                }
-            }
-
-            if (!failed)
-            {
-                message.ProcessedOnUtc = DateTime.UtcNow;
-            }
-            else
-            {
-                message.RetryCount++;
-                message.Error = lastError?.ToString();
-                if (message.RetryCount >= _options.MaxRetryCount)
-                {
-                    // Dead-letter: stop retrying so a poison message cannot wedge the queue.
-                    message.ProcessedOnUtc = DateTime.UtcNow;
-                    _logger.LogError(
-                        "Outbox message {MessageId} (type {Type}) dead-lettered after {Attempts} attempts",
-                        message.Id, message.Type, message.RetryCount);
-                }
-            }
+            var consumedNames = consumed.GetValueOrDefault(message.Id) ?? new HashSet<string>();
+            await ProcessMessageAsync(batch, message, consumedNames);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private sealed record Batch(
+        IServiceProvider Services,
+        OutboxDbContext DbContext,
+        string GymLabel,
+        CancellationToken CancellationToken);
+
+    private async Task ProcessMessageAsync(Batch batch, OutboxMessage message, HashSet<string> consumedNames)
+    {
+        var integrationEvent = TryDeserialize(message);
+        if (integrationEvent is null)
+            return;
+
+        var lastError = await RunHandlersAsync(batch, message, integrationEvent, consumedNames);
+        ApplyOutcome(message, lastError);
+    }
+
+    /// <summary>
+    /// Returns the deserialized event, or null after dead-lettering a message whose
+    /// content can never be processed.
+    /// </summary>
+    private object? TryDeserialize(OutboxMessage message)
+    {
+        object? integrationEvent;
+        try
+        {
+            integrationEvent = JsonConvert.DeserializeObject(message.Content, JsonSettings);
+        }
+        catch (Exception ex)
+        {
+            // Undeserializable content never succeeds — dead-letter immediately.
+            _logger.LogError(ex, "Unable to deserialize outbox message {MessageId}", message.Id);
+            message.Error = ex.ToString();
+            message.ProcessedOnUtc = DateTime.UtcNow;
+            return null;
+        }
+
+        if (integrationEvent is null)
+        {
+            _logger.LogWarning("Null payload for outbox message {MessageId}", message.Id);
+            message.Error = "Deserialized payload was null.";
+            message.ProcessedOnUtc = DateTime.UtcNow;
+        }
+
+        return integrationEvent;
+    }
+
+    /// <summary>
+    /// Invokes every not-yet-consumed handler for the event. Returns the last handler
+    /// failure, or null when all handlers succeeded.
+    /// </summary>
+    private async Task<Exception?> RunHandlersAsync(
+        Batch batch, OutboxMessage message, object integrationEvent, HashSet<string> consumedNames)
+    {
+        var handlerType = typeof(INotificationHandler<>).MakeGenericType(integrationEvent.GetType());
+        var handleMethod = handlerType.GetMethod("Handle")!;
+        var handlers = batch.Services.GetServices(handlerType).Where(h => h is not null).Select(h => h!).ToList();
+        var handlerTypes = handlers.Select(h => h.GetType()).ToList();
+
+        Exception? lastError = null;
+
+        foreach (var handler in handlers)
+        {
+            // Namespace-qualified: several modules declare handlers with the same short
+            // type name for one event, and each of them must run.
+            var handlerName = OutboxConsumerName.For(handler.GetType());
+
+            if (OutboxConsumerName.IsConsumed(handler.GetType(), consumedNames, handlerTypes))
+                continue; // already ran on a previous attempt
+
+            try
+            {
+                await (Task)handleMethod.Invoke(handler, new[] { integrationEvent, batch.CancellationToken })!;
+
+                // Record consumption immediately so a crash/failure after this handler does not
+                // re-run it on the next tick (shrinks the at-least-once double-fire window).
+                batch.DbContext.OutboxMessageConsumers.Add(new OutboxMessageConsumer
+                {
+                    OutboxMessageId = message.Id,
+                    Name = handlerName
+                });
+                await batch.DbContext.SaveChangesAsync(batch.CancellationToken);
+                consumedNames.Add(handlerName);
+            }
+            catch (Exception ex)
+            {
+                // Keep going so independent handlers still run; this handler retries next tick.
+                lastError = ex;
+                _logger.LogError(ex,
+                    "Handler {Handler} failed for outbox message {MessageId} (type {Type}, gym {Prefix})",
+                    handlerName, message.Id, message.Type, batch.GymLabel);
+            }
+        }
+
+        return lastError;
+    }
+
+    private void ApplyOutcome(OutboxMessage message, Exception? lastError)
+    {
+        if (lastError is null)
+        {
+            message.ProcessedOnUtc = DateTime.UtcNow;
+            return;
+        }
+
+        message.RetryCount++;
+        message.Error = lastError.ToString();
+        if (message.RetryCount >= _options.MaxRetryCount)
+        {
+            // Dead-letter: stop retrying so a poison message cannot wedge the queue.
+            message.ProcessedOnUtc = DateTime.UtcNow;
+            _logger.LogError(
+                "Outbox message {MessageId} (type {Type}) dead-lettered after {Attempts} attempts",
+                message.Id, message.Type, message.RetryCount);
+        }
     }
 }

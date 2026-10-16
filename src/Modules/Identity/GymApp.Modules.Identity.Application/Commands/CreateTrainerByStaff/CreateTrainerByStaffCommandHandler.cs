@@ -30,6 +30,8 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         _integrationEvents = integrationEvents;
     }
 
+    private const string DefaultTrainerPassword = "123456";
+
     private void EnqueueTrainerLinked(Guid userId, Guid gymId) =>
         _integrationEvents.Enqueue(new UserLinkedToGymIntegrationEvent(
             userId, gymId, UserRole.Trainer.ToString()));
@@ -45,29 +47,16 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         // hand the caller someone else's identity to enroll as trainer.
         var existingByPhone = await _userRepository.GetByPhoneAsync(phoneResult.Value, cancellationToken);
         if (existingByPhone is not null)
-        {
-            if (existingByPhone.Role != UserRole.Trainer)
-                return Result.Failure<Guid>(UserErrors.PhoneReservedForOtherRole);
-            return await EnsureLinkedAsync(existingByPhone, request.GymId, cancellationToken);
-        }
+            return await ReuseTrainerAsync(existingByPhone, UserErrors.PhoneReservedForOtherRole, request.GymId, cancellationToken);
 
-        var emailInput = string.IsNullOrWhiteSpace(request.Email)
-            ? SynthesizePlaceholderEmail(phoneResult.Value.Value)
-            : request.Email.Trim();
-
-        var emailResult = Email.Create(emailInput);
+        var emailResult = Email.Create(ResolveEmail(request.Email, phoneResult.Value.Value));
         if (emailResult.IsFailure)
             return Result.Failure<Guid>(emailResult.Error);
 
         var existingByEmail = await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken);
         if (existingByEmail is not null)
-        {
-            if (existingByEmail.Role != UserRole.Trainer)
-                return Result.Failure<Guid>(UserErrors.EmailReservedForOtherRole);
-            return await EnsureLinkedAsync(existingByEmail, request.GymId, cancellationToken);
-        }
+            return await ReuseTrainerAsync(existingByEmail, UserErrors.EmailReservedForOtherRole, request.GymId, cancellationToken);
 
-        const string DefaultTrainerPassword = "123456";
         var passwordHash = _passwordHasher.Hash(DefaultTrainerPassword);
 
         var user = DomainEntities.User.Create(
@@ -92,36 +81,41 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         return Result.Success(user.Id);
     }
 
+    private Task<Result<Guid>> ReuseTrainerAsync(
+        DomainEntities.User existing, Error reservedError, Guid gymId, CancellationToken ct) =>
+        existing.Role == UserRole.Trainer
+            ? EnsureLinkedAsync(existing, gymId, ct)
+            : Task.FromResult(Result.Failure<Guid>(reservedError));
+
     private async Task<Result<Guid>> EnsureLinkedAsync(DomainEntities.User user, Guid gymId, CancellationToken ct)
     {
-        var changed = false;
-
         // Match member-create behavior: reset password to the documented default so the
         // trainer can log in with the same `initialPassword` the endpoint advertises.
         // Staff can only call this for unclaimed/legitimate trainers (role-guarded above).
-        const string DefaultTrainerPassword = "123456";
         user.UpdatePasswordHash(_passwordHasher.Hash(DefaultTrainerPassword));
-        changed = true;
 
-        var newlyLinked = false;
-        if (!user.GymMemberships.Any(m => m.GymId == gymId && m.Role == UserRole.Trainer && m.IsActive))
+        var newlyLinked = !IsActiveTrainerAt(user, gymId);
+        if (newlyLinked)
         {
             var link = user.LinkToGym(gymId, UserRole.Trainer, section: null, memberNumber: null);
             if (link.IsFailure)
                 return Result.Failure<Guid>(link.Error);
-            changed = true;
-            newlyLinked = true;
         }
 
-        if (changed)
-        {
-            _userRepository.Update(user);
-            if (newlyLinked)
-                EnqueueTrainerLinked(user.Id, gymId);
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
+        _userRepository.Update(user);
+        if (newlyLinked)
+            EnqueueTrainerLinked(user.Id, gymId);
+        await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success(user.Id);
     }
+
+    private static bool IsActiveTrainerAt(DomainEntities.User user, Guid gymId) =>
+        user.GymMemberships.Any(m => m.GymId == gymId && m.Role == UserRole.Trainer && m.IsActive);
+
+    private static string ResolveEmail(string? requested, string e164Phone) =>
+        string.IsNullOrWhiteSpace(requested)
+            ? SynthesizePlaceholderEmail(e164Phone)
+            : requested.Trim();
 
     private static string NormalizePhone(string raw)
     {

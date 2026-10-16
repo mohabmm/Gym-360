@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 namespace GymApp.Api.Extensions;
 
 /// <summary>
@@ -13,26 +15,16 @@ public static class AuthorizationExtensions
             .AddPolicy("gym_owner", p => p.RequireAuthenticatedUser().RequireClaim("staffRole", "owner"))
             .AddPolicy("gym_staff", p => p.RequireAuthenticatedUser().RequireClaim("staffRole"))
             .AddPolicy("gym_owner_or_admin", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
-                ctx.User.HasClaim(c => c.Type == "adminRole") ||
-                ctx.User.HasClaim(c => c.Type == "staffRole" && c.Value == "owner")))
+                IsPlatformAdmin(ctx.User) || IsOwner(ctx.User)))
+            // Owner principals (staffRole=owner) OR staff with gym-side sub-role of
+            // Owner/Manager (carried as `staffSubRole` claim by IdentityJwtTokenService).
             .AddPolicy("gym_owner_or_manager", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
-                // Owner principals (staffRole=owner) OR staff with gym-side sub-role of
-                // Owner/Manager (carried as `staffSubRole` claim by IdentityJwtTokenService).
-                ctx.User.HasClaim(c => c.Type == "staffRole" && c.Value == "owner") ||
-                ctx.User.HasClaim(c =>
-                    c.Type == "staffSubRole" &&
-                    (string.Equals(c.Value, "Owner", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(c.Value, "Manager", StringComparison.OrdinalIgnoreCase)))))
+                IsOwnerOrManager(ctx.User)))
             // Gym settings (name, contact, amenities): owner or manager per the staff
             // permission matrix in docs/01, plus platform admins who edit gyms from
             // the admin dashboard.
             .AddPolicy("gym_owner_manager_or_admin", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
-                ctx.User.HasClaim(c => c.Type == "adminRole") ||
-                ctx.User.HasClaim(c => c.Type == "staffRole" && c.Value == "owner") ||
-                ctx.User.HasClaim(c =>
-                    c.Type == "staffSubRole" &&
-                    (string.Equals(c.Value, "Owner", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(c.Value, "Manager", StringComparison.OrdinalIgnoreCase)))))
+                IsPlatformAdmin(ctx.User) || IsOwnerOrManager(ctx.User)))
             // JwtBearer remaps the JWT "role" claim to ClaimTypes.Role on the
             // ClaimsPrincipal (MapInboundClaims = true by default), so RequireClaim
             // against the raw "role" key never matches. RequireRole reads
@@ -42,4 +34,17 @@ public static class AuthorizationExtensions
 
         return builder;
     }
+
+    private static bool IsPlatformAdmin(ClaimsPrincipal user) =>
+        user.HasClaim(c => c.Type == "adminRole");
+
+    private static bool IsOwner(ClaimsPrincipal user) =>
+        user.HasClaim(c => c.Type == "staffRole" && c.Value == "owner");
+
+    private static bool IsOwnerOrManager(ClaimsPrincipal user) =>
+        IsOwner(user) || user.HasClaim(c => c.Type == "staffSubRole" && IsOwnerOrManagerSubRole(c.Value));
+
+    private static bool IsOwnerOrManagerSubRole(string subRole) =>
+        string.Equals(subRole, "Owner", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(subRole, "Manager", StringComparison.OrdinalIgnoreCase);
 }
