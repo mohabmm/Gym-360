@@ -1,8 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import 'helpers/mock_http_adapter.dart';
 import 'helpers/sample_payloads.dart';
 import 'helpers/test_api_client.dart';
+
+/// Parser for a JSON array payload of [T] models.
+List<T> Function(dynamic) listOf<T>(T Function(Map<String, dynamic>) fromJson) =>
+    (data) => (data as List<dynamic>)
+        .map((e) => fromJson(e as Map<String, dynamic>))
+        .toList();
+
+/// Asserts the request line (method, path) and every expected query param.
+void expectRequest(
+  RecordedRequest req, {
+  String? method,
+  String? path,
+  Map<String, String> query = const {},
+}) {
+  if (method != null) expect(req.method, method);
+  if (path != null) expect(req.path, path);
+  query.forEach((key, value) => expect(req.q(key), value, reason: 'query $key'));
+}
 
 /// Covers ClientRosterScreen, ClientDetailScreen, ClientNotesScreen,
 /// OnboardingFormScreen and the remote-workout toggle inside ClientDetail.
@@ -13,16 +32,16 @@ void main() {
     t = buildTestApiClient();
   });
 
+  void stubGet(String path, dynamic payload) =>
+      t.adapter.onGet(path, respond: (_) => t.adapter.ok(payload));
+
   group('ClientRosterScreen', () {
     test('GET /gyms/{gymId}/members with page+pageSize parses UserModel list',
         () async {
-      t.adapter.onGet(
-        ApiEndpoints.gymMembers(kGymId),
-        respond: (_) => t.adapter.ok({
-          'items': [Samples.clientUser(), Samples.clientUser(id: 'client-2')],
-          'totalCount': 2,
-        }),
-      );
+      stubGet(ApiEndpoints.gymMembers(kGymId), {
+        'items': [Samples.clientUser(), Samples.clientUser(id: 'client-2')],
+        'totalCount': 2,
+      });
 
       final users = await t.apiClient.get<List<UserModel>>(
         ApiEndpoints.gymMembers(kGymId),
@@ -35,11 +54,12 @@ void main() {
         },
       );
 
-      final req = t.onlyRequest;
-      expect(req.method, 'GET');
-      expect(req.path, '/api/v1/gyms/$kGymId/members');
-      expect(req.q('page'), '1');
-      expect(req.q('pageSize'), '100');
+      expectRequest(
+        t.onlyRequest,
+        method: 'GET',
+        path: '/api/v1/gyms/$kGymId/members',
+        query: {'page': '1', 'pageSize': '100'},
+      );
       expect(users, hasLength(2));
       expect(users.first.goals, ['WeightLoss', 'Toning']);
     });
@@ -48,10 +68,7 @@ void main() {
   group('ClientDetailScreen', () {
     test('GET /gyms/{gymId}/members/{memberId} returns full profile',
         () async {
-      t.adapter.onGet(
-        ApiEndpoints.gymMemberById(kGymId, kClientId),
-        respond: (_) => t.adapter.ok(Samples.clientUser()),
-      );
+      stubGet(ApiEndpoints.gymMemberById(kGymId, kClientId), Samples.clientUser());
 
       final user = await t.apiClient.get<UserModel>(
         ApiEndpoints.gymMemberById(kGymId, kClientId),
@@ -65,10 +82,7 @@ void main() {
 
     test('GET /scheduling/sessions?memberId= returns client sessions',
         () async {
-      t.adapter.onGet(
-        ApiEndpoints.sessions,
-        respond: (_) => t.adapter.ok([Samples.session()]),
-      );
+      stubGet(ApiEndpoints.sessions, [Samples.session()]);
 
       final sessions = await t.apiClient.get<List<SessionModel>>(
         ApiEndpoints.sessions,
@@ -78,28 +92,20 @@ void main() {
           'page': 1,
           'pageSize': 50,
         },
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => SessionModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        parser: listOf(SessionModel.fromJson),
       );
 
-      final req = t.onlyRequest;
-      expect(req.q('memberId'), kClientId);
-      expect(req.q('gymId'), kGymId);
+      expectRequest(t.onlyRequest,
+          query: {'memberId': kClientId, 'gymId': kGymId});
       expect(sessions.single.memberId, kClientId);
     });
 
     test('GET /progress/clients/{clientId} returns body metrics', () async {
-      t.adapter.onGet(
-        ApiEndpoints.clientProgress(kClientId),
-        respond: (_) => t.adapter.ok([Samples.bodyMetric()]),
-      );
+      stubGet(ApiEndpoints.clientProgress(kClientId), [Samples.bodyMetric()]);
 
       final metrics = await t.apiClient.get<List<BodyMetricEntryModel>>(
         ApiEndpoints.clientProgress(kClientId),
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => BodyMetricEntryModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        parser: listOf(BodyMetricEntryModel.fromJson),
       );
 
       expect(t.onlyRequest.path, '/api/v1/progress/clients/$kClientId');
@@ -109,10 +115,7 @@ void main() {
 
     test('GET /training/remote-workout/status returns RemoteWorkoutStatus',
         () async {
-      t.adapter.onGet(
-        ApiEndpoints.remoteWorkoutStatus,
-        respond: (_) => t.adapter.ok(Samples.remoteWorkoutStatus()),
-      );
+      stubGet(ApiEndpoints.remoteWorkoutStatus, Samples.remoteWorkoutStatus());
 
       final status = await t.apiClient.get<RemoteWorkoutStatusModel>(
         ApiEndpoints.remoteWorkoutStatus,
@@ -121,18 +124,16 @@ void main() {
             RemoteWorkoutStatusModel.fromJson(d as Map<String, dynamic>),
       );
 
-      final req = t.onlyRequest;
-      expect(req.path, '/api/v1/training/remote-workout/status');
-      expect(req.q('clientId'), kClientId);
-      expect(req.q('gymId'), kGymId);
+      expectRequest(
+        t.onlyRequest,
+        path: '/api/v1/training/remote-workout/status',
+        query: {'clientId': kClientId, 'gymId': kGymId},
+      );
       expect(status.isActive, true);
     });
 
     test('GET /billing/packages?memberId filters to active package', () async {
-      t.adapter.onGet(
-        ApiEndpoints.sessionPackages,
-        respond: (_) => t.adapter.ok([Samples.sessionPackage()]),
-      );
+      stubGet(ApiEndpoints.sessionPackages, [Samples.sessionPackage()]);
 
       final packages = await t.apiClient.get<List<SessionPackageModel>>(
         ApiEndpoints.sessionPackages,
@@ -141,16 +142,13 @@ void main() {
           'memberId': kClientId,
           'status': 'active',
         },
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => SessionPackageModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        parser: listOf(SessionPackageModel.fromJson),
       );
 
-      final req = t.onlyRequest;
-      expect(req.q('status'), 'active');
-      expect(req.q('memberId'), kClientId);
-      expect(packages.single.remainingSessions, 7);
-      expect(packages.single.price, 3000.0);
+      expectRequest(t.onlyRequest,
+          query: {'status': 'active', 'memberId': kClientId});
+      final package = packages.single;
+      expect((package.remainingSessions, package.price), (7, 3000.0));
     });
 
     test('POST /training/remote-workout/activate sends trainer+client+gym+reason',
@@ -203,10 +201,7 @@ void main() {
   group('ClientNotesScreen', () {
     test('GET /gyms/{gymId}/members/{clientId}/notes returns notes list',
         () async {
-      t.adapter.onGet(
-        ApiEndpoints.gymMemberNotes(kGymId, kClientId),
-        respond: (_) => t.adapter.ok([Samples.clientNote()]),
-      );
+      stubGet(ApiEndpoints.gymMemberNotes(kGymId, kClientId), [Samples.clientNote()]);
 
       final raw = await t.apiClient.get<List<dynamic>>(
         ApiEndpoints.gymMemberNotes(kGymId, kClientId),
@@ -243,38 +238,34 @@ void main() {
 
     test('GET /gyms/{gymId}/members/{clientId}/onboarding returns saved form',
         () async {
-      t.adapter.onGet(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
-        respond: (_) => t.adapter.ok({
-          'id': 'onb-1',
-          'gymId': kGymId,
-          'memberId': kClientId,
-          'medicalHistory': 'none',
-          'fitnessGoals': 'lose 5kg',
-          'injuries': 'old knee injury',
-          'medications': null,
-          'fitnessLevel': 'intermediate',
-        }),
-      );
+      stubGet(ApiEndpoints.gymMemberOnboarding(kGymId, kClientId), {
+        'id': 'onb-1',
+        'gymId': kGymId,
+        'memberId': kClientId,
+        'medicalHistory': 'none',
+        'fitnessGoals': 'lose 5kg',
+        'injuries': 'old knee injury',
+        'medications': null,
+        'fitnessLevel': 'intermediate',
+      });
 
       final saved = await t.apiClient.get<Map<String, dynamic>?>(
         ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
         parser: parseSaved,
       );
 
-      expect(t.onlyRequest.method, 'GET');
-      expect(t.onlyRequest.path,
-          '/api/v1/gyms/$kGymId/members/$kClientId/onboarding');
-      expect(saved!['fitnessGoals'], 'lose 5kg');
-      expect(saved['injuries'], 'old knee injury');
-      expect(saved['fitnessLevel'], 'intermediate');
+      expectRequest(
+        t.onlyRequest,
+        method: 'GET',
+        path: '/api/v1/gyms/$kGymId/members/$kClientId/onboarding',
+      );
+      expect(saved, containsPair('fitnessGoals', 'lose 5kg'));
+      expect(saved, containsPair('injuries', 'old knee injury'));
+      expect(saved, containsPair('fitnessLevel', 'intermediate'));
     });
 
     test('GET onboarding with null data means nothing saved yet', () async {
-      t.adapter.onGet(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
-        respond: (_) => t.adapter.ok(null),
-      );
+      stubGet(ApiEndpoints.gymMemberOnboarding(kGymId, kClientId), null);
 
       final saved = await t.apiClient.get<Map<String, dynamic>?>(
         ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),

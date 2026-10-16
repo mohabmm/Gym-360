@@ -4,6 +4,80 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:gymapp_gym/core/permissions.dart';
 
+const managerOpsPermissions = [
+  StaffPermission.viewDashboard,
+  StaffPermission.viewAnalytics,
+  StaffPermission.addMember,
+  StaffPermission.editMember,
+  StaffPermission.freezeMember,
+  StaffPermission.approveTrainer,
+  StaffPermission.createClass,
+  StaffPermission.cancelClass,
+  StaffPermission.recordPayment,
+  StaffPermission.viewRevenue,
+  StaffPermission.kioskMode,
+  StaffPermission.manualCheckIn,
+  StaffPermission.createAnnouncement,
+  StaffPermission.moderateTestimonials,
+];
+
+const managerAdminPermissions = [
+  StaffPermission.managePackageTemplates,
+  StaffPermission.addStaff,
+  StaffPermission.editStaff,
+  StaffPermission.editBranding,
+  StaffPermission.editGymProfile,
+];
+
+const receptionistFrontDeskPermissions = [
+  StaffPermission.viewDashboard,
+  StaffPermission.viewMembers,
+  StaffPermission.addMember,
+  StaffPermission.editMember,
+  StaffPermission.freezeMember,
+  StaffPermission.viewCheckInLog,
+  StaffPermission.manualCheckIn,
+  StaffPermission.kioskMode,
+  StaffPermission.recordPayment,
+  StaffPermission.viewPayments,
+  StaffPermission.assignPackage,
+  StaffPermission.viewClasses,
+  StaffPermission.viewAnnouncements,
+];
+
+const receptionistDeniedPermissions = [
+  StaffPermission.deleteMember,
+  StaffPermission.approveTrainer,
+  StaffPermission.createClass,
+  StaffPermission.cancelClass,
+  StaffPermission.createAnnouncement,
+  StaffPermission.viewAnalytics,
+  StaffPermission.viewRevenue,
+  StaffPermission.managePackageTemplates,
+  StaffPermission.viewStaff,
+  StaffPermission.addStaff,
+  StaffPermission.editGymProfile,
+  StaffPermission.editBranding,
+  StaffPermission.editSessionPolicies,
+  StaffPermission.viewTrainerRatings,
+  StaffPermission.moderateTestimonials,
+];
+
+/// Asserts [role] has (or, with `granted: false`, lacks) every permission in [permissions].
+void expectPermissions(
+  String role,
+  List<StaffPermission> permissions, {
+  bool granted = true,
+}) {
+  for (final p in permissions) {
+    expect(
+      StaffPermissions.hasPermission(role, p),
+      granted,
+      reason: '$role should ${granted ? '' : 'NOT '}have $p',
+    );
+  }
+}
+
 void main() {
   group('StaffPermissions - owner', () {
     test('has every permission', () {
@@ -19,46 +93,11 @@ void main() {
 
   group('StaffPermissions - manager', () {
     test('has day-to-day ops permissions', () {
-      const granted = [
-        StaffPermission.viewDashboard,
-        StaffPermission.viewAnalytics,
-        StaffPermission.addMember,
-        StaffPermission.editMember,
-        StaffPermission.freezeMember,
-        StaffPermission.approveTrainer,
-        StaffPermission.createClass,
-        StaffPermission.cancelClass,
-        StaffPermission.recordPayment,
-        StaffPermission.viewRevenue,
-        StaffPermission.kioskMode,
-        StaffPermission.manualCheckIn,
-        StaffPermission.createAnnouncement,
-        StaffPermission.moderateTestimonials,
-      ];
-      for (final p in granted) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleManager, p),
-          isTrue,
-          reason: 'Manager should have $p',
-        );
-      }
+      expectPermissions(AppConstants.roleManager, managerOpsPermissions);
     });
 
     test('manages packages, staff and branding per the docs matrix', () {
-      const granted = [
-        StaffPermission.managePackageTemplates,
-        StaffPermission.addStaff,
-        StaffPermission.editStaff,
-        StaffPermission.editBranding,
-        StaffPermission.editGymProfile,
-      ];
-      for (final p in granted) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleManager, p),
-          isTrue,
-          reason: 'Manager should have $p',
-        );
-      }
+      expectPermissions(AppConstants.roleManager, managerAdminPermissions);
     });
 
     test('cannot remove members', () {
@@ -72,55 +111,14 @@ void main() {
 
   group('StaffPermissions - receptionist', () {
     test('has front-desk permissions', () {
-      const granted = [
-        StaffPermission.viewDashboard,
-        StaffPermission.viewMembers,
-        StaffPermission.addMember,
-        StaffPermission.editMember,
-        StaffPermission.freezeMember,
-        StaffPermission.viewCheckInLog,
-        StaffPermission.manualCheckIn,
-        StaffPermission.kioskMode,
-        StaffPermission.recordPayment,
-        StaffPermission.viewPayments,
-        StaffPermission.assignPackage,
-        StaffPermission.viewClasses,
-        StaffPermission.viewAnnouncements,
-      ];
-      for (final p in granted) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleReceptionist, p),
-          isTrue,
-          reason: 'Receptionist should have $p',
-        );
-      }
+      expectPermissions(
+          AppConstants.roleReceptionist, receptionistFrontDeskPermissions);
     });
 
     test('is blocked from management actions', () {
-      const denied = [
-        StaffPermission.deleteMember,
-        StaffPermission.approveTrainer,
-        StaffPermission.createClass,
-        StaffPermission.cancelClass,
-        StaffPermission.createAnnouncement,
-        StaffPermission.viewAnalytics,
-        StaffPermission.viewRevenue,
-        StaffPermission.managePackageTemplates,
-        StaffPermission.viewStaff,
-        StaffPermission.addStaff,
-        StaffPermission.editGymProfile,
-        StaffPermission.editBranding,
-        StaffPermission.editSessionPolicies,
-        StaffPermission.viewTrainerRatings,
-        StaffPermission.moderateTestimonials,
-      ];
-      for (final p in denied) {
-        expect(
-          StaffPermissions.hasPermission(AppConstants.roleReceptionist, p),
-          isFalse,
-          reason: 'Receptionist should NOT have $p',
-        );
-      }
+      expectPermissions(
+          AppConstants.roleReceptionist, receptionistDeniedPermissions,
+          granted: false);
     });
   });
 
