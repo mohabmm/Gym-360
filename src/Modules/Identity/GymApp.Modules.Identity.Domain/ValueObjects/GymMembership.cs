@@ -4,29 +4,35 @@ namespace GymApp.Modules.Identity.Domain.ValueObjects;
 
 public sealed class GymMembership : IEquatable<GymMembership>
 {
-    private GymMembership(Guid gymId, UserRole role, DateTime joinedAt, bool isActive, string? section, string? memberNumber)
-    {
-        GymId = gymId;
-        Role = role;
-        JoinedAt = joinedAt;
-        IsActive = isActive;
-        Section = section;
-        MemberNumber = memberNumber;
-    }
+    private GymMembership() { }
 
-    public Guid GymId { get; }
-    public UserRole Role { get; }
-    public DateTime JoinedAt { get; }
+    public Guid GymId { get; private init; }
+    public UserRole Role { get; private init; }
+    public DateTime JoinedAt { get; private init; }
     public bool IsActive { get; private set; }
-    public string? Section { get; }
-    public string? MemberNumber { get; }
+    public string? Section { get; private init; }
+    public string? MemberNumber { get; private init; }
 
-    public static GymMembership Create(Guid gymId, UserRole role, DateTime joinedAt, string? section, string? memberNumber)
+    public static GymMembership Create(GymMembershipDetails details, DateTime joinedAt)
     {
-        return new GymMembership(gymId, role, joinedAt, true, section, memberNumber);
+        return new GymMembership
+        {
+            GymId = details.GymId,
+            Role = details.Role,
+            JoinedAt = joinedAt,
+            IsActive = true,
+            Section = details.Section,
+            MemberNumber = details.MemberNumber
+        };
     }
 
     public void Deactivate() => IsActive = false;
+
+    /// <summary>True when this membership is active and at <paramref name="gymId"/>.</summary>
+    public bool IsActiveAt(Guid gymId) => IsActive && GymId == gymId;
+
+    /// <summary>True when this membership is active, at <paramref name="gymId"/>, in <paramref name="role"/>.</summary>
+    public bool IsActiveAs(Guid gymId, UserRole role) => IsActiveAt(gymId) && Role == role;
 
     public bool Equals(GymMembership? other) =>
         other is not null && GymId == other.GymId && Role == other.Role;

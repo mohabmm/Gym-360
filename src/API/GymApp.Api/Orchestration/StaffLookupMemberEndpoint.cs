@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Gyms.Shared;
@@ -28,30 +27,7 @@ internal sealed class StaffLookupMemberEndpoint : IEndpoint
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("api/v1/identity/users/staff-lookup", async (
-            string phone,
-            HttpContext http,
-            ISender sender,
-            IGymMembershipChecker membershipChecker,
-            CancellationToken ct) =>
-        {
-            var gymClaim = http.User.FindFirstValue("gymId");
-            if (!Guid.TryParse(gymClaim, out var gymId) || gymId == Guid.Empty)
-                return ApiResults.Problem(new Error("Auth.GymContextMissing", "Staff JWT is missing a gym scope. Re-login or call /identity/select-gym."));
-
-            var lookup = await sender.Send(new LookupTraineeByPhoneQuery(phone), ct);
-            if (lookup.IsFailure)
-                return ApiResults.Problem(lookup.Error);
-
-            var t = lookup.Value;
-            // Authoritative "currently a member here" signal reads Gym.MemberIds — NOT the
-            // directory MemberNumber, which survives RemoveMember and would wrongly report a
-            // removed (returning) member as still active, blocking the re-link they need.
-            var alreadyMember = await membershipChecker.IsActiveMemberAsync(gymId, t.UserId, ct);
-
-            return ApiResults.Ok(new Response(
-                t.UserId, t.FirstName, t.LastName, t.Email, t.Phone, alreadyMember));
-        })
+        app.MapGet("api/v1/identity/users/staff-lookup", HandleAsync)
         .WithTags("Identity")
         .WithSummary("Look up an existing trainee by phone (staff-driven)")
         .WithDescription("Resolves an existing trainee by phone number so staff can confirm a returning member before re-linking. Returns 404 when no trainee matches. Requires staff JWT with a gym claim.")
@@ -59,5 +35,29 @@ internal sealed class StaffLookupMemberEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .RequireAuthorization("gym_staff");
+    }
+
+    private static async Task<IResult> HandleAsync(
+        string phone,
+        HttpContext http,
+        ISender sender,
+        IGymMembershipChecker membershipChecker)
+    {
+        var ct = http.RequestAborted;
+        if (!StaffGymScope.TryGetGymId(http.User, out var gymId))
+            return ApiResults.Problem(StaffGymScope.Missing);
+
+        var lookup = await sender.Send(new LookupTraineeByPhoneQuery(phone), ct);
+        if (lookup.IsFailure)
+            return ApiResults.Problem(lookup.Error);
+
+        var t = lookup.Value;
+        // Authoritative "currently a member here" signal reads Gym.MemberIds — NOT the
+        // directory MemberNumber, which survives RemoveMember and would wrongly report a
+        // removed (returning) member as still active, blocking the re-link they need.
+        var alreadyMember = await membershipChecker.IsActiveMemberAsync(gymId, t.UserId, ct);
+
+        return ApiResults.Ok(new Response(
+            t.UserId, t.FirstName, t.LastName, t.Email, t.Phone, alreadyMember));
     }
 }

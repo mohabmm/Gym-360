@@ -14,6 +14,26 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasKey(u => u.Id);
 
+        ConfigureCredentials(builder);
+        ConfigurePersonalDetails(builder);
+        ConfigureClassification(builder);
+        ConfigureAuditAndOwnership(builder);
+
+        builder.OwnsMany(u => u.GymMemberships, ConfigureGymMemberships);
+
+        builder.HasMany(u => u.RefreshTokens)
+            .WithOne()
+            .HasForeignKey("UserId")
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(u => u.RefreshTokens)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(u => u.GymMemberships);
+    }
+
+    private static void ConfigureCredentials(EntityTypeBuilder<User> builder)
+    {
         builder.Property(u => u.Id)
             .ValueGeneratedNever();
 
@@ -40,7 +60,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("password_hash")
             .HasMaxLength(512)
             .IsRequired();
+    }
 
+    private static void ConfigurePersonalDetails(EntityTypeBuilder<User> builder)
+    {
         builder.Property(u => u.FirstName)
             .HasColumnName("first_name")
             .HasMaxLength(100)
@@ -64,7 +87,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.NationalId)
             .HasColumnName("national_id")
             .HasMaxLength(20);
+    }
 
+    private static void ConfigureClassification(EntityTypeBuilder<User> builder)
+    {
         builder.Property(u => u.Gender)
             .HasColumnName("gender")
             .HasConversion<string>()
@@ -88,7 +114,10 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasConversion<string>()
             .HasMaxLength(10)
             .IsRequired();
+    }
 
+    private static void ConfigureAuditAndOwnership(EntityTypeBuilder<User> builder)
+    {
         builder.Property(u => u.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
@@ -101,63 +130,53 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("owner_id");
 
         builder.HasIndex(u => u.OwnerId);
+    }
 
-        builder.OwnsMany(u => u.GymMemberships, membership =>
-        {
-            membership.ToTable("user_gym_memberships");
+    private static void ConfigureGymMemberships(OwnedNavigationBuilder<User, GymMembership> membership)
+    {
+        membership.ToTable("user_gym_memberships");
 
-            membership.WithOwner().HasForeignKey("UserId");
+        membership.WithOwner().HasForeignKey("UserId");
 
-            membership.Property<int>("Id")
-                .ValueGeneratedOnAdd();
-            membership.HasKey("Id");
+        membership.Property<int>("Id")
+            .ValueGeneratedOnAdd();
+        membership.HasKey("Id");
 
-            membership.Property(m => m.GymId)
-                .HasColumnName("gym_id")
-                .IsRequired();
+        membership.Property(m => m.GymId)
+            .HasColumnName("gym_id")
+            .IsRequired();
 
-            membership.Property(m => m.Role)
-                .HasColumnName("role")
-                .HasConversion<string>()
-                .HasMaxLength(20)
-                .IsRequired();
+        membership.Property(m => m.Role)
+            .HasColumnName("role")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
 
-            membership.Property(m => m.JoinedAt)
-                .HasColumnName("joined_at")
-                .IsRequired();
+        membership.Property(m => m.JoinedAt)
+            .HasColumnName("joined_at")
+            .IsRequired();
 
-            membership.Property(m => m.IsActive)
-                .HasColumnName("is_active")
-                .IsRequired();
+        membership.Property(m => m.IsActive)
+            .HasColumnName("is_active")
+            .IsRequired();
 
-            membership.Property(m => m.Section)
-                .HasColumnName("section")
-                .HasMaxLength(50);
+        membership.Property(m => m.Section)
+            .HasColumnName("section")
+            .HasMaxLength(50);
 
-            membership.Property(m => m.MemberNumber)
-                .HasColumnName("member_number")
-                .HasMaxLength(50);
+        membership.Property(m => m.MemberNumber)
+            .HasColumnName("member_number")
+            .HasMaxLength(50);
 
-            membership.HasIndex("UserId", nameof(GymMembership.GymId), nameof(GymMembership.Role));
+        membership.HasIndex("UserId", nameof(GymMembership.GymId), nameof(GymMembership.Role));
 
-            // One-Gym principal rule (FOUNDER_DECISIONS Q3 revised 2026-05-01):
-            // each non-Owner principal (trainee/trainer/staff) has at most one
-            // ACTIVE membership across all gyms. Owner principals scope across
-            // many gyms via User.OwnerId, not via memberships.
-            membership.HasIndex("UserId")
-                .IsUnique()
-                .HasFilter("[is_active] = 1")
-                .HasDatabaseName("UX_user_gym_memberships_active_per_user");
-        });
-
-        builder.HasMany(u => u.RefreshTokens)
-            .WithOne()
-            .HasForeignKey("UserId")
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.Navigation(u => u.RefreshTokens)
-            .UsePropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Navigation(u => u.GymMemberships);
+        // One-Gym principal rule (FOUNDER_DECISIONS Q3 revised 2026-05-01):
+        // each non-Owner principal (trainee/trainer/staff) has at most one
+        // ACTIVE membership across all gyms. Owner principals scope across
+        // many gyms via User.OwnerId, not via memberships.
+        membership.HasIndex("UserId")
+            .IsUnique()
+            .HasFilter("[is_active] = 1")
+            .HasDatabaseName("UX_user_gym_memberships_active_per_user");
     }
 }

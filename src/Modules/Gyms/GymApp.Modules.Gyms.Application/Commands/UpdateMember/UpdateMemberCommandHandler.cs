@@ -41,9 +41,10 @@ internal sealed class UpdateMemberCommandHandler : ICommandHandler<UpdateMemberC
             lastName = parts.Length > 1 ? parts[1] : "";
         }
 
-        if (firstName is not null || lastName is not null || request.Phone is not null)
+        var profileChanges = new UserProfileChanges(firstName, lastName, request.Phone);
+        if (profileChanges.HasAny)
         {
-            await _profileUpdater.UpdateAsync(request.MemberId, firstName, lastName, request.Phone, cancellationToken);
+            await _profileUpdater.UpdateAsync(request.MemberId, profileChanges, cancellationToken);
         }
 
         _memberRepository.Update(member);
