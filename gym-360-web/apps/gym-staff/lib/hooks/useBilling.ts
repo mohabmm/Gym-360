@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
 import type { PaymentListItem } from '@gym360/ui';
+import { useGymMutation, postData, putData } from './query-helpers';
 
 export interface MembershipPlan {
   id: string; name: string; description: string; durationDays: number;
@@ -116,53 +117,38 @@ export function useCreatePayment() {
 }
 
 export function useCreateMembershipPlan() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: { name: string; durationDays: number; price: number; features?: string[] }) => {
-      const res = await apiClient.post('/billing/plans', {
+  return useGymMutation(
+    (data: { name: string; durationDays: number; price: number; features?: string[] }, { gymId }) =>
+      postData('/billing/plans', {
         gymId,
         name: data.name,
         durationDays: data.durationDays,
         price: data.price,
         features: data.features ?? [],
-      });
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['billing-plans'] }),
-  });
+      }),
+    () => ['billing-plans'],
+  );
 }
 
 export function useUpdateMembershipPlan() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...data }: {
-      id: string; name?: string; durationDays?: number; price?: number; isActive?: boolean;
-    }) => {
-      const res = await apiClient.put(`/billing/plans/${id}`, data);
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['billing-plans'] }),
-  });
+  return useGymMutation(
+    ({ id, ...data }: { id: string; name?: string; durationDays?: number; price?: number; isActive?: boolean }) =>
+      putData(`/billing/plans/${id}`, data),
+    () => ['billing-plans'],
+  );
 }
 
 export function useCreatePackageTemplate() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: { name: string; sessionCount: number; pricePerSession: number }) => {
-      const res = await apiClient.post('/billing/package-templates', {
+  return useGymMutation(
+    (data: { name: string; sessionCount: number; pricePerSession: number }, { gymId }) =>
+      postData('/billing/package-templates', {
         gymId,
         name: data.name,
         sessionCount: data.sessionCount,
         pricePerSession: data.pricePerSession,
-      });
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['package-templates'] }),
-  });
+      }),
+    () => ['package-templates'],
+  );
 }
 
 export function useVoidPayment() {
@@ -177,16 +163,11 @@ export function useVoidPayment() {
 }
 
 export function useUpdatePackageTemplate() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...data }: {
-      id: string; name?: string; sessionCount?: number; pricePerSession?: number; isActive?: boolean;
-    }) => {
-      const res = await apiClient.put(`/billing/package-templates/${id}`, data);
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['package-templates'] }),
-  });
+  return useGymMutation(
+    ({ id, ...data }: { id: string; name?: string; sessionCount?: number; pricePerSession?: number; isActive?: boolean }) =>
+      putData(`/billing/package-templates/${id}`, data),
+    () => ['package-templates'],
+  );
 }
 
 export function useAssignPackage() {
