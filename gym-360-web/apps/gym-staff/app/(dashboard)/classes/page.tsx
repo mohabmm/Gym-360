@@ -6,6 +6,7 @@ import { PageHeader, StatusBadge, Modal, ConfirmModal, formatTime, DAY_NAMES } f
 import { Plus, CalendarDays, Edit, Trash2 } from 'lucide-react';
 import { useClasses, useCreateClass, useUpdateClass, useDeleteClass } from '@/lib/hooks/useClasses';
 import { useTrainers } from '@/lib/hooks/useTrainers';
+import { apiErrorMessage } from '@/lib/api-error';
 import type { GymClass } from '@gym360/ui';
 
 type Draft = Omit<GymClass, 'id'> & { id?: string };
@@ -84,9 +85,7 @@ export default function ClassesPage() {
       setModalOpen(false);
     };
     const onError = (err: unknown) => {
-      const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-        ?.response?.data?.errors?.[0]?.message ?? 'Failed to save class.';
-      toast.error(msg);
+      toast.error(apiErrorMessage(err, 'Failed to save class.'));
     };
     if (draft.id) {
       updateClass.mutate({ id: draft.id, ...payload }, { onSuccess, onError });

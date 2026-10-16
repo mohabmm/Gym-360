@@ -34,6 +34,10 @@ See `docs/01_GYMAPP_BACKEND_COMPLETE.md` for full backend reference and solution
 - Enter plan mode for non-trivial features.
 - Run tests after every implementation; integration tests mandatory per feature.
 
+## CodeScene
+
+After changing code, run `code_health_review` on the changed files. If Code Health drops, fix the issues, run the review again, and use `code_health_score` to confirm the result. Before finishing, run `pre_commit_code_health_safeguard` and only stop when it passes.
+
 ## Authoritative Documents
 
 | Priority | File | Purpose |
