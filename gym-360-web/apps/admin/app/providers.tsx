@@ -1,9 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type MutableRefObject, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import { useSignalR, useInvalidateQueries, configureApiClient } from '@gym360/ui';
+
+type SessionStatus = ReturnType<typeof useSession>['status'];
+
+/** A session that has hydrated but carries no usable access token. */
+function isTokenlessSession(status: SessionStatus, sessionReady: boolean, token: string | null): boolean {
+  return status === 'authenticated' && sessionReady && !token;
+}
 
 /**
  * Registers the access token with the shared axios client. The token is read through
@@ -11,15 +18,10 @@ import { useSignalR, useInvalidateQueries, configureApiClient } from '@gym360/ui
  * avoids a race where queries fire before next-auth has hydrated the session and get
  * a spurious 401 → forced sign-out.
  */
-function ApiClientConfigurator({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
-  const tokenRef = useRef<string | null>(null);
-  const sessionReadyRef = useRef(false);
-  const queryClient = useQueryClient();
-
-  tokenRef.current = session?.accessToken ?? null;
-  if (status !== 'loading') sessionReadyRef.current = true;
-
+function useApiClientRegistration(
+  tokenRef: MutableRefObject<string | null>,
+  sessionReadyRef: MutableRefObject<boolean>
+) {
   useEffect(() => {
     configureApiClient({
       getAccessToken: () => tokenRef.current,
@@ -33,21 +35,34 @@ function ApiClientConfigurator({ children }: { children: ReactNode }) {
       },
     });
   }, []);
+}
+
+function ApiClientConfigurator({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
+  const tokenRef = useRef<string | null>(null);
+  const sessionReadyRef = useRef(false);
+  const queryClient = useQueryClient();
+  const accessToken = session?.accessToken;
+
+  tokenRef.current = accessToken ?? null;
+  if (status !== 'loading') sessionReadyRef.current = true;
+
+  useApiClientRegistration(tokenRef, sessionReadyRef);
 
   // Once the session finishes loading with a valid token, refetch any queries that
   // fired during the hydration gap so the UI doesn't stay stuck on an empty state.
   useEffect(() => {
-    if (status === 'authenticated' && session?.accessToken) {
+    if (status === 'authenticated' && accessToken) {
       void queryClient.invalidateQueries();
     }
-  }, [status, session?.accessToken, queryClient]);
+  }, [status, accessToken, queryClient]);
 
   // A session that is "authenticated" but carries no access token means the
   // refresh token was exhausted/revoked (lib/auth.ts blanks accessToken once it
   // can no longer rotate). Force a clean sign-out so the user lands on /login
   // instead of a half-dead session that 401s on every request.
   useEffect(() => {
-    if (status === 'authenticated' && sessionReadyRef.current && !tokenRef.current) {
+    if (isTokenlessSession(status, sessionReadyRef.current, tokenRef.current)) {
       void signOut({ callbackUrl: '/login' });
     }
   }, [status, session]);

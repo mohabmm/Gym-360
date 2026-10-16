@@ -51,6 +51,16 @@ const variantClasses: Record<string, string> = {
   default: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
 };
 
+const DOT_COLOR_GROUPS: [string, readonly string[]][] = [
+  ['bg-emerald-500', ['active', 'completed', 'current', 'approved']],
+  ['bg-red-500', ['suspended', 'terminated', 'overdue', 'failed', 'rejected']],
+  ['bg-amber-500', ['pending', 'warning', 'grace_period']],
+];
+
+function dotColor(variant: string): string {
+  return DOT_COLOR_GROUPS.find(([, variants]) => variants.includes(variant))?.[0] ?? 'bg-gray-400';
+}
+
 interface StatusBadgeProps {
   variant: BadgeVariant | string;
   label?: string;
@@ -74,13 +84,7 @@ export function StatusBadge({ variant, label, className, dot = false }: StatusBa
         <span
           className={cn(
             'h-1.5 w-1.5 rounded-full',
-            variant === 'active' || variant === 'completed' || variant === 'current' || variant === 'approved'
-              ? 'bg-emerald-500'
-              : variant === 'suspended' || variant === 'terminated' || variant === 'overdue' || variant === 'failed' || variant === 'rejected'
-                ? 'bg-red-500'
-                : variant === 'pending' || variant === 'warning' || variant === 'grace_period'
-                  ? 'bg-amber-500'
-                  : 'bg-gray-400'
+            dotColor(variant)
           )}
         />
       )}

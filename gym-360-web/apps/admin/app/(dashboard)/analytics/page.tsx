@@ -48,19 +48,63 @@ function FeatureUsageCard({ features }: { features: { featureCode: string; featu
   );
 }
 
-export default function AnalyticsPage() {
-  const { data: analyticsData, isLoading, isError } = usePlatformAnalytics();
-  const analytics = analyticsData?.data;
-  const kpis = analytics?.kpis;
+function AnalyticsKpis({ kpis }: { kpis?: PlatformKpis }) {
   const values = kpiValues(kpis);
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <KpiCard value={values.gyms} label="Total Gyms" change={kpis?.activeGymsChange} icon={<Building2 className="h-5 w-5" />} variant="info" />
+      <KpiCard value={values.members} label="Total Members" change={kpis?.memberGrowthRate} icon={<Users className="h-5 w-5" />} variant="success" />
+      <KpiCard value={values.trainers} label="Total Trainers" change={kpis?.trainerGrowthRate} icon={<Dumbbell className="h-5 w-5" />} />
+      <KpiCard value={values.mrr} label="MRR" change={kpis?.mrrChange} icon={<DollarSign className="h-5 w-5" />} />
+      <KpiCard value="—" label="DAU" change={undefined} icon={<Activity className="h-5 w-5" />} variant="success" />
+      <KpiCard value="—" label="Feature Adoption" change={undefined} icon={<TrendingUp className="h-5 w-5" />} />
+    </div>
+  );
+}
 
-  if (isLoading) return <PageSkeleton />;
-  if (isError) return (
+function AnalyticsLoadError() {
+  return (
     <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 dark:border-red-800 dark:bg-red-950/20">
       <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
       <p className="text-sm text-red-700 dark:text-red-400">Failed to load analytics. Please refresh the page.</p>
     </div>
   );
+}
+
+function CityRevenueCard({ data }: { data: { city: string; revenue: number }[] }) {
+  return (
+    <ChartContainer title="Revenue by City" subtitle="Monthly revenue per city" className="lg:col-span-2">
+      <BarChart data={data} layout="vertical">
+        <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+        <XAxis type="number" tick={{ fontSize: 12 }} stroke="#94A3B8" tickFormatter={thousands} />
+        <YAxis type="category" dataKey="city" tick={{ fontSize: 12 }} stroke="#94A3B8" width={100} />
+        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+        <Bar dataKey="revenue" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+      </BarChart>
+    </ChartContainer>
+  );
+}
+
+type PlatformAnalytics = NonNullable<ReturnType<typeof usePlatformAnalytics>['data']>['data'];
+
+// Chart series with empty fallbacks until analytics has loaded.
+function analyticsSeries(analytics: PlatformAnalytics | undefined) {
+  return {
+    kpis: analytics?.kpis,
+    memberGrowth: analytics?.memberGrowth ?? [],
+    gymGrowth: analytics?.gymGrowth ?? [],
+    cityRevenue: analytics?.cityRevenue ?? [],
+    planDistribution: analytics?.planDistribution,
+    featureUsage: analytics?.featureUsage ?? [],
+  };
+}
+
+export default function AnalyticsPage() {
+  const { data: analyticsData, isLoading, isError } = usePlatformAnalytics();
+  const series = analyticsSeries(analyticsData?.data);
+
+  if (isLoading) return <PageSkeleton />;
+  if (isError) return <AnalyticsLoadError />;
 
   return (
     <div className="space-y-6">
@@ -70,50 +114,35 @@ export default function AnalyticsPage() {
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <KpiCard value={values.gyms} label="Total Gyms" change={kpis?.activeGymsChange} icon={<Building2 className="h-5 w-5" />} variant="info" />
-        <KpiCard value={values.members} label="Total Members" change={kpis?.memberGrowthRate} icon={<Users className="h-5 w-5" />} variant="success" />
-        <KpiCard value={values.trainers} label="Total Trainers" change={kpis?.trainerGrowthRate} icon={<Dumbbell className="h-5 w-5" />} />
-        <KpiCard value={values.mrr} label="MRR" change={kpis?.mrrChange} icon={<DollarSign className="h-5 w-5" />} />
-        <KpiCard value="—" label="DAU" change={undefined} icon={<Activity className="h-5 w-5" />} variant="success" />
-        <KpiCard value="—" label="Feature Adoption" change={undefined} icon={<TrendingUp className="h-5 w-5" />} />
-      </div>
+      <AnalyticsKpis kpis={series.kpis} />
 
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AreaTrendCard
           title="Member Growth"
           subtitle="Total active members"
-          data={analytics?.memberGrowth ?? []}
+          data={series.memberGrowth}
           gradientId="colorMembers"
         />
         <BarTrendCard
           title="Gym Registrations"
           subtitle="New gyms per month"
-          data={analytics?.gymGrowth ?? []}
+          data={series.gymGrowth}
           color="#3B82F6"
         />
       </div>
 
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ChartContainer title="Revenue by City" subtitle="Monthly revenue per city" className="lg:col-span-2">
-          <BarChart data={analytics?.cityRevenue ?? []} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-            <XAxis type="number" tick={{ fontSize: 12 }} stroke="#94A3B8" tickFormatter={thousands} />
-            <YAxis type="category" dataKey="city" tick={{ fontSize: 12 }} stroke="#94A3B8" width={100} />
-            <Tooltip formatter={(value: number) => formatCurrency(value)} />
-            <Bar dataKey="revenue" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ChartContainer>
+        <CityRevenueCard data={series.cityRevenue} />
 
-        <PlanDistributionChart data={analytics?.planDistribution} height={250} />
+        <PlanDistributionChart data={series.planDistribution} height={250} />
       </div>
 
       {/* DAU + Feature Usage */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <BarTrendCard title="Daily Active Users" subtitle="This week" data={FALLBACK_DAU} color="#F59E0B" />
-        <FeatureUsageCard features={analytics?.featureUsage ?? []} />
+        <FeatureUsageCard features={series.featureUsage} />
       </div>
     </div>
   );

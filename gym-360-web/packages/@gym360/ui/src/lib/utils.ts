@@ -5,7 +5,10 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = 'EGP'): string {
+/** An ISO 4217 currency code such as 'EGP'. */
+type CurrencyCode = string;
+
+export function formatCurrency(amount: number, currency: CurrencyCode = 'EGP'): string {
   return new Intl.NumberFormat('en-EG', {
     style: 'currency',
     currency,
@@ -29,32 +32,36 @@ export function formatNumber(value: number): string {
 // renders as the literal "Invalid Date" in tables — show an em dash instead.
 const EMPTY_DATE = '—';
 
-function parseDate(dateStr: string | null | undefined): Date | null {
+/** An ISO-8601 date or date-time string as emitted by the API. */
+type IsoDateString = string;
+
+function parseDate(dateStr: IsoDateString | null | undefined): Date | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export function formatDate(dateStr: string, locale = 'en-EG'): string {
-  const d = parseDate(dateStr);
-  if (!d) return EMPTY_DATE;
-  return d.toLocaleDateString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+const DATE_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+};
+
+const DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
+  ...DATE_OPTIONS,
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+/** A BCP 47 locale tag such as 'en-EG' or 'ar-EG'. */
+type LocaleTag = Intl.LocalesArgument;
+
+export function formatDate(dateStr: IsoDateString, locale: LocaleTag = 'en-EG'): string {
+  return parseDate(dateStr)?.toLocaleDateString(locale, DATE_OPTIONS) ?? EMPTY_DATE;
 }
 
-export function formatDateTime(dateStr: string, locale = 'en-EG'): string {
-  const d = parseDate(dateStr);
-  if (!d) return EMPTY_DATE;
-  return d.toLocaleString(locale, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+export function formatDateTime(dateStr: IsoDateString, locale: LocaleTag = 'en-EG'): string {
+  return parseDate(dateStr)?.toLocaleString(locale, DATE_TIME_OPTIONS) ?? EMPTY_DATE;
 }
 
 export function formatTime(timeStr: string): string {
@@ -81,7 +88,7 @@ export function truncate(str: string, length: number): string {
   return `${str.slice(0, length)}...`;
 }
 
-export function getRelativeTime(dateStr: string): string {
+export function getRelativeTime(dateStr: IsoDateString): string {
   const date = parseDate(dateStr);
   if (!date) return EMPTY_DATE;
   const now = new Date();

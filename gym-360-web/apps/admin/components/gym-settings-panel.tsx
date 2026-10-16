@@ -1,35 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { StatusBadge, DAY_NAMES, apiGet, apiPut, GYMS as GYMS_ENDPOINTS } from '@gym360/ui';
+import { StatusBadge, apiPut, GYMS as GYMS_ENDPOINTS } from '@gym360/ui';
 import { Clock, Shield, Users, CalendarDays, Plus, Trash2, Save } from 'lucide-react';
-
-type DaySchedule = {
-  day: (typeof DAY_NAMES)[number];
-  openTime: string;
-  closeTime: string;
-  is24Hour: boolean;
-  isClosed: boolean;
-};
-
-type NoshowAction = 'FlagOnly' | 'DeductSession' | 'SuspendBookings';
-type SectionType = 'Mens' | 'Womens' | 'Mixed';
-
-type SeasonalOverride = {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-};
-
-const DEFAULT_HOURS: DaySchedule[] = DAY_NAMES.map((day) => ({
-  day,
-  openTime: '06:00',
-  closeTime: '23:00',
-  is24Hour: false,
-  isClosed: false,
-}));
+import {
+  DEFAULT_HOURS,
+  fetchGymSettings,
+  type DaySchedule,
+  type LoadedGymSettings,
+  type NoshowAction,
+  type SectionType,
+  type SeasonalOverride,
+} from '@/lib/gym-settings';
 
 type Props = {
   gymId: string;
@@ -69,62 +51,21 @@ export function GymSettingsPanel({ gymId, gymName }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    function apply({ hours: nextHours, policy, sections: nextSections, seasonal }: LoadedGymSettings) {
+      if (nextHours) setHours(nextHours);
+      if (policy) {
+        setCancellationWindow(policy.cancellationWindowHours);
+        setNoshowThreshold(policy.noshowThreshold);
+        setNoshowWindow(policy.noshowWindowDays);
+        setNoshowAction(policy.noshowAction as NoshowAction);
+      }
+      if (nextSections) setSections(nextSections);
+      if (seasonal) setSeasonalOverrides(seasonal);
+    }
     async function load() {
       try {
-        const [hoursRes, policyRes, sectionsRes, seasonalRes] = await Promise.all([
-          apiGet<Array<{ dayOfWeek: string; openTime: string; closeTime: string; isClosed: boolean }>>(
-            GYMS_ENDPOINTS.OPERATING_HOURS(gymId),
-          ),
-          apiGet<{ cancellationWindowHours: number; noshowThreshold: number; noshowWindowDays: number; noshowAction: string }>(
-            GYMS_ENDPOINTS.SESSION_POLICY(gymId),
-          ),
-          apiGet<Array<{ id: string; sectionType: string; name: string | null; isActive: boolean }>>(
-            GYMS_ENDPOINTS.SECTIONS(gymId),
-          ),
-          apiGet<Array<{ id: string; name: string; startDate: string; endDate: string; isActive: boolean }>>(
-            GYMS_ENDPOINTS.SEASONAL_HOURS(gymId),
-          ),
-        ]);
-        if (cancelled) return;
-
-        const hoursData = hoursRes.data ?? [];
-        if (hoursData.length) {
-          const map = new Map(hoursData.map((h) => [h.dayOfWeek, h]));
-          setHours(
-            DAY_NAMES.map((day) => {
-              const found = map.get(day);
-              if (!found) return { day, openTime: '06:00', closeTime: '23:00', is24Hour: false, isClosed: false };
-              const open = (found.openTime || '06:00').slice(0, 5);
-              const close = (found.closeTime || '23:00').slice(0, 5);
-              const is24 = open === '00:00' && (close === '23:59' || close === '00:00');
-              return { day, openTime: open, closeTime: close, is24Hour: is24, isClosed: found.isClosed };
-            }),
-          );
-        }
-
-        const policy = policyRes.data;
-        if (policy) {
-          setCancellationWindow(policy.cancellationWindowHours);
-          setNoshowThreshold(policy.noshowThreshold);
-          setNoshowWindow(policy.noshowWindowDays);
-          setNoshowAction(policy.noshowAction as NoshowAction);
-        }
-
-        const sectionsData = sectionsRes.data ?? [];
-        if (sectionsData.length) {
-          const next: Record<SectionType, boolean> = { Mens: false, Womens: false, Mixed: false };
-          for (const s of sectionsData) {
-            if (s.isActive && (s.sectionType === 'Mens' || s.sectionType === 'Womens' || s.sectionType === 'Mixed')) {
-              next[s.sectionType] = true;
-            }
-          }
-          setSections(next);
-        }
-
-        const seasonalData = seasonalRes.data ?? [];
-        if (seasonalData.length) {
-          setSeasonalOverrides(seasonalData.map((s) => ({ id: s.id, name: s.name, startDate: s.startDate, endDate: s.endDate, isActive: s.isActive })));
-        }
+        const loadedSettings = await fetchGymSettings(gymId);
+        if (!cancelled) apply(loadedSettings);
       } finally {
         if (!cancelled) setLoaded(true);
       }
