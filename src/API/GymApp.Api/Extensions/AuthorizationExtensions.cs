@@ -15,7 +15,7 @@ public static class AuthorizationExtensions
             .AddPolicy("gym_owner", p => p.RequireAuthenticatedUser().RequireClaim("staffRole", "owner"))
             .AddPolicy("gym_staff", p => p.RequireAuthenticatedUser().RequireClaim("staffRole"))
             .AddPolicy("gym_owner_or_admin", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
-                IsPlatformAdmin(ctx.User) || IsOwner(ctx.User)))
+                IsAdmin(ctx.User) || IsOwner(ctx.User)))
             // Owner principals (staffRole=owner) OR staff with gym-side sub-role of
             // Owner/Manager (carried as `staffSubRole` claim by IdentityJwtTokenService).
             .AddPolicy("gym_owner_or_manager", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
@@ -24,7 +24,7 @@ public static class AuthorizationExtensions
             // permission matrix in docs/01, plus platform admins who edit gyms from
             // the admin dashboard.
             .AddPolicy("gym_owner_manager_or_admin", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>
-                IsPlatformAdmin(ctx.User) || IsOwnerOrManager(ctx.User)))
+                IsAdmin(ctx.User) || IsOwnerOrManager(ctx.User)))
             // JwtBearer remaps the JWT "role" claim to ClaimTypes.Role on the
             // ClaimsPrincipal (MapInboundClaims = true by default), so RequireClaim
             // against the raw "role" key never matches. RequireRole reads
@@ -35,8 +35,7 @@ public static class AuthorizationExtensions
         return builder;
     }
 
-    private static bool IsPlatformAdmin(ClaimsPrincipal user) =>
-        user.HasClaim(c => c.Type == "adminRole");
+    private static bool IsAdmin(ClaimsPrincipal user) => user.HasClaim(c => c.Type == "adminRole");
 
     private static bool IsOwner(ClaimsPrincipal user) =>
         user.HasClaim(c => c.Type == "staffRole" && c.Value == "owner");

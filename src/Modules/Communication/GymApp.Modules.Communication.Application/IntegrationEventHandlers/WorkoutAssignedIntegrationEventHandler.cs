@@ -31,7 +31,8 @@ internal sealed class WorkoutAssignedIntegrationEventHandler : INotificationHand
             ["workoutName"] = notification.WorkoutName
         };
 
-        var notif = NotificationTexts.WorkoutAssigned(notification.WorkoutName).ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.WorkoutAssigned(notification.WorkoutName),
             notification.ClientId,
             NotificationType.WorkoutAssigned,
             notification.GymId,

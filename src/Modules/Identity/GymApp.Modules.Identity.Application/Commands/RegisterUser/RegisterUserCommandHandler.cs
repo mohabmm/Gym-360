@@ -52,12 +52,15 @@ internal sealed class RegisterUserCommandHandler : ICommandHandler<RegisterUserC
         var passwordHash = _passwordHasher.Hash(request.Password);
 
         var user = DomainEntities.User.Create(
-            emailResult.Value,
-            phoneResult.Value,
-            passwordHash,
-            request.FirstName,
-            request.LastName,
-            Gender.Male, // Default, updated via profile
+            new NewUserDetails
+            {
+                Email = emailResult.Value,
+                PhoneNumber = phoneResult.Value,
+                PasswordHash = passwordHash,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Gender = Gender.Male // Default, updated via profile
+            },
             role);
 
         user.Activate();

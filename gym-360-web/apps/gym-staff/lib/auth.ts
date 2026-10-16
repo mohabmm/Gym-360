@@ -63,27 +63,37 @@ declare module 'next-auth/jwt' {
   }
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1';
+const STAFF_ROLES = ['gym_staff', 'gym_owner'];
 const CTX_REFRESH_INTERVAL_MS = 60_000;
 // Refresh the access token this many ms before its embedded `exp`, so client
 // API calls never fire with an expired token (which would 401 → forced sign-out).
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 60_000;
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseOwnedGyms(raw: any): OwnedGym[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((g) => ({
-    gymId: g.gymId,
-    name: g.name,
-    slug: g.slug,
-    schemaPrefix: g.schemaPrefix,
-  }));
+function toOwnedGyms(raw: unknown): OwnedGym[] {
+  return Array.isArray(raw)
+    ? raw.map((g: any) => ({
+        gymId: g.gymId,
+        name: g.name,
+        slug: g.slug,
+        schemaPrefix: g.schemaPrefix,
+      }))
+    : [];
 }
 
-// Decode the (unverified) payload segment of a JWT. Throws on malformed input.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function decodeJwtPayload(accessToken: string): any {
-  return JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString('utf-8'));
+// Claims of an access token, or null when it cannot be decoded.
+function decodeJwtPayload(accessToken: string): Record<string, any> | null {
+  try {
+    return JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString('utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+// Decode the `exp` claim (seconds) of an access token into epoch ms.
+function decodeJwtExpMs(accessToken: string): number | null {
+  const exp = decodeJwtPayload(accessToken)?.exp;
+  return typeof exp === 'number' ? exp * 1000 : null;
 }
 
 async function fetchCurrentUser(accessToken: string): Promise<{
@@ -110,7 +120,7 @@ async function fetchCurrentUser(accessToken: string): Promise<{
       gymName: u.gymName ?? '',
       principalType: u.principalType ?? null,
       ownerId: u.ownerId ?? null,
-      ownedGyms: parseOwnedGyms(u.ownedGyms),
+      ownedGyms: toOwnedGyms(u.ownedGyms),
     };
   } catch {
     return null;
@@ -146,16 +156,6 @@ function mergeTenantContext(token: JWT, fresh: TenantContext): void {
   } else {
     token.gymId = fresh.gymId;
     token.gymName = fresh.gymName;
-  }
-}
-
-// Decode the `exp` claim (seconds) of an access token into epoch ms.
-function decodeJwtExpMs(accessToken: string): number | null {
-  try {
-    const payload = decodeJwtPayload(accessToken);
-    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
-  } catch {
-    return null;
   }
 }
 
@@ -219,35 +219,28 @@ function normalizeRole(role?: string): string {
   return map[role] ?? role.toLowerCase();
 }
 
-// POST /identity/login and map the response to a NextAuth user. Returns null on
-// bad credentials, a non-staff role, or any transport/parse failure.
-async function loginStaff(email: string, password: string): Promise<User | null> {
-  try {
-    const res = await fetch(`${API_URL}/identity/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    const { accessToken, refreshToken, user } = data.data ?? {};
-    if (!accessToken || !user) return null;
-
-    return toStaffUser(accessToken, refreshToken, user);
-  } catch {
-    return null;
-  }
+function defaultSubRole(role: string): StaffSubRole {
+  return role === 'gym_owner' ? 'owner' : 'receptionist';
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Tenant claims from the login response, falling back to the token payload.
+function tenantClaims(user: any, payload: Record<string, any>) {
+  return {
+    gymId: user.gymId ?? payload.gymId ?? '',
+    schemaPrefix: payload.schemaPrefix ?? '',
+    principalType: user.principalType ?? payload.principalType ?? null,
+    ownerId: user.ownerId ?? payload.ownerId ?? null,
+  };
+}
+
+// Map the /identity/login response onto the NextAuth user. Returns null for
+// non-staff roles and for an access token that cannot be decoded.
 function toStaffUser(accessToken: string, refreshToken: string, user: any): User | null {
-  const normalizedRole = normalizeRole(user.role);
-  if (!['gym_staff', 'gym_owner'].includes(normalizedRole)) return null;
+  const role = normalizeRole(user.role);
+  if (!STAFF_ROLES.includes(role)) return null;
 
   const payload = decodeJwtPayload(accessToken);
-  const defaultSubRole = normalizedRole === 'gym_owner' ? 'owner' : 'receptionist';
-  const subRole = (user.staffSubRole ?? payload.staffRole ?? defaultSubRole) as StaffSubRole;
+  if (!payload) return null;
 
   // Hard-mode multi-tenancy claims (FOUNDER_DECISIONS Q3 revised 2026-05-01).
   // Owners with multiple gyms get an Owner-scoped token (no gymId until
@@ -259,14 +252,11 @@ function toStaffUser(accessToken: string, refreshToken: string, user: any): User
     name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email,
     accessToken,
     refreshToken,
-    role: normalizedRole,
-    staffSubRole: subRole,
-    gymId: user.gymId ?? payload.gymId ?? '',
+    role,
+    staffSubRole: (user.staffSubRole ?? payload.staffRole ?? defaultSubRole(role)) as StaffSubRole,
     gymName: user.gymName ?? '',
-    schemaPrefix: payload.schemaPrefix ?? '',
-    principalType: user.principalType ?? payload.principalType ?? null,
-    ownerId: user.ownerId ?? payload.ownerId ?? null,
-    ownedGyms: parseOwnedGyms(user.ownedGyms),
+    ownedGyms: toOwnedGyms(user.ownedGyms),
+    ...tenantClaims(user, payload),
   };
 }
 
@@ -286,13 +276,11 @@ function applySignIn(token: JWT, user: User): JWT {
   return token;
 }
 
-type SessionUpdate = Partial<Pick<JWT, 'accessToken' | 'gymId' | 'gymName' | 'schemaPrefix'>>;
-
 // session.update() flow — used after Owner picks a gym at /select-gym.
 // The route hits POST /api/v1/identity/select-gym, gets a fresh token
 // with gymId/schemaPrefix populated, then calls update(...) with the
 // new claims.
-function applySessionUpdate(token: JWT, update: SessionUpdate): JWT {
+function applySessionUpdate(token: JWT, update: Partial<JWT>): JWT {
   if (update.accessToken) {
     token.accessToken = update.accessToken;
     token.accessTokenExpires = decodeJwtExpMs(update.accessToken) ?? token.accessTokenExpires;
@@ -304,6 +292,16 @@ function applySessionUpdate(token: JWT, update: SessionUpdate): JWT {
   return token;
 }
 
+function isNearExpiry(token: JWT): boolean {
+  const expiresAt = token.accessTokenExpires ?? 0;
+  return expiresAt > 0 && Date.now() > expiresAt - ACCESS_TOKEN_REFRESH_SKEW_MS;
+}
+
+function isExpired(token: JWT): boolean {
+  const expiresAt = token.accessTokenExpires ?? 0;
+  return expiresAt > 0 && Date.now() >= expiresAt;
+}
+
 // --- Access-token rotation -------------------------------------------
 // The NextAuth session cookie lives 24h (maxAge below) but a backend
 // access token lives ~1h. Without rotation the cookie outlives its token:
@@ -313,40 +311,35 @@ function applySessionUpdate(token: JWT, update: SessionUpdate): JWT {
 // token expires; also recovers a token blanked by an older build.
 function needsRotation(token: JWT): boolean {
   if (!token.refreshToken) return false;
-  if (!token.accessToken) return true;
-  const expiresAt = token.accessTokenExpires ?? 0;
-  return expiresAt > 0 && Date.now() > expiresAt - ACCESS_TOKEN_REFRESH_SKEW_MS;
+  return !token.accessToken || isNearExpiry(token);
 }
 
-function isUnusable(token: JWT): boolean {
-  if (!token.accessToken) return true;
-  const expiresAt = token.accessTokenExpires ?? 0;
-  return expiresAt > 0 && Date.now() >= expiresAt;
-}
-
-async function rotateOrExpire(token: JWT): Promise<JWT> {
+async function rotateOrInvalidate(token: JWT): Promise<JWT> {
+  const unusable = !token.accessToken || isExpired(token);
   if (await rotateAndRefreshContext(token)) return token;
   // Rotation failed. Only force re-auth if the current access token is
   // actually unusable (blank or expired). If we're merely inside the
   // pre-expiry skew window with a still-valid token, keep it and let a
   // later cycle retry — this avoids a false logout when a concurrent
   // request already rotated (the backend revokes the old refresh token).
-  return isUnusable(token) ? { ...token, accessToken: '' } : token;
+  return unusable ? { ...token, accessToken: '' } : token;
+}
+
+function isContextStale(token: JWT): boolean {
+  return Date.now() - (token.ctxRefreshedAt ?? 0) > CTX_REFRESH_INTERVAL_MS;
 }
 
 // Refresh tenant context from the backend periodically. Prevents stale
 // gymId / schemaPrefix from sticking in long-lived NextAuth cookies after
 // a re-seed, gym deletion, or membership change.
 async function refreshContextIfStale(token: JWT): Promise<JWT> {
-  const lastRefresh = token.ctxRefreshedAt ?? 0;
-  if (!token.accessToken || Date.now() - lastRefresh <= CTX_REFRESH_INTERVAL_MS) return token;
+  if (!token.accessToken || !isContextStale(token)) return token;
 
   const fresh = await fetchCurrentUser(token.accessToken);
   if (fresh === 'unauthorized') {
     // Token rejected mid-life (e.g. expired between rotation checks).
     // Try a rotation before forcing re-auth.
-    if (await rotateAndRefreshContext(token)) return token;
-    return { ...token, accessToken: '' };
+    return (await rotateAndRefreshContext(token)) ? token : { ...token, accessToken: '' };
   }
   if (fresh) {
     mergeTenantContext(token, fresh);
@@ -365,7 +358,23 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        return loginStaff(credentials.email, credentials.password);
+
+        try {
+          const res = await fetch(`${API_URL}/identity/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+          });
+
+          if (!res.ok) return null;
+          const data = await res.json();
+          const { accessToken, refreshToken, user } = data.data ?? {};
+          if (!accessToken || !user) return null;
+
+          return toStaffUser(accessToken, refreshToken, user);
+        } catch {
+          return null;
+        }
       },
     }),
   ],
@@ -373,7 +382,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) return applySignIn(token, user);
       if (trigger === 'update' && session) return applySessionUpdate(token, session);
-      if (needsRotation(token)) return rotateOrExpire(token);
+      if (needsRotation(token)) return rotateOrInvalidate(token);
       return refreshContextIfStale(token);
     },
     async session({ session, token }) {

@@ -45,12 +45,15 @@ internal sealed class CreateAdminUserCommandHandler : ICommandHandler<CreateAdmi
         var passwordHash = _passwordHasher.Hash(request.Password);
 
         var user = DomainEntities.User.Create(
-            emailResult.Value,
-            phoneResult.Value,
-            passwordHash,
-            request.FirstName,
-            request.LastName,
-            Gender.Male,
+            new NewUserDetails
+            {
+                Email = emailResult.Value,
+                PhoneNumber = phoneResult.Value,
+                PasswordHash = passwordHash,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Gender = Gender.Male
+            },
             UserRole.PlatformAdmin);
 
         user.Activate();

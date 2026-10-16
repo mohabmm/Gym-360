@@ -10,6 +10,7 @@ import {
   useCreatePackageTemplate, useUpdatePackageTemplate, useAssignPackage,
 } from '@/lib/hooks/useBilling';
 import { useMembers } from '@/lib/hooks/useMembers';
+import { apiErrorMessage } from '@/lib/api-error';
 
 type MembershipPlan = {
   id: string;
@@ -68,9 +69,7 @@ export default function BillingPage() {
   const assignPackage = useAssignPackage();
 
   function showApiError(err: unknown, fallback: string) {
-    const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-      ?.response?.data?.errors?.[0]?.message ?? fallback;
-    toast.error(msg);
+    toast.error(apiErrorMessage(err, fallback));
   }
 
   function submitAssign() {

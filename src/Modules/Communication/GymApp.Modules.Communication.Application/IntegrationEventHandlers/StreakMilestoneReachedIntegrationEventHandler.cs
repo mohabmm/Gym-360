@@ -31,7 +31,8 @@ internal sealed class StreakMilestoneReachedIntegrationEventHandler : INotificat
             ["gymId"] = notification.GymId.ToString()
         };
 
-        var notif = NotificationTexts.StreakMilestone(notification.MilestoneDay, notification.StreakType).ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.StreakMilestone(notification.MilestoneDay, notification.StreakType),
             notification.UserId,
             NotificationType.StreakMilestone,
             notification.GymId,

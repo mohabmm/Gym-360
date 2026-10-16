@@ -1,3 +1,5 @@
+using GymApp.Common.Domain;
+using GymApp.Modules.Scheduling.Application.DTOs;
 using GymApp.Modules.Scheduling.Application.Queries.GetWeeklyAvailability;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
@@ -8,6 +10,8 @@ namespace GymApp.Tests.Application.Scheduling;
 
 public class GetWeeklyAvailabilityQueryHandlerTests
 {
+    private static readonly DateOnly Monday = new(2026, 5, 11);
+
     private readonly ITrainerAvailabilityRepository _availabilityRepository =
         Substitute.For<ITrainerAvailabilityRepository>();
     private readonly ISessionRepository _sessionRepository =
@@ -23,20 +27,40 @@ public class GetWeeklyAvailabilityQueryHandlerTests
         _sut = new GetWeeklyAvailabilityQueryHandler(_availabilityRepository, _sessionRepository);
     }
 
-    [Fact]
-    public async Task Handle_NoAvailability_ReturnsAllDaysOff()
+    private TrainerAvailability MondayWindow(TimeOnly start, TimeOnly end)
+    {
+        var availability = TrainerAvailability.Create(_trainerId, _gymId);
+        availability.AddSlot(DayOfWeek.Monday, start, end);
+        return availability;
+    }
+
+    private Session MondaySessionAtNine(Guid memberId) => Session.Create(
+        new SessionParticipants(_gymId, _trainerId, memberId),
+        new SessionSchedule(Monday, new TimeOnly(9, 0), 60),
+        SessionType.PersonalTraining);
+
+    private void Given(TrainerAvailability? availability, params Session[] sessions)
     {
         _availabilityRepository
             .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns((TrainerAvailability?)null);
+            .Returns(availability);
         _sessionRepository
             .GetByTrainerAsync(_trainerId, _gymId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Session>());
+            .Returns(sessions);
+    }
 
-        var start = new DateOnly(2026, 5, 11); // Monday
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, start, start.AddDays(6), _memberId);
+    private Task<Result<WeeklyAvailabilityDto>> Handle(DateOnly start, DateOnly end) =>
+        _sut.Handle(new GetWeeklyAvailabilityQuery(_trainerId, _gymId, start, end, _memberId), CancellationToken.None);
 
-        var result = await _sut.Handle(query, CancellationToken.None);
+    private async Task<DayAvailabilityDto> HandleDay(DateOnly date) =>
+        (await Handle(date, date)).Value.Days.Single();
+
+    [Fact]
+    public async Task Handle_NoAvailability_ReturnsAllDaysOff()
+    {
+        Given(null);
+
+        var result = await Handle(Monday, Monday.AddDays(6));
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Days.Should().HaveCount(7);
@@ -51,24 +75,12 @@ public class GetWeeklyAvailabilityQueryHandlerTests
     [Fact]
     public async Task Handle_BlockedDate_MarksDayBlockedWithReason()
     {
-        var availability = TrainerAvailability.Create(_trainerId, _gymId);
-        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(17, 0));
-        var blockedDate = new DateOnly(2026, 5, 11);
-        availability.BlockDate(blockedDate, "Vacation");
+        var availability = MondayWindow(new TimeOnly(9, 0), new TimeOnly(17, 0));
+        availability.BlockDate(Monday, "Vacation");
+        Given(availability);
 
-        _availabilityRepository
-            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Session>());
+        var day = await HandleDay(Monday);
 
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, blockedDate, blockedDate, _memberId);
-
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        var day = result.Value.Days.Single();
         day.IsBlocked.Should().BeTrue();
         day.IsOffDay.Should().BeFalse();
         day.BlockedReason.Should().Be("Vacation");
@@ -78,22 +90,10 @@ public class GetWeeklyAvailabilityQueryHandlerTests
     [Fact]
     public async Task Handle_DayWithoutWeeklySlot_IsOffDay()
     {
-        var availability = TrainerAvailability.Create(_trainerId, _gymId);
-        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(11, 0));
+        Given(MondayWindow(new TimeOnly(9, 0), new TimeOnly(11, 0)));
 
-        _availabilityRepository
-            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Session>());
+        var day = await HandleDay(Monday.AddDays(1)); // Tuesday
 
-        var tuesday = new DateOnly(2026, 5, 12);
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, tuesday, tuesday, _memberId);
-
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        var day = result.Value.Days.Single();
         day.IsOffDay.Should().BeTrue();
         day.Slots.Should().BeEmpty();
     }
@@ -103,20 +103,9 @@ public class GetWeeklyAvailabilityQueryHandlerTests
     [Fact]
     public async Task Handle_WindowEndingNearMidnight_TerminatesWithoutWrapping()
     {
-        var availability = TrainerAvailability.Create(_trainerId, _gymId);
-        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(6, 0), new TimeOnly(23, 59));
+        Given(MondayWindow(new TimeOnly(6, 0), new TimeOnly(23, 59)));
 
-        _availabilityRepository
-            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Session>());
-
-        var monday = new DateOnly(2026, 5, 11);
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, monday, monday, _memberId);
-
-        var handle = Task.Run(() => _sut.Handle(query, CancellationToken.None));
+        var handle = Task.Run(() => Handle(Monday, Monday));
         var finished = await Task.WhenAny(handle, Task.Delay(TimeSpan.FromSeconds(5)));
 
         finished.Should().BeSameAs(handle, "slot generation must terminate");
@@ -129,54 +118,27 @@ public class GetWeeklyAvailabilityQueryHandlerTests
     [Fact]
     public async Task Handle_AvailableSlots_AllMarkedAvailable()
     {
-        var availability = TrainerAvailability.Create(_trainerId, _gymId);
-        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(11, 0));
+        Given(MondayWindow(new TimeOnly(9, 0), new TimeOnly(11, 0)));
 
-        _availabilityRepository
-            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<Session>());
+        var day = await HandleDay(Monday);
 
-        var monday = new DateOnly(2026, 5, 11);
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, monday, monday, _memberId);
-
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        var day = result.Value.Days.Single();
         day.IsOffDay.Should().BeFalse();
         day.IsBlocked.Should().BeFalse();
-        day.Slots.Should().NotBeEmpty();
-        day.Slots.Should().AllSatisfy(s => s.Status.Should().Be("Available"));
-        day.Slots.Should().AllSatisfy(s => s.SessionId.Should().BeNull());
+        day.Slots.Should().NotBeEmpty().And.AllSatisfy(s =>
+        {
+            s.Status.Should().Be("Available");
+            s.SessionId.Should().BeNull();
+        });
     }
 
     [Fact]
     public async Task Handle_SessionForRequestingMember_MarkedBookedByMe()
     {
-        var availability = TrainerAvailability.Create(_trainerId, _gymId);
-        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(11, 0));
+        var session = MondaySessionAtNine(_memberId);
+        Given(MondayWindow(new TimeOnly(9, 0), new TimeOnly(11, 0)), session);
 
-        var monday = new DateOnly(2026, 5, 11);
-        var session = Session.Create(
-            new SessionParticipants(_gymId, _trainerId, _memberId),
-            new SessionSchedule(monday, new TimeOnly(9, 0), 60),
-            SessionType.PersonalTraining);
+        var firstSlot = (await HandleDay(Monday)).Slots.First();
 
-        _availabilityRepository
-            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, monday, monday, Arg.Any<CancellationToken>())
-            .Returns(new[] { session });
-
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, monday, monday, _memberId);
-
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        var day = result.Value.Days.Single();
-        var firstSlot = day.Slots.First();
         firstSlot.Status.Should().Be("BookedByMe");
         firstSlot.SessionId.Should().Be(session.Id);
     }
@@ -184,29 +146,11 @@ public class GetWeeklyAvailabilityQueryHandlerTests
     [Fact]
     public async Task Handle_SessionForOtherMember_MarkedBookedByOther()
     {
-        var availability = TrainerAvailability.Create(_trainerId, _gymId);
-        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(11, 0));
+        var session = MondaySessionAtNine(Guid.NewGuid());
+        Given(MondayWindow(new TimeOnly(9, 0), new TimeOnly(11, 0)), session);
 
-        var monday = new DateOnly(2026, 5, 11);
-        var otherMember = Guid.NewGuid();
-        var session = Session.Create(
-            new SessionParticipants(_gymId, _trainerId, otherMember),
-            new SessionSchedule(monday, new TimeOnly(9, 0), 60),
-            SessionType.PersonalTraining);
+        var firstSlot = (await HandleDay(Monday)).Slots.First();
 
-        _availabilityRepository
-            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, monday, monday, Arg.Any<CancellationToken>())
-            .Returns(new[] { session });
-
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, monday, monday, _memberId);
-
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        var day = result.Value.Days.Single();
-        var firstSlot = day.Slots.First();
         firstSlot.Status.Should().Be("BookedByOther");
         firstSlot.SessionId.Should().Be(session.Id);
     }
@@ -214,41 +158,19 @@ public class GetWeeklyAvailabilityQueryHandlerTests
     [Fact]
     public async Task Handle_CancelledSessionIgnored_SlotAvailable()
     {
-        var availability = TrainerAvailability.Create(_trainerId, _gymId);
-        availability.AddSlot(DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(11, 0));
-
-        var monday = new DateOnly(2026, 5, 11);
-        var session = Session.Create(
-            new SessionParticipants(_gymId, _trainerId, _memberId),
-            new SessionSchedule(monday, new TimeOnly(9, 0), 60),
-            SessionType.PersonalTraining);
+        var session = MondaySessionAtNine(_memberId);
         session.Cancel("Changed mind", _memberId, isLateCancellation: false);
+        Given(MondayWindow(new TimeOnly(9, 0), new TimeOnly(11, 0)), session);
 
-        _availabilityRepository
-            .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
-            .Returns(availability);
-        _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, monday, monday, Arg.Any<CancellationToken>())
-            .Returns(new[] { session });
+        var day = await HandleDay(Monday);
 
-        var query = new GetWeeklyAvailabilityQuery(_trainerId, _gymId, monday, monday, _memberId);
-
-        var result = await _sut.Handle(query, CancellationToken.None);
-
-        var day = result.Value.Days.Single();
         day.Slots.First().Status.Should().Be("Available");
     }
 
     [Fact]
     public async Task Handle_EndBeforeStart_ReturnsFailure()
     {
-        var query = new GetWeeklyAvailabilityQuery(
-            _trainerId, _gymId,
-            new DateOnly(2026, 5, 11),
-            new DateOnly(2026, 5, 10),
-            _memberId);
-
-        var result = await _sut.Handle(query, CancellationToken.None);
+        var result = await Handle(Monday, Monday.AddDays(-1));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidDateRange");

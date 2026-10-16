@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Events;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Domain.Entities;
 
@@ -25,34 +26,27 @@ public sealed class Exercise : Entity
     public bool IsActive { get; private set; }
 
     public static Exercise Create(
-        string name,
-        Equipment equipment,
-        ExerciseCategory category,
+        ExerciseDetails details,
         ExerciseScope scope,
-        List<MuscleGroup> muscleGroups,
-        string? nameAr = null,
-        string? description = null,
-        string? instructions = null,
-        string? demoMediaUrl = null,
         Guid? gymId = null,
         Guid? createdBy = null)
     {
         var exercise = new Exercise(Guid.NewGuid())
         {
-            Name = name,
-            NameAr = nameAr,
-            Equipment = equipment,
-            Category = category,
+            Name = details.Name,
+            NameAr = details.NameAr,
+            Equipment = details.Equipment,
+            Category = details.Category,
             Scope = scope,
-            Description = description,
-            Instructions = instructions,
-            DemoMediaUrl = demoMediaUrl,
+            Description = details.Description,
+            Instructions = details.Instructions,
+            DemoMediaUrl = details.DemoMediaUrl,
             GymId = gymId,
             CreatedBy = createdBy,
             IsActive = true
         };
 
-        exercise._muscleGroups.AddRange(muscleGroups);
+        exercise._muscleGroups.AddRange(details.MuscleGroups);
         exercise.RaiseDomainEvent(new ExerciseCreatedDomainEvent(exercise.Id));
 
         return exercise;
@@ -64,23 +58,4 @@ public sealed class Exercise : Entity
     public void Deactivate() => IsActive = false;
 
     public void Activate() => IsActive = true;
-
-    public void Update(
-        string name,
-        string? description,
-        string? instructions,
-        string? demoMediaUrl,
-        Equipment equipment,
-        ExerciseCategory category,
-        List<MuscleGroup> muscleGroups)
-    {
-        Name = name;
-        Description = description;
-        Instructions = instructions;
-        DemoMediaUrl = demoMediaUrl;
-        Equipment = equipment;
-        Category = category;
-        _muscleGroups.Clear();
-        _muscleGroups.AddRange(muscleGroups);
-    }
 }

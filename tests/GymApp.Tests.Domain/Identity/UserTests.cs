@@ -16,14 +16,17 @@ public sealed class UserTests
         Language language = Language.Arabic)
     {
         return User.Create(
-            CreateValidEmail(),
-            CreateValidPhone(),
-            "hashed_password_123",
-            "Ahmed",
-            "Mohamed",
-            Gender.Male,
-            role,
-            language);
+            new NewUserDetails
+            {
+                Email = CreateValidEmail(),
+                PhoneNumber = CreateValidPhone(),
+                PasswordHash = "hashed_password_123",
+                FirstName = "Ahmed",
+                LastName = "Mohamed",
+                Gender = Gender.Male,
+                Language = language
+            },
+            role);
     }
 
     [Fact]
@@ -32,7 +35,18 @@ public sealed class UserTests
         var email = CreateValidEmail();
         var phone = CreateValidPhone();
 
-        var user = User.Create(email, phone, "hash", "Ali", "Hassan", Gender.Male, UserRole.Trainee, Language.Arabic);
+        var user = User.Create(
+            new NewUserDetails
+            {
+                Email = email,
+                PhoneNumber = phone,
+                PasswordHash = "hash",
+                FirstName = "Ali",
+                LastName = "Hassan",
+                Gender = Gender.Male,
+                Language = Language.Arabic
+            },
+            UserRole.Trainee);
 
         user.Id.Should().NotBeEmpty();
         user.Email.Should().Be(email);
@@ -49,8 +63,16 @@ public sealed class UserTests
     public void Create_DefaultLanguage_ShouldBeArabic()
     {
         var user = User.Create(
-            CreateValidEmail(), CreateValidPhone(), "hash",
-            "Ali", "Hassan", Gender.Male, UserRole.Trainee);
+            new NewUserDetails
+            {
+                Email = CreateValidEmail(),
+                PhoneNumber = CreateValidPhone(),
+                PasswordHash = "hash",
+                FirstName = "Ali",
+                LastName = "Hassan",
+                Gender = Gender.Male
+            },
+            UserRole.Trainee);
 
         user.Language.Should().Be(Language.Arabic);
     }
@@ -72,7 +94,7 @@ public sealed class UserTests
         var user = CreateDefaultUser();
         user.ClearDomainEvents();
 
-        user.UpdateProfile("NewFirst", "NewLast", "http://photo.jpg", new DateTime(1990, 1, 1), Language.English);
+        user.UpdateProfile(new UserProfile("NewFirst", "NewLast", "http://photo.jpg", new DateTime(1990, 1, 1), Language.English));
 
         user.FirstName.Should().Be("NewFirst");
         user.LastName.Should().Be("NewLast");

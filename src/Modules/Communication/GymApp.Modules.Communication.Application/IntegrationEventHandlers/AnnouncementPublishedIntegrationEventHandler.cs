@@ -60,7 +60,8 @@ internal sealed class AnnouncementPublishedIntegrationEventHandler
 
         foreach (var memberId in memberIds)
         {
-            var notif = NotificationTexts.Announcement(notification.Title).ToNotification(
+            var notif = Notification.CreateLocalized(
+                NotificationTexts.Announcement(notification.Title),
                 memberId,
                 NotificationType.Announcement,
                 notification.GymId,

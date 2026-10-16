@@ -33,7 +33,8 @@ internal sealed class CoachOfTheMonthSelectedIntegrationEventHandler : INotifica
         };
 
         // Notify the trainer
-        var trainerNotif = NotificationTexts.CoachOfTheMonth(notification.Month, notification.Year).ToNotification(
+        var trainerNotif = Notification.CreateLocalized(
+            NotificationTexts.CoachOfTheMonth(notification.Month, notification.Year),
             notification.TrainerId,
             NotificationType.CoachOfTheMonth,
             notification.GymId,

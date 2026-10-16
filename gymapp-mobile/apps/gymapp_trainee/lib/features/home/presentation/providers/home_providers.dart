@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/providers.dart';
 import '../../data/datasources/home_remote_datasource.dart';
 import '../../data/repositories/home_repository.dart';
+import '../../../scheduling/presentation/providers/scheduling_providers.dart';
 
 final homeRemoteDataSourceProvider = Provider<HomeRemoteDataSource>((ref) {
   return HomeRemoteDataSource(apiClient: ref.watch(apiClientProvider));
@@ -26,14 +27,13 @@ final todaysWorkoutProvider = FutureProvider<WorkoutModel?>((ref) async {
 });
 
 /// Upcoming sessions (next 5).
+///
+/// Mirrors the Schedule tab's list instead of fetching on its own, so a
+/// booking, cancellation or feedback (which invalidate
+/// [upcomingSessionsListProvider]) also refreshes the Home next-session card.
 final upcomingSessionsProvider =
-    FutureProvider<List<SessionModel>>((ref) async {
-  final authState = ref.watch(authProvider).valueOrNull;
-  final userId = authState?.user?.id;
-  final gymId = authState?.currentGymId;
-  if (userId == null || gymId == null) return const [];
-  final repo = ref.watch(homeRepositoryProvider);
-  return repo.getUpcomingSessions(userId: userId, gymId: gymId);
+    FutureProvider<List<SessionModel>>((ref) {
+  return ref.watch(upcomingSessionsListProvider.future);
 });
 
 /// Progress dashboard summary for home stats (includes streaks).

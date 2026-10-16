@@ -38,6 +38,12 @@
           "GymApp.Common.Domain": "[1.0.0, )"
         }
       },
+      "gymapp.modules.training.integrationevents": {
+        "type": "Project",
+        "dependencies": {
+          "GymApp.Common.Domain": "[1.0.0, )"
+        }
+      },
       "FluentValidation": {
         "type": "CentralTransitive",
         "requested": "[11.9.0, )",

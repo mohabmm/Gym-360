@@ -70,14 +70,17 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
         var passwordHash = _passwordHasher.Hash(defaultPassword);
 
         var user = DomainEntities.User.Create(
-            emailResult.Value,
-            phoneResult.Value,
-            passwordHash,
-            request.FirstName.Trim(),
-            request.LastName.Trim(),
-            Gender.Male,
-            UserRole.Trainee,
-            nationalId: request.NationalId);
+            new NewUserDetails
+            {
+                Email = emailResult.Value,
+                PhoneNumber = phoneResult.Value,
+                PasswordHash = passwordHash,
+                FirstName = request.FirstName.Trim(),
+                LastName = request.LastName.Trim(),
+                Gender = Gender.Male,
+                NationalId = request.NationalId
+            },
+            UserRole.Trainee);
 
         user.Activate();
 

@@ -4,6 +4,7 @@ using GymApp.Modules.Communication.Application.Queries.GetNotifications;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Communication;
 
@@ -75,7 +76,8 @@ public class NotificationTextsTests
     public async Task GetNotifications_ReturnsTextInTheRequestedLanguage(string? language, string expectedTitle)
     {
         var userId = Guid.NewGuid();
-        var stored = NotificationTexts.SessionCompletedForTrainer().ToNotification(
+        var stored = Notification.CreateLocalized(
+            NotificationTexts.SessionCompletedForTrainer(),
             userId, NotificationType.TrainerFeedback, null,
             new Dictionary<string, string> { ["sessionId"] = "s-1" });
         var repository = Substitute.For<INotificationRepository>();

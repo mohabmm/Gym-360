@@ -62,14 +62,17 @@ internal sealed class DataImportMemberIntegrationEventHandler : INotificationHan
             gender = Gender.Male;
 
         var user = User.Create(
-            email,
-            phoneResult.Value,
-            passwordHash: string.Empty,
-            firstName: n.FirstName,
-            lastName: n.LastName,
-            gender: gender,
-            role: UserRole.Trainee,
-            nationalId: n.NationalId);
+            new NewUserDetails
+            {
+                Email = email,
+                PhoneNumber = phoneResult.Value,
+                PasswordHash = string.Empty,
+                FirstName = n.FirstName,
+                LastName = n.LastName,
+                Gender = gender,
+                NationalId = n.NationalId
+            },
+            UserRole.Trainee);
 
         user.LinkToGym(n.GymId, UserRole.Trainee, n.Section, n.MemberNumber);
 

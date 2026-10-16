@@ -34,7 +34,8 @@ internal sealed class RemoteWorkoutActivatedIntegrationEventHandler : INotificat
             data["reason"] = notification.Reason;
 
 
-        var notif = NotificationTexts.RemoteWorkoutActivated(notification.Reason).ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.RemoteWorkoutActivated(notification.Reason),
             notification.ClientId,
             NotificationType.RemoteWorkoutActivated,
             notification.GymId,

@@ -13,6 +13,10 @@ namespace GymApp.Modules.Identity.Application.Commands.CreateTrainerByStaff;
 
 internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<CreateTrainerByStaffCommand, Guid>
 {
+    // Matches member-create: staff-created trainers log in with the documented
+    // `initialPassword` the endpoint advertises.
+    private const string DefaultTrainerPassword = "123456";
+
     private readonly IUserRepository _userRepository;
     private readonly IIdentityUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
@@ -30,8 +34,6 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         _integrationEvents = integrationEvents;
     }
 
-    private const string DefaultTrainerPassword = "123456";
-
     private void EnqueueTrainerLinked(Guid userId, Guid gymId) =>
         _integrationEvents.Enqueue(new UserLinkedToGymIntegrationEvent(
             userId, gymId, UserRole.Trainer.ToString()));
@@ -47,25 +49,32 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         // hand the caller someone else's identity to enroll as trainer.
         var existingByPhone = await _userRepository.GetByPhoneAsync(phoneResult.Value, cancellationToken);
         if (existingByPhone is not null)
-            return await ReuseTrainerAsync(existingByPhone, UserErrors.PhoneReservedForOtherRole, request.GymId, cancellationToken);
+            return await ReuseExistingAsync(existingByPhone, UserErrors.PhoneReservedForOtherRole, request.GymId, cancellationToken);
 
-        var emailResult = Email.Create(ResolveEmail(request.Email, phoneResult.Value.Value));
+        var emailInput = string.IsNullOrWhiteSpace(request.Email)
+            ? SynthesizePlaceholderEmail(phoneResult.Value.Value)
+            : request.Email.Trim();
+
+        var emailResult = Email.Create(emailInput);
         if (emailResult.IsFailure)
             return Result.Failure<Guid>(emailResult.Error);
 
         var existingByEmail = await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken);
         if (existingByEmail is not null)
-            return await ReuseTrainerAsync(existingByEmail, UserErrors.EmailReservedForOtherRole, request.GymId, cancellationToken);
+            return await ReuseExistingAsync(existingByEmail, UserErrors.EmailReservedForOtherRole, request.GymId, cancellationToken);
 
         var passwordHash = _passwordHasher.Hash(DefaultTrainerPassword);
 
         var user = DomainEntities.User.Create(
-            emailResult.Value,
-            phoneResult.Value,
-            passwordHash,
-            request.FirstName.Trim(),
-            request.LastName.Trim(),
-            Gender.Male,
+            new NewUserDetails
+            {
+                Email = emailResult.Value,
+                PhoneNumber = phoneResult.Value,
+                PasswordHash = passwordHash,
+                FirstName = request.FirstName.Trim(),
+                LastName = request.LastName.Trim(),
+                Gender = Gender.Male
+            },
             UserRole.Trainer);
 
         user.Activate();
@@ -81,41 +90,33 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         return Result.Success(user.Id);
     }
 
-    private Task<Result<Guid>> ReuseTrainerAsync(
-        DomainEntities.User existing, Error reservedError, Guid gymId, CancellationToken ct) =>
+    private async Task<Result<Guid>> ReuseExistingAsync(
+        DomainEntities.User existing, Error reservedForOtherRole, Guid gymId, CancellationToken ct) =>
         existing.Role == UserRole.Trainer
-            ? EnsureLinkedAsync(existing, gymId, ct)
-            : Task.FromResult(Result.Failure<Guid>(reservedError));
+            ? await EnsureLinkedAsync(existing, gymId, ct)
+            : Result.Failure<Guid>(reservedForOtherRole);
 
     private async Task<Result<Guid>> EnsureLinkedAsync(DomainEntities.User user, Guid gymId, CancellationToken ct)
     {
-        // Match member-create behavior: reset password to the documented default so the
-        // trainer can log in with the same `initialPassword` the endpoint advertises.
-        // Staff can only call this for unclaimed/legitimate trainers (role-guarded above).
+        // Reset to the default password so the trainer can log in with the advertised
+        // `initialPassword`. Only reachable for existing trainers (role-guarded above).
         user.UpdatePasswordHash(_passwordHasher.Hash(DefaultTrainerPassword));
 
-        var newlyLinked = !IsActiveTrainerAt(user, gymId);
-        if (newlyLinked)
+        if (!IsActiveTrainerAt(user, gymId))
         {
             var link = user.LinkToGym(gymId, UserRole.Trainer, section: null, memberNumber: null);
             if (link.IsFailure)
                 return Result.Failure<Guid>(link.Error);
+            EnqueueTrainerLinked(user.Id, gymId);
         }
 
         _userRepository.Update(user);
-        if (newlyLinked)
-            EnqueueTrainerLinked(user.Id, gymId);
         await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success(user.Id);
     }
 
     private static bool IsActiveTrainerAt(DomainEntities.User user, Guid gymId) =>
-        user.GymMemberships.Any(m => m.GymId == gymId && m.Role == UserRole.Trainer && m.IsActive);
-
-    private static string ResolveEmail(string? requested, string e164Phone) =>
-        string.IsNullOrWhiteSpace(requested)
-            ? SynthesizePlaceholderEmail(e164Phone)
-            : requested.Trim();
+        user.GymMemberships.Any(m => m.IsActive && m.Role == UserRole.Trainer && m.GymId == gymId);
 
     private static string NormalizePhone(string raw)
     {

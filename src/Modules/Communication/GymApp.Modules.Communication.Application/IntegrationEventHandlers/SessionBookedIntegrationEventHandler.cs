@@ -32,7 +32,8 @@ internal sealed class SessionBookedIntegrationEventHandler : INotificationHandle
             ["scheduledAt"] = notification.ScheduledAt.ToString("O")
         };
 
-        var notif = NotificationTexts.SessionBooked(notification.ScheduledAt).ToNotification(
+        var notif = Notification.CreateLocalized(
+            NotificationTexts.SessionBooked(notification.ScheduledAt),
             notification.TrainerId,
             NotificationType.SessionReminder,
             notification.GymId,
