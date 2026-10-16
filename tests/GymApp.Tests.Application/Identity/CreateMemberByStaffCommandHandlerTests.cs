@@ -29,7 +29,17 @@ public class CreateMemberByStaffCommandHandlerTests
     {
         var email = Email.Create("someone.else@example.com").Value;
         var phone = PhoneNumber.Create("+201001596189").Value;
-        return User.Create(email, phone, "hash", "Someone", "Else", Gender.Male, role);
+        return User.Create(
+            new NewUserDetails
+            {
+                Email = email,
+                PhoneNumber = phone,
+                PasswordHash = "hash",
+                FirstName = "Someone",
+                LastName = "Else",
+                Gender = Gender.Male
+            },
+            role);
     }
 
     [Fact]

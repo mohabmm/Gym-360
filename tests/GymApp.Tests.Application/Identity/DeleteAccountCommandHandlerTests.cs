@@ -28,12 +28,15 @@ public class DeleteAccountCommandHandlerTests
         // Arrange
         var userId = Guid.NewGuid();
         var user = User.Create(
-            Email.Create("test@example.com").Value,
-            PhoneNumber.Create("+201234567890").Value,
-            "hashed",
-            "John",
-            "Doe",
-            Gender.Male,
+            new NewUserDetails
+            {
+                Email = Email.Create("test@example.com").Value,
+                PhoneNumber = PhoneNumber.Create("+201234567890").Value,
+                PasswordHash = "hashed",
+                FirstName = "John",
+                LastName = "Doe",
+                Gender = Gender.Male
+            },
             UserRole.Trainee);
         _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);

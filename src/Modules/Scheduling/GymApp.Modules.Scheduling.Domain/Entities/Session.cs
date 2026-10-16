@@ -56,30 +56,26 @@ public sealed class Session : Entity
         SessionParticipants participants,
         SessionSchedule schedule,
         SessionType sessionType,
-        string? focus = null)
-    {
-        var session = new Session(participants, schedule, sessionType) { Focus = focus };
-        session.RaiseBooked();
-        return session;
-    }
+        string? focus = null) =>
+        Booked(new Session(participants, schedule, sessionType) { Focus = focus });
 
     public static Session CreateRecurring(
         SessionParticipants participants,
         SessionSchedule schedule,
         SessionType sessionType,
-        string? recurrenceRule)
-    {
-        var session = new Session(participants, schedule, sessionType)
+        string? recurrenceRule) =>
+        Booked(new Session(participants, schedule, sessionType)
         {
             IsRecurring = true,
             RecurrenceRule = recurrenceRule
-        };
-        session.RaiseBooked();
+        });
+
+    private static Session Booked(Session session)
+    {
+        session.RaiseDomainEvent(new SessionBookedDomainEvent(
+            session.Id, session.TrainerId, session.MemberId, session.GymId));
         return session;
     }
-
-    private void RaiseBooked() =>
-        RaiseDomainEvent(new SessionBookedDomainEvent(Id, TrainerId, MemberId, GymId));
 
     /// <param name="nowGymLocal">
     /// Current time as gym-local wall-clock — the same frame ScheduledDate/ScheduledTime

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
-using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Application.Commands.AddMember;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Identity.Application.Commands.CreateMemberByStaff;
@@ -32,10 +31,9 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
             Request request,
             HttpContext http,
             ISender sender,
-            IGymMemberDirectory directory,
-            IGymsUnitOfWork gymsUow,
-            CancellationToken ct) =>
+            IGymMemberDirectory directory) =>
         {
+            var ct = http.RequestAborted;
             var gymClaim = http.User.FindFirstValue("gymId");
             if (!Guid.TryParse(gymClaim, out var gymId) || gymId == Guid.Empty)
                 return ApiResults.Problem(new Error("Auth.GymContextMissing", "Staff JWT is missing a gym scope. Re-login or call /identity/select-gym."));

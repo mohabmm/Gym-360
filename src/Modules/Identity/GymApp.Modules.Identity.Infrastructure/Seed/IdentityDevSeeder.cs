@@ -42,7 +42,17 @@ public static class IdentityDevSeeder
             var exists = await ctx.Users.AnyAsync(u => u.Email == email, ct);
             if (exists) continue;
             var phone = PhoneNumber.Create(s.Phone).Value;
-            var user = User.Create(email, phone, hash, s.First, s.Last, s.Gender, s.Role);
+            var user = User.Create(
+                new NewUserDetails
+                {
+                    Email = email,
+                    PhoneNumber = phone,
+                    PasswordHash = hash,
+                    FirstName = s.First,
+                    LastName = s.Last,
+                    Gender = s.Gender
+                },
+                s.Role);
             user.Activate();
             ctx.Users.Add(user);
             added++;

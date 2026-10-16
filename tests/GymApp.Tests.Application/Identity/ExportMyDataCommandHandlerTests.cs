@@ -26,9 +26,16 @@ public class ExportMyDataCommandHandlerTests
         // Arrange
         var userId = Guid.NewGuid();
         var user = User.Create(
-            Email.Create("test@example.com").Value,
-            PhoneNumber.Create("+201234567890").Value,
-            "hashed", "John", "Doe", Gender.Male, UserRole.Trainee);
+            new NewUserDetails
+            {
+                Email = Email.Create("test@example.com").Value,
+                PhoneNumber = PhoneNumber.Create("+201234567890").Value,
+                PasswordHash = "hashed",
+                FirstName = "John",
+                LastName = "Doe",
+                Gender = Gender.Male
+            },
+            UserRole.Trainee);
         _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
 
         var exportResponse = new DataExportResponse("https://storage.example.com/export.zip", DateTime.UtcNow.AddHours(24));
