@@ -64,13 +64,17 @@ function normaliseGym(g: any): GymProfile {
 // BE AddressDto requires street/city/country (validator NotEmpty). The UI
 // only collects street/city/area, so map area→state, default country to
 // Egypt, and send zipCode. Without `country` the save 400s.
+function hasAnyValue(...values: (string | undefined)[]) {
+  return values.some(Boolean);
+}
+
 function toAddressDto(data: Partial<GymProfile>) {
-  if (!(data.street || data.city || data.area)) return undefined;
+  if (!hasAnyValue(data.street, data.city, data.area)) return undefined;
   return { street: data.street ?? '', city: data.city ?? '', state: data.area ?? '', country: 'Egypt', zipCode: '' };
 }
 
 function toContactDto(data: Partial<GymProfile>) {
-  if (!(data.phone || data.email || data.website)) return undefined;
+  if (!hasAnyValue(data.phone, data.email, data.website)) return undefined;
   return { phone: data.phone, email: data.email, website: data.website };
 }
 
