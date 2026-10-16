@@ -22,23 +22,55 @@ export interface GymProfile {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normaliseGym(g: any): GymProfile {
+type RawGym = any;
+
+// Contact fields arrive nested under `contact` (current BE) or flat (older BE).
+function contactField(g: RawGym, key: 'phone' | 'email' | 'website'): string {
+  return g.contact?.[key] ?? g[key] ?? '';
+}
+
+function normaliseAddress(address: RawGym) {
+  return {
+    street: address?.street ?? '',
+    city: address?.city ?? '',
+    area: address?.area ?? address?.state ?? '',
+  };
+}
+
+function normaliseBranding(branding: RawGym) {
+  return {
+    logoUrl: branding?.logoUrl ?? undefined,
+    coverPhotoUrl: branding?.coverPhotoUrl ?? undefined,
+    primaryColor: branding?.primaryColor ?? undefined,
+    secondaryColor: branding?.secondaryColor ?? undefined,
+  };
+}
+
+function normaliseGym(g: RawGym): GymProfile {
   return {
     id: g.id ?? g.gymId ?? '',
     name: g.name ?? '',
     description: g.description ?? '',
-    phone: g.contact?.phone ?? g.phone ?? '',
-    email: g.contact?.email ?? g.email ?? '',
-    website: g.contact?.website ?? g.website ?? '',
-    street: g.address?.street ?? '',
-    city: g.address?.city ?? '',
-    area: g.address?.area ?? g.address?.state ?? '',
+    phone: contactField(g, 'phone'),
+    email: contactField(g, 'email'),
+    website: contactField(g, 'website'),
+    ...normaliseAddress(g.address),
     amenities: g.amenities ?? [],
-    logoUrl: g.branding?.logoUrl ?? undefined,
-    coverPhotoUrl: g.branding?.coverPhotoUrl ?? undefined,
-    primaryColor: g.branding?.primaryColor ?? undefined,
-    secondaryColor: g.branding?.secondaryColor ?? undefined,
+    ...normaliseBranding(g.branding),
   };
+}
+
+// BE AddressDto requires street/city/country (validator NotEmpty). The UI
+// only collects street/city/area, so map area→state, default country to
+// Egypt, and send zipCode. Without `country` the save 400s.
+function toAddressPayload(data: Partial<GymProfile>) {
+  if (![data.street, data.city, data.area].some(Boolean)) return undefined;
+  return { street: data.street ?? '', city: data.city ?? '', state: data.area ?? '', country: 'Egypt', zipCode: '' };
+}
+
+function toContactPayload(data: Partial<GymProfile>) {
+  if (![data.phone, data.email, data.website].some(Boolean)) return undefined;
+  return { phone: data.phone, email: data.email, website: data.website };
 }
 
 export interface BrandingUpdate {
@@ -71,15 +103,8 @@ export function useUpdateGym() {
       const res = await apiClient.put(`/gyms/${gymId}`, {
         name: data.name,
         description: data.description,
-        // BE AddressDto requires street/city/country (validator NotEmpty). The UI
-        // only collects street/city/area, so map area→state, default country to
-        // Egypt, and send zipCode. Without `country` the save 400s.
-        address: (data.street || data.city || data.area)
-          ? { street: data.street ?? '', city: data.city ?? '', state: data.area ?? '', country: 'Egypt', zipCode: '' }
-          : undefined,
-        contact: (data.phone || data.email || data.website)
-          ? { phone: data.phone, email: data.email, website: data.website }
-          : undefined,
+        address: toAddressPayload(data),
+        contact: toContactPayload(data),
         amenities: data.amenities,
       });
       return res.data;

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Application.Queries.GetGymMembers;
@@ -23,20 +24,18 @@ internal sealed class GetGymMembersEndpoint : IEndpoint
             HttpContext httpContext,
             ISender sender) =>
         {
-            // Clamp paging to safe range. pageSize=0/-N caused totalPages=int.MaxValue / 0 nonsense.
-            page = page <= 0 ? 1 : page;
-            pageSize = pageSize switch { <= 0 => 25, > 200 => 200, _ => pageSize };
             // A trainer sees only their own clients: pin the trainer filter to the caller so
             // it cannot be omitted (whole gym roster) or pointed at another trainer.
             var user = httpContext.User;
-            if (MemberAccess.IsTrainer(user) && !MemberAccess.IsStaff(user) && !MemberAccess.IsPlatformAdmin(user))
+            if (IsTrainerOnly(user))
             {
                 if (!MemberAccess.TryGetUserId(user, out var callerId))
                     return Results.Unauthorized();
                 trainerId = callerId;
             }
 
-            var query = new GetGymMembersQuery(gymId, page, pageSize, status, section, trainerId, search);
+            var query = new GetGymMembersQuery(
+                gymId, ClampPage(page), ClampPageSize(pageSize), status, section, trainerId, search);
 
             var result = await sender.Send(query);
 
@@ -54,4 +53,13 @@ internal sealed class GetGymMembersEndpoint : IEndpoint
         .RequireAuthorization()
         .RequireMemberAccess(MemberAccessLevel.StaffOrTrainer);
     }
+
+    // Clamp paging to safe range. pageSize=0/-N caused totalPages=int.MaxValue / 0 nonsense.
+    private static int ClampPage(int page) => page <= 0 ? 1 : page;
+
+    private static int ClampPageSize(int pageSize) =>
+        pageSize switch { <= 0 => 25, > 200 => 200, _ => pageSize };
+
+    private static bool IsTrainerOnly(ClaimsPrincipal user) =>
+        MemberAccess.IsTrainer(user) && !MemberAccess.IsStaff(user) && !MemberAccess.IsPlatformAdmin(user);
 }

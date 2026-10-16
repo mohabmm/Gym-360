@@ -89,16 +89,25 @@ public sealed class Notification : Entity
     /// </summary>
     public (string Title, string Body) TextFor(string? language)
     {
-        var wantsEnglish = language is not null
-            && language.TrimStart().StartsWith("en", StringComparison.OrdinalIgnoreCase);
-        if (wantsEnglish
-            && _data.TryGetValue(TitleEnKey, out var titleEn)
-            && _data.TryGetValue(BodyEnKey, out var bodyEn))
-        {
-            return (titleEn, bodyEn);
-        }
+        if (WantsEnglish(language) && TryGetEnglishText(out var english))
+            return english;
 
         return (Title, Body);
+    }
+
+    private static bool WantsEnglish(string? language) =>
+        language is not null && language.TrimStart().StartsWith("en", StringComparison.OrdinalIgnoreCase);
+
+    private bool TryGetEnglishText(out (string Title, string Body) english)
+    {
+        english = default;
+        if (!_data.TryGetValue(TitleEnKey, out var titleEn))
+            return false;
+        if (!_data.TryGetValue(BodyEnKey, out var bodyEn))
+            return false;
+
+        english = (titleEn, bodyEn);
+        return true;
     }
 
     /// <summary>Client-facing metadata: <see cref="Data"/> without the reserved text keys.</summary>

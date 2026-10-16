@@ -51,11 +51,18 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
 
         var sessionDuration = availability?.SessionDurationMinutes ?? 60;
         var buffer = availability?.BufferMinutes ?? 15;
+        // Arithmetic is done on TimeSpan, NOT TimeOnly: TimeOnly.AddMinutes wraps past
+        // midnight, so a window ending late in the evening (e.g. 23:59) made
+        // "start + duration <= end" true forever and the request never returned.
+        var slotRules = new SlotRules(
+            request.RequestingMemberId,
+            TimeSpan.FromMinutes(sessionDuration),
+            TimeSpan.FromMinutes(Math.Max(0, buffer)));
         var days = new List<DayAvailabilityDto>();
 
         for (var date = request.StartDate; date <= request.EndDate; date = date.AddDays(1))
         {
-            days.Add(BuildDay(date, availability, activeSessions, request.RequestingMemberId, sessionDuration, buffer));
+            days.Add(BuildDay(date, availability, activeSessions, slotRules));
         }
 
         return Result.Success(new WeeklyAvailabilityDto(
@@ -68,13 +75,13 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
             days));
     }
 
+    private sealed record SlotRules(Guid? RequestingMemberId, TimeSpan Duration, TimeSpan Buffer);
+
     private static DayAvailabilityDto BuildDay(
         DateOnly date,
         TrainerAvailability? availability,
         List<Session> activeSessions,
-        Guid? requestingMemberId,
-        int sessionDuration,
-        int buffer)
+        SlotRules rules)
     {
         if (availability is null)
         {
@@ -97,54 +104,50 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
         }
 
         var sessionsForDay = activeSessions.Where(s => s.ScheduledDate == date).ToList();
-        var slots = new List<WeekSlotDto>();
 
-        // Arithmetic is done on TimeSpan, NOT TimeOnly: TimeOnly.AddMinutes wraps past
-        // midnight, so a window ending late in the evening (e.g. 23:59) made
-        // "start + duration <= end" true forever and the request never returned.
-        var duration = TimeSpan.FromMinutes(sessionDuration);
-        var bufferSpan = TimeSpan.FromMinutes(Math.Max(0, buffer));
-
-        foreach (var window in weeklySlotsForDay)
-        {
-            // A non-positive duration would never advance the cursor.
-            if (duration <= TimeSpan.Zero)
-                break;
-
-            var cursor = window.StartTime.ToTimeSpan();
-            var windowEnd = window.EndTime.ToTimeSpan();
-
-            while (cursor + duration <= windowEnd)
-            {
-                var slotStart = cursor;
-                var slotEnd = cursor + duration;
-
-                var conflicting = sessionsForDay.FirstOrDefault(s =>
-                {
-                    var sStart = s.ScheduledTime.ToTimeSpan();
-                    var sEnd = sStart + TimeSpan.FromMinutes(s.DurationMinutes) + bufferSpan;
-                    return slotStart < sEnd && sStart < slotEnd + bufferSpan;
-                });
-
-                var current = TimeOnly.FromTimeSpan(slotStart);
-                var end = TimeOnly.FromTimeSpan(slotEnd);
-
-                if (conflicting is null)
-                {
-                    slots.Add(new WeekSlotDto(current, end, StatusAvailable, null));
-                }
-                else
-                {
-                    var status = (requestingMemberId.HasValue && conflicting.MemberId == requestingMemberId.Value)
-                        ? StatusBookedByMe
-                        : StatusBookedByOther;
-                    slots.Add(new WeekSlotDto(current, end, status, conflicting.Id));
-                }
-
-                cursor += duration + bufferSpan;
-            }
-        }
+        // A non-positive duration would never advance the cursor.
+        var slots = rules.Duration <= TimeSpan.Zero
+            ? new List<WeekSlotDto>()
+            : weeklySlotsForDay.SelectMany(w => BuildWindowSlots(w, sessionsForDay, rules)).ToList();
 
         return new DayAvailabilityDto(date, date.DayOfWeek, IsOffDay: false, IsBlocked: false, null, slots);
+    }
+
+    private static IEnumerable<WeekSlotDto> BuildWindowSlots(
+        AvailabilitySlot window, List<Session> sessionsForDay, SlotRules rules)
+    {
+        var cursor = window.StartTime.ToTimeSpan();
+        var windowEnd = window.EndTime.ToTimeSpan();
+
+        while (cursor + rules.Duration <= windowEnd)
+        {
+            var slotStart = cursor;
+            var slotEnd = cursor + rules.Duration;
+
+            var conflicting = sessionsForDay.FirstOrDefault(s => Overlaps(s, slotStart, slotEnd, rules.Buffer));
+
+            yield return new WeekSlotDto(
+                TimeOnly.FromTimeSpan(slotStart),
+                TimeOnly.FromTimeSpan(slotEnd),
+                StatusFor(conflicting, rules.RequestingMemberId),
+                conflicting?.Id);
+
+            cursor += rules.Duration + rules.Buffer;
+        }
+    }
+
+    private static bool Overlaps(Session session, TimeSpan slotStart, TimeSpan slotEnd, TimeSpan buffer)
+    {
+        var sStart = session.ScheduledTime.ToTimeSpan();
+        var sEnd = sStart + TimeSpan.FromMinutes(session.DurationMinutes) + buffer;
+        return slotStart < sEnd && sStart < slotEnd + buffer;
+    }
+
+    private static string StatusFor(Session? conflicting, Guid? requestingMemberId)
+    {
+        if (conflicting is null)
+            return StatusAvailable;
+
+        return conflicting.MemberId == requestingMemberId ? StatusBookedByMe : StatusBookedByOther;
     }
 }
