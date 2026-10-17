@@ -1,18 +1,38 @@
 {
-  "rule_sets" : [ {
-    "matching_content_path" : "**/l10n/app_localizations_*.dart",
-    "rules" : [ {
-      "name" : "Low Cohesion",
-      "weight" : 0.0
-    }, {
-      "name" : "Code Duplication",
-      "weight" : 0.0
-    }, {
-      "name" : "Primitive Obsession",
-      "weight" : 0.0
-    }, {
-      "name" : "String Heavy Function Arguments",
-      "weight" : 0.0
-    } ]
-  } ]
+  "rule_sets": [
+    {
+      "matching_content_path": "**/l10n/app_localizations_*.dart",
+      "rules": [
+        {
+          "name": "Low Cohesion",
+          "weight": 0.0
+        },
+        {
+          "name": "Code Duplication",
+          "weight": 0.0
+        },
+        {
+          "name": "Primitive Obsession",
+          "weight": 0.0
+        },
+        {
+          "name": "String Heavy Function Arguments",
+          "weight": 0.0
+        }
+      ]
+    },
+    {
+      "matching_content_path": "**/Migrations/*.cs",
+      "rules": [
+        {
+          "name": "Large Method",
+          "weight": 0.0
+        },
+        {
+          "name": "Lines of Code in a Single File",
+          "weight": 0.0
+        }
+      ]
+    }
+  ]
 }
