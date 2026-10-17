@@ -137,86 +137,82 @@ class AuthNotifier extends StateNotifier<AuthState> {
       parser: (data) => AuthResponse.fromJson(data as Map<String, dynamic>),
     );
 
-    await storage.saveTokens(
-      accessToken: authResponse.accessToken,
-      refreshToken: authResponse.refreshToken,
-    );
-    await storage.saveUserId(authResponse.user.id);
-
-    final normalizedRole = authResponse.user.role.toLowerCase();
-    if (normalizedRole != 'trainer') {
-      await storage.clearAll();
-      state = const AuthState(status: AuthStatus.unauthenticated);
-      final attemptedRole = authResponse.user.role;
-      throw ApiException(
-        message: 'This app is for trainers only. '
-            'The signed-in account has role "$attemptedRole".',
-        statusCode: 403,
-        errorCode: normalizedRole == 'trainee'
-            ? 'ROLE_TRAINEE_NOT_ALLOWED'
-            : 'ROLE_NOT_ALLOWED',
-      );
-    }
+    await _saveSession(storage, authResponse);
+    await _rejectNonTrainer(storage, authResponse.user);
 
     // Persist the trainer's active gym so X-Gym-Id is injected on subsequent
     // requests. Trainers can work at multiple gyms (Q3) and switch later via
     // the gym switcher; on login we seed the header with the backend's
     // chosen active membership.
-    String? gymId = authResponse.user.gymId;
-    if ((gymId == null || gymId.isEmpty) &&
-        authResponse.user.gymMemberships?.isNotEmpty == true) {
-      gymId = authResponse.user.gymMemberships!.first.gymId;
-    }
+    final gymId = _loginGymId(authResponse.user);
     if (gymId != null && gymId.isNotEmpty) {
       await _ref.read(activeGymIdProvider.notifier).setInitialGym(gymId);
     }
 
-    if (authResponse.user.status?.toLowerCase() == 'pending') {
-      state = AuthState(
-        status: AuthStatus.pending,
-        user: authResponse.user,
-      );
-    } else {
-      state = AuthState(
-        status: AuthStatus.authenticated,
-        user: authResponse.user,
-      );
-      _initializeFcm();
-    }
+    _applySignedInUser(authResponse.user);
   }
 
-  Future<void> register({
-    required String email,
-    required String password,
-    required String firstName,
-    required String lastName,
-    required String phone,
-    required bool dataProcessingConsent,
-    bool marketingConsent = false,
-  }) async {
-    final apiClient = _ref.read(apiClientProvider);
-    final storage = _ref.read(secureStorageProvider);
-
-    final authResponse = await apiClient.post<AuthResponse>(
-      ApiEndpoints.register,
-      data: RegisterRequest(
-        email: email,
-        password: password,
-        firstName: firstName,
-        lastName: lastName,
-        phone: phone,
-        role: 'Trainer',
-        dataProcessingConsent: dataProcessingConsent,
-        marketingConsent: marketingConsent,
-      ).toJson(),
-      parser: (data) => AuthResponse.fromJson(data as Map<String, dynamic>),
-    );
-
+  Future<void> _saveSession(
+    SecureStorageService storage,
+    AuthResponse authResponse,
+  ) async {
     await storage.saveTokens(
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
     );
     await storage.saveUserId(authResponse.user.id);
+  }
+
+  /// This app is for trainers only: wipe the just-saved session and fail.
+  Future<void> _rejectNonTrainer(
+    SecureStorageService storage,
+    UserModel user,
+  ) async {
+    final normalizedRole = user.role.toLowerCase();
+    if (normalizedRole == 'trainer') return;
+
+    await storage.clearAll();
+    state = const AuthState(status: AuthStatus.unauthenticated);
+    throw ApiException(
+      message: 'This app is for trainers only. '
+          'The signed-in account has role "${user.role}".',
+      statusCode: 403,
+      errorCode: normalizedRole == 'trainee'
+          ? 'ROLE_TRAINEE_NOT_ALLOWED'
+          : 'ROLE_NOT_ALLOWED',
+    );
+  }
+
+  /// The scalar `gymId`, falling back to the first membership when blank.
+  static String? _loginGymId(UserModel user) {
+    final gymId = user.gymId;
+    final memberships = user.gymMemberships;
+    final hasGymId = gymId != null && gymId.isNotEmpty;
+    if (hasGymId || memberships == null || memberships.isEmpty) return gymId;
+    return memberships.first.gymId;
+  }
+
+  void _applySignedInUser(UserModel user) {
+    if (user.status?.toLowerCase() == 'pending') {
+      state = AuthState(status: AuthStatus.pending, user: user);
+      return;
+    }
+    state = AuthState(status: AuthStatus.authenticated, user: user);
+    _initializeFcm();
+  }
+
+  /// Registers a trainer account. The role is always forced to `Trainer`.
+  Future<void> register(RegisterRequest request) async {
+    final apiClient = _ref.read(apiClientProvider);
+    final storage = _ref.read(secureStorageProvider);
+
+    final authResponse = await apiClient.post<AuthResponse>(
+      ApiEndpoints.register,
+      data: request.copyWith(role: 'Trainer').toJson(),
+      parser: (data) => AuthResponse.fromJson(data as Map<String, dynamic>),
+    );
+
+    await _saveSession(storage, authResponse);
 
     // Trainer registration results in Pending status until gym owner approves
     state = AuthState(

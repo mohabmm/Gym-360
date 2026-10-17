@@ -4,8 +4,8 @@
 class Samples {
   Samples._();
 
-  static Map<String, dynamic> user({String id = 'user-1'}) => {
-        'id': id,
+  static Map<String, dynamic> user() => {
+        'id': 'user-1',
         'email': 'member@test.local',
         'firstName': 'Mona',
         'lastName': 'Ali',
@@ -25,12 +25,9 @@ class Samples {
       };
 
   // Mirrors BE TodaysWorkoutResponse — assignment summary, no exercises.
-  static Map<String, dynamic> todaysWorkoutResponse({
-    String workoutId = 'workout-1',
-    String assignmentId = 'asgn-1',
-  }) => {
-        'assignmentId': assignmentId,
-        'workoutId': workoutId,
+  static Map<String, dynamic> todaysWorkoutResponse() => {
+        'assignmentId': 'asgn-1',
+        'workoutId': 'workout-1',
         'workoutName': 'Push Day A',
         'workoutDescription': 'Chest + triceps',
         'estimatedDurationMinutes': 55,
@@ -83,8 +80,8 @@ class Samples {
         'isAdHoc': false,
       };
 
-  static Map<String, dynamic> session({String id = 'session-1'}) => {
-        'id': id,
+  static Map<String, dynamic> session() => {
+        'id': 'session-1',
         'gymId': 'gym-1',
         'trainerId': 'trainer-1',
         'memberId': 'user-1',
@@ -122,8 +119,8 @@ class Samples {
         'longestCheckInStreak': 9,
       };
 
-  static Map<String, dynamic> bodyMetric({String id = 'bm-1'}) => {
-        'id': id,
+  static Map<String, dynamic> bodyMetric() => {
+        'id': 'bm-1',
         'userId': 'user-1',
         'gymId': 'gym-1',
         'date': '2026-04-15',
@@ -254,8 +251,8 @@ class Samples {
         'lastMessageAt': '2026-04-15T18:00:00.000Z',
       };
 
-  static Map<String, dynamic> message({String id = 'msg-1'}) => {
-        'id': id,
+  static Map<String, dynamic> message() => {
+        'id': 'msg-1',
         'conversationId': 'conv-1',
         'senderId': 'trainer-1',
         'senderName': 'Coach Omar',
@@ -266,8 +263,8 @@ class Samples {
         'sentAt': '2026-04-15T18:00:00.000Z',
       };
 
-  static Map<String, dynamic> announcement({String id = 'ann-1'}) => {
-        'id': id,
+  static Map<String, dynamic> announcement() => {
+        'id': 'ann-1',
         'gymId': 'gym-1',
         'title': 'Ramadan hours',
         'content': 'Gym closes at 2am during Ramadan.',
@@ -275,8 +272,8 @@ class Samples {
         'status': 'Published',
       };
 
-  static Map<String, dynamic> notification({String id = 'notif-1'}) => {
-        'id': id,
+  static Map<String, dynamic> notification() => {
+        'id': 'notif-1',
         'userId': 'user-1',
         'title': 'Session reminder',
         'body': 'Your session starts in 1 hour.',
@@ -307,8 +304,8 @@ class Samples {
         'status': 'Active',
       };
 
-  static Map<String, dynamic> leaderboard({String type = 'workouts_per_month'}) => {
-        'type': type,
+  static Map<String, dynamic> leaderboard() => {
+        'type': 'workouts_per_month',
         'period': 'monthly',
         'entries': [
           {
@@ -349,8 +346,8 @@ class Samples {
         'specialization': 'Strength',
       };
 
-  static Map<String, dynamic> sessionPackage({String id = 'pkg-1'}) => {
-        'id': id,
+  static Map<String, dynamic> sessionPackage() => {
+        'id': 'pkg-1',
         'gymId': 'gym-1',
         'memberId': 'user-1',
         'trainerId': 'trainer-1',
@@ -377,8 +374,8 @@ class Samples {
         'paidAt': '2026-04-01T10:00:00.000Z',
       };
 
-  static Map<String, dynamic> gymClass({String id = 'class-1'}) => {
-        'id': id,
+  static Map<String, dynamic> gymClass() => {
+        'id': 'class-1',
         'gymId': 'gym-1',
         'name': 'HIIT Morning',
         'instructorName': 'Coach Nour',
@@ -389,8 +386,8 @@ class Samples {
         'status': 'Scheduled',
       };
 
-  static Map<String, dynamic> availabilitySlot({String id = 'av-1'}) => {
-        'id': id,
+  static Map<String, dynamic> availabilitySlot() => {
+        'id': 'av-1',
         'trainerId': 'trainer-1',
         'slots': [
           {
@@ -404,8 +401,8 @@ class Samples {
         'bufferMinutes': 15,
       };
 
-  static Map<String, dynamic> exercise({String id = 'ex-1'}) => {
-        'id': id,
+  static Map<String, dynamic> exercise() => {
+        'id': 'ex-1',
         'name': 'Bench Press',
         'muscleGroups': ['Chest'],
         'equipment': 'Barbell',

@@ -3,7 +3,9 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../../data/datasources/communication_remote_datasource.dart';
+import '../../data/datasources/notifications_remote_datasource.dart';
 import '../../data/repositories/communication_repository.dart';
+import '../../data/repositories/notifications_repository.dart';
 
 final communicationRemoteDataSourceProvider =
     Provider<CommunicationRemoteDataSource>((ref) {
@@ -15,6 +17,19 @@ final communicationRepositoryProvider =
     Provider<CommunicationRepository>((ref) {
   return CommunicationRepository(
     remoteDataSource: ref.watch(communicationRemoteDataSourceProvider),
+  );
+});
+
+final notificationsRemoteDataSourceProvider =
+    Provider<NotificationsRemoteDataSource>((ref) {
+  return NotificationsRemoteDataSource(
+      apiClient: ref.watch(apiClientProvider));
+});
+
+final notificationsRepositoryProvider =
+    Provider<NotificationsRepository>((ref) {
+  return NotificationsRepository(
+    remoteDataSource: ref.watch(notificationsRemoteDataSourceProvider),
   );
 });
 
@@ -49,7 +64,7 @@ final notificationsProvider =
   final authState = ref.watch(authProvider).valueOrNull;
   if (authState?.user == null) return const [];
   final gymId = authState?.currentGymId;
-  final repo = ref.watch(communicationRepositoryProvider);
+  final repo = ref.watch(notificationsRepositoryProvider);
   return repo.getNotifications(gymId: gymId);
 });
 
@@ -58,7 +73,7 @@ final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
   final authState = ref.watch(authProvider).valueOrNull;
   if (authState?.user == null) return 0;
   final gymId = authState?.currentGymId;
-  final repo = ref.watch(communicationRepositoryProvider);
+  final repo = ref.watch(notificationsRepositoryProvider);
   return repo.getUnreadNotificationCount(gymId: gymId);
 });
 
@@ -69,7 +84,7 @@ final notificationPreferencesProvider =
     throw Exception('No authenticated user');
   }
   final gymId = authState?.currentGymId;
-  final repo = ref.watch(communicationRepositoryProvider);
+  final repo = ref.watch(notificationsRepositoryProvider);
   return repo.getNotificationPreferences(gymId: gymId);
 });
 

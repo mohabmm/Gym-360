@@ -15,54 +15,42 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   );
 });
 
-/// Registration flow state
+/// Registration flow state: the sign-up form plus submission status.
 class RegistrationState {
-  final String email;
-  final String password;
-  final String firstName;
-  final String lastName;
-  final String? phone;
-  final bool dataProcessingConsent;
-  final bool marketingConsent;
+  /// The sign-up payload being collected; role is always `Trainee`.
+  final RegisterRequest form;
   final bool isLoading;
   final String? error;
 
+  static const RegisterRequest emptyForm = RegisterRequest(
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    role: 'Trainee',
+    dataProcessingConsent: false,
+  );
+
   const RegistrationState({
-    this.email = '',
-    this.password = '',
-    this.firstName = '',
-    this.lastName = '',
-    this.phone,
-    this.dataProcessingConsent = false,
-    this.marketingConsent = false,
+    this.form = emptyForm,
     this.isLoading = false,
     this.error,
   });
 
-  RegistrationState copyWith({
-    String? email,
-    String? password,
-    String? firstName,
-    String? lastName,
-    String? phone,
-    bool? dataProcessingConsent,
-    bool? marketingConsent,
-    bool? isLoading,
-    String? error,
-  }) {
-    return RegistrationState(
-      email: email ?? this.email,
-      password: password ?? this.password,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
-      phone: phone ?? this.phone,
-      dataProcessingConsent:
-          dataProcessingConsent ?? this.dataProcessingConsent,
-      marketingConsent: marketingConsent ?? this.marketingConsent,
-      isLoading: isLoading ?? this.isLoading,
-      error: error,
-    );
-  }
+  String get email => form.email;
+  String get password => form.password;
+  String get firstName => form.firstName;
+  String get lastName => form.lastName;
+  bool get dataProcessingConsent => form.dataProcessingConsent;
+  bool get marketingConsent => form.marketingConsent;
+
+  /// Replaces the form; any previous error is cleared.
+  RegistrationState withForm(RegisterRequest form) =>
+      RegistrationState(form: form, isLoading: isLoading);
+
+  RegistrationState withStatus({required bool isLoading, String? error}) =>
+      RegistrationState(form: form, isLoading: isLoading, error: error);
 }
 
 class RegistrationNotifier extends StateNotifier<RegistrationState> {
@@ -76,39 +64,33 @@ class RegistrationNotifier extends StateNotifier<RegistrationState> {
         _authNotifier = authNotifier,
         super(const RegistrationState());
 
-  void updateEmail(String email) => state = state.copyWith(email: email);
-  void updatePassword(String pw) => state = state.copyWith(password: pw);
+  void _edit(RegisterRequest form) => state = state.withForm(form);
+
+  void updateEmail(String email) => _edit(state.form.copyWith(email: email));
+  void updatePassword(String pw) => _edit(state.form.copyWith(password: pw));
   void updateFirstName(String name) =>
-      state = state.copyWith(firstName: name);
-  void updateLastName(String name) => state = state.copyWith(lastName: name);
-  void updatePhone(String? phone) => state = state.copyWith(phone: phone);
+      _edit(state.form.copyWith(firstName: name));
+  void updateLastName(String name) =>
+      _edit(state.form.copyWith(lastName: name));
+  void updatePhone(String? phone) =>
+      _edit(phone == null ? state.form : state.form.copyWith(phone: phone));
   void setDataConsent(bool v) =>
-      state = state.copyWith(dataProcessingConsent: v);
+      _edit(state.form.copyWith(dataProcessingConsent: v));
   void setMarketingConsent(bool v) =>
-      state = state.copyWith(marketingConsent: v);
+      _edit(state.form.copyWith(marketingConsent: v));
 
   Future<bool> register() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.withStatus(isLoading: true);
     try {
-      final request = RegisterRequest(
-        email: state.email,
-        password: state.password,
-        firstName: state.firstName,
-        lastName: state.lastName,
-        phone: state.phone ?? '',
-        role: 'Trainee',
-        dataProcessingConsent: state.dataProcessingConsent,
-        marketingConsent: state.marketingConsent,
-      );
-      final response = await _repo.register(request);
+      final response = await _repo.register(state.form);
       await _authNotifier.login(response);
-      state = state.copyWith(isLoading: false);
+      state = state.withStatus(isLoading: false);
       return true;
     } on ApiException catch (e) {
-      state = state.copyWith(isLoading: false, error: e.message);
+      state = state.withStatus(isLoading: false, error: e.message);
       return false;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.withStatus(isLoading: false, error: e.toString());
       return false;
     }
   }

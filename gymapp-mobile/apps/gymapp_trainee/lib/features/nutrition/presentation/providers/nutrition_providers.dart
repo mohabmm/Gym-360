@@ -28,7 +28,9 @@ final foodLogProvider = FutureProvider<FoodLogModel>((ref) async {
     throw Exception('No authenticated user or active gym');
   }
   final repo = ref.watch(nutritionRepositoryProvider);
-  return repo.getFoodLog(userId: userId, gymId: gymId, date: date);
+  return repo.getFoodLog(
+    DailyLogQuery(userId: userId, gymId: gymId, date: date),
+  );
 });
 
 final waterLogProvider = FutureProvider<WaterLogModel>((ref) async {
@@ -40,7 +42,9 @@ final waterLogProvider = FutureProvider<WaterLogModel>((ref) async {
     throw Exception('No authenticated user or active gym');
   }
   final repo = ref.watch(nutritionRepositoryProvider);
-  return repo.getWaterLog(userId: userId, gymId: gymId, date: date);
+  return repo.getWaterLog(
+    DailyLogQuery(userId: userId, gymId: gymId, date: date),
+  );
 });
 
 final activeMealPlanProvider =

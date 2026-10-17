@@ -56,13 +56,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       await ref.read(authProvider.notifier).register(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-            firstName: _firstNameController.text.trim(),
-            lastName: _lastNameController.text.trim(),
-            phone: phone,
-            dataProcessingConsent: _dataProcessingConsent,
-            marketingConsent: _marketingConsent,
+            RegisterRequest(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+              firstName: _firstNameController.text.trim(),
+              lastName: _lastNameController.text.trim(),
+              phone: phone,
+              role: 'Trainer',
+              dataProcessingConsent: _dataProcessingConsent,
+              marketingConsent: _marketingConsent,
+            ),
           );
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);

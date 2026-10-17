@@ -89,12 +89,14 @@ class LoggingInterceptor extends Interceptor {
     handler.next(err);
   }
 
+  static const _routineStatuses = {401, 403, 404};
+
   /// Decides whether (and at what severity) a failed call is shipped to
   /// telemetry. Returns null to skip. See [onError] for the policy rationale.
   TelemetryLevel? _reportLevel(int? status) {
     if (status == null || status >= 500) return TelemetryLevel.error;
     // Expected app flow — auth refresh handles 401, 403/404 are routine.
-    if (status == 401 || status == 403 || status == 404) return null;
+    if (_routineStatuses.contains(status)) return null;
     // Any other 4xx points at a client/contract bug worth surfacing.
     if (status >= 400) return TelemetryLevel.warning;
     return null; // 2xx/3xx never reach onError, but be explicit.

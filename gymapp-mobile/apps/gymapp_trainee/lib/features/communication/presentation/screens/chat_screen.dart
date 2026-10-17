@@ -241,7 +241,7 @@ class _ConversationScreenState extends ConsumerState<_ConversationScreen> {
       final repo = ref.read(communicationRepositoryProvider);
       await repo.sendMessage(
         conversationId: widget.conversationId,
-        content: content,
+        draft: MessageDraft(content),
       );
       // Wait for the fresh list before dropping the optimistic copy (no flicker).
       ref.invalidate(messagesProvider(widget.conversationId));

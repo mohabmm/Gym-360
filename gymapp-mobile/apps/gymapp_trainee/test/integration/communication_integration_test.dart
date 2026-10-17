@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:gymapp_trainee/features/communication/data/datasources/communication_remote_datasource.dart';
+import 'package:gymapp_trainee/features/communication/data/datasources/notifications_remote_datasource.dart';
 
 import 'helpers/sample_payloads.dart';
 import 'helpers/test_api_client.dart';
@@ -10,10 +11,12 @@ import 'helpers/test_api_client.dart';
 void main() {
   late TestApiClient t;
   late CommunicationRemoteDataSource ds;
+  late NotificationsRemoteDataSource notifications;
 
   setUp(() {
     t = buildTestApiClient();
     ds = CommunicationRemoteDataSource(apiClient: t.apiClient);
+    notifications = NotificationsRemoteDataSource(apiClient: t.apiClient);
   });
 
   group('Chat list screen', () {
@@ -54,7 +57,7 @@ void main() {
       );
       final id = await ds.sendMessage(
         conversationId: 'conv-1',
-        content: 'hey',
+        draft: const MessageDraft('hey'),
       );
       expect(id, 'msg-new');
       final body = t.onlyRequest.bodyAsMap!;
@@ -90,7 +93,7 @@ void main() {
         ApiEndpoints.notifications,
         respond: (_) => t.adapter.ok([Samples.notification()]),
       );
-      final list = await ds.getNotifications(gymId: 'gym-1');
+      final list = await notifications.getNotifications(gymId: 'gym-1');
       expect(list, hasLength(1));
       expect(list.first.type, 'session_reminder');
       expect(t.onlyRequest.query.containsKey('userId'), isFalse);
@@ -102,7 +105,7 @@ void main() {
         ApiEndpoints.notificationMarkRead('notif-1'),
         respond: (_) => t.adapter.noContent(),
       );
-      await ds.markNotificationRead('notif-1');
+      await notifications.markNotificationRead('notif-1');
       expect(t.onlyRequest.method, 'PUT');
       expect(t.onlyRequest.bodyAsMap, isNull);
     });
@@ -112,7 +115,7 @@ void main() {
         ApiEndpoints.notificationsReadAll,
         respond: (_) => t.adapter.noContent(),
       );
-      await ds.markAllNotificationsRead();
+      await notifications.markAllNotificationsRead();
       expect(t.onlyRequest.method, 'PUT');
       expect(t.onlyRequest.bodyAsMap, isNull);
     });
@@ -122,7 +125,7 @@ void main() {
         ApiEndpoints.notificationsUnreadCount,
         respond: (_) => t.adapter.ok(5),
       );
-      expect(await ds.getUnreadNotificationCount(), 5);
+      expect(await notifications.getUnreadNotificationCount(), 5);
     });
   });
 
@@ -137,9 +140,9 @@ void main() {
         respond: (_) => t.adapter.noContent(),
       );
 
-      final prefs = await ds.getNotificationPreferences(gymId: 'gym-1');
+      final prefs = await notifications.getNotificationPreferences(gymId: 'gym-1');
       expect(prefs.promotions, false);
-      await ds.updateNotificationPreferences({
+      await notifications.updateNotificationPreferences({
         'userId': 'user-1',
         'gymId': 'gym-1',
         'promotions': true,

@@ -1,5 +1,9 @@
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../models/body_metrics_query.dart';
+
+export '../models/body_metrics_query.dart';
+
 class ProgressRemoteDataSource {
   final ApiClient _apiClient;
 
@@ -24,22 +28,11 @@ class ProgressRemoteDataSource {
   }
 
   /// BE GET /progress/body-metrics requires userId, gymId.
-  Future<List<BodyMetricEntryModel>> getBodyMetrics({
-    required String userId,
-    required String gymId,
-    String? metricType,
-    DateTime? from,
-    DateTime? to,
-  }) async {
+  Future<List<BodyMetricEntryModel>> getBodyMetrics(
+      BodyMetricsQuery query) async {
     return _apiClient.get<List<BodyMetricEntryModel>>(
       ApiEndpoints.bodyMetrics,
-      queryParameters: {
-        'userId': userId,
-        'gymId': gymId,
-        if (metricType != null) 'metricType': metricType,
-        if (from != null) 'from': from.toIso8601String().split('T')[0],
-        if (to != null) 'to': to.toIso8601String().split('T')[0],
-      },
+      queryParameters: query.toQueryParameters(),
       parser: (data) => (data as List<dynamic>)
           .map<BodyMetricEntryModel>((e) => BodyMetricEntryModel.fromJson(e as Map<String, dynamic>))
           .toList(),

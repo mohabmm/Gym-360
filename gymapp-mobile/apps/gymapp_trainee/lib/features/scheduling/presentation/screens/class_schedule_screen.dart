@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/providers.dart';
+import '../../data/models/scheduling_requests.dart';
 import '../providers/scheduling_providers.dart';
 
 class ClassScheduleScreen extends StatelessWidget {
@@ -233,11 +234,11 @@ class _ClassTileState extends ConsumerState<_ClassTile> {
         throw Exception('No active gym/member');
       }
       final repo = ref.read(schedulingRepositoryProvider);
-      await repo.bookClass(
+      await repo.bookClass(ClassBookingRequest(
         gymId: gymId,
         classId: widget.gymClass.id,
         memberId: memberId,
-      );
+      ));
       ref.invalidate(gymClassesProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

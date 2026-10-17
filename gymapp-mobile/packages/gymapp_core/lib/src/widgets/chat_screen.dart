@@ -128,7 +128,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final originalText = text;
     _draft.clear();
     try {
-      await _svc.sendMessage(selected.id, originalText);
+      await _svc.sendMessage(selected.id, MessageDraft(originalText));
       // Refresh thread (hub will also push)
       final msgs = await _svc.listMessages(selected.id);
       msgs.sort((a, b) => a.sentAt.compareTo(b.sentAt));
