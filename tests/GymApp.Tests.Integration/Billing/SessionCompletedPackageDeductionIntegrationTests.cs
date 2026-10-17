@@ -68,19 +68,27 @@ public sealed class SessionCompletedPackageDeductionIntegrationTests : BaseInteg
         return pkg!;
     }
 
-    [Fact]
-    public async Task SessionCompleted_DeductsOneSessionAndRecordsUsage()
+    // Seeds a package, delivers the event built for a fresh session id, and asserts
+    // exactly one session was deducted with a usage row of the expected type.
+    private async Task AssertSingleDeductionAsync(
+        Func<Guid, INotification> eventForSession, PackageUsageType expectedUsage)
     {
         await SeedPackageAsync();
         var sessionId = Guid.NewGuid();
 
-        await PublishAsync(new SessionCompletedIntegrationEvent(sessionId, _trainerId, _memberId, _gymId));
+        await PublishAsync(eventForSession(sessionId));
 
         var pkg = await LoadPackageAsync();
         pkg.RemainingSessions.Should().Be(9);
         pkg.UsageHistory.Should().ContainSingle(u =>
-            u.SessionId == sessionId && u.UsageType == PackageUsageType.Completed);
+            u.SessionId == sessionId && u.UsageType == expectedUsage);
     }
+
+    [Fact]
+    public Task SessionCompleted_DeductsOneSessionAndRecordsUsage() =>
+        AssertSingleDeductionAsync(
+            sessionId => new SessionCompletedIntegrationEvent(sessionId, _trainerId, _memberId, _gymId),
+            PackageUsageType.Completed);
 
     [Fact]
     public async Task SessionCompleted_DeliveredTwice_DeductsOnlyOnce()
@@ -97,19 +105,11 @@ public sealed class SessionCompletedPackageDeductionIntegrationTests : BaseInteg
     }
 
     [Fact]
-    public async Task SessionLateCancelled_DeductsOneSessionAndRecordsUsage()
-    {
-        await SeedPackageAsync();
-        var sessionId = Guid.NewGuid();
-
-        await PublishAsync(new SessionLateCancelledIntegrationEvent(
-            sessionId, _trainerId, _memberId, _gymId, _memberId));
-
-        var pkg = await LoadPackageAsync();
-        pkg.RemainingSessions.Should().Be(9);
-        pkg.UsageHistory.Should().ContainSingle(u =>
-            u.SessionId == sessionId && u.UsageType == PackageUsageType.LateCancelled);
-    }
+    public Task SessionLateCancelled_DeductsOneSessionAndRecordsUsage() =>
+        AssertSingleDeductionAsync(
+            sessionId => new SessionLateCancelledIntegrationEvent(
+                sessionId, _trainerId, _memberId, _gymId, _memberId),
+            PackageUsageType.LateCancelled);
 
     [Fact]
     public async Task SessionCompleted_DeliveredThroughOutbox_RunsEveryModulesHandler()

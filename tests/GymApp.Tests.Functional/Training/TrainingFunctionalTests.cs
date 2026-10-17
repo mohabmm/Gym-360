@@ -143,17 +143,11 @@ public sealed class TrainingFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task GetTodaysWorkout_Authenticated_ProcessesRequest()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var gymId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId, gymId);
 
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/training/todays-workout?userId={userId}&gymId={gymId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        AssertAuthenticated(await CreateTraineeClient(userId, gymId).GetAsync(
+            $"api/v1/training/todays-workout?userId={userId}&gymId={gymId}"));
     }
 
     [Fact]
@@ -172,19 +166,9 @@ public sealed class TrainingFunctionalTests : BaseFunctionalTest
     #region Workout Logs
 
     [Fact]
-    public async Task GetWorkoutLogs_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/training/workout-logs?userId={userId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetWorkoutLogs_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/training/workout-logs?userId={userId}&gymId={Guid.NewGuid()}"));
 
     [Fact]
     public async Task GetWorkoutLogs_NoToken_Returns401()

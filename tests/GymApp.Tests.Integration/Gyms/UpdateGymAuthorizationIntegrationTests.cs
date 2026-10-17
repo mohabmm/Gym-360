@@ -22,8 +22,10 @@ public sealed class UpdateGymAuthorizationIntegrationTests : BaseIntegrationTest
     public async Task UpdateGym_AsManager_PassesAuthorization()
     {
         var gymId = Guid.NewGuid();
-        var client = CreateAuthenticatedClient(
-            role: "gym_staff", gymId: gymId, staffRole: "staff", staffSubRole: "Manager");
+        var client = CreateAuthenticatedClient(new TestPrincipal("gym_staff")
+        {
+            GymId = gymId, StaffRole = "staff", StaffSubRole = "Manager"
+        });
 
         var response = await client.PutAsJsonAsync($"api/v1/gyms/{gymId}", Body);
 
@@ -46,8 +48,10 @@ public sealed class UpdateGymAuthorizationIntegrationTests : BaseIntegrationTest
     public async Task UpdateGym_AsReceptionist_ReturnsForbidden()
     {
         var gymId = Guid.NewGuid();
-        var client = CreateAuthenticatedClient(
-            role: "gym_staff", gymId: gymId, staffRole: "staff", staffSubRole: "Receptionist");
+        var client = CreateAuthenticatedClient(new TestPrincipal("gym_staff")
+        {
+            GymId = gymId, StaffRole = "staff", StaffSubRole = "Receptionist"
+        });
 
         var response = await client.PutAsJsonAsync($"api/v1/gyms/{gymId}", Body);
 

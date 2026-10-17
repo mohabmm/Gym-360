@@ -9,6 +9,9 @@ public sealed class BillingFunctionalTests : BaseFunctionalTest
     public BillingFunctionalTests(FunctionalTestWebAppFactory factory)
         : base(factory) { }
 
+    private const string AssignUrl = "api/v1/billing/packages/assign";
+    private const string PaymentsUrl = "api/v1/billing/payments";
+
     #region POST /api/v1/billing/package-templates
 
     [Fact]
@@ -57,12 +60,9 @@ public sealed class BillingFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task AssignPackage_AsStaff_ProcessesRequest()
     {
-        // Arrange
         var gymId = Guid.NewGuid();
-        var client = CreateStaffClient(gymId: gymId);
 
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/billing/packages/assign", new
+        AssertAuthenticated(await CreateStaffClient(gymId: gymId).PostAsJsonAsync(AssignUrl, new
         {
             GymId = gymId,
             TrainerId = Guid.NewGuid(),
@@ -70,28 +70,21 @@ public sealed class BillingFunctionalTests : BaseFunctionalTest
             TemplateId = Guid.NewGuid(),
             AssignedBy = Guid.NewGuid(),
             ExpiresAt = DateTime.UtcNow.AddMonths(3)
-        });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        }));
     }
 
     [Fact]
-    public async Task AssignPackage_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/billing/packages/assign", new
-        {
-            GymId = Guid.NewGuid(),
-            TrainerId = Guid.NewGuid(),
-            MemberId = Guid.NewGuid(),
-            TemplateId = Guid.NewGuid(),
-            AssignedBy = Guid.NewGuid()
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task AssignPackage_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(AssignUrl, new
+            {
+                GymId = Guid.NewGuid(),
+                TrainerId = Guid.NewGuid(),
+                MemberId = Guid.NewGuid(),
+                TemplateId = Guid.NewGuid(),
+                AssignedBy = Guid.NewGuid()
+            }),
+            HttpStatusCode.Unauthorized);
 
     [Fact]
     public async Task AssignPackage_AsTrainee_Returns403()
@@ -102,7 +95,7 @@ public sealed class BillingFunctionalTests : BaseFunctionalTest
         var client = CreateTraineeClient(memberId, gymId);
 
         // Act
-        var response = await client.PostAsJsonAsync("api/v1/billing/packages/assign", new
+        var response = await client.PostAsJsonAsync(AssignUrl, new
         {
             GymId = gymId,
             TrainerId = Guid.NewGuid(),
@@ -233,12 +226,9 @@ public sealed class BillingFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task RecordPayment_AsStaff_ProcessesRequest()
     {
-        // Arrange
         var gymId = Guid.NewGuid();
-        var client = CreateStaffClient(gymId: gymId);
 
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/billing/payments", new
+        AssertAuthenticated(await CreateStaffClient(gymId: gymId).PostAsJsonAsync(PaymentsUrl, new
         {
             GymId = gymId,
             MemberId = Guid.NewGuid(),
@@ -247,29 +237,22 @@ public sealed class BillingFunctionalTests : BaseFunctionalTest
             PaymentMethod = "cash",
             Description = "Membership fee",
             ReceivedBy = Guid.NewGuid()
-        });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        }));
     }
 
     [Fact]
-    public async Task RecordPayment_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/billing/payments", new
-        {
-            GymId = Guid.NewGuid(),
-            MemberId = Guid.NewGuid(),
-            Amount = 500.0,
-            Currency = "EGP",
-            PaymentMethod = "cash",
-            ReceivedBy = Guid.NewGuid()
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task RecordPayment_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(PaymentsUrl, new
+            {
+                GymId = Guid.NewGuid(),
+                MemberId = Guid.NewGuid(),
+                Amount = 500.0,
+                Currency = "EGP",
+                PaymentMethod = "cash",
+                ReceivedBy = Guid.NewGuid()
+            }),
+            HttpStatusCode.Unauthorized);
 
     [Fact]
     public async Task VoidPayment_AsOwner_ProcessesRequest()

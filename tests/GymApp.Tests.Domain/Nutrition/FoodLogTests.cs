@@ -21,6 +21,16 @@ public sealed class FoodLogTests
         };
     }
 
+    private static List<FoodItem> EggsBreakfast() => new()
+    {
+        new() { Name = "Eggs", Quantity = 150, Unit = "g", Calories = 220, Protein = 18, Carbs = 1, Fat = 15 }
+    };
+
+    private static List<FoodItem> ChickenLunch() => new()
+    {
+        new() { Name = "Chicken", Quantity = 200, Unit = "g", Calories = 330, Protein = 40, Carbs = 0, Fat = 14 }
+    };
+
     [Fact]
     public void Create_ShouldSetPropertiesCorrectly()
     {
@@ -73,14 +83,8 @@ public sealed class FoodLogTests
     {
         var log = CreateDefaultFoodLog();
 
-        log.AddMeal(MealType.Breakfast, new List<FoodItem>
-        {
-            new() { Name = "Eggs", Quantity = 150, Unit = "g", Calories = 220, Protein = 18, Carbs = 1, Fat = 15 }
-        });
-        log.AddMeal(MealType.Lunch, new List<FoodItem>
-        {
-            new() { Name = "Chicken", Quantity = 200, Unit = "g", Calories = 330, Protein = 40, Carbs = 0, Fat = 14 }
-        });
+        log.AddMeal(MealType.Breakfast, EggsBreakfast());
+        log.AddMeal(MealType.Lunch, ChickenLunch());
 
         log.Meals.Should().HaveCount(2);
         log.DailyTotals.TotalCalories.Should().Be(550);
@@ -91,14 +95,8 @@ public sealed class FoodLogTests
     public void RemoveMeal_ExistingMeal_ShouldRemoveAndRecalculate()
     {
         var log = CreateDefaultFoodLog();
-        var meal1 = log.AddMeal(MealType.Breakfast, new List<FoodItem>
-        {
-            new() { Name = "Eggs", Quantity = 150, Unit = "g", Calories = 220, Protein = 18, Carbs = 1, Fat = 15 }
-        });
-        log.AddMeal(MealType.Lunch, new List<FoodItem>
-        {
-            new() { Name = "Chicken", Quantity = 200, Unit = "g", Calories = 330, Protein = 40, Carbs = 0, Fat = 14 }
-        });
+        var meal1 = log.AddMeal(MealType.Breakfast, EggsBreakfast());
+        log.AddMeal(MealType.Lunch, ChickenLunch());
 
         var result = log.RemoveMeal(meal1.Id);
 
