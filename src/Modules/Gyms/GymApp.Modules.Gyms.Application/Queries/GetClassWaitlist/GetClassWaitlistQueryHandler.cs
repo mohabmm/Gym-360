@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Errors;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.GetClassWaitlist;
 
@@ -17,7 +18,7 @@ internal sealed class GetClassWaitlistQueryHandler : IQueryHandler<GetClassWaitl
 
     public async Task<Result<List<MemberDto>>> Handle(GetClassWaitlistQuery request, CancellationToken cancellationToken)
     {
-        var members = await _gymQueryService.GetClassWaitlistAsync(request.GymId, request.ClassId, cancellationToken);
+        var members = await _gymQueryService.GetClassWaitlistAsync(new GymId(request.GymId), request.ClassId, cancellationToken);
 
         if (members is null)
             return Result.Failure<List<MemberDto>>(GymErrors.ClassNotFound);

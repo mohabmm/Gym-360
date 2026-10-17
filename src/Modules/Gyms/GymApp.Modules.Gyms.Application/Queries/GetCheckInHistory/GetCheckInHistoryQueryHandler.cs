@@ -2,6 +2,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.GetCheckInHistory;
 
@@ -17,7 +18,7 @@ internal sealed class GetCheckInHistoryQueryHandler : IQueryHandler<GetCheckInHi
     public async Task<Result<PagedResponse<CheckInDto>>> Handle(GetCheckInHistoryQuery request, CancellationToken cancellationToken)
     {
         var result = await _gymQueryService.GetCheckInHistoryAsync(
-            request.GymId,
+            new GymId(request.GymId),
             request.From,
             request.To,
             request.Page,

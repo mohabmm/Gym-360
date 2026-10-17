@@ -4,6 +4,7 @@ using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.ApproveTrainer;
 
@@ -34,7 +35,7 @@ internal sealed class ApproveTrainerCommandHandler : ICommandHandler<ApproveTrai
 
         var result = trainerRequest is null
             ? await CreateApprovedRequestAsync(gym, request, cancellationToken)
-            : ApproveExistingRequest(gym, trainerRequest, request.TrainerId);
+            : ApproveExistingRequest(gym, trainerRequest, new TrainerId(request.TrainerId));
         if (result.IsFailure)
             return result;
 
@@ -46,7 +47,7 @@ internal sealed class ApproveTrainerCommandHandler : ICommandHandler<ApproveTrai
 
     private async Task<Result> CreateApprovedRequestAsync(Gym gym, ApproveTrainerCommand request, CancellationToken cancellationToken)
     {
-        var gymResult = AddTrainerToRoster(gym, request.TrainerId);
+        var gymResult = AddTrainerToRoster(gym, new TrainerId(request.TrainerId));
         if (gymResult.IsFailure)
             return gymResult;
 
@@ -55,7 +56,7 @@ internal sealed class ApproveTrainerCommandHandler : ICommandHandler<ApproveTrai
         return Result.Success();
     }
 
-    private Result ApproveExistingRequest(Gym gym, GymTrainerRequest trainerRequest, Guid trainerId)
+    private Result ApproveExistingRequest(Gym gym, GymTrainerRequest trainerRequest, TrainerId trainerId)
     {
         if (trainerRequest.Status == Domain.Enums.TrainerRequestStatus.Rejected)
             return Result.Failure(GymErrors.TrainerAlreadyRejected);
@@ -73,7 +74,7 @@ internal sealed class ApproveTrainerCommandHandler : ICommandHandler<ApproveTrai
     }
 
     // A trainer already on the roster is fine: approval is idempotent for the gym side.
-    private static Result AddTrainerToRoster(Gym gym, Guid trainerId)
+    private static Result AddTrainerToRoster(Gym gym, TrainerId trainerId)
     {
         var gymResult = gym.AddTrainer(trainerId);
         return gymResult.IsFailure && gymResult.Error != GymErrors.TrainerAlreadyAdded

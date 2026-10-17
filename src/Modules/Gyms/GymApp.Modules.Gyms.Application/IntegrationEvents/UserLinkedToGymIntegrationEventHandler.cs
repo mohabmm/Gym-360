@@ -3,6 +3,7 @@ using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Identity.IntegrationEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.IntegrationEvents;
 
@@ -48,7 +49,7 @@ internal sealed class UserLinkedToGymIntegrationEventHandler
             return;
         }
 
-        var result = gym.AddTrainer(n.UserId);
+        var result = gym.AddTrainer(new TrainerId(n.UserId));
         if (result.IsFailure)
             // Already added (or gym not active) — nothing to do.
             return;

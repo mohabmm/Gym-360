@@ -209,8 +209,9 @@ public static class DemoGymSeeder
             // (which reads the JSON column, not gym_members) returns true.
             // AddMember is the authoritative path; gym_members alone leaves
             // /me/* endpoints returning NOT_A_MEMBER_OF_GYM.
-            if (!gym.MemberIds.Contains(traineeId.Value))
-                gym.AddMember(traineeId.Value);
+            var memberId = new MemberId(traineeId.Value);
+            if (!gym.MemberIds.Contains(memberId))
+                gym.AddMember(memberId);
         }
         await gymsCtx.SaveChangesAsync(ct);
 

@@ -2,6 +2,7 @@ using GymApp.Common.Application.Errors;
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Gyms.Application.Contracts;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Services;
 
@@ -23,21 +24,21 @@ internal sealed class GymSeatLimitChecker
     public async Task<Result> EnsureMemberSeatAsync(Guid gymId, CancellationToken cancellationToken)
     {
         var limit = await _gymPlanService.GetMemberLimitAsync(gymId, cancellationToken);
-        var currentCount = await _gymQueryService.GetMemberCountAsync(gymId, cancellationToken);
+        var currentCount = await _gymQueryService.GetMemberCountAsync(new GymId(gymId), cancellationToken);
         return EnsureWithinLimit("members", currentCount, limit);
     }
 
     public async Task<Result> EnsureTrainerSeatAsync(Guid gymId, CancellationToken cancellationToken)
     {
         var limit = await _gymPlanService.GetTrainerLimitAsync(gymId, cancellationToken);
-        var currentCount = await _gymQueryService.GetTrainerCountAsync(gymId, cancellationToken);
+        var currentCount = await _gymQueryService.GetTrainerCountAsync(new GymId(gymId), cancellationToken);
         return EnsureWithinLimit("trainers", currentCount, limit);
     }
 
     public async Task<Result> EnsureStaffSeatAsync(Guid gymId, CancellationToken cancellationToken)
     {
         var limit = await _gymPlanService.GetStaffLimitAsync(gymId, cancellationToken);
-        var currentCount = await _gymQueryService.GetStaffCountAsync(gymId, cancellationToken);
+        var currentCount = await _gymQueryService.GetStaffCountAsync(new GymId(gymId), cancellationToken);
         return EnsureWithinLimit("staff", currentCount, limit);
     }
 

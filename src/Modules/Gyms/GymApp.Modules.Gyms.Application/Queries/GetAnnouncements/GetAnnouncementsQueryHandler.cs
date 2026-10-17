@@ -2,6 +2,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.GetAnnouncements;
 
@@ -17,7 +18,7 @@ internal sealed class GetAnnouncementsQueryHandler : IQueryHandler<GetAnnounceme
     public async Task<Result<PagedResponse<AnnouncementDto>>> Handle(GetAnnouncementsQuery request, CancellationToken cancellationToken)
     {
         var result = await _gymQueryService.GetAnnouncementsAsync(
-            request.GymId,
+            new GymId(request.GymId),
             request.Page,
             request.PageSize,
             cancellationToken);
