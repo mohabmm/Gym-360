@@ -11,6 +11,14 @@ type KioskPinInfo = { isSet: boolean; hash: string | null };
 
 const PIN_RE = /^\d{4,8}$/;
 
+// First validation error for the save form, or null when it can be submitted.
+function validatePinForm(f: { current: string; next: string; confirmPin: string; isSet: boolean }): string | null {
+  if (!PIN_RE.test(f.next)) return 'PIN must be 4–8 digits.';
+  if (f.next !== f.confirmPin) return 'New PIN and confirmation do not match.';
+  if (f.isSet && !PIN_RE.test(f.current)) return 'Enter the current PIN.';
+  return null;
+}
+
 export default function KioskPinPage() {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;
@@ -48,19 +56,9 @@ export default function KioskPinPage() {
   };
 
   const handleSave = async () => {
-    setError(null);
-    if (!PIN_RE.test(next)) {
-      setError('PIN must be 4–8 digits.');
-      return;
-    }
-    if (next !== confirmPin) {
-      setError('New PIN and confirmation do not match.');
-      return;
-    }
-    if (isSet && !PIN_RE.test(current)) {
-      setError('Enter the current PIN.');
-      return;
-    }
+    const validationError = validatePinForm({ current, next, confirmPin, isSet });
+    setError(validationError);
+    if (validationError) return;
     setSaving(true);
     try {
       await apiClient.put(`/gyms/${gymId}/kiosk-pin`, {

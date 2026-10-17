@@ -5,6 +5,7 @@ using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.ListGyms;
 
@@ -43,15 +44,10 @@ internal sealed class ListGymsQueryHandler : IQueryHandler<ListGymsQuery, PagedR
         // Hard mode: cross-tenant list reads gyms_registry, then fans out
         // per-gym to load each Gym aggregate from g{N}_gyms.
         var page = request.Page < 1 ? 1 : request.Page;
-        var pageSize = request.PageSize < 1 ? 20 : request.PageSize > 100 ? 100 : request.PageSize;
+        var pageSize = ClampPageSize(request.PageSize);
 
         var registry = await _registry.GetActiveAsync(cancellationToken);
-
-        var filtered = string.IsNullOrWhiteSpace(request.Name)
-            ? (IReadOnlyList<GymRegistration>)registry
-            : registry
-                .Where(g => g.Name.Contains(request.Name.Trim(), StringComparison.OrdinalIgnoreCase))
-                .ToList();
+        var filtered = FilterByName(registry, request.Name);
 
         var totalCount = filtered.Count;
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
@@ -65,26 +61,45 @@ internal sealed class ListGymsQueryHandler : IQueryHandler<ListGymsQuery, PagedR
         var items = new List<GymResponse>(paged.Count);
         foreach (var reg in paged)
         {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var sp = scope.ServiceProvider;
-
-                var accessor = sp.GetRequiredService<ITenantContextAccessor>();
-                accessor.Set(reg.GymId, reg.SchemaPrefix, isOwnerScope: false);
-
-                var qs = sp.GetRequiredService<IGymQueryService>();
-                var dto = await qs.GetGymByIdAsync(reg.GymId, cancellationToken);
-                if (dto is not null) items.Add(dto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "Skipping gym {GymId} ({Prefix}) in list-gyms fan-out: {Message}",
-                    reg.GymId, reg.SchemaPrefix, ex.Message);
-            }
+            var dto = await TryLoadGymAsync(reg, cancellationToken);
+            if (dto is not null) items.Add(dto);
         }
 
         return Result.Success(new PagedResponse<GymResponse>(items, page, pageSize, totalCount, totalPages));
+    }
+
+    private static int ClampPageSize(int pageSize) => Math.Clamp(pageSize < 1 ? 20 : pageSize, 1, 100);
+
+    private static IReadOnlyList<GymRegistration> FilterByName(IReadOnlyList<GymRegistration> registry, string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return registry;
+
+        var term = name.Trim();
+        return registry
+            .Where(g => g.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private async Task<GymResponse?> TryLoadGymAsync(GymRegistration reg, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var sp = scope.ServiceProvider;
+
+            var accessor = sp.GetRequiredService<ITenantContextAccessor>();
+            accessor.Set(reg.GymId, reg.SchemaPrefix, isOwnerScope: false);
+
+            var qs = sp.GetRequiredService<IGymQueryService>();
+            return await qs.GetGymByIdAsync(new GymId(reg.GymId), cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Skipping gym {GymId} ({Prefix}) in list-gyms fan-out: {Message}",
+                reg.GymId, reg.SchemaPrefix, ex.Message);
+            return null;
+        }
     }
 }

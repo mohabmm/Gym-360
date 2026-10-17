@@ -42,30 +42,21 @@ public sealed class User : Entity
     public IReadOnlyList<GymMembership> GymMemberships => _gymMemberships.AsReadOnly();
     public IReadOnlyList<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
 
-    public static User Create(
-        Email email,
-        PhoneNumber phoneNumber,
-        string passwordHash,
-        string firstName,
-        string lastName,
-        Gender gender,
-        UserRole role,
-        Language language = Language.Arabic,
-        string? nationalId = null)
+    public static User Create(NewUserDetails details, UserRole role)
     {
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Email = email,
-            PhoneNumber = phoneNumber,
-            PasswordHash = passwordHash,
-            FirstName = firstName,
-            LastName = lastName,
-            Gender = gender,
-            NationalId = NormalizeNationalId(nationalId),
+            Email = details.Email,
+            PhoneNumber = details.PhoneNumber,
+            PasswordHash = details.PasswordHash,
+            FirstName = details.FirstName,
+            LastName = details.LastName,
+            Gender = details.Gender,
+            NationalId = NormalizeNationalId(details.NationalId),
             Role = role,
             Status = UserStatus.PendingVerification,
-            Language = language,
+            Language = details.Language,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -75,13 +66,13 @@ public sealed class User : Entity
         return user;
     }
 
-    public void UpdateProfile(string firstName, string lastName, string? profilePhotoUrl, DateTime? dateOfBirth, Language language)
+    public void UpdateProfile(UserProfile profile)
     {
-        FirstName = firstName;
-        LastName = lastName;
-        ProfilePhotoUrl = profilePhotoUrl;
-        DateOfBirth = dateOfBirth;
-        Language = language;
+        FirstName = profile.FirstName;
+        LastName = profile.LastName;
+        ProfilePhotoUrl = profile.ProfilePhotoUrl;
+        DateOfBirth = profile.DateOfBirth;
+        Language = profile.Language;
         UpdatedAt = DateTime.UtcNow;
 
         RaiseDomainEvent(new UserProfileUpdatedDomainEvent(Id));
@@ -144,16 +135,10 @@ public sealed class User : Entity
 
     public Result LinkToGym(Guid gymId, UserRole role, string? section, string? memberNumber)
     {
-        if (_gymMemberships.Any(m => m.GymId == gymId && m.Role == role && m.IsActive))
+        if (IsActiveAt(gymId, role))
             return Result.Failure(Errors.UserErrors.AlreadyLinkedToGym);
 
-        // One-Gym principal rule (CLAUDE.md Rule 11): Trainer/Trainee/GymStaff hold at
-        // most one Active membership across ALL gyms — enforced in the DB by the filtered
-        // unique index UX_user_gym_memberships_active_per_user. Mirror it here so callers
-        // get a clean 409 instead of an unhandled 500 (DbUpdateException) at SaveChanges.
-        // Owners scope across gyms via OwnerId, not memberships, so they are exempt.
-        if (role is UserRole.Trainer or UserRole.Trainee or UserRole.GymStaff
-            && _gymMemberships.Any(m => m.IsActive && m.GymId != gymId))
+        if (IsSingleGymRole(role) && IsActiveElsewhere(gymId))
             return Result.Failure(Errors.UserErrors.AlreadyActiveInAnotherGym);
 
         // Trainees must always have a MemberNumber so the trainee app's QR check-in
@@ -161,7 +146,9 @@ public sealed class User : Entity
         if (role == UserRole.Trainee && string.IsNullOrWhiteSpace(memberNumber))
             return Result.Failure(Errors.UserErrors.TraineeMembershipMissingMemberNumber);
 
-        var membership = GymMembership.Create(gymId, role, DateTime.UtcNow, section, memberNumber);
+        var membership = GymMembership.Create(
+            new GymMembershipDetails { GymId = gymId, Role = role, Section = section, MemberNumber = memberNumber },
+            DateTime.UtcNow);
         _gymMemberships.Add(membership);
         UpdatedAt = DateTime.UtcNow;
 
@@ -169,6 +156,20 @@ public sealed class User : Entity
 
         return Result.Success();
     }
+
+    private bool IsActiveAt(Guid gymId, UserRole role) =>
+        _gymMemberships.Any(m => m.IsActive && m.GymId == gymId && m.Role == role);
+
+    private bool IsActiveElsewhere(Guid gymId) =>
+        _gymMemberships.Any(m => m.IsActive && m.GymId != gymId);
+
+    // One-Gym principal rule (CLAUDE.md Rule 11): Trainer/Trainee/GymStaff hold at
+    // most one Active membership across ALL gyms — enforced in the DB by the filtered
+    // unique index UX_user_gym_memberships_active_per_user. Mirror it here so callers
+    // get a clean 409 instead of an unhandled 500 (DbUpdateException) at SaveChanges.
+    // Owners scope across gyms via OwnerId, not memberships, so they are exempt.
+    private static bool IsSingleGymRole(UserRole role) =>
+        role is UserRole.Trainer or UserRole.Trainee or UserRole.GymStaff;
 
     public void AddRefreshToken(RefreshToken token)
     {

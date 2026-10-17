@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Errors;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Application.Abstractions;
 
 namespace GymApp.Modules.Billing.Application.Commands.Features;
@@ -29,11 +30,13 @@ internal sealed class CreateFeatureCommandHandler : ICommandHandler<CreateFeatur
             return Result.Failure<Guid>(BillingErrors.FeatureCodeAlreadyExists);
         }
 
-        var feature = Feature.Create(
-            request.Code,
-            request.Name,
-            request.Description,
-            request.Category);
+        var feature = Feature.Create(new FeatureDetails
+        {
+            Code = request.Code,
+            Name = request.Name,
+            Description = request.Description,
+            Category = request.Category
+        });
 
         await _featureRepository.AddAsync(feature, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

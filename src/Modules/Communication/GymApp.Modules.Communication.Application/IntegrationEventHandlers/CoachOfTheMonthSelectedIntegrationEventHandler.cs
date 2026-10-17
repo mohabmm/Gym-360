@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Repositories;
 using GymApp.Modules.Gamification.IntegrationEvents;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -33,11 +34,15 @@ internal sealed class CoachOfTheMonthSelectedIntegrationEventHandler : INotifica
         };
 
         // Notify the trainer
-        var trainerNotif = NotificationTexts.CoachOfTheMonth(notification.Month, notification.Year).ToNotification(
-            notification.TrainerId,
-            NotificationType.CoachOfTheMonth,
-            notification.GymId,
-            data);
+        var trainerNotif = Notification.CreateLocalized(
+            new NotificationDetails
+            {
+                UserId = notification.TrainerId,
+                Type = NotificationType.CoachOfTheMonth,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.CoachOfTheMonth(notification.Month, notification.Year));
 
         await _notificationRepository.AddAsync(trainerNotif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

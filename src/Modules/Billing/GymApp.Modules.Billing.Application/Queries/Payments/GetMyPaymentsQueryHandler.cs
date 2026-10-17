@@ -12,7 +12,6 @@ namespace GymApp.Modules.Billing.Application.Queries.Payments;
 internal sealed class GetMyPaymentsQueryHandler
     : IQueryHandler<GetMyPaymentsQuery, PagedResponse<MyPaymentDto>>
 {
-    private const int MinPageSize = 1;
     private const int MaxPageSize = 50;
 
     private readonly IPaymentRepository _paymentRepository;
@@ -40,64 +39,75 @@ internal sealed class GetMyPaymentsQueryHandler
         if (!await _membershipChecker.IsActiveMemberAsync(request.GymId, request.UserId, cancellationToken))
             return Result.Failure<PagedResponse<MyPaymentDto>>(GymAccessErrors.NotAMemberOfGym);
 
-        var page = request.Page < 1 ? 1 : request.Page;
-        var pageSize = Math.Clamp(request.PageSize, MinPageSize, MaxPageSize);
+        var window = PageWindow.Create(request.Page, request.PageSize, MaxPageSize);
 
         var all = await _paymentRepository.GetByMemberAsync(
             request.GymId, request.UserId, cancellationToken);
 
-        IEnumerable<Payment> filtered = all;
-
-        if (request.From is { } from)
-        {
-            var fromUtc = from.ToDateTime(TimeOnly.MinValue);
-            filtered = filtered.Where(p => p.PaidAt is not null && p.PaidAt.Value >= fromUtc);
-        }
-
-        if (request.To is { } to)
-        {
-            var toUtc = to.ToDateTime(TimeOnly.MaxValue);
-            filtered = filtered.Where(p => p.PaidAt is not null && p.PaidAt.Value <= toUtc);
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Purpose) && request.Purpose != "All")
-        {
-            if (Enum.TryParse<PaymentPurpose>(request.Purpose, ignoreCase: true, out var purposeEnum))
-                filtered = filtered.Where(p => p.Purpose == purposeEnum);
-        }
-
-        var ordered = filtered
+        var ordered = ApplyFilters(all, request)
             .OrderByDescending(p => p.PaidAt ?? p.CreatedAt)
             .ToList();
 
-        var totalCount = ordered.Count;
-        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling((double)totalCount / pageSize);
-
-        var items = ordered
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(p => new MyPaymentDto(
-                p.Id,
-                p.ReceiptNumber,
-                new MoneyDto(p.Amount.Amount, p.Amount.Currency),
-                p.PaymentMethod.ToString(),
-                p.Purpose.ToString(),
-                p.ReferenceId,
-                // Reference label + recorded-by staff name are cross-module
-                // lookups (Billing would need read models that don't yet
-                // exist). Returning null preserves module boundaries and
-                // matches the PRD's nullable contract for these fields.
-                ReferenceLabel: null,
-                p.Status.ToString(),
-                p.PaidAt,
-                RecordedByStaffName: null,
-                p.VoidReason,
-                // Payment aggregate does not track VoidedAt separately.
-                // When the domain gains a VoidedAt timestamp this can be wired.
-                VoidedAt: null))
+        var items = window.Slice(ordered)
+            .Select(ToDto)
             .ToList();
 
-        var response = new PagedResponse<MyPaymentDto>(items, page, pageSize, totalCount, totalPages);
-        return Result.Success(response);
+        return Result.Success(window.ToResponse(items, ordered.Count));
     }
+
+    private static IEnumerable<Payment> ApplyFilters(IEnumerable<Payment> payments, GetMyPaymentsQuery request)
+    {
+        var filtered = ApplyDateRange(payments, request.From, request.To);
+
+        return TryParsePurposeFilter(request.Purpose, out var purpose)
+            ? filtered.Where(p => p.Purpose == purpose)
+            : filtered;
+    }
+
+    private static IEnumerable<Payment> ApplyDateRange(IEnumerable<Payment> payments, DateOnly? from, DateOnly? to)
+    {
+        if (from is { } fromDate)
+        {
+            var fromUtc = fromDate.ToDateTime(TimeOnly.MinValue);
+            payments = payments.Where(p => p.PaidAt is not null && p.PaidAt.Value >= fromUtc);
+        }
+
+        if (to is { } toDate)
+        {
+            var toUtc = toDate.ToDateTime(TimeOnly.MaxValue);
+            payments = payments.Where(p => p.PaidAt is not null && p.PaidAt.Value <= toUtc);
+        }
+
+        return payments;
+    }
+
+    // "All" (or blank) means no purpose filter; an unparseable purpose is ignored.
+    private static bool TryParsePurposeFilter(string? purpose, out PaymentPurpose parsed)
+    {
+        parsed = default;
+        return !string.IsNullOrWhiteSpace(purpose)
+            && purpose != "All"
+            && Enum.TryParse(purpose, ignoreCase: true, out parsed);
+    }
+
+    private static MyPaymentDto ToDto(Payment p) =>
+        new(
+            p.Id,
+            p.ReceiptNumber,
+            new MoneyDto(p.Amount.Amount, p.Amount.Currency),
+            p.PaymentMethod.ToString(),
+            p.Purpose.ToString(),
+            p.ReferenceId,
+            // Reference label + recorded-by staff name are cross-module
+            // lookups (Billing would need read models that don't yet
+            // exist). Returning null preserves module boundaries and
+            // matches the PRD's nullable contract for these fields.
+            ReferenceLabel: null,
+            p.Status.ToString(),
+            p.PaidAt,
+            RecordedByStaffName: null,
+            p.VoidReason,
+            // Payment aggregate does not track VoidedAt separately.
+            // When the domain gains a VoidedAt timestamp this can be wired.
+            VoidedAt: null);
 }

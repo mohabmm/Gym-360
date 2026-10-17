@@ -30,8 +30,8 @@ public sealed class FoodItemDeletePersistenceTests : BaseIntegrationTest
         // index 0: normal macros. index 1: a zero-macro item (e.g. water / diet soda).
         var meal = log.AddMeal(MealType.Breakfast, new List<FoodItem>
         {
-            new("Foul Medames", 200, "g", 250, 15, 30, 5),
-            new("Sparkling Water", 330, "ml", 0, 0, 0, 0),
+            new() { Name = "Foul Medames", Quantity = 200, Unit = "g", Calories = 250, Protein = 15, Carbs = 30, Fat = 5 },
+            new() { Name = "Sparkling Water", Quantity = 330, Unit = "ml", Calories = 0, Protein = 0, Carbs = 0, Fat = 0 },
         });
 
         await repo.AddAsync(log);

@@ -5,37 +5,11 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
+import 'recorded_request.dart';
+
+export 'recorded_request.dart';
+
 typedef _Responder = _MockResponse Function(RecordedRequest request);
-
-/// Captures every HTTP call Dio makes so tests can assert the exact method,
-/// path, query parameters, headers, and request body sent to the backend.
-class RecordedRequest {
-  RecordedRequest({
-    required this.method,
-    required this.path,
-    required this.query,
-    required this.headers,
-    required this.body,
-  });
-
-  final String method;
-  final String path;
-  final Map<String, List<String>> query;
-  final Map<String, List<String>> headers;
-  final dynamic body;
-
-  String? q(String key) => query[key]?.first;
-
-  String? header(String key) => headers[key.toLowerCase()]?.first;
-
-  Map<String, dynamic>? get bodyAsMap =>
-      body is Map<String, dynamic> ? body as Map<String, dynamic> : null;
-
-  List<dynamic>? get bodyAsList => body is List ? body as List<dynamic> : null;
-
-  @override
-  String toString() => '$method $path query=$query body=$body';
-}
 
 class _MockResponse {
   _MockResponse({
@@ -56,24 +30,18 @@ class MockHttpAdapter implements HttpClientAdapter {
   final List<RecordedRequest> recorded = [];
   final List<_Route> _routes = [];
 
-  void on(
-    String method,
-    String path, {
-    required _Responder respond,
-  }) {
-    _routes.add(_Route(method: method.toUpperCase(), path: path, respond: respond));
-  }
+  void _register(_Route route) => _routes.add(route);
 
   void onGet(String path, {required _Responder respond}) =>
-      on('GET', path, respond: respond);
+      _register(_Route(method: 'GET', path: path, respond: respond));
   void onPost(String path, {required _Responder respond}) =>
-      on('POST', path, respond: respond);
+      _register(_Route(method: 'POST', path: path, respond: respond));
   void onPut(String path, {required _Responder respond}) =>
-      on('PUT', path, respond: respond);
+      _register(_Route(method: 'PUT', path: path, respond: respond));
   void onPatch(String path, {required _Responder respond}) =>
-      on('PATCH', path, respond: respond);
+      _register(_Route(method: 'PATCH', path: path, respond: respond));
   void onDelete(String path, {required _Responder respond}) =>
-      on('DELETE', path, respond: respond);
+      _register(_Route(method: 'DELETE', path: path, respond: respond));
 
   /// 200 OK wrapping [payload] in the BE's `{ data, errors, meta }` envelope.
   _MockResponse ok(dynamic payload, {Map<String, dynamic>? meta, int statusCode = 200}) {

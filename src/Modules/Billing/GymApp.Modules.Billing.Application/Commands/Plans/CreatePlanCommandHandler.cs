@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Errors;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Application.Abstractions;
 
 namespace GymApp.Modules.Billing.Application.Commands.Plans;
@@ -29,17 +30,19 @@ internal sealed class CreatePlanCommandHandler : ICommandHandler<CreatePlanComma
             return Result.Failure<Guid>(BillingErrors.PlanCodeAlreadyExists);
         }
 
-        var plan = SubscriptionPlan.Create(
-            request.Code,
-            request.Name,
-            request.MonthlyPrice,
-            request.AnnualPrice,
-            request.MemberLimit,
-            request.TrainerLimit,
-            request.StaffLimit,
-            request.Description,
-            request.IsPublic,
-            sortOrder: request.SortOrder);
+        var plan = SubscriptionPlan.Create(new SubscriptionPlanDetails
+        {
+            Code = request.Code,
+            Name = request.Name,
+            MonthlyPriceEgp = request.MonthlyPrice,
+            AnnualPriceEgp = request.AnnualPrice,
+            MemberLimit = request.MemberLimit,
+            TrainerLimit = request.TrainerLimit,
+            StaffLimit = request.StaffLimit,
+            Description = request.Description,
+            IsPublic = request.IsPublic,
+            SortOrder = request.SortOrder
+        });
 
         await _planRepository.AddAsync(plan, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

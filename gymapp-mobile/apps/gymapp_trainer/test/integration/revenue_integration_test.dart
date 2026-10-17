@@ -16,12 +16,12 @@ void main() {
     test('GET /billing/trainers/{id}/earnings with gymId + month range',
         () async {
       t.adapter.onGet(
-        ApiEndpoints.trainerEarnings(kTrainerId),
+        ApiEndpoints.trainerEarnings(kTrainer),
         respond: (_) => t.adapter.ok(Samples.trainerEarnings()),
       );
 
       final earnings = await t.apiClient.get<Map<String, dynamic>>(
-        ApiEndpoints.trainerEarnings(kTrainerId),
+        ApiEndpoints.trainerEarnings(kTrainer),
         queryParameters: {
           'gymId': kGymId,
           'from': '2026-04-01',

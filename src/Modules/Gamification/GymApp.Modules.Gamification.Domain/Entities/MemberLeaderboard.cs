@@ -46,20 +46,9 @@ public sealed class MemberLeaderboard : Entity
         return Result.Success(leaderboard);
     }
 
-    public LeaderboardEntry AddEntry(
-        Guid memberId,
-        int rank,
-        decimal score,
-        decimal? delta,
-        bool isOptedIn)
+    public LeaderboardEntry AddEntry(LeaderboardEntryDetails details)
     {
-        var entry = LeaderboardEntry.Create(
-            Id,
-            memberId,
-            rank,
-            score,
-            delta,
-            isOptedIn);
+        var entry = LeaderboardEntry.Create(Id, details);
 
         _entries.Add(entry);
         return entry;

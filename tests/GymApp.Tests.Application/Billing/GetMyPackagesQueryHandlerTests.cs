@@ -59,38 +59,56 @@ public class GetMyPackagesQueryHandlerTests
         return ctor.Invoke(args);
     }
 
-    private object CreateQuery(Guid userId, Guid gymId, string? status = null, int page = 1, int pageSize = 20)
+    /// <summary>The calling trainee and the gym named by X-Gym-Id.</summary>
+    private sealed record Member(Guid UserId, Guid GymId);
+
+    private static Member NewMember() => new(Guid.NewGuid(), Guid.NewGuid());
+
+    private object CreateQuery(Member member, string? status)
     {
         var ctor = QueryType.GetConstructors()
             .OrderByDescending(c => c.GetParameters().Length)
             .First();
-        var parameters = ctor.GetParameters();
-        var args = new object?[parameters.Length];
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            var p = parameters[i];
-            if (p.ParameterType == typeof(Guid))
-            {
-                args[i] = p.Name!.Contains("gym", StringComparison.OrdinalIgnoreCase) ? gymId : userId;
-            }
-            else if (p.ParameterType == typeof(string))
-            {
-                args[i] = status;
-            }
-            else if (p.ParameterType == typeof(int))
-            {
-                args[i] = p.Name!.Contains("size", StringComparison.OrdinalIgnoreCase) ? pageSize : page;
-            }
-            else if (p.HasDefaultValue)
-            {
-                args[i] = p.DefaultValue;
-            }
-            else
-            {
-                args[i] = null;
-            }
-        }
+        var args = ctor.GetParameters()
+            .Select(p => QueryArgument(p, member, status))
+            .ToArray();
         return ctor.Invoke(args);
+    }
+
+    // Guids map to gym/user by name, strings to the status filter, ints to page 1 / size 20.
+    private static object? QueryArgument(ParameterInfo p, Member member, string? status)
+    {
+        var name = p.Name!;
+        if (p.ParameterType == typeof(Guid))
+            return name.Contains("gym", StringComparison.OrdinalIgnoreCase) ? member.GymId : member.UserId;
+        if (p.ParameterType == typeof(string))
+            return status;
+        if (p.ParameterType == typeof(int))
+            return name.Contains("size", StringComparison.OrdinalIgnoreCase) ? 20 : 1;
+        return p.HasDefaultValue ? p.DefaultValue : null;
+    }
+
+    private void GivenActiveMember(Member member)
+    {
+        _membershipChecker.IsGymSuspendedAsync(member.GymId, Arg.Any<CancellationToken>()).Returns(false);
+        _membershipChecker.IsActiveMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>()).Returns(true);
+    }
+
+    private void GivenPackages(Member member, List<SessionPackage> packages) =>
+        _packageRepository.GetByMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>())
+            .Returns(packages);
+
+    private async Task<dynamic> ExecuteAsync(Member member, string? status = null)
+    {
+        var handler = CreateHandler();
+        var query = CreateQuery(member, status);
+        return await InvokeHandleAsync(handler, query);
+    }
+
+    private static void AssertFailedWith(dynamic result, GymApp.Common.Domain.Error expected)
+    {
+        ((bool)result.IsFailure).Should().BeTrue();
+        ((string)result.Error.Code).Should().Be(expected.Code);
     }
 
     private static async Task<dynamic> InvokeHandleAsync(object handler, object query)
@@ -102,69 +120,51 @@ public class GetMyPackagesQueryHandlerTests
         return resultProp.GetValue(task)!;
     }
 
-    private static SessionPackage BuildActivePackage(Guid gymId, Guid memberId) =>
-        SessionPackage.Create(
-            gymId: gymId,
-            trainerId: Guid.NewGuid(),
-            memberId: memberId,
-            templateId: Guid.NewGuid(),
-            name: "10 Sessions — PT",
-            totalSessions: 10,
-            pricePerSession: Money.Create(500m),
-            totalPrice: Money.Create(5000m),
-            assignedBy: Guid.NewGuid(),
-            expiresAt: DateTime.UtcNow.AddMonths(3));
+    private static SessionPackage BuildActivePackage(Member member) =>
+        SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = member.GymId,
+            TrainerId = Guid.NewGuid(),
+            MemberId = member.UserId,
+            TemplateId = Guid.NewGuid(),
+            Name = "10 Sessions — PT",
+            TotalSessions = 10,
+            PricePerSession = Money.Create(500m),
+            TotalPrice = Money.Create(5000m),
+            AssignedBy = Guid.NewGuid(),
+            ExpiresAt = DateTime.UtcNow.AddMonths(3)
+        });
 
     [Fact]
     public async Task Should_ReturnGymSuspendedError_When_GymIsSuspended()
     {
         // PRD: "403 GYM_SUSPENDED when gym is suspended"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        _membershipChecker.IsGymSuspendedAsync(member.GymId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
-
-        ((bool)result.IsFailure).Should().BeTrue();
-        ((string)result.Error.Code).Should().Be(GymAccessErrors.GymSuspended.Code);
+        AssertFailedWith(await ExecuteAsync(member), GymAccessErrors.GymSuspended);
     }
 
     [Fact]
     public async Task Should_ReturnNotAMemberError_When_CallerHasNoActiveMembership()
     {
         // PRD: "403 NOT_A_MEMBER_OF_GYM when not a member of X-Gym-Id"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(false);
+        var member = NewMember();
+        _membershipChecker.IsGymSuspendedAsync(member.GymId, Arg.Any<CancellationToken>()).Returns(false);
+        _membershipChecker.IsActiveMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
-
-        ((bool)result.IsFailure).Should().BeTrue();
-        ((string)result.Error.Code).Should().Be(GymAccessErrors.NotAMemberOfGym.Code);
+        AssertFailedWith(await ExecuteAsync(member), GymAccessErrors.NotAMemberOfGym);
     }
 
     [Fact]
     public async Task Should_ReturnEmptyResult_When_TraineeHasNoPackages()
     {
         // PRD: "Returns 200 with data: [] when trainee has no packages"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
-        _packageRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<SessionPackage>());
+        var member = NewMember();
+        GivenActiveMember(member);
+        GivenPackages(member, new List<SessionPackage>());
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member);
 
         ((bool)result.IsSuccess).Should().BeTrue();
         CountItems((object?)result.Value).Should().Be(0);
@@ -174,44 +174,32 @@ public class GetMyPackagesQueryHandlerTests
     public async Task Should_ReturnOnlyCallersOwnPackages_When_QueryingByAuthenticatedUser()
     {
         // PRD: "Returns only the trainee's own packages (not other members')"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        GivenActiveMember(member);
 
-        var myPackage = BuildActivePackage(gymId, userId);
-        _packageRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<SessionPackage> { myPackage });
+        var myPackage = BuildActivePackage(member);
+        GivenPackages(member, new List<SessionPackage> { myPackage });
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member);
 
         ((bool)result.IsSuccess).Should().BeTrue();
         await _packageRepository.Received(1)
-            .GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>());
+            .GetByMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Should_ScopeResultsToRequestedGym_When_TraineeHasPackagesAtMultipleGyms()
     {
         // PRD: "Returns packages scoped to X-Gym-Id only (multi-gym test)" — Q3
-        var userId = Guid.NewGuid();
-        var gymB = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymB, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymB, userId, Arg.Any<CancellationToken>()).Returns(true);
-        _packageRepository.GetByMemberAsync(gymB, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<SessionPackage>());
+        var member = NewMember(); // requested gym is gym B
+        GivenActiveMember(member);
+        GivenPackages(member, new List<SessionPackage>());
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymB);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member);
 
         ((bool)result.IsSuccess).Should().BeTrue();
         await _packageRepository.Received(1)
-            .GetByMemberAsync(gymB, userId, Arg.Any<CancellationToken>());
+            .GetByMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -228,22 +216,16 @@ public class GetMyPackagesQueryHandlerTests
     public async Task Should_IncludeActiveAndExpiredPackages_When_BothStatusesExist()
     {
         // PRD: "Includes both Active and Expired/Completed packages"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        GivenActiveMember(member);
 
-        var active = BuildActivePackage(gymId, userId);
-        var expired = BuildActivePackage(gymId, userId);
+        var active = BuildActivePackage(member);
+        var expired = BuildActivePackage(member);
         expired.Expire();
 
-        _packageRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<SessionPackage> { active, expired });
+        GivenPackages(member, new List<SessionPackage> { active, expired });
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId, status: "All");
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member, status: "All");
 
         ((bool)result.IsSuccess).Should().BeTrue();
         CountItems((object?)result.Value).Should().Be(2,
@@ -255,15 +237,12 @@ public class GetMyPackagesQueryHandlerTests
     {
         // Trainer display name is resolved cross-module via IUserDisplayLookup
         // (Identity .Shared). Previously this field was always null.
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        GivenActiveMember(member);
 
-        var package = BuildActivePackage(gymId, userId);
+        var package = BuildActivePackage(member);
         var trainerId = package.TrainerId;
-        _packageRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<SessionPackage> { package });
+        GivenPackages(member, new List<SessionPackage> { package });
 
         IReadOnlyDictionary<Guid, UserDisplay> names = new Dictionary<Guid, UserDisplay>
         {
@@ -272,10 +251,7 @@ public class GetMyPackagesQueryHandlerTests
         _userDisplayLookup.GetDisplayNamesAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(names);
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId, status: "All");
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member, status: "All");
 
         ((bool)result.IsSuccess).Should().BeTrue();
         FirstItemTrainerName((object?)result.Value).Should().Be("Coach Karim");

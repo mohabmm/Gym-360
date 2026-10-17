@@ -8,6 +8,7 @@ import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../../../home/presentation/providers/home_providers.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
+import '../../data/models/scheduling_requests.dart';
 import '../providers/scheduling_providers.dart';
 import '../session_status_l10n.dart';
 import 'class_schedule_screen.dart';
@@ -408,7 +409,9 @@ class _SessionTile extends ConsumerWidget {
       final userId = ref.read(authProvider).valueOrNull?.user?.id;
       if (userId == null) throw Exception('Not signed in');
       final repo = ref.read(schedulingRepositoryProvider);
-      await repo.cancelSession(session.id, cancelledBy: userId);
+      await repo.cancelSession(
+        SessionCancellation(sessionId: session.id, cancelledBy: userId),
+      );
       ref.invalidate(upcomingSessionsListProvider);
       ref.invalidate(upcomingSessionsProvider);
       if (context.mounted) {

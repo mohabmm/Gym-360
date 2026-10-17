@@ -50,7 +50,7 @@ class _OnboardingFormScreenState extends ConsumerState<OnboardingFormScreen> {
       }
       final saved =
           await ref.read(apiClientProvider).get<Map<String, dynamic>?>(
-                ApiEndpoints.gymMemberOnboarding(gymId, widget.clientId),
+                ApiEndpoints.gymMemberOnboarding(GymId(gymId), MemberId(widget.clientId)),
                 // `data` is null when no intake form has been saved yet; the
                 // client then hands the parser the bare response envelope.
                 parser: (data) => data is Map && data['memberId'] != null
@@ -102,7 +102,7 @@ class _OnboardingFormScreenState extends ConsumerState<OnboardingFormScreen> {
         );
       }
       await apiClient.postVoid(
-        ApiEndpoints.gymMemberOnboarding(gymId, widget.clientId),
+        ApiEndpoints.gymMemberOnboarding(GymId(gymId), MemberId(widget.clientId)),
         data: {
           'medicalHistory': _medicalHistoryController.text,
           'fitnessGoals': _fitnessGoalsController.text,

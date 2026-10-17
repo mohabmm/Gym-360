@@ -66,12 +66,12 @@ void main() {
 
     test('POST /nutrition/meal-plans/{id}/assign sends traineeId', () async {
       t.adapter.onPost(
-        ApiEndpoints.assignMealPlan('mp-1'),
+        ApiEndpoints.assignMealPlan(const MealPlanId('mp-1')),
         respond: (_) => t.adapter.noContent(),
       );
 
       await t.apiClient.postVoid(
-        ApiEndpoints.assignMealPlan('mp-1'),
+        ApiEndpoints.assignMealPlan(const MealPlanId('mp-1')),
         data: {'traineeId': kClientId},
       );
 
@@ -103,7 +103,7 @@ void main() {
   group('ClientNutritionViewScreen', () {
     test('GET /nutrition/clients/{clientId}/food-log returns log', () async {
       t.adapter.onGet(
-        ApiEndpoints.clientFoodLog(kClientId),
+        ApiEndpoints.clientFoodLog(kClient),
         respond: (_) => t.adapter.ok({
           'entries': [],
           'totalCalories': 0,
@@ -111,7 +111,7 @@ void main() {
       );
 
       final data = await t.apiClient.get<Map<String, dynamic>>(
-        ApiEndpoints.clientFoodLog(kClientId),
+        ApiEndpoints.clientFoodLog(kClient),
         parser: (d) => d as Map<String, dynamic>,
       );
 

@@ -51,17 +51,19 @@ internal sealed class QuickAssignSessionPackageCommandHandler
 
         // No FK between session_packages.TemplateId and session_package_templates,
         // so quick-assign passes Guid.Empty to mean "ad-hoc, no template".
-        var package = SessionPackage.Create(
-            request.GymId,
-            request.TrainerId,
-            request.MemberId,
-            templateId: Guid.Empty,
-            name: $"Custom: {request.SessionCount} sessions",
-            totalSessions: request.SessionCount,
-            pricePerSession: pricePer,
-            totalPrice: total,
-            assignedBy: request.AssignedBy,
-            expiresAt: request.ExpiresAt);
+        var package = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = request.GymId,
+            TrainerId = request.TrainerId,
+            MemberId = request.MemberId,
+            TemplateId = Guid.Empty,
+            Name = $"Custom: {request.SessionCount} sessions",
+            TotalSessions = request.SessionCount,
+            PricePerSession = pricePer,
+            TotalPrice = total,
+            AssignedBy = request.AssignedBy,
+            ExpiresAt = request.ExpiresAt
+        });
 
         await _packageRepository.AddAsync(package, cancellationToken);
 
@@ -75,15 +77,17 @@ internal sealed class QuickAssignSessionPackageCommandHandler
                 return Result.Failure<Guid>(new Error("Billing.InvalidPaymentMethod", "Invalid payment method."));
 
             var receiptNumber = $"RCP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
-            var payment = Payment.Create(
-                request.GymId,
-                request.MemberId,
-                total,
-                method,
-                PaymentPurpose.SessionPackage,
-                receiptNumber,
-                request.AssignedBy,
-                package.Id);
+            var payment = Payment.Create(new PaymentDetails
+            {
+                GymId = request.GymId,
+                MemberId = request.MemberId,
+                Amount = total,
+                PaymentMethod = method,
+                Purpose = PaymentPurpose.SessionPackage,
+                ReceiptNumber = receiptNumber,
+                RecordedBy = request.AssignedBy,
+                ReferenceId = package.Id
+            });
             await _paymentRepository.AddAsync(payment, cancellationToken);
         }
 

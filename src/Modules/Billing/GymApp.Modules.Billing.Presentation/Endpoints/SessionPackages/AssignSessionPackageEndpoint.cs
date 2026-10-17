@@ -37,7 +37,7 @@ internal sealed class AssignSessionPackageEndpoint : IEndpoint
                 ? ApiResults.Created(result.Value, $"api/v1/billing/packages/{result.Value}")
                 : ApiResults.Problem(result.Error);
         })
-        .RequireAuthorization()
+        .RequireAuthorization("gym_staff")
         .WithSummary("Assign session package to member")
         .WithDescription("Creates a session package for a member based on a template, linking the trainer and optional expiry date.")
         .WithTags("Billing")

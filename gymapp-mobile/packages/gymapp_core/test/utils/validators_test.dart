@@ -1,26 +1,41 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+typedef _Validate<T> = String? Function(T? value);
+
+/// Asserts that [validate] rejects every value in [invalid] and accepts
+/// every value in [valid].
+void _expectCases<T>(
+  _Validate<T> validate, {
+  List<T?> invalid = const [],
+  List<T?> valid = const [],
+}) {
+  for (final value in invalid) {
+    expect(validate(value), isNotNull, reason: 'expected "$value" rejected');
+  }
+  for (final value in valid) {
+    expect(validate(value), isNull, reason: 'expected "$value" accepted');
+  }
+}
+
 void main() {
   group('Validators.email', () {
     test('returns error when null or empty', () {
-      expect(Validators.email(null), isNotNull);
-      expect(Validators.email(''), isNotNull);
-      expect(Validators.email('   '), isNotNull);
+      _expectCases<String>(Validators.email, invalid: [null, '', '   ']);
     });
 
     test('accepts common valid addresses', () {
-      expect(Validators.email('user@example.com'), isNull);
-      expect(Validators.email('u.ser+tag@sub.example.co'), isNull);
-      expect(Validators.email('A_B-C@mail.eg'), isNull);
+      _expectCases<String>(
+        Validators.email,
+        valid: ['user@example.com', 'u.ser+tag@sub.example.co', 'A_B-C@mail.eg'],
+      );
     });
 
     test('rejects malformed addresses', () {
-      expect(Validators.email('user'), isNotNull);
-      expect(Validators.email('user@'), isNotNull);
-      expect(Validators.email('@host.com'), isNotNull);
-      expect(Validators.email('user@host'), isNotNull);
-      expect(Validators.email('user@host.c'), isNotNull);
+      _expectCases<String>(
+        Validators.email,
+        invalid: ['user', 'user@', '@host.com', 'user@host', 'user@host.c'],
+      );
     });
 
     test('localizes error messages', () {
@@ -31,133 +46,133 @@ void main() {
 
   group('Validators.password', () {
     test('requires at least 8 chars with letter and number', () {
-      expect(Validators.password(null), isNotNull);
-      expect(Validators.password(''), isNotNull);
-      expect(Validators.password('abc123'), isNotNull); // too short
-      expect(Validators.password('abcdefgh'), isNotNull); // no number
-      expect(Validators.password('12345678'), isNotNull); // no letter
-      expect(Validators.password('abcd1234'), isNull);
-      expect(Validators.password('Passw0rd'), isNull);
+      _expectCases<String>(
+        Validators.password,
+        // too short, no number, no letter
+        invalid: [null, '', 'abc123', 'abcdefgh', '12345678'],
+        valid: ['abcd1234', 'Passw0rd'],
+      );
     });
   });
 
   group('Validators.confirmPassword', () {
     test('must match', () {
-      expect(Validators.confirmPassword(null, 'abc123'), isNotNull);
-      expect(Validators.confirmPassword('', 'abc123'), isNotNull);
-      expect(Validators.confirmPassword('different', 'abc123'), isNotNull);
-      expect(Validators.confirmPassword('same', 'same'), isNull);
+      _expectCases<String>(
+        (v) => Validators.confirmPassword(v, 'abc123'),
+        invalid: [null, '', 'different'],
+      );
+      _expectCases<String>(
+        (v) => Validators.confirmPassword(v, 'same'),
+        valid: ['same'],
+      );
     });
   });
 
   group('Validators.required', () {
     test('rejects null, empty and whitespace', () {
-      expect(Validators.required(null), isNotNull);
-      expect(Validators.required(''), isNotNull);
-      expect(Validators.required('   '), isNotNull);
-      expect(Validators.required('x'), isNull);
+      _expectCases<String>(
+        Validators.required,
+        invalid: [null, '', '   '],
+        valid: ['x'],
+      );
     });
   });
 
   group('Validators.name', () {
     test('enforces 2-50 char length', () {
-      expect(Validators.name(null), isNotNull);
-      expect(Validators.name('a'), isNotNull);
-      expect(Validators.name('a' * 51), isNotNull);
-      expect(Validators.name('Ahmed'), isNull);
-      expect(Validators.name('محمد'), isNull);
+      _expectCases<String>(
+        Validators.name,
+        invalid: [null, 'a', 'a' * 51],
+        valid: ['Ahmed', 'محمد'],
+      );
     });
   });
 
   group('Validators.phone', () {
     test('is optional (null / empty returns null)', () {
-      expect(Validators.phone(null), isNull);
-      expect(Validators.phone(''), isNull);
+      _expectCases<String>(Validators.phone, valid: [null, '']);
     });
 
     test('accepts Egyptian formats', () {
-      expect(Validators.phone('01012345678'), isNull);
-      expect(Validators.phone('+201012345678'), isNull);
-      expect(Validators.phone('010 1234 5678'), isNull);
-      expect(Validators.phone('010-1234-5678'), isNull);
+      _expectCases<String>(
+        Validators.phone,
+        valid: ['01012345678', '+201012345678', '010 1234 5678', '010-1234-5678'],
+      );
     });
 
     test('rejects invalid formats', () {
-      expect(Validators.phone('12345'), isNotNull);
-      expect(Validators.phone('+1234567890123'), isNotNull);
+      _expectCases<String>(
+        Validators.phone,
+        invalid: ['12345', '+1234567890123'],
+      );
     });
   });
 
   group('Validators.gymCode', () {
     test('requires exactly 6 alphanumeric chars', () {
-      expect(Validators.gymCode(null), isNotNull);
-      expect(Validators.gymCode(''), isNotNull);
-      expect(Validators.gymCode('ABC12'), isNotNull);
-      expect(Validators.gymCode('ABC1234'), isNotNull);
-      expect(Validators.gymCode('ABC-12'), isNotNull);
-      expect(Validators.gymCode('ABC123'), isNull);
-      expect(Validators.gymCode('abc123'), isNull); // upper-cased internally
+      _expectCases<String>(
+        Validators.gymCode,
+        invalid: [null, '', 'ABC12', 'ABC1234', 'ABC-12'],
+        valid: ['ABC123', 'abc123'], // upper-cased internally
+      );
     });
   });
 
   group('Validators.otp', () {
     test('must be exactly 6 digits', () {
-      expect(Validators.otp(null), isNotNull);
-      expect(Validators.otp('12345'), isNotNull);
-      expect(Validators.otp('1234567'), isNotNull);
-      expect(Validators.otp('abcdef'), isNotNull);
-      expect(Validators.otp('123456'), isNull);
+      _expectCases<String>(
+        Validators.otp,
+        invalid: [null, '12345', '1234567', 'abcdef'],
+        valid: ['123456'],
+      );
     });
   });
 
   group('Validators.positiveNumber', () {
     test('requires >0', () {
-      expect(Validators.positiveNumber(null), isNotNull);
-      expect(Validators.positiveNumber(''), isNotNull);
-      expect(Validators.positiveNumber('abc'), isNotNull);
-      expect(Validators.positiveNumber('0'), isNotNull);
-      expect(Validators.positiveNumber('-1'), isNotNull);
-      expect(Validators.positiveNumber('10'), isNull);
-      expect(Validators.positiveNumber('0.5'), isNull);
+      _expectCases<String>(
+        Validators.positiveNumber,
+        invalid: [null, '', 'abc', '0', '-1'],
+        valid: ['10', '0.5'],
+      );
     });
   });
 
   group('Validators.weight / height', () {
     test('weight range 10-500kg', () {
-      expect(Validators.weight(''), isNull); // optional
-      expect(Validators.weight('9'), isNotNull);
-      expect(Validators.weight('501'), isNotNull);
-      expect(Validators.weight('abc'), isNotNull);
-      expect(Validators.weight('80'), isNull);
+      _expectCases<String>(
+        Validators.weight,
+        invalid: ['9', '501', 'abc'],
+        valid: ['', '80'], // optional
+      );
     });
 
     test('height range 50-300cm', () {
-      expect(Validators.height(''), isNull);
-      expect(Validators.height('49'), isNotNull);
-      expect(Validators.height('301'), isNotNull);
-      expect(Validators.height('175'), isNull);
+      _expectCases<String>(
+        Validators.height,
+        invalid: ['49', '301'],
+        valid: ['', '175'],
+      );
     });
   });
 
   group('Validators.rating', () {
     test('must be 1-5', () {
-      expect(Validators.rating(null), isNotNull);
-      expect(Validators.rating(0), isNotNull);
-      expect(Validators.rating(6), isNotNull);
-      expect(Validators.rating(1), isNull);
-      expect(Validators.rating(5), isNull);
+      _expectCases<int>(
+        Validators.rating,
+        invalid: [null, 0, 6],
+        valid: [1, 5],
+      );
     });
   });
 
   group('Validators.memberNumber', () {
     test('accepts 4-8 digits', () {
-      expect(Validators.memberNumber(null), isNotNull);
-      expect(Validators.memberNumber(''), isNotNull);
-      expect(Validators.memberNumber('123'), isNotNull);
-      expect(Validators.memberNumber('123456789'), isNotNull);
-      expect(Validators.memberNumber('12ab'), isNotNull);
-      expect(Validators.memberNumber('1234'), isNull);
-      expect(Validators.memberNumber('12345678'), isNull);
+      _expectCases<String>(
+        Validators.memberNumber,
+        invalid: [null, '', '123', '123456789', '12ab'],
+        valid: ['1234', '12345678'],
+      );
     });
   });
 }

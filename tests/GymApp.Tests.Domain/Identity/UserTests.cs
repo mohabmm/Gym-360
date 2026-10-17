@@ -16,14 +16,17 @@ public sealed class UserTests
         Language language = Language.Arabic)
     {
         return User.Create(
-            CreateValidEmail(),
-            CreateValidPhone(),
-            "hashed_password_123",
-            "Ahmed",
-            "Mohamed",
-            Gender.Male,
-            role,
-            language);
+            new NewUserDetails
+            {
+                Email = CreateValidEmail(),
+                PhoneNumber = CreateValidPhone(),
+                PasswordHash = "hashed_password_123",
+                FirstName = "Ahmed",
+                LastName = "Mohamed",
+                Gender = Gender.Male,
+                Language = language
+            },
+            role);
     }
 
     [Fact]
@@ -32,7 +35,18 @@ public sealed class UserTests
         var email = CreateValidEmail();
         var phone = CreateValidPhone();
 
-        var user = User.Create(email, phone, "hash", "Ali", "Hassan", Gender.Male, UserRole.Trainee, Language.Arabic);
+        var user = User.Create(
+            new NewUserDetails
+            {
+                Email = email,
+                PhoneNumber = phone,
+                PasswordHash = "hash",
+                FirstName = "Ali",
+                LastName = "Hassan",
+                Gender = Gender.Male,
+                Language = Language.Arabic
+            },
+            UserRole.Trainee);
 
         user.Id.Should().NotBeEmpty();
         user.Email.Should().Be(email);
@@ -49,8 +63,16 @@ public sealed class UserTests
     public void Create_DefaultLanguage_ShouldBeArabic()
     {
         var user = User.Create(
-            CreateValidEmail(), CreateValidPhone(), "hash",
-            "Ali", "Hassan", Gender.Male, UserRole.Trainee);
+            new NewUserDetails
+            {
+                Email = CreateValidEmail(),
+                PhoneNumber = CreateValidPhone(),
+                PasswordHash = "hash",
+                FirstName = "Ali",
+                LastName = "Hassan",
+                Gender = Gender.Male
+            },
+            UserRole.Trainee);
 
         user.Language.Should().Be(Language.Arabic);
     }
@@ -72,7 +94,7 @@ public sealed class UserTests
         var user = CreateDefaultUser();
         user.ClearDomainEvents();
 
-        user.UpdateProfile("NewFirst", "NewLast", "http://photo.jpg", new DateTime(1990, 1, 1), Language.English);
+        user.UpdateProfile(new UserProfile("NewFirst", "NewLast", "http://photo.jpg", new DateTime(1990, 1, 1), Language.English));
 
         user.FirstName.Should().Be("NewFirst");
         user.LastName.Should().Be("NewLast");
@@ -126,6 +148,33 @@ public sealed class UserTests
         user.PasswordHash.Should().Be("new_hash");
     }
 
+    private sealed record MemberNumbers(string? First, string? Second);
+
+    private static void AssertFailedWith(Result result, string expectedCode)
+    {
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(expectedCode);
+    }
+
+    // Links a default trainee to a gym, then links the same gym again with the given role.
+    private static (User User, Result Second) LinkTraineeThenRelinkSameGym(UserRole role, string? memberNumber)
+    {
+        var user = CreateDefaultUser();
+        var gymId = Guid.NewGuid();
+        user.LinkToGym(gymId, UserRole.Trainee, null, "MEM001");
+
+        return (user, user.LinkToGym(gymId, role, null, memberNumber));
+    }
+
+    // Creates a user with the role and links it, in that role, to two different gyms.
+    private static (User User, Result Second) LinkToTwoGyms(UserRole role, MemberNumbers? memberNumbers = null)
+    {
+        var user = CreateDefaultUser(role);
+        user.LinkToGym(Guid.NewGuid(), role, null, memberNumbers?.First);
+
+        return (user, user.LinkToGym(Guid.NewGuid(), role, null, memberNumbers?.Second));
+    }
+
     [Fact]
     public void LinkToGym_ValidGym_ShouldAddMembershipAndRaiseEvent()
     {
@@ -146,24 +195,15 @@ public sealed class UserTests
     [Fact]
     public void LinkToGym_DuplicateActiveLink_ShouldReturnFailure()
     {
-        var user = CreateDefaultUser();
-        var gymId = Guid.NewGuid();
-        user.LinkToGym(gymId, UserRole.Trainee, null, "MEM001");
+        var (_, result) = LinkTraineeThenRelinkSameGym(UserRole.Trainee, "MEM001");
 
-        var result = user.LinkToGym(gymId, UserRole.Trainee, null, "MEM001");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("User.AlreadyLinkedToGym");
+        AssertFailedWith(result, "User.AlreadyLinkedToGym");
     }
 
     [Fact]
     public void LinkToGym_SameGymDifferentRole_ShouldSucceed()
     {
-        var user = CreateDefaultUser();
-        var gymId = Guid.NewGuid();
-        user.LinkToGym(gymId, UserRole.Trainee, null, "MEM001");
-
-        var result = user.LinkToGym(gymId, UserRole.Trainer, null, null);
+        var (user, result) = LinkTraineeThenRelinkSameGym(UserRole.Trainer, null);
 
         result.IsSuccess.Should().BeTrue();
         user.GymMemberships.Should().HaveCount(2);
@@ -201,49 +241,28 @@ public sealed class UserTests
     [Fact]
     public void LinkToGym_TrainerAlreadyActiveInAnotherGym_ShouldReturnConflict()
     {
-        var user = CreateDefaultUser(UserRole.Trainer);
-        user.LinkToGym(Guid.NewGuid(), UserRole.Trainer, null, null);
+        var (user, result) = LinkToTwoGyms(UserRole.Trainer);
 
-        var result = user.LinkToGym(Guid.NewGuid(), UserRole.Trainer, null, null);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("User.AlreadyActiveInAnotherGym");
+        AssertFailedWith(result, "User.AlreadyActiveInAnotherGym");
         user.GymMemberships.Should().ContainSingle(); // second gym not linked
     }
 
     [Fact]
-    public void LinkToGym_TraineeAlreadyActiveInAnotherGym_ShouldReturnConflict()
-    {
-        var user = CreateDefaultUser(UserRole.Trainee);
-        user.LinkToGym(Guid.NewGuid(), UserRole.Trainee, null, "MEM001");
-
-        var result = user.LinkToGym(Guid.NewGuid(), UserRole.Trainee, null, "MEM002");
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("User.AlreadyActiveInAnotherGym");
-    }
+    public void LinkToGym_TraineeAlreadyActiveInAnotherGym_ShouldReturnConflict() =>
+        AssertFailedWith(
+            LinkToTwoGyms(UserRole.Trainee, new MemberNumbers("MEM001", "MEM002")).Second,
+            "User.AlreadyActiveInAnotherGym");
 
     [Fact]
-    public void LinkToGym_StaffAlreadyActiveInAnotherGym_ShouldReturnConflict()
-    {
-        var user = CreateDefaultUser(UserRole.GymStaff);
-        user.LinkToGym(Guid.NewGuid(), UserRole.GymStaff, null, null);
-
-        var result = user.LinkToGym(Guid.NewGuid(), UserRole.GymStaff, null, null);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("User.AlreadyActiveInAnotherGym");
-    }
+    public void LinkToGym_StaffAlreadyActiveInAnotherGym_ShouldReturnConflict() =>
+        AssertFailedWith(LinkToTwoGyms(UserRole.GymStaff).Second, "User.AlreadyActiveInAnotherGym");
 
     [Fact]
     public void LinkToGym_OwnerActiveInAnotherGym_IsExemptFromOneGymRule()
     {
         // Owners scope across many gyms via OwnerId, so the One-Gym membership
         // guard must NOT apply to the GymOwner role.
-        var user = CreateDefaultUser(UserRole.GymOwner);
-        user.LinkToGym(Guid.NewGuid(), UserRole.GymOwner, null, null);
-
-        var result = user.LinkToGym(Guid.NewGuid(), UserRole.GymOwner, null, null);
+        var (user, result) = LinkToTwoGyms(UserRole.GymOwner);
 
         result.IsSuccess.Should().BeTrue();
         user.GymMemberships.Should().HaveCount(2);

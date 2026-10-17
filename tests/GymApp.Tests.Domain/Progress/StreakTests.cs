@@ -13,6 +13,15 @@ public sealed class StreakTests
         return result.Value;
     }
 
+    // A fresh streak with activity recorded, in order, on the given days of January 2025.
+    private static Streak StreakActiveOnJanuary(StreakType type, params int[] days)
+    {
+        var streak = CreateDefaultStreak(type);
+        foreach (var day in days)
+            streak.RecordActivity(new DateOnly(2025, 1, day));
+        return streak;
+    }
+
     [Fact]
     public void Create_ShouldInitializeWithZeroStreak()
     {
@@ -50,11 +59,7 @@ public sealed class StreakTests
     [Fact]
     public void RecordActivity_ConsecutiveDays_ShouldIncrementStreak()
     {
-        var streak = CreateDefaultStreak();
-
-        streak.RecordActivity(new DateOnly(2025, 1, 1));
-        streak.RecordActivity(new DateOnly(2025, 1, 2));
-        streak.RecordActivity(new DateOnly(2025, 1, 3));
+        var streak = StreakActiveOnJanuary(StreakType.DailyWorkout, 1, 2, 3);
 
         streak.CurrentStreak.Should().Be(3);
         streak.LongestStreak.Should().Be(3);
@@ -63,11 +68,7 @@ public sealed class StreakTests
     [Fact]
     public void RecordActivity_MissedDay_ShouldResetToOne()
     {
-        var streak = CreateDefaultStreak();
-
-        streak.RecordActivity(new DateOnly(2025, 1, 1));
-        streak.RecordActivity(new DateOnly(2025, 1, 2));
-        streak.RecordActivity(new DateOnly(2025, 1, 4)); // skipped Jan 3
+        var streak = StreakActiveOnJanuary(StreakType.DailyWorkout, 1, 2, 4); // skipped Jan 3
 
         streak.CurrentStreak.Should().Be(1);
         streak.LongestStreak.Should().Be(2);
@@ -196,9 +197,7 @@ public sealed class StreakTests
     [Fact]
     public void ResetIfBroken_WhenDailyStreakBroken_ShouldResetCurrent()
     {
-        var streak = CreateDefaultStreak();
-        streak.RecordActivity(new DateOnly(2025, 1, 1));
-        streak.RecordActivity(new DateOnly(2025, 1, 2));
+        var streak = StreakActiveOnJanuary(StreakType.DailyWorkout, 1, 2);
 
         streak.ResetIfBroken(new DateOnly(2025, 1, 4)); // missed Jan 3
 
@@ -241,14 +240,6 @@ public sealed class StreakTests
     // --- DailyCheckIn streak type ---
 
     [Fact]
-    public void RecordActivity_DailyCheckIn_ConsecutiveDays_ShouldIncrement()
-    {
-        var streak = CreateDefaultStreak(StreakType.DailyCheckIn);
-
-        streak.RecordActivity(new DateOnly(2025, 1, 1));
-        streak.RecordActivity(new DateOnly(2025, 1, 2));
-        streak.RecordActivity(new DateOnly(2025, 1, 3));
-
-        streak.CurrentStreak.Should().Be(3);
-    }
+    public void RecordActivity_DailyCheckIn_ConsecutiveDays_ShouldIncrement() =>
+        StreakActiveOnJanuary(StreakType.DailyCheckIn, 1, 2, 3).CurrentStreak.Should().Be(3);
 }

@@ -3,12 +3,29 @@ using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace GymApp.Modules.Gyms.Infrastructure.Data.Configurations;
 
 internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
 {
+    private static readonly ValueConverter<MemberId, Guid> MemberIdConverter =
+        new(id => id.Value, value => new MemberId(value));
+
+    private static readonly ValueConverter<TrainerId, Guid> TrainerIdConverter =
+        new(id => id.Value, value => new TrainerId(value));
+
     public void Configure(EntityTypeBuilder<Gym> builder)
+    {
+        ConfigureIdentity(builder);
+        ConfigureContactDetails(builder);
+        ConfigurePresentation(builder);
+        ConfigureStatus(builder);
+        ConfigureCollections(builder);
+        ConfigureLifecycle(builder);
+    }
+
+    private static void ConfigureIdentity(EntityTypeBuilder<Gym> builder)
     {
         builder.ToTable("gyms");
 
@@ -26,7 +43,10 @@ internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
 
         builder.Property(g => g.Description)
             .HasMaxLength(2000);
+    }
 
+    private static void ConfigureContactDetails(EntityTypeBuilder<Gym> builder)
+    {
         builder.OwnsOne(g => g.Address, address =>
         {
             address.Property(a => a.Street).HasColumnName("Address_Street").HasMaxLength(500).IsRequired();
@@ -44,7 +64,10 @@ internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
             contact.Property(c => c.Phone).HasColumnName("Contact_Phone").HasMaxLength(50).IsRequired();
             contact.Property(c => c.Website).HasColumnName("Contact_Website").HasMaxLength(500);
         });
+    }
 
+    private static void ConfigurePresentation(EntityTypeBuilder<Gym> builder)
+    {
         builder.OwnsOne(g => g.Branding, branding =>
         {
             branding.Property(b => b.LogoUrl).HasColumnName("Branding_LogoUrl").HasMaxLength(1000);
@@ -71,7 +94,10 @@ internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
             social.Property(s => s.Twitter).HasColumnName("Social_Twitter").HasMaxLength(500);
             social.Property(s => s.Website).HasColumnName("Social_Website").HasMaxLength(500);
         });
+    }
 
+    private static void ConfigureStatus(EntityTypeBuilder<Gym> builder)
+    {
         builder.Property(g => g.Status)
             .HasConversion<string>()
             .HasMaxLength(50)
@@ -81,7 +107,10 @@ internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
             .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
+    }
 
+    private static void ConfigureCollections(EntityTypeBuilder<Gym> builder)
+    {
         builder.OwnsMany(g => g.OperatingHours, oh =>
         {
             oh.ToTable("gym_operating_hours");
@@ -98,12 +127,18 @@ internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
             .HasMaxLength(100);
 
         // IReadOnlyList cannot be used directly with PrimitiveCollection — configure via backing field.
-        builder.PrimitiveCollection<List<Guid>>("_memberIds")
-            .HasColumnName("MemberIds");
+        // The typed ids convert element-wise to Guid, so the JSON columns keep their Guid-array shape.
+        builder.PrimitiveCollection<List<MemberId>>("_memberIds")
+            .HasColumnName("MemberIds")
+            .ElementType(e => e.HasConversion(MemberIdConverter));
 
-        builder.PrimitiveCollection<List<Guid>>("_trainerIds")
-            .HasColumnName("TrainerIds");
+        builder.PrimitiveCollection<List<TrainerId>>("_trainerIds")
+            .HasColumnName("TrainerIds")
+            .ElementType(e => e.HasConversion(TrainerIdConverter));
+    }
 
+    private static void ConfigureLifecycle(EntityTypeBuilder<Gym> builder)
+    {
         builder.Property(g => g.SuspendedAt);
         builder.Property(g => g.SuspensionReason).HasMaxLength(1000);
         builder.Property(g => g.GracePeriodEndsAt);

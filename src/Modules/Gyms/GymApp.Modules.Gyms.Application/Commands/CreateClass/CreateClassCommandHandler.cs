@@ -53,12 +53,15 @@ internal sealed class CreateClassCommandHandler : ICommandHandler<CreateClassCom
 
         var gymClass = GymClass.Create(
             request.GymId,
-            request.Name,
-            request.Description,
             request.TrainerId,
-            schedule,
-            request.Capacity,
-            request.WaitlistEnabled);
+            new GymClassDetails
+            {
+                Name = request.Name,
+                Description = request.Description,
+                Schedule = schedule,
+                Capacity = request.Capacity,
+                WaitlistEnabled = request.WaitlistEnabled
+            });
 
         await _gymClassRepository.AddAsync(gymClass, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

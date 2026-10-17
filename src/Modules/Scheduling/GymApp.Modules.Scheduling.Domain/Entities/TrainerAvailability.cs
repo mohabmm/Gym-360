@@ -10,19 +10,7 @@ public sealed class TrainerAvailability : Entity
 
     private TrainerAvailability() : base() { }
 
-    private TrainerAvailability(
-        Guid id,
-        Guid trainerId,
-        Guid gymId,
-        int sessionDurationMinutes,
-        int bufferMinutes) : base(id)
-    {
-        TrainerId = trainerId;
-        GymId = gymId;
-        SessionDurationMinutes = sessionDurationMinutes;
-        BufferMinutes = bufferMinutes;
-        UpdatedAt = DateTime.UtcNow;
-    }
+    private TrainerAvailability(Guid id) : base(id) { }
 
     public Guid TrainerId { get; private set; }
     public Guid GymId { get; private set; }
@@ -38,12 +26,14 @@ public sealed class TrainerAvailability : Entity
         int sessionDurationMinutes = 60,
         int bufferMinutes = 15)
     {
-        return new TrainerAvailability(
-            Guid.NewGuid(),
-            trainerId,
-            gymId,
-            sessionDurationMinutes,
-            bufferMinutes);
+        return new TrainerAvailability(Guid.NewGuid())
+        {
+            TrainerId = trainerId,
+            GymId = gymId,
+            SessionDurationMinutes = sessionDurationMinutes,
+            BufferMinutes = bufferMinutes,
+            UpdatedAt = DateTime.UtcNow
+        };
     }
 
     public Result AddSlot(DayOfWeek dayOfWeek, TimeOnly startTime, TimeOnly endTime)
@@ -105,6 +95,9 @@ public sealed class TrainerAvailability : Entity
     {
         return _blockedDates.Any(b => b.Date == date);
     }
+
+    public List<AvailabilitySlot> ActiveSlotsOn(DayOfWeek dayOfWeek) =>
+        _weeklySlots.Where(s => s.IsActive && s.DayOfWeek == dayOfWeek).ToList();
 
     public bool HasAvailableSlot(DayOfWeek dayOfWeek, TimeOnly time)
     {

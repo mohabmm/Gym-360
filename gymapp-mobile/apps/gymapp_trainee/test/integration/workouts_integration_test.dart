@@ -29,7 +29,7 @@ void main() {
 
   test('GET /training/workouts/{id}', () async {
     t.adapter.onGet(
-      ApiEndpoints.workoutById('workout-1'),
+      ApiEndpoints.workoutById(const WorkoutId('workout-1')),
       respond: (_) => t.adapter.ok(Samples.workout()),
     );
     final w = await ds.getWorkoutById('workout-1');

@@ -1,7 +1,14 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../constants/storage_keys.dart';
+
+import '../types/auth_tokens.dart';
+import '../types/entity_ids.dart';
+import 'secure_storage_key.dart';
 
 /// Wraps flutter_secure_storage for token and sensitive data storage.
+///
+/// Every named accessor goes through the four [SecureStorageKey]-typed
+/// primitives ([read], [write], [deleteKey], [clearAll]); a test double only
+/// has to replace those.
 class SecureStorageService {
   final FlutterSecureStorage _storage;
 
@@ -15,23 +22,21 @@ class SecureStorageService {
             );
 
   // Access Token
-  Future<String?> getAccessToken() =>
-      _storage.read(key: StorageKeys.accessToken);
+  Future<String?> getAccessToken() => read(SecureStorageKey.accessToken);
 
-  Future<void> saveAccessToken(String token) =>
-      _storage.write(key: StorageKeys.accessToken, value: token);
+  Future<void> saveAccessToken(AccessToken token) =>
+      write(SecureStorageKey.accessToken, token);
 
   // Refresh Token
-  Future<String?> getRefreshToken() =>
-      _storage.read(key: StorageKeys.refreshToken);
+  Future<String?> getRefreshToken() => read(SecureStorageKey.refreshToken);
 
-  Future<void> saveRefreshToken(String token) =>
-      _storage.write(key: StorageKeys.refreshToken, value: token);
+  Future<void> saveRefreshToken(RefreshToken token) =>
+      write(SecureStorageKey.refreshToken, token);
 
   // Save both tokens at once
   Future<void> saveTokens({
-    required String accessToken,
-    required String refreshToken,
+    required AccessToken accessToken,
+    required RefreshToken refreshToken,
   }) async {
     await Future.wait([
       saveAccessToken(accessToken),
@@ -42,49 +47,45 @@ class SecureStorageService {
   // Clear tokens on logout
   Future<void> clearTokens() async {
     await Future.wait([
-      _storage.delete(key: StorageKeys.accessToken),
-      _storage.delete(key: StorageKeys.refreshToken),
+      deleteKey(SecureStorageKey.accessToken),
+      deleteKey(SecureStorageKey.refreshToken),
     ]);
   }
 
   // User ID
-  Future<String?> getUserId() => _storage.read(key: StorageKeys.userId);
+  Future<String?> getUserId() => read(SecureStorageKey.userId);
 
-  Future<void> saveUserId(String id) =>
-      _storage.write(key: StorageKeys.userId, value: id);
+  Future<void> saveUserId(UserId id) => write(SecureStorageKey.userId, id);
 
   // Current Gym ID (for X-Gym-Id header)
-  Future<String?> getCurrentGymId() =>
-      _storage.read(key: StorageKeys.currentGymId);
+  Future<String?> getCurrentGymId() => read(SecureStorageKey.currentGymId);
 
-  Future<void> saveCurrentGymId(String gymId) =>
-      _storage.write(key: StorageKeys.currentGymId, value: gymId);
+  Future<void> saveCurrentGymId(GymId gymId) =>
+      write(SecureStorageKey.currentGymId, gymId);
 
   // User Role
-  Future<String?> getUserRole() => _storage.read(key: StorageKeys.userRole);
+  Future<String?> getUserRole() => read(SecureStorageKey.userRole);
 
   Future<void> saveUserRole(String role) =>
-      _storage.write(key: StorageKeys.userRole, value: role);
+      write(SecureStorageKey.userRole, role);
 
   // FCM Token
-  Future<String?> getFcmToken() => _storage.read(key: StorageKeys.fcmToken);
+  Future<String?> getFcmToken() => read(SecureStorageKey.fcmToken);
 
   Future<void> saveFcmToken(String token) =>
-      _storage.write(key: StorageKeys.fcmToken, value: token);
+      write(SecureStorageKey.fcmToken, token);
 
   // Clear all on logout
   Future<void> clearAll() => _storage.deleteAll();
 
   // Generic read/write
-  Future<String?> read(String key) => _storage.read(key: key);
+  Future<String?> read(SecureStorageKey key) => _storage.read(key: key.name);
 
-  Future<void> write(String key, String value) =>
-      _storage.write(key: key, value: value);
+  Future<void> write(SecureStorageKey key, String value) =>
+      _storage.write(key: key.name, value: value);
 
-  Future<void> deleteKey(String key) => _storage.delete(key: key);
+  Future<void> deleteKey(SecureStorageKey key) =>
+      _storage.delete(key: key.name);
 
-  Future<bool> hasKey(String key) async {
-    final value = await _storage.read(key: key);
-    return value != null;
-  }
+  Future<bool> hasKey(SecureStorageKey key) async => await read(key) != null;
 }

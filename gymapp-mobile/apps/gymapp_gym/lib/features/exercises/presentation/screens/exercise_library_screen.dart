@@ -100,7 +100,7 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
                           ),
                           subtitle: Text(ExerciseLabels.muscleGroups(
                             ex.muscleGroups,
-                            isArabic: isArabic,
+                            language: AppLanguage.of(context),
                           )),
                           trailing: Container(
                             padding: const EdgeInsets.symmetric(
@@ -111,7 +111,7 @@ class _ExerciseLibraryScreenState extends ConsumerState<ExerciseLibraryScreen> {
                             ),
                             child: Text(
                               ExerciseLabels.category(ex.category,
-                                  isArabic: isArabic),
+                                  language: AppLanguage.of(context)),
                               style: Theme.of(context).textTheme.labelSmall,
                             ),
                           ),

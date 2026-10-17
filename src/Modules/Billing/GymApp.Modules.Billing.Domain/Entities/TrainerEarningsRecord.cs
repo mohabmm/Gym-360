@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Modules.Billing.Domain.Entities;
 
@@ -6,22 +7,7 @@ public sealed class TrainerEarningsRecord : Entity
 {
     private TrainerEarningsRecord() : base() { }
 
-    private TrainerEarningsRecord(
-        Guid id,
-        Guid gymId,
-        Guid trainerId,
-        Guid sessionId,
-        Guid memberId,
-        decimal rateApplied) : base(id)
-    {
-        GymId = gymId;
-        TrainerId = trainerId;
-        SessionId = sessionId;
-        MemberId = memberId;
-        RateApplied = rateApplied;
-        Currency = "EGP";
-        EarnedAt = DateTime.UtcNow;
-    }
+    private TrainerEarningsRecord(Guid id) : base(id) { }
 
     public Guid GymId { get; private set; }
     public Guid TrainerId { get; private set; }
@@ -31,19 +17,17 @@ public sealed class TrainerEarningsRecord : Entity
     public string Currency { get; private set; } = "EGP";
     public DateTime EarnedAt { get; private set; }
 
-    public static TrainerEarningsRecord Create(
-        Guid gymId,
-        Guid trainerId,
-        Guid sessionId,
-        Guid memberId,
-        decimal rateApplied)
+    public static TrainerEarningsRecord Create(TrainerEarningsDetails details)
     {
-        return new TrainerEarningsRecord(
-            Guid.NewGuid(),
-            gymId,
-            trainerId,
-            sessionId,
-            memberId,
-            rateApplied);
+        return new TrainerEarningsRecord(Guid.NewGuid())
+        {
+            GymId = details.GymId,
+            TrainerId = details.TrainerId,
+            SessionId = details.SessionId,
+            MemberId = details.MemberId,
+            RateApplied = details.RateApplied,
+            Currency = "EGP",
+            EarnedAt = DateTime.UtcNow
+        };
     }
 }

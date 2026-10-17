@@ -5,6 +5,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Errors;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Application.Abstractions;
 
 namespace GymApp.Modules.Billing.Application.Commands.SessionPackages;
@@ -46,17 +47,19 @@ internal sealed class AssignSessionPackageCommandHandler : ICommandHandler<Assig
             return Result.Failure<Guid>(BillingErrors.TemplateNotFound);
         }
 
-        var package = SessionPackage.Create(
-            request.GymId,
-            request.TrainerId,
-            request.MemberId,
-            request.TemplateId,
-            template.Name,
-            template.SessionCount,
-            template.PricePerSession,
-            template.TotalPrice,
-            request.AssignedBy,
-            request.ExpiresAt);
+        var package = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = request.GymId,
+            TrainerId = request.TrainerId,
+            MemberId = request.MemberId,
+            TemplateId = request.TemplateId,
+            Name = template.Name,
+            TotalSessions = template.SessionCount,
+            PricePerSession = template.PricePerSession,
+            TotalPrice = template.TotalPrice,
+            AssignedBy = request.AssignedBy,
+            ExpiresAt = request.ExpiresAt
+        });
 
         await _packageRepository.AddAsync(package, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

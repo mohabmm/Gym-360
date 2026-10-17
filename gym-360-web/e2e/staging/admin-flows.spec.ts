@@ -43,7 +43,7 @@ test.describe('Admin — auth', () => {
     });
 
     test('A03 valid credentials log in to the dashboard', async ({ page }) => {
-      await uiLogin(page, ADMIN.email, ADMIN.password);
+      await uiLogin(page, ADMIN);
       expect(page.url()).not.toContain('/login');
       await expect(page.locator('main, h1, h2').first()).toBeVisible();
     });

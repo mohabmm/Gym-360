@@ -24,14 +24,23 @@ public class StartDataImportCommandHandlerTests
     public StartDataImportCommandHandlerTests()
     {
         _sut = new StartDataImportCommandHandler(
-            _gymRepository, _jobRepository, _fileStorage, _planService, _scheduler, _unitOfWork);
+            _planService, _gymRepository, new DataImportJobLauncher(_jobRepository, _fileStorage, _scheduler, _unitOfWork));
     }
 
     private static Gym CreateGym()
     {
         var address = new Address("123 Main St", "Cairo", "Cairo", "Egypt", "12345", null, null);
         var contact = new ContactInfo("g@x.com", "+201234567890", null);
-        return Gym.Create(Guid.NewGuid(), "Test", "desc", address, contact, GymCode.Generate());
+        return Gym.Create(
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = "Test",
+                Description = "desc",
+                Address = address,
+                ContactInfo = contact,
+                GymCode = GymCode.Generate()
+            });
     }
 
     private StartDataImportCommand BuildCommand(Guid gymId) => new(
@@ -63,7 +72,7 @@ public class StartDataImportCommandHandlerTests
         var gym = CreateGym();
         _planService.IsFeatureEnabledAsync(gym.Id, "data_import", Arg.Any<CancellationToken>()).Returns(true);
         _gymRepository.GetByIdAsync(gym.Id, Arg.Any<CancellationToken>()).Returns(gym);
-        _fileStorage.SaveUploadAsync(gym.Id, Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+        _fileStorage.SaveUploadAsync(Arg.Is<ImportUpload>(u => u.GymId == gym.Id), Arg.Any<CancellationToken>())
             .Returns("gym/uploads/x.xlsx");
 
         var result = await _sut.Handle(BuildCommand(gym.Id), CancellationToken.None);

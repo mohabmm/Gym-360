@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Domain.Enums;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Domain.Entities;
 
@@ -7,20 +8,7 @@ public sealed class GymSessionPolicy : Entity
 {
     private GymSessionPolicy() : base() { }
 
-    private GymSessionPolicy(
-        Guid id,
-        Guid gymId,
-        int cancellationWindowHours,
-        int noshowThreshold,
-        int noshowWindowDays,
-        NoshowAction noshowAction) : base(id)
-    {
-        GymId = gymId;
-        CancellationWindowHours = cancellationWindowHours;
-        NoshowThreshold = noshowThreshold;
-        NoshowWindowDays = noshowWindowDays;
-        NoshowAction = noshowAction;
-    }
+    private GymSessionPolicy(Guid id) : base(id) { }
 
     public Guid GymId { get; private set; }
     public int CancellationWindowHours { get; private set; }
@@ -32,26 +20,22 @@ public sealed class GymSessionPolicy : Entity
 
     public static GymSessionPolicy Create(Guid gymId)
     {
-        return new GymSessionPolicy(
-            Guid.NewGuid(),
-            gymId,
-            cancellationWindowHours: 24,
-            noshowThreshold: 3,
-            noshowWindowDays: 30,
-            noshowAction: NoshowAction.FlagOnly);
+        return new GymSessionPolicy(Guid.NewGuid())
+        {
+            GymId = gymId,
+            CancellationWindowHours = 24,
+            NoshowThreshold = 3,
+            NoshowWindowDays = 30,
+            NoshowAction = NoshowAction.FlagOnly
+        };
     }
 
-    public void Update(
-        int cancellationWindowHours,
-        int noshowThreshold,
-        int noshowWindowDays,
-        NoshowAction noshowAction,
-        Guid updatedBy)
+    public void Update(SessionPolicyRules rules, Guid updatedBy)
     {
-        CancellationWindowHours = cancellationWindowHours;
-        NoshowThreshold = noshowThreshold;
-        NoshowWindowDays = noshowWindowDays;
-        NoshowAction = noshowAction;
+        CancellationWindowHours = rules.CancellationWindowHours;
+        NoshowThreshold = rules.NoshowThreshold;
+        NoshowWindowDays = rules.NoshowWindowDays;
+        NoshowAction = rules.NoshowAction;
         UpdatedAt = DateTime.UtcNow;
         UpdatedBy = updatedBy;
     }

@@ -66,7 +66,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final apiClient = ref.read(apiClientProvider);
       // Caller derived from JWT — no body.
       await apiClient
-          .putVoid('${ApiEndpoints.conversationById(widget.conversationId)}/read');
+          .putVoid('${ApiEndpoints.conversationById(ConversationId(widget.conversationId))}/read');
       ref.invalidate(conversationsProvider);
     } catch (_) {
       // Marking read is non-critical — fail silently.
@@ -115,7 +115,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       // Sender derived from JWT — server no longer accepts senderId in body.
       final apiClient = ref.read(apiClientProvider);
       await apiClient.postVoid(
-        ApiEndpoints.messages(widget.conversationId),
+        ApiEndpoints.messages(ConversationId(widget.conversationId)),
         data: {'content': content},
       );
       // Wait for the fresh list so we only drop the optimistic copy once the

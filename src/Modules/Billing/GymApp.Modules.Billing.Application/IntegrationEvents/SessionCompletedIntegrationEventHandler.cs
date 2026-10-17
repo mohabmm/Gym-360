@@ -2,6 +2,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Enums;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.IntegrationEvents;
 using MediatR;
 using GymApp.Modules.Billing.Application.Abstractions;
@@ -55,12 +56,14 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
 
         if (rate.HasValue && !alreadyRecorded)
         {
-            var earningsRecord = TrainerEarningsRecord.Create(
-                notification.GymId,
-                notification.TrainerId,
-                notification.SessionId,
-                notification.MemberId,
-                rate.Value);
+            var earningsRecord = TrainerEarningsRecord.Create(new TrainerEarningsDetails
+            {
+                GymId = notification.GymId,
+                TrainerId = notification.TrainerId,
+                SessionId = notification.SessionId,
+                MemberId = notification.MemberId,
+                RateApplied = rate.Value
+            });
 
             await _earningsRepository.AddAsync(earningsRecord, cancellationToken);
         }

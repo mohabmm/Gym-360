@@ -50,18 +50,35 @@ public class ExcelImportParserNationalIdTests
         return await parser.ParseAsync(JobId, GymId, content);
     }
 
-    [Fact]
-    public async Task Valid_14_digit_text_is_kept()
+    /// <summary>
+    /// Parses a sheet holding one member whose NationalId cell (col 10) is written by
+    /// <paramref name="writeNationalId"/>; asserts that member was imported.
+    /// </summary>
+    private static async Task<ParsedImport> ParseSingleMemberAsync(Action<IXLCell> writeNationalId)
     {
         var content = BuildWorkbook(ws =>
         {
             Member(ws, 2, "M001", "201000000001");
-            ws.Cell(2, 10).Value = "29001011234567"; // 14 digits as text
+            writeNationalId(ws.Cell(2, 10));
         });
 
         var result = await ParseAsync(content);
 
         result.Members.Should().ContainSingle();
+        return result;
+    }
+
+    private static void AssertNationalIdRejected(ParsedImport result)
+    {
+        result.Members[0].NationalId.Should().BeNull();
+        result.Errors.Should().ContainSingle(e => e.Sheet == "Members" && e.Column == "NationalId");
+    }
+
+    [Fact]
+    public async Task Valid_14_digit_text_is_kept()
+    {
+        var result = await ParseSingleMemberAsync(cell => cell.Value = "29001011234567"); // 14 digits as text
+
         result.Members[0].NationalId.Should().Be("29001011234567");
         result.Errors.Should().BeEmpty();
     }
@@ -69,64 +86,26 @@ public class ExcelImportParserNationalIdTests
     [Fact]
     public async Task Numeric_cell_preserves_all_14_digits()
     {
-        var content = BuildWorkbook(ws =>
-        {
-            Member(ws, 2, "M001", "201000000001");
-            // NID typed as a NUMBER — GetString() would yield scientific notation.
-            ws.Cell(2, 10).Value = 29001011234567d;
-        });
+        // NID typed as a NUMBER — GetString() would yield scientific notation.
+        var result = await ParseSingleMemberAsync(cell => cell.Value = 29001011234567d);
 
-        var result = await ParseAsync(content);
-
-        result.Members.Should().ContainSingle();
         result.Members[0].NationalId.Should().Be("29001011234567");
         result.Errors.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task Thirteen_digits_is_rejected_but_member_still_imports()
-    {
-        var content = BuildWorkbook(ws =>
-        {
-            Member(ws, 2, "M001", "201000000001");
-            ws.Cell(2, 10).Value = "1234567890123"; // 13 digits
-        });
-
-        var result = await ParseAsync(content);
-
-        result.Members.Should().ContainSingle();
-        result.Members[0].NationalId.Should().BeNull();
-        result.Errors.Should().ContainSingle(e => e.Sheet == "Members" && e.Column == "NationalId");
-    }
+    public async Task Thirteen_digits_is_rejected_but_member_still_imports() =>
+        AssertNationalIdRejected(await ParseSingleMemberAsync(cell => cell.Value = "1234567890123")); // 13 digits
 
     [Fact]
-    public async Task Non_numeric_is_rejected()
-    {
-        var content = BuildWorkbook(ws =>
-        {
-            Member(ws, 2, "M001", "201000000001");
-            ws.Cell(2, 10).Value = "29001011ABCDEF";
-        });
-
-        var result = await ParseAsync(content);
-
-        result.Members.Should().ContainSingle();
-        result.Members[0].NationalId.Should().BeNull();
-        result.Errors.Should().ContainSingle(e => e.Sheet == "Members" && e.Column == "NationalId");
-    }
+    public async Task Non_numeric_is_rejected() =>
+        AssertNationalIdRejected(await ParseSingleMemberAsync(cell => cell.Value = "29001011ABCDEF"));
 
     [Fact]
     public async Task Blank_is_allowed_and_yields_null()
     {
-        var content = BuildWorkbook(ws =>
-        {
-            Member(ws, 2, "M001", "201000000001");
-            // col 10 left empty
-        });
+        var result = await ParseSingleMemberAsync(_ => { }); // col 10 left empty
 
-        var result = await ParseAsync(content);
-
-        result.Members.Should().ContainSingle();
         result.Members[0].NationalId.Should().BeNull();
         result.Errors.Should().BeEmpty();
     }

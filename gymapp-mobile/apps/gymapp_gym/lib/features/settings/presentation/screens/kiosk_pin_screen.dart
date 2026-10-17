@@ -62,7 +62,7 @@ class _KioskPinScreenState extends ConsumerState<KioskPinScreen> {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
       await apiClient.putVoid(
-        ApiEndpoints.kioskPin(gymId),
+        ApiEndpoints.kioskPin(GymId(gymId)),
         data: {
           'newPin': newPin,
           if (isSet) 'currentPin': currentPin,
@@ -128,7 +128,7 @@ class _KioskPinScreenState extends ConsumerState<KioskPinScreen> {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
       await apiClient.delete(
-        ApiEndpoints.kioskPin(gymId),
+        ApiEndpoints.kioskPin(GymId(gymId)),
         data: {'currentPin': currentPin},
       );
       ref.invalidate(kioskPinInfoProvider);

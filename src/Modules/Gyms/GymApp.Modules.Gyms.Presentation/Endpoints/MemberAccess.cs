@@ -42,15 +42,17 @@ internal static class MemberAccess
         if (IsStaff(user))
             return true;
 
-        if (level is MemberAccessLevel.StaffOrTrainer or MemberAccessLevel.StaffTrainerOrSelf
-            && IsTrainer(user))
-            return true;
-
-        return level == MemberAccessLevel.StaffTrainerOrSelf
-            && memberId.HasValue
-            && TryGetUserId(user, out var userId)
-            && userId == memberId.Value;
+        return level switch
+        {
+            MemberAccessLevel.StaffOrTrainer => IsTrainer(user),
+            MemberAccessLevel.StaffTrainerOrSelf => IsTrainer(user) || IsSelf(user, memberId),
+            _ => false,
+        };
     }
+
+    // The caller is the member the route is about.
+    private static bool IsSelf(ClaimsPrincipal user, Guid? memberId) =>
+        memberId.HasValue && TryGetUserId(user, out var userId) && userId == memberId.Value;
 
     public static bool IsPlatformAdmin(ClaimsPrincipal user) =>
         !string.IsNullOrEmpty(user.FindFirstValue("adminRole"));
@@ -63,6 +65,13 @@ internal static class MemberAccess
             user.FindFirstValue(ClaimTypes.Role) ?? user.FindFirstValue("role"),
             "trainer",
             StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A trainer who is neither gym staff nor a platform admin.</summary>
+    public static bool IsTrainerOnly(ClaimsPrincipal user) =>
+        IsTrainer(user) && !IsStaffOrAdmin(user);
+
+    private static bool IsStaffOrAdmin(ClaimsPrincipal user) =>
+        IsStaff(user) || IsPlatformAdmin(user);
 
     public static bool TryGetUserId(ClaimsPrincipal user, out Guid userId) =>
         Guid.TryParse(

@@ -51,65 +51,62 @@ internal sealed class CreateRecurringSessionsCommandHandler
         if (!availability.HasAvailableSlot(request.DayOfWeek, request.Time))
             return Result.Failure<List<Guid>>(SchedulingErrors.SlotNotAvailable);
 
+        var startDate = NextOccurrenceAfter(GymLocalTime.Today(_dateTimeProvider.UtcNow), request.DayOfWeek);
+        var occurrenceDates = Enumerable.Range(0, Math.Max(weeksAhead, 0))
+            .Select(i => startDate.AddDays(i * 7))
+            .Where(date => !availability.IsDateBlocked(date));
+
+        var sessionIds = await ScheduleOccurrencesAsync(
+            request,
+            new RecurringBooking(sessionType, weeksAhead, availability.BufferMinutes),
+            occurrenceDates,
+            cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result.Success(sessionIds);
+    }
+
+    // Books every free occurrence; dates that clash with an existing session are skipped.
+    private async Task<List<Guid>> ScheduleOccurrencesAsync(
+        CreateRecurringSessionsCommand request,
+        RecurringBooking booking,
+        IEnumerable<DateOnly> occurrenceDates,
+        CancellationToken cancellationToken)
+    {
+        var recurrenceRule = $"WEEKLY;DAY={request.DayOfWeek};WEEKS={booking.WeeksAhead}";
+        var window = new BookingWindow(request.Time, request.DurationMinutes, booking.BufferMinutes);
+
         var sessionIds = new List<Guid>();
-        var today = GymLocalTime.Today(_dateTimeProvider.UtcNow);
-
-        // Find the next occurrence of the requested day of week
-        var daysUntilTarget = ((int)request.DayOfWeek - (int)today.DayOfWeek + 7) % 7;
-        if (daysUntilTarget == 0)
-            daysUntilTarget = 7; // Start from next week if today
-
-        var startDate = today.AddDays(daysUntilTarget);
-        var recurrenceRule = $"WEEKLY;DAY={request.DayOfWeek};WEEKS={weeksAhead}";
-
-        for (var i = 0; i < weeksAhead; i++)
+        foreach (var sessionDate in occurrenceDates)
         {
-            var sessionDate = startDate.AddDays(i * 7);
-
-            if (availability.IsDateBlocked(sessionDate))
-                continue;
-
             // Check for conflicts on this date
             var existingSessions = await _sessionRepository.GetByDateAndTrainerAsync(
                 request.TrainerId, sessionDate, cancellationToken);
 
-            var hasConflict = false;
-            var requestEnd = request.Time.AddMinutes(request.DurationMinutes);
-            var bufferMinutes = availability.BufferMinutes;
-
-            foreach (var existing in existingSessions)
-            {
-                if (existing.Status is SessionStatus.CancelledByTrainer
-                    or SessionStatus.CancelledByMember
-                    or SessionStatus.LateCancelled
-                    or SessionStatus.NoShow)
-                    continue;
-
-                var existingEnd = existing.ScheduledTime.AddMinutes(existing.DurationMinutes + bufferMinutes);
-                var newEnd = requestEnd.AddMinutes(bufferMinutes);
-
-                if (request.Time < existingEnd && existing.ScheduledTime < newEnd)
-                {
-                    hasConflict = true;
-                    break;
-                }
-            }
-
-            if (hasConflict)
+            if (window.ConflictsWithAny(existingSessions))
                 continue;
 
             var session = Session.CreateRecurring(
                 new SessionParticipants(request.GymId, request.TrainerId, request.MemberId),
                 new SessionSchedule(sessionDate, request.Time, request.DurationMinutes),
-                sessionType,
+                booking.SessionType,
                 recurrenceRule);
 
             await _sessionRepository.AddAsync(session, cancellationToken);
             sessionIds.Add(session.Id);
         }
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return sessionIds;
+    }
 
-        return Result.Success(sessionIds);
+    // Next occurrence of the requested day of week; start from next week if it is today.
+    private static DateOnly NextOccurrenceAfter(DateOnly today, DayOfWeek dayOfWeek)
+    {
+        var daysUntilTarget = ((int)dayOfWeek - (int)today.DayOfWeek + 7) % 7;
+        if (daysUntilTarget == 0)
+            daysUntilTarget = 7;
+
+        return today.AddDays(daysUntilTarget);
     }
 }

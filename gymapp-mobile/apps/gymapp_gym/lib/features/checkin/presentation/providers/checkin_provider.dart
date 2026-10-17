@@ -11,7 +11,7 @@ final checkInLogProvider =
 
   if (gymId.isEmpty) return <CheckInModel>[];
   return apiClient.get<List<CheckInModel>>(
-    ApiEndpoints.checkInHistory(gymId),
+    ApiEndpoints.checkInHistory(GymId(gymId)),
     queryParameters: {'page': 1, 'pageSize': 100},
     parser: (data) {
       final List<dynamic> list;

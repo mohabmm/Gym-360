@@ -9,6 +9,14 @@ public sealed class TrainingIntegrationTests : BaseIntegrationTest
     public TrainingIntegrationTests(IntegrationTestWebAppFactory factory)
         : base(factory) { }
 
+    /// <summary>POSTs as a fresh trainer of a fresh gym; both ids are threaded into the body.</summary>
+    private Task<HttpResponseMessage> PostAsGymTrainerAsync(string url, Func<Guid, Guid, object> body)
+    {
+        var trainerId = Guid.NewGuid();
+        var gymId = Guid.NewGuid();
+        return CreateTrainerClient(trainerId, gymId).PostAsJsonAsync(url, body(trainerId, gymId));
+    }
+
     #region Exercises
 
     [Fact]
@@ -106,27 +114,10 @@ public sealed class TrainingIntegrationTests : BaseIntegrationTest
     #region Remote Workout
 
     [Fact]
-    public async Task ActivateRemoteWorkout_AsTrainer_ProcessesRequest()
-    {
-        // Arrange
-        var trainerId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        var client = CreateTrainerClient(trainerId, gymId);
-
-        var request = new
-        {
-            TrainerId = trainerId,
-            ClientId = Guid.NewGuid(),
-            GymId = gymId,
-            Reason = "Traveling"
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/training/remote-workout/activate", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task ActivateRemoteWorkout_AsTrainer_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsGymTrainerAsync(
+            "api/v1/training/remote-workout/activate",
+            (trainerId, gymId) => new { TrainerId = trainerId, ClientId = Guid.NewGuid(), GymId = gymId, Reason = "Traveling" }));
 
     [Fact]
     public async Task ActivateRemoteWorkout_Unauthenticated_ReturnsUnauthorized()
@@ -164,14 +155,8 @@ public sealed class TrainingIntegrationTests : BaseIntegrationTest
     #region Workout Assignment
 
     [Fact]
-    public async Task AssignWorkout_AsTrainer_ProcessesRequest()
-    {
-        // Arrange
-        var trainerId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        var client = CreateTrainerClient(trainerId, gymId);
-
-        var request = new
+    public async Task AssignWorkout_AsTrainer_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsGymTrainerAsync("api/v1/training/workouts/assign", (trainerId, gymId) => new
         {
             WorkoutId = Guid.NewGuid(),
             TrainerId = trainerId,
@@ -179,14 +164,7 @@ public sealed class TrainingIntegrationTests : BaseIntegrationTest
             GymId = gymId,
             ScheduledDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)).ToString("yyyy-MM-dd"),
             Notes = "Focus on form"
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/training/workouts/assign", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+        }));
 
     #endregion
 

@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Repositories;
 using GymApp.Modules.Scheduling.IntegrationEvents;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -31,20 +32,28 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
         };
 
         // Notify trainer
-        var trainerNotif = NotificationTexts.SessionCompletedForTrainer().ToNotification(
-            notification.TrainerId,
-            NotificationType.TrainerFeedback,
-            notification.GymId,
-            data);
+        var trainerNotif = Notification.CreateLocalized(
+            new NotificationDetails
+            {
+                UserId = notification.TrainerId,
+                Type = NotificationType.TrainerFeedback,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.SessionCompletedForTrainer());
 
         await _notificationRepository.AddAsync(trainerNotif, cancellationToken);
 
         // Notify member
-        var memberNotif = NotificationTexts.SessionCompletedForMember().ToNotification(
-            notification.MemberId,
-            NotificationType.SessionReminder,
-            notification.GymId,
-            data);
+        var memberNotif = Notification.CreateLocalized(
+            new NotificationDetails
+            {
+                UserId = notification.MemberId,
+                Type = NotificationType.SessionReminder,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.SessionCompletedForMember());
 
         await _notificationRepository.AddAsync(memberNotif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

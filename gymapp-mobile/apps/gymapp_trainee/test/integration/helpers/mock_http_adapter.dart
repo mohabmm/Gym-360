@@ -5,40 +5,11 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
+import 'recorded_request.dart';
+
+export 'recorded_request.dart';
+
 typedef _Responder = _MockResponse Function(RecordedRequest request);
-
-/// Captures every HTTP call Dio makes so tests can assert the exact method,
-/// path, query parameters, headers, and request body sent to the backend.
-class RecordedRequest {
-  RecordedRequest({
-    required this.method,
-    required this.path,
-    required this.query,
-    required this.headers,
-    required this.body,
-  });
-
-  final String method;
-  final String path;
-  final Map<String, List<String>> query;
-  final Map<String, List<String>> headers;
-  final dynamic body;
-
-  /// First value for a query parameter (or `null`).
-  String? q(String key) => query[key]?.first;
-
-  /// First value for a header (or `null`).
-  String? header(String key) {
-    // Dio lowercases header keys on the way out.
-    return headers[key.toLowerCase()]?.first;
-  }
-
-  Map<String, dynamic>? get bodyAsMap =>
-      body is Map<String, dynamic> ? body as Map<String, dynamic> : null;
-
-  @override
-  String toString() => '$method $path query=$query body=$body';
-}
 
 class _MockResponse {
   _MockResponse({
@@ -67,29 +38,23 @@ class MockHttpAdapter implements HttpClientAdapter {
   final List<RecordedRequest> recorded = [];
   final List<_Route> _routes = [];
 
-  /// Register a responder for [method] + [path].
+  /// Register a responder for a method + path.
   ///
   /// Path matching is an exact string match against the full request path
   /// (without query string). Trailing-segment placeholders are not supported —
   /// tests should register the fully-interpolated path.
-  void on(
-    String method,
-    String path, {
-    required _Responder respond,
-  }) {
-    _routes.add(_Route(method: method.toUpperCase(), path: path, respond: respond));
-  }
+  void _register(_Route route) => _routes.add(route);
 
   void onGet(String path, {required _Responder respond}) =>
-      on('GET', path, respond: respond);
+      _register(_Route(method: 'GET', path: path, respond: respond));
   void onPost(String path, {required _Responder respond}) =>
-      on('POST', path, respond: respond);
+      _register(_Route(method: 'POST', path: path, respond: respond));
   void onPut(String path, {required _Responder respond}) =>
-      on('PUT', path, respond: respond);
+      _register(_Route(method: 'PUT', path: path, respond: respond));
   void onPatch(String path, {required _Responder respond}) =>
-      on('PATCH', path, respond: respond);
+      _register(_Route(method: 'PATCH', path: path, respond: respond));
   void onDelete(String path, {required _Responder respond}) =>
-      on('DELETE', path, respond: respond);
+      _register(_Route(method: 'DELETE', path: path, respond: respond));
 
   /// 200 OK wrapping [payload] in the BE's `{ data, errors, meta }` envelope.
   _MockResponse ok(dynamic payload, {Map<String, dynamic>? meta, int statusCode = 200}) {
@@ -155,47 +120,55 @@ class MockHttpAdapter implements HttpClientAdapter {
   ) async {
     final requestBody = await _drainRequestBody(options, requestStream);
 
-    final headers = <String, List<String>>{};
-    options.headers.forEach((k, v) {
-      headers[k.toLowerCase()] = [v?.toString() ?? ''];
-    });
-
-    final query = <String, List<String>>{};
-    options.queryParameters.forEach((k, v) {
-      query[k] = [v?.toString() ?? ''];
-    });
-
     final recordedRequest = RecordedRequest(
       method: options.method.toUpperCase(),
       path: options.path,
-      query: query,
-      headers: headers,
+      query: _asLists(options.queryParameters),
+      headers: _asLists(options.headers, lowerCaseKeys: true),
       body: requestBody,
     );
     recorded.add(recordedRequest);
 
     final route = _routes.firstWhere(
       (r) => r.method == recordedRequest.method && r.path == recordedRequest.path,
-      orElse: () => _Route(
-        method: recordedRequest.method,
-        path: recordedRequest.path,
-        respond: (_) => _MockResponse(
-          statusCode: 404,
-          body: {
-            'data': null,
-            'errors': [
-              {
-                'code': 'NO_ROUTE',
-                'message':
-                    'MockHttpAdapter has no route for ${recordedRequest.method} ${recordedRequest.path}',
-              },
-            ],
-          },
-        ),
-      ),
+      orElse: () => _noRouteFor(recordedRequest),
     );
 
-    final response = route.respond(recordedRequest);
+    return _toResponseBody(route.respond(recordedRequest));
+  }
+
+  /// Single-valued `{key: [value]}` view of Dio's headers / query parameters.
+  static Map<String, List<String>> _asLists(
+    Map<String, dynamic> source, {
+    bool lowerCaseKeys = false,
+  }) {
+    return {
+      for (final e in source.entries)
+        (lowerCaseKeys ? e.key.toLowerCase() : e.key): [e.value?.toString() ?? ''],
+    };
+  }
+
+  static _Route _noRouteFor(RecordedRequest request) {
+    return _Route(
+      method: request.method,
+      path: request.path,
+      respond: (_) => _MockResponse(
+        statusCode: 404,
+        body: {
+          'data': null,
+          'errors': [
+            {
+              'code': 'NO_ROUTE',
+              'message':
+                  'MockHttpAdapter has no route for ${request.method} ${request.path}',
+            },
+          ],
+        },
+      ),
+    );
+  }
+
+  static ResponseBody _toResponseBody(_MockResponse response) {
     final encoded = response.body is String
         ? response.body as String
         : jsonEncode(response.body);

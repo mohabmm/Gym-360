@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
 using GymApp.Modules.Identity.Domain.Repositories;
+using GymApp.Modules.Identity.Domain.ValueObjects;
 using GymApp.Modules.Identity.Application.Abstractions;
 
 namespace GymApp.Modules.Identity.Application.Commands.UpdateProfile;
@@ -30,22 +31,20 @@ internal sealed class UpdateProfileCommandHandler : ICommandHandler<UpdateProfil
         var lastName = request.LastName ?? user.LastName;
         var profilePhotoUrl = request.ProfilePhotoUrl ?? user.ProfilePhotoUrl;
 
-        DateTime? dateOfBirth = user.DateOfBirth;
-        if (request.DateOfBirth is not null && DateTime.TryParse(request.DateOfBirth, out var parsedDob))
-        {
-            dateOfBirth = parsedDob;
-        }
+        var dateOfBirth = ParseDateOfBirthOr(request.DateOfBirth, user.DateOfBirth);
+        var language = ParseLanguageOr(request.Language, user.Language);
 
-        var language = user.Language;
-        if (request.Language is not null && Enum.TryParse<Language>(request.Language, true, out var parsedLanguage))
-        {
-            language = parsedLanguage;
-        }
-
-        user.UpdateProfile(firstName, lastName, profilePhotoUrl, dateOfBirth, language);
+        user.UpdateProfile(new UserProfile(firstName, lastName, profilePhotoUrl, dateOfBirth, language));
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
+
+    // Unparseable / omitted values keep the current one.
+    private static DateTime? ParseDateOfBirthOr(string? raw, DateTime? current) =>
+        raw is not null && DateTime.TryParse(raw, out var parsed) ? parsed : current;
+
+    private static Language ParseLanguageOr(string? raw, Language current) =>
+        raw is not null && Enum.TryParse<Language>(raw, true, out var parsed) ? parsed : current;
 }

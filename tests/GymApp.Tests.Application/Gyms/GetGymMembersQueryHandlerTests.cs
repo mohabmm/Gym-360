@@ -2,6 +2,7 @@ using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Application.Queries.GetGymMembers;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Gyms;
 
@@ -17,7 +18,7 @@ public class GetGymMembersQueryHandlerTests
     {
         _sut = new GetGymMembersQueryHandler(_gymQueryService, _trainerAssignmentLookup);
         _gymQueryService
-            .GetMembersAsync(default, default, default, default, default, default, default, default)
+            .GetMembersAsync(default, default!, default)
             .ReturnsForAnyArgs(new PagedResponse<MemberDto>(new List<MemberDto>(), 1, 1, 0, 0));
     }
 
@@ -36,8 +37,11 @@ public class GetGymMembersQueryHandlerTests
             new List<MemberDto> { new(clients[0], _gymId, null, "0001", DateTime.UtcNow) },
             Page: 1, PageSize: 1, TotalCount: 2, TotalPages: 2);
         _gymQueryService
-            .GetMembersAsync(_gymId, 1, 1, null, null, null, Arg.Any<CancellationToken>(),
-                Arg.Is<IReadOnlyCollection<Guid>?>(ids => ids != null && ids.SequenceEqual(clients)))
+            .GetMembersAsync(
+                new GymId(_gymId),
+                Arg.Is<MemberRosterRequest>(r =>
+                    r.Page == 1 && r.PageSize == 1 && r.RestrictToMemberIds != null && r.RestrictToMemberIds.SequenceEqual(clients)),
+                Arg.Any<CancellationToken>())
             .Returns(paged);
 
         var result = await _sut.Handle(
@@ -54,8 +58,7 @@ public class GetGymMembersQueryHandlerTests
         await _sut.Handle(new GetGymMembersQuery(_gymId, 1, 20, null, null), CancellationToken.None);
 
         await _gymQueryService.Received(1).GetMembersAsync(
-            _gymId, 1, 20, null, null, null, Arg.Any<CancellationToken>(),
-            Arg.Is<IReadOnlyCollection<Guid>?>(ids => ids == null));
+            new GymId(_gymId), new MemberRosterRequest(1, 20), Arg.Any<CancellationToken>());
         await _trainerAssignmentLookup.DidNotReceiveWithAnyArgs()
             .GetClientsForTrainerAsync(default, default, default);
     }

@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Application.DTOs;
+using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 
@@ -26,52 +27,6 @@ internal sealed class GetSessionDetailQueryHandler
             return Result.Failure<SessionDetailDto>(
                 SchedulingErrors.SessionNotFound(request.SessionId));
 
-        TrainerLogDto? trainerLog = null;
-        if (session.TrainerLog is not null)
-        {
-            trainerLog = new TrainerLogDto(
-                session.TrainerLog.Id,
-                session.TrainerLog.ExercisesPerformed,
-                session.TrainerLog.ActualVsPlanned,
-                session.TrainerLog.ClientEffortRating,
-                session.TrainerLog.Feedback,
-                session.TrainerLog.TechniqueNotes,
-                session.TrainerLog.AreasToImprove,
-                session.TrainerLog.NextSessionFocus,
-                session.TrainerLog.AttendanceConfirmed,
-                session.TrainerLog.LoggedAt);
-        }
-
-        MemberLogDto? memberLog = null;
-        if (session.MemberLog is not null)
-        {
-            memberLog = new MemberLogDto(
-                session.MemberLog.Id,
-                session.MemberLog.Rating,
-                session.MemberLog.PerceivedExertion,
-                session.MemberLog.PersonalNotes,
-                session.MemberLog.Discomfort,
-                session.MemberLog.Satisfaction,
-                session.MemberLog.LoggedAt);
-        }
-
-        var exerciseLogs = session.ExerciseLogs
-            .OrderBy(l => l.OrderIndex)
-            .Select(l => new SessionExerciseLogDto(
-                l.Id,
-                l.SessionId,
-                l.ExerciseId,
-                l.ExerciseName,
-                l.ExerciseNameAr,
-                l.OrderIndex,
-                l.Sets,
-                l.Reps,
-                l.Weight,
-                l.Notes,
-                l.CreatedAt,
-                l.UpdatedAt))
-            .ToList();
-
         var detail = new SessionDetailDto(
             session.Id,
             session.GymId,
@@ -87,10 +42,52 @@ internal sealed class GetSessionDetailQueryHandler
             session.CancellationReason,
             session.CancelledAt,
             session.CreatedAt,
-            trainerLog,
-            memberLog,
-            exerciseLogs);
+            ToDto(session.TrainerLog),
+            ToDto(session.MemberLog),
+            session.ExerciseLogs.OrderBy(l => l.OrderIndex).Select(ToDto).ToList());
 
         return Result.Success(detail);
     }
+
+    private static TrainerLogDto? ToDto(TrainerLog? log) =>
+        log is null
+            ? null
+            : new TrainerLogDto(
+                log.Id,
+                log.ExercisesPerformed,
+                log.ActualVsPlanned,
+                log.ClientEffortRating,
+                log.Feedback,
+                log.TechniqueNotes,
+                log.AreasToImprove,
+                log.NextSessionFocus,
+                log.AttendanceConfirmed,
+                log.LoggedAt);
+
+    private static MemberLogDto? ToDto(MemberLog? log) =>
+        log is null
+            ? null
+            : new MemberLogDto(
+                log.Id,
+                log.Rating,
+                log.PerceivedExertion,
+                log.PersonalNotes,
+                log.Discomfort,
+                log.Satisfaction,
+                log.LoggedAt);
+
+    private static SessionExerciseLogDto ToDto(SessionExerciseLog log) =>
+        new(
+            log.Id,
+            log.SessionId,
+            log.ExerciseId,
+            log.ExerciseName,
+            log.ExerciseNameAr,
+            log.OrderIndex,
+            log.Sets,
+            log.Reps,
+            log.Weight,
+            log.Notes,
+            log.CreatedAt,
+            log.UpdatedAt);
 }

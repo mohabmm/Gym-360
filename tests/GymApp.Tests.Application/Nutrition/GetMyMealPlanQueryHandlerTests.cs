@@ -32,10 +32,13 @@ public class GetMyMealPlanQueryHandlerTests
         var plan = MealPlan.Create(
             trainerId: Guid.NewGuid(),
             gymId: gymId,
-            name: "Test Plan",
-            description: null,
-            dailyCalorieTarget: 2200,
-            macroTargets: new MacroTargets(165, 220, 75),
+            details: new MealPlanDetails
+            {
+                Name = "Test Plan",
+                Description = null,
+                DailyCalorieTarget = 2200,
+                MacroTargets = new MacroTargets(165, 220, 75)
+            },
             isTemplate: isTemplate);
 
         if (!isTemplate)

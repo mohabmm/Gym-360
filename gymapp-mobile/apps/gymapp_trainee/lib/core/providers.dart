@@ -146,41 +146,24 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     final storage = ref.read(secureStorageProvider);
     await storage.saveTokens(
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
+      accessToken: AccessToken(response.accessToken),
+      refreshToken: RefreshToken(response.refreshToken),
     );
-    await storage.saveUserId(response.user.id);
+    await storage.saveUserId(UserId(response.user.id));
 
     // Determine gym ID: backend login returns a scalar user.gymId for the active
     // membership. Fall back to gymMemberships[0] for apps/flows that populate it
     // (some responses embed the full list, e.g. multi-gym trainer).
-    String? gymId = response.user.gymId;
-    if ((gymId == null || gymId.isEmpty) &&
-        response.user.gymMemberships?.isNotEmpty == true) {
-      gymId = response.user.gymMemberships!.first.gymId;
-    }
+    final gymId = response.user.loginGymId;
     if (gymId != null && gymId.isNotEmpty) {
-      await storage.saveCurrentGymId(gymId);
+      await storage.saveCurrentGymId(GymId(gymId));
     }
 
     // The login response (UserResponse) omits gymMemberships / memberNumber.
     // Fetch the full profile so those fields are available immediately (e.g. QR
     // check-in screen reads user.gymMemberships to get the member number).
-    UserModel user = response.user;
-    try {
-      final apiClient = ref.read(apiClientProvider);
-      user = await apiClient.get<UserModel>(
-        ApiEndpoints.profile,
-        parser: (data) => UserModel.fromJson(data as Map<String, dynamic>),
-      );
-    } catch (_) {
-      // Profile fetch failed — continue with partial login-response user.
-    }
-
-    final userBox = Hive.box(StorageKeys.userBox);
-    try {
-      await userBox.put(StorageKeys.cachedUser, user.toJson());
-    } catch (_) {}
+    final user = await _fetchProfileOr(response.user);
+    await _cacheUser(user);
 
     state = AsyncData(AuthState(
       status: AuthStatus.authenticated,
@@ -190,6 +173,28 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     // Initialize FCM
     _initializeFcm(gymId);
+  }
+
+  /// Full profile from the BE, or [fallback] (the partial login-response
+  /// user) when the fetch fails.
+  Future<UserModel> _fetchProfileOr(UserModel fallback) async {
+    try {
+      final apiClient = ref.read(apiClientProvider);
+      return await apiClient.get<UserModel>(
+        ApiEndpoints.profile,
+        parser: (data) => UserModel.fromJson(data as Map<String, dynamic>),
+      );
+    } catch (_) {
+      // Profile fetch failed — continue with partial login-response user.
+      return fallback;
+    }
+  }
+
+  Future<void> _cacheUser(UserModel user) async {
+    final userBox = Hive.box(StorageKeys.userBox);
+    try {
+      await userBox.put(StorageKeys.cachedUser, user.toJson());
+    } catch (_) {}
   }
 
   Future<void> updateUser(UserModel user) async {
@@ -207,7 +212,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   /// QR/code flow. Trainees cannot switch gyms after linking.
   Future<void> setActiveGym(String gymId) async {
     final storage = ref.read(secureStorageProvider);
-    await storage.saveCurrentGymId(gymId);
+    await storage.saveCurrentGymId(GymId(gymId));
 
     final currentState = state.valueOrNull;
     if (currentState != null) {
@@ -314,7 +319,7 @@ final gymBrandingProvider = FutureProvider<GymBrandingModel?>((ref) async {
   try {
     final apiClient = ref.read(apiClientProvider);
     final branding = await apiClient.get<GymBrandingModel>(
-      ApiEndpoints.gymBranding(gymId),
+      ApiEndpoints.gymBranding(GymId(gymId)),
       parser: (data) =>
           GymBrandingModel.fromJson(data as Map<String, dynamic>),
     );
@@ -426,3 +431,14 @@ final testModeProvider = StateProvider<bool>((ref) {
   final settingsBox = Hive.box(StorageKeys.settingsBox);
   return settingsBox.get(StorageKeys.testMode, defaultValue: false) as bool;
 });
+
+extension on UserModel {
+  /// The scalar `gymId`, falling back to the first membership when blank.
+  String? get loginGymId {
+    final scalar = gymId;
+    if (scalar != null && scalar.isNotEmpty) return scalar;
+    final memberships = gymMemberships;
+    if (memberships == null || memberships.isEmpty) return scalar;
+    return memberships.first.gymId;
+  }
+}

@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Repositories;
 using GymApp.Modules.Scheduling.IntegrationEvents;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -32,11 +33,15 @@ internal sealed class SessionBookedIntegrationEventHandler : INotificationHandle
             ["scheduledAt"] = notification.ScheduledAt.ToString("O")
         };
 
-        var notif = NotificationTexts.SessionBooked(notification.ScheduledAt).ToNotification(
-            notification.TrainerId,
-            NotificationType.SessionReminder,
-            notification.GymId,
-            data);
+        var notif = Notification.CreateLocalized(
+            new NotificationDetails
+            {
+                UserId = notification.TrainerId,
+                Type = NotificationType.SessionReminder,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.SessionBooked(notification.ScheduledAt));
 
         await _notificationRepository.AddAsync(notif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

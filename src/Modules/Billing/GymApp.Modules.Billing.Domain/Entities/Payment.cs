@@ -22,28 +22,20 @@ public sealed class Payment : Entity
     public DateTime? PaidAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public static Payment Create(
-        Guid gymId,
-        Guid memberId,
-        Money amount,
-        PaymentMethod paymentMethod,
-        PaymentPurpose purpose,
-        string receiptNumber,
-        Guid recordedBy,
-        Guid? referenceId = null)
+    public static Payment Create(PaymentDetails details)
     {
         var payment = new Payment
         {
             Id = Guid.NewGuid(),
-            GymId = gymId,
-            MemberId = memberId,
-            Amount = amount,
-            PaymentMethod = paymentMethod,
-            Purpose = purpose,
-            ReferenceId = referenceId,
+            GymId = details.GymId,
+            MemberId = details.MemberId,
+            Amount = details.Amount,
+            PaymentMethod = details.PaymentMethod,
+            Purpose = details.Purpose,
+            ReferenceId = details.ReferenceId,
             Status = PaymentStatus.Completed,
-            ReceiptNumber = receiptNumber,
-            RecordedBy = recordedBy,
+            ReceiptNumber = details.ReceiptNumber,
+            RecordedBy = details.RecordedBy,
             PaidAt = DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow
         };

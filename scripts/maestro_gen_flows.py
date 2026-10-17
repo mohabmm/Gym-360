@@ -2,6 +2,7 @@
 """Generate Maestro E2E flows for all 3 Flutter apps."""
 from pathlib import Path
 from textwrap import dedent
+from typing import NamedTuple
 
 ROOT = Path("/Users/mmagdy2-eg/Desktop/Development/Forma/gymapp-mobile/apps")
 
@@ -28,16 +29,23 @@ LOGIN_HEAD = """\
     timeout: 30000
 """
 
-def write_flow(app_dir, name, app_id, email, password, body):
-    flow_dir = ROOT / app_dir / ".maestro" / "flows"
+class App(NamedTuple):
+    app_dir: str
+    app_id: str
+    email: str
+    password: str
+
+
+def write_flow(app, name, body):
+    flow_dir = ROOT / app.app_dir / ".maestro" / "flows"
     flow_dir.mkdir(parents=True, exist_ok=True)
     path = flow_dir / f"{name}.yaml"
     content = dedent(f"""\
-        appId: {app_id}
+        appId: {app.app_id}
         name: {name}
         env:
-          EMAIL: {email}
-          PASSWORD: "{password}"
+          EMAIL: {app.email}
+          PASSWORD: "{app.password}"
         ---
         """) + LOGIN_HEAD + body
     path.write_text(content)
@@ -76,8 +84,8 @@ def assert_not_visible(text, timeout=15000):
             f'    timeout: {timeout}\n- assertNotVisible: "{text}"\n')
 
 # ===== TRAINEE =====
-TRAINEE = ("gymapp_trainee", "com.example.gymappTrainee",
-           "trainee-l3-612493@gym.local", "123456")
+TRAINEE = App("gymapp_trainee", "com.example.gymappTrainee",
+              "trainee-l3-612493@gym.local", "123456")
 trainee_flows = {
     "00_login": "",
     "01_home": tap_nav("الرئيسية", "trainee") + assert_not_visible("تسجيل الدخول"),
@@ -106,8 +114,8 @@ trainee_flows = {
 }
 
 # ===== TRAINER =====
-TRAINER = ("gymapp_trainer", "com.example.gymappTrainer",
-           "trainer-l3-612493@gym.local", "123456")
+TRAINER = App("gymapp_trainer", "com.example.gymappTrainer",
+              "trainer-l3-612493@gym.local", "123456")
 trainer_flows = {
     "00_login": "",
     "01_home": tap_nav("الرئيسية", "trainer") + assert_not_visible("تسجيل الدخول"),
@@ -138,8 +146,8 @@ trainer_flows = {
 }
 
 # ===== GYMSTAFF =====
-STAFF = ("gymapp_gym", "com.example.gymappGym",
-         "staff-l3-612493@gym.local", "123456")
+STAFF = App("gymapp_gym", "com.example.gymappGym",
+            "staff-l3-612493@gym.local", "123456")
 staff_flows = {
     "00_login": "",
     "01_dashboard": tap_nav("الرئيسية", "staff") + assert_not_visible("تسجيل الدخول"),
@@ -179,11 +187,11 @@ staff_flows = {
         + tap("متصدرين الأعضاء", optional=True) + assert_not_visible("تسجيل الدخول"),
 }
 
-def emit(app_dir, app_id, email, pw, flows):
+def emit(app, flows):
     for name, body in flows.items():
-        write_flow(app_dir, name, app_id, email, pw, body)
+        write_flow(app, name, body)
 
-emit(*TRAINEE, trainee_flows)
-emit(*TRAINER, trainer_flows)
-emit(*STAFF, staff_flows)
+emit(TRAINEE, trainee_flows)
+emit(TRAINER, trainer_flows)
+emit(STAFF, staff_flows)
 print("OK")

@@ -10,70 +10,35 @@ public class DomainLayerTests : BaseTest
 
     [Theory]
     [MemberData(nameof(Modules))]
-    public void Domain_Should_Not_Reference_Application(string module)
-    {
-        var domainAssembly = GetAssembly(module, "Domain");
-        var applicationNamespace = $"GymApp.Modules.{module}.Application";
-
-        var result = Types.InAssembly(domainAssembly)
-            .ShouldNot()
-            .HaveDependencyOn(applicationNamespace)
-            .GetResult();
-
-        result.IsSuccessful.Should().BeTrue(
-            $"{module}.Domain should not reference {module}.Application. " +
-            $"Failing types: {FormatFailingTypes(result.FailingTypeNames)}");
-    }
+    public void Domain_Should_Not_Reference_Application(string module) =>
+        AssertNoDependency(
+            GetAssembly(module, "Domain"),
+            $"GymApp.Modules.{module}.Application",
+            $"{module}.Domain should not reference {module}.Application.");
 
     [Theory]
     [MemberData(nameof(Modules))]
-    public void Domain_Should_Not_Reference_Infrastructure(string module)
-    {
-        var domainAssembly = GetAssembly(module, "Domain");
-        var infrastructureNamespace = $"GymApp.Modules.{module}.Infrastructure";
-
-        var result = Types.InAssembly(domainAssembly)
-            .ShouldNot()
-            .HaveDependencyOn(infrastructureNamespace)
-            .GetResult();
-
-        result.IsSuccessful.Should().BeTrue(
-            $"{module}.Domain should not reference {module}.Infrastructure. " +
-            $"Failing types: {FormatFailingTypes(result.FailingTypeNames)}");
-    }
+    public void Domain_Should_Not_Reference_Infrastructure(string module) =>
+        AssertNoDependency(
+            GetAssembly(module, "Domain"),
+            $"GymApp.Modules.{module}.Infrastructure",
+            $"{module}.Domain should not reference {module}.Infrastructure.");
 
     [Theory]
     [MemberData(nameof(Modules))]
-    public void Domain_Should_Not_Reference_Presentation(string module)
-    {
-        var domainAssembly = GetAssembly(module, "Domain");
-        var presentationNamespace = $"GymApp.Modules.{module}.Presentation";
-
-        var result = Types.InAssembly(domainAssembly)
-            .ShouldNot()
-            .HaveDependencyOn(presentationNamespace)
-            .GetResult();
-
-        result.IsSuccessful.Should().BeTrue(
-            $"{module}.Domain should not reference {module}.Presentation. " +
-            $"Failing types: {FormatFailingTypes(result.FailingTypeNames)}");
-    }
+    public void Domain_Should_Not_Reference_Presentation(string module) =>
+        AssertNoDependency(
+            GetAssembly(module, "Domain"),
+            $"GymApp.Modules.{module}.Presentation",
+            $"{module}.Domain should not reference {module}.Presentation.");
 
     [Theory]
     [MemberData(nameof(Modules))]
-    public void Domain_Should_Not_Reference_EntityFramework(string module)
-    {
-        var domainAssembly = GetAssembly(module, "Domain");
-
-        var result = Types.InAssembly(domainAssembly)
-            .ShouldNot()
-            .HaveDependencyOn("Microsoft.EntityFrameworkCore")
-            .GetResult();
-
-        result.IsSuccessful.Should().BeTrue(
-            $"{module}.Domain should not reference Entity Framework Core. " +
-            $"Failing types: {FormatFailingTypes(result.FailingTypeNames)}");
-    }
+    public void Domain_Should_Not_Reference_EntityFramework(string module) =>
+        AssertNoDependency(
+            GetAssembly(module, "Domain"),
+            "Microsoft.EntityFrameworkCore",
+            $"{module}.Domain should not reference Entity Framework Core.");
 
     [Theory]
     [MemberData(nameof(Modules))]
@@ -125,11 +90,5 @@ public class DomainLayerTests : BaseTest
     {
         // Records have a compiler-generated <Clone>$ method
         return type.GetMethod("<Clone>$") is not null;
-    }
-
-    private static string FormatFailingTypes(IEnumerable<string>? typeNames)
-    {
-        if (typeNames is null) return "none";
-        return string.Join(", ", typeNames);
     }
 }

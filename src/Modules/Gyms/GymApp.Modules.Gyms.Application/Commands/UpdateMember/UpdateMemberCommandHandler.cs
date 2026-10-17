@@ -32,22 +32,25 @@ internal sealed class UpdateMemberCommandHandler : ICommandHandler<UpdateMemberC
         if (request.Section is not null)
             member.SetSection(request.Section);
 
-        string? firstName = null;
-        string? lastName = null;
-        if (!string.IsNullOrWhiteSpace(request.Name))
+        // First and last name are either both parsed from Name or both null.
+        var (firstName, lastName) = SplitName(request.Name);
+        var profileChanges = new UserProfileChanges(firstName, lastName, request.Phone);
+        if (profileChanges.HasAny)
         {
-            var parts = request.Name.Trim().Split(' ', 2);
-            firstName = parts[0];
-            lastName = parts.Length > 1 ? parts[1] : "";
-        }
-
-        if (firstName is not null || lastName is not null || request.Phone is not null)
-        {
-            await _profileUpdater.UpdateAsync(request.MemberId, firstName, lastName, request.Phone, cancellationToken);
+            await _profileUpdater.UpdateAsync(request.MemberId, profileChanges, cancellationToken);
         }
 
         _memberRepository.Update(member);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success();
+    }
+
+    private static (string? FirstName, string? LastName) SplitName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return (null, null);
+
+        var parts = name.Trim().Split(' ', 2);
+        return (parts[0], parts.Length > 1 ? parts[1] : "");
     }
 }

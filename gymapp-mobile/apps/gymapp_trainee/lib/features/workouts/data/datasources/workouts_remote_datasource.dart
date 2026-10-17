@@ -27,7 +27,7 @@ class WorkoutsRemoteDataSource {
 
   Future<WorkoutModel> getWorkoutById(String id) async {
     return _apiClient.get<WorkoutModel>(
-      ApiEndpoints.workoutById(id),
+      ApiEndpoints.workoutById(WorkoutId(id)),
       parser: (data) => WorkoutModel.fromJson(data as Map<String, dynamic>),
     );
   }

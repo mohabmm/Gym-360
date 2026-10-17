@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Repositories;
 using GymApp.Modules.Training.IntegrationEvents;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -31,11 +32,15 @@ internal sealed class WorkoutAssignedIntegrationEventHandler : INotificationHand
             ["workoutName"] = notification.WorkoutName
         };
 
-        var notif = NotificationTexts.WorkoutAssigned(notification.WorkoutName).ToNotification(
-            notification.ClientId,
-            NotificationType.WorkoutAssigned,
-            notification.GymId,
-            data);
+        var notif = Notification.CreateLocalized(
+            new NotificationDetails
+            {
+                UserId = notification.ClientId,
+                Type = NotificationType.WorkoutAssigned,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.WorkoutAssigned(notification.WorkoutName));
 
         await _notificationRepository.AddAsync(notif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

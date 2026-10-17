@@ -11,26 +11,7 @@ public sealed class GymClass : Entity
 
     private GymClass() : base() { }
 
-    private GymClass(
-        Guid id,
-        Guid gymId,
-        string name,
-        string? description,
-        Guid trainerId,
-        ClassSchedule schedule,
-        int capacity,
-        bool waitlistEnabled) : base(id)
-    {
-        GymId = gymId;
-        Name = name;
-        Description = description;
-        TrainerId = trainerId;
-        Schedule = schedule;
-        Capacity = capacity;
-        WaitlistEnabled = waitlistEnabled;
-        Status = GymClassStatus.Active;
-        CreatedAt = DateTime.UtcNow;
-    }
+    private GymClass(Guid id) : base(id) { }
 
     public Guid GymId { get; private set; }
     public string Name { get; private set; } = default!;
@@ -43,24 +24,20 @@ public sealed class GymClass : Entity
     public IReadOnlyList<ClassBooking> Bookings => _bookings.AsReadOnly();
     public DateTime CreatedAt { get; private set; }
 
-    public static GymClass Create(
-        Guid gymId,
-        string name,
-        string? description,
-        Guid trainerId,
-        ClassSchedule schedule,
-        int capacity,
-        bool waitlistEnabled)
+    public static GymClass Create(Guid gymId, Guid trainerId, GymClassDetails details)
     {
-        var gymClass = new GymClass(
-            Guid.NewGuid(),
-            gymId,
-            name,
-            description,
-            trainerId,
-            schedule,
-            capacity,
-            waitlistEnabled);
+        var gymClass = new GymClass(Guid.NewGuid())
+        {
+            GymId = gymId,
+            Name = details.Name,
+            Description = details.Description,
+            TrainerId = trainerId,
+            Schedule = details.Schedule,
+            Capacity = details.Capacity,
+            WaitlistEnabled = details.WaitlistEnabled,
+            Status = GymClassStatus.Active,
+            CreatedAt = DateTime.UtcNow
+        };
 
         gymClass.RaiseDomainEvent(new ClassCreatedDomainEvent(gymId, gymClass.Id));
         return gymClass;
@@ -115,12 +92,12 @@ public sealed class GymClass : Entity
         Status = GymClassStatus.Completed;
     }
 
-    public void Update(string name, string? description, ClassSchedule schedule, int capacity, bool waitlistEnabled)
+    public void Update(GymClassDetails details)
     {
-        Name = name;
-        Description = description;
-        Schedule = schedule;
-        Capacity = capacity;
-        WaitlistEnabled = waitlistEnabled;
+        Name = details.Name;
+        Description = details.Description;
+        Schedule = details.Schedule;
+        Capacity = details.Capacity;
+        WaitlistEnabled = details.WaitlistEnabled;
     }
 }

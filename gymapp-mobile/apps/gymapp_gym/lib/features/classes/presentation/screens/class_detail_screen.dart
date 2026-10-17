@@ -167,7 +167,7 @@ class ClassDetailScreen extends ConsumerWidget {
         throw Exception('No active gym selected');
       }
       final apiClient = ref.read(apiClientProvider);
-      await apiClient.delete(ApiEndpoints.gymClassById(gymId, classId));
+      await apiClient.delete(ApiEndpoints.gymClassById(GymId(gymId), ClassId(classId)));
       ref.invalidate(classDetailProvider(classId));
       ref.invalidate(classesProvider);
       messenger.showSnackBar(

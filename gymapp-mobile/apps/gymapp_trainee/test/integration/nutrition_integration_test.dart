@@ -20,11 +20,11 @@ void main() {
       ApiEndpoints.foodLog,
       respond: (_) => t.adapter.ok(Samples.foodLog()),
     );
-    final log = await ds.getFoodLog(
+    final log = await ds.getFoodLog(DailyLogQuery(
       userId: 'user-1',
       gymId: 'gym-1',
       date: DateTime.utc(2026, 4, 16),
-    );
+    ));
     expect(log.totalCalories, 320);
     expect(log.entries.first.mealType, 'Breakfast');
     expect(t.onlyRequest.q('date'), '2026-04-16');
@@ -66,11 +66,11 @@ void main() {
       ApiEndpoints.waterLog,
       respond: (_) => t.adapter.ok(Samples.waterLog()),
     );
-    final log = await ds.getWaterLog(
+    final log = await ds.getWaterLog(DailyLogQuery(
       userId: 'user-1',
       gymId: 'gym-1',
       date: DateTime.utc(2026, 4, 16),
-    );
+    ));
     expect(log.targetMl, 3000);
   });
 
@@ -79,12 +79,12 @@ void main() {
       ApiEndpoints.waterLog,
       respond: (_) => t.adapter.created('we-new'),
     );
-    await ds.addWaterEntry(
+    await ds.addWaterEntry(WaterEntryRequest(
       userId: 'user-1',
       gymId: 'gym-1',
       date: DateTime.utc(2026, 4, 6),
       amountMl: 500,
-    );
+    ));
     expect(t.onlyRequest.bodyAsMap, {
       'userId': 'user-1',
       'gymId': 'gym-1',

@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
 import type { MemberListItem } from '@gym360/ui';
+import { useGymId, useGymScope, type GymScope } from './query-helpers';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normaliseMember(m: any): MemberListItem {
@@ -29,9 +29,14 @@ function normaliseMember(m: any): MemberListItem {
   };
 }
 
+// Refresh the member list and the member's own detail query.
+function invalidateMember(qc: QueryClient, gymId: string | undefined, memberId: string) {
+  qc.invalidateQueries({ queryKey: ['members', gymId] });
+  qc.invalidateQueries({ queryKey: ['members', gymId, memberId] });
+}
+
 export function useMembers() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   return useQuery<MemberListItem[]>({
     queryKey: ['members', gymId],
     enabled: !!gymId,
@@ -60,6 +65,32 @@ export interface MembersQuery {
   section?: string;
 }
 
+// 'all' (or empty) means "no filter" in the roster dropdowns.
+function isActiveFilter(value?: string): value is string {
+  return !!value && value !== 'all';
+}
+
+function rosterParams({ page, pageSize, search, status, section }: MembersQuery) {
+  const params: Record<string, string | number> = { page, pageSize };
+  if (search?.trim()) params.search = search.trim();
+  if (isActiveFilter(status)) params.status = status;
+  if (isActiveFilter(section)) params.section = section;
+  return params;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toMembersPage(data: any, { page, pageSize }: MembersQuery): MembersPage {
+  const raw: unknown[] = data.items ?? (Array.isArray(data) ? data : []);
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    items: (raw as any[]).map(normaliseMember),
+    page: data.page ?? page,
+    pageSize: data.pageSize ?? pageSize,
+    totalCount: data.totalCount ?? raw.length,
+    totalPages: data.totalPages ?? 1,
+  };
+}
+
 /**
  * Server-side paged + searched member list for the Members table. The BE filters
  * by name/email/phone/memberNumber (search) and status/section across the WHOLE
@@ -67,36 +98,21 @@ export interface MembersQuery {
  * fetched a 200-row client-side slice and hid everyone beyond it.
  */
 export function useMembersPaged(query: MembersQuery) {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   const { page, pageSize, search, status, section } = query;
   return useQuery<MembersPage>({
     queryKey: ['members', gymId, 'paged', { page, pageSize, search, status, section }],
     enabled: !!gymId,
     placeholderData: (prev) => prev, // keep the table populated while paging/searching
     queryFn: async () => {
-      const params: Record<string, string | number> = { page, pageSize };
-      if (search?.trim()) params.search = search.trim();
-      if (status && status !== 'all') params.status = status;
-      if (section && section !== 'all') params.section = section;
-      const res = await apiClient.get(`/gyms/${gymId}/members`, { params });
-      const data = res.data.data ?? {};
-      const raw: unknown[] = data.items ?? (Array.isArray(data) ? data : []);
-      return {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        items: (raw as any[]).map(normaliseMember),
-        page: data.page ?? page,
-        pageSize: data.pageSize ?? pageSize,
-        totalCount: data.totalCount ?? raw.length,
-        totalPages: data.totalPages ?? 1,
-      };
+      const res = await apiClient.get(`/gyms/${gymId}/members`, { params: rosterParams(query) });
+      return toMembersPage(res.data.data ?? {}, query);
     },
   });
 }
 
 export function useMember(id: string) {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   return useQuery<MemberListItem | undefined>({
     queryKey: ['members', gymId, id],
     enabled: !!gymId && !!id,
@@ -108,16 +124,25 @@ export function useMember(id: string) {
   });
 }
 
+// First word is the first name; the rest is the last name (the first name again
+// for a single-word name, since the BE requires both).
+function splitName(name: string) {
+  const [firstName, ...rest] = name.trim().split(/\s+/);
+  return { firstName, lastName: rest.join(' ') || firstName };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function returnedUserId(body: any): unknown {
+  return body?.data?.userId ?? body?.data?.id ?? body?.data ?? null;
+}
+
 export function useCreateMember() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
       name: string; email?: string; phone: string; section?: string; nationalId?: string;
     }) => {
-      const [firstName, ...rest] = data.name.trim().split(/\s+/);
-      const lastName = rest.join(' ') || firstName;
       // staff-create is the authoritative entry point for NEW members: it creates
       // the Trainee user, calls AddMemberCommand (gym.MemberIds + gym_members
       // directory row), and links the user to the gym. It now REJECTS a phone/email
@@ -127,16 +152,13 @@ export function useCreateMember() {
       // Email is sent only when provided; the backend synthesizes a stable
       // placeholder from the phone otherwise (no Date.now() churn that masked dups).
       const userRes = await apiClient.post('/identity/users/staff-create', {
-        firstName,
-        lastName,
+        ...splitName(data.name),
         phone: data.phone,
         ...(data.email ? { email: data.email } : {}),
         section: data.section,
         ...(data.nationalId ? { nationalId: data.nationalId } : {}),
       });
-      const userId =
-        userRes.data?.data?.userId ?? userRes.data?.data?.id ?? userRes.data?.data ?? null;
-      if (!userId) {
+      if (!returnedUserId(userRes.data)) {
         throw new Error('Identity service did not return a user id.');
       }
       return userRes.data;
@@ -173,8 +195,7 @@ export function useLookupMemberByPhone() {
  * creating a duplicate. Backed by POST /identity/users/staff-link-existing.
  */
 export function useLinkExistingMember() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: { phone: string; section?: string }) => {
@@ -189,8 +210,7 @@ export function useLinkExistingMember() {
 }
 
 export function useUpdateMember() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: {
@@ -199,10 +219,7 @@ export function useUpdateMember() {
       const res = await apiClient.patch(`/gyms/${gymId}/members/${id}`, data);
       return res.data;
     },
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['members', gymId] });
-      qc.invalidateQueries({ queryKey: ['members', gymId, vars.id] });
-    },
+    onSuccess: (_, vars) => invalidateMember(qc, gymId, vars.id),
   });
 }
 
@@ -226,8 +243,7 @@ export interface MemberPackage {
  * session counts, and remaining sessions are visible after a quick-assign.
  */
 export function useMemberPackages(memberId: string) {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   return useQuery<MemberPackage[]>({
     queryKey: ['packages', gymId, 'member', memberId],
     enabled: !!gymId && !!memberId,
@@ -252,21 +268,37 @@ export function useMemberPackages(memberId: string) {
   });
 }
 
+// A quick-assign touches the member, their packages, and billing views.
+function invalidateAfterQuickAssign(qc: QueryClient, gymId: string | undefined, memberId: string) {
+  invalidateMember(qc, gymId, memberId);
+  qc.invalidateQueries({ queryKey: ['packages'] });
+  qc.invalidateQueries({ queryKey: ['packages', gymId, 'member', memberId] });
+  qc.invalidateQueries({ queryKey: ['payments'] });
+  qc.invalidateQueries({ queryKey: ['revenue'] });
+}
+
 /**
  * Quick-assign a trainer + session count (multiples of 4) to this member.
  * Backed by POST /billing/packages/quick-assign — creates an Active
  * SessionPackage that downstream apps (trainer roster, scheduling, billing)
  * read to surface the trainer-member relationship.
  */
+export interface QuickAssignInput {
+  memberId: string; trainerId: string; sessionCount: number; totalPrice?: number; paymentMethod?: string;
+}
+
+function requireGymAndUser({ gymId, userId }: GymScope) {
+  if (!gymId) throw new Error('No gym selected.');
+  if (!userId) throw new Error('No active session.');
+  return { gymId, userId };
+}
+
 export function useQuickAssignTrainer() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const userId = session?.user?.id;
+  const scope = useGymScope();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { memberId: string; trainerId: string; sessionCount: number; totalPrice?: number; paymentMethod?: string }) => {
-      if (!gymId) throw new Error('No gym selected.');
-      if (!userId) throw new Error('No active session.');
+    mutationFn: async (data: QuickAssignInput) => {
+      const { gymId, userId } = requireGymAndUser(scope);
       const res = await apiClient.post('/billing/packages/quick-assign', {
         gymId,
         trainerId: data.trainerId,
@@ -278,14 +310,7 @@ export function useQuickAssignTrainer() {
       });
       return res.data;
     },
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['members', gymId] });
-      qc.invalidateQueries({ queryKey: ['members', gymId, vars.memberId] });
-      qc.invalidateQueries({ queryKey: ['packages'] });
-      qc.invalidateQueries({ queryKey: ['packages', gymId, 'member', vars.memberId] });
-      qc.invalidateQueries({ queryKey: ['payments'] });
-      qc.invalidateQueries({ queryKey: ['revenue'] });
-    },
+    onSuccess: (_, vars) => invalidateAfterQuickAssign(qc, scope.gymId, vars.memberId),
   });
 }
 
@@ -295,17 +320,13 @@ export function useQuickAssignTrainer() {
  * non-owners never see the affordance.
  */
 export function useDeleteMember() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
+  const gymId = useGymId();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
       if (!gymId) throw new Error('No gym selected.');
       await apiClient.delete(`/gyms/${gymId}/members/${id}`);
     },
-    onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: ['members', gymId] });
-      qc.invalidateQueries({ queryKey: ['members', gymId, id] });
-    },
+    onSuccess: (_, id) => invalidateMember(qc, gymId, id),
   });
 }

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
 import type { TrainerListItem } from '@gym360/ui';
+import { useGymMutation, postData, type GymScope } from './query-helpers';
 
 export interface TrainerClientItem {
   id: string;
@@ -77,34 +78,39 @@ export function useTrainer(id: string) {
   });
 }
 
-export function useCreateTrainer() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: {
-      name: string; email?: string; phone: string;
-    }) => {
-      const [firstName, ...rest] = data.name.trim().split(/\s+/);
-      const lastName = rest.join(' ') || firstName;
-      const userRes = await apiClient.post('/identity/users/staff-create-trainer', {
-        firstName,
-        lastName,
-        phone: data.phone,
-        email: data.email || null,
-      });
-      const userId =
-        userRes.data?.data?.userId ?? userRes.data?.data?.id ?? userRes.data?.data ?? null;
-      if (!userId) {
-        throw new Error('Identity service did not return a user id.');
-      }
-      const res = await apiClient.post(`/gyms/${gymId}/trainers`, {
-        trainerId: userId,
-      });
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trainers', gymId] }),
+export interface CreateTrainerInput {
+  name: string; email?: string; phone: string;
+}
+
+// Identity may return `{ userId }`, `{ id }` or the bare id as the payload.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractUserId(payload: any): string | null {
+  return payload?.userId ?? payload?.id ?? payload ?? null;
+}
+
+async function createTrainerUser(data: CreateTrainerInput): Promise<string> {
+  const [firstName, ...rest] = data.name.trim().split(/\s+/);
+  const lastName = rest.join(' ') || firstName;
+  const userRes = await apiClient.post('/identity/users/staff-create-trainer', {
+    firstName,
+    lastName,
+    phone: data.phone,
+    email: data.email || null,
   });
+  const userId = extractUserId(userRes.data?.data);
+  if (!userId) {
+    throw new Error('Identity service did not return a user id.');
+  }
+  return userId;
+}
+
+const trainersKey = ({ gymId }: GymScope) => ['trainers', gymId];
+
+export function useCreateTrainer() {
+  return useGymMutation(async (data: CreateTrainerInput, { gymId }) => {
+    const userId = await createTrainerUser(data);
+    return postData(`/gyms/${gymId}/trainers`, { trainerId: userId });
+  }, trainersKey);
 }
 
 export function useTrainerClients(trainerId: string) {
@@ -170,27 +176,16 @@ export function useUpdateTrainerProfile(trainerId: string) {
 }
 
 export function useApproveTrainer() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (trainerId: string) => {
-      const res = await apiClient.post(`/gyms/${gymId}/trainers/${trainerId}/approve`);
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trainers', gymId] }),
-  });
+  return useGymMutation(
+    (trainerId: string, { gymId }) => postData(`/gyms/${gymId}/trainers/${trainerId}/approve`),
+    trainersKey,
+  );
 }
 
 export function useRejectTrainer() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ trainerId, reason }: { trainerId: string; reason: string }) => {
-      const res = await apiClient.post(`/gyms/${gymId}/trainers/${trainerId}/reject`, { reason });
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['trainers', gymId] }),
-  });
+  return useGymMutation(
+    ({ trainerId, reason }: { trainerId: string; reason: string }, { gymId }) =>
+      postData(`/gyms/${gymId}/trainers/${trainerId}/reject`, { reason }),
+    trainersKey,
+  );
 }

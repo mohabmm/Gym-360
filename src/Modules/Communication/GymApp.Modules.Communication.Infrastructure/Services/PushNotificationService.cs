@@ -42,9 +42,7 @@ internal sealed class PushNotificationService : IPushNotificationService
 
     public async Task SendAsync(
         Guid userId,
-        string title,
-        string body,
-        Dictionary<string, string>? data = null,
+        PushContent content,
         CancellationToken cancellationToken = default)
     {
         bool isEnabled = _configuration.GetValue<bool>("Fcm:IsEnabled");
@@ -54,9 +52,9 @@ internal sealed class PushNotificationService : IPushNotificationService
             _logger.LogInformation(
                 "FCM disabled (dev mode). UserId={UserId}, Title={Title}, Body={Body}, Data={Data}",
                 userId,
-                title,
-                body,
-                data is not null ? JsonSerializer.Serialize(data) : "null");
+                content.Title,
+                content.Body,
+                content.Data is not null ? JsonSerializer.Serialize(content.Data) : "null");
             return;
         }
 
@@ -69,21 +67,18 @@ internal sealed class PushNotificationService : IPushNotificationService
         }
 
         string projectId = _configuration["Fcm:ProjectId"] ?? throw new InvalidOperationException("Fcm:ProjectId is not configured.");
-        string sendUrl = string.Format(FcmSendUrlTemplate, projectId);
+        var endpoint = new FcmEndpoint(
+            string.Format(FcmSendUrlTemplate, projectId),
+            await GetAccessTokenAsync(cancellationToken));
 
-        string accessToken = await GetAccessTokenAsync(cancellationToken);
-
-        var tasks = tokens.Select(token => SendToTokenAsync(sendUrl, accessToken, token, title, body, data, cancellationToken));
+        var tasks = tokens.Select(token => SendToTokenAsync(endpoint, token, content, cancellationToken));
         await Task.WhenAll(tasks);
     }
 
     private async Task SendToTokenAsync(
-        string sendUrl,
-        string accessToken,
+        FcmEndpoint endpoint,
         string deviceToken,
-        string title,
-        string body,
-        Dictionary<string, string>? data,
+        PushContent content,
         CancellationToken cancellationToken)
     {
         var message = new
@@ -91,8 +86,8 @@ internal sealed class PushNotificationService : IPushNotificationService
             message = new
             {
                 token = deviceToken,
-                notification = new { title, body },
-                data = data ?? new Dictionary<string, string>(),
+                notification = new { title = content.Title, body = content.Body },
+                data = content.Data ?? new Dictionary<string, string>(),
                 android = new { priority = "high" },
                 apns = new { headers = new { apns_priority = "10" } }
             }
@@ -103,8 +98,8 @@ internal sealed class PushNotificationService : IPushNotificationService
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
         });
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, sendUrl);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, endpoint.SendUrl);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", endpoint.AccessToken);
         request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -252,6 +247,9 @@ internal sealed class PushNotificationService : IPushNotificationService
         return JsonSerializer.Deserialize<ServiceAccountCredentials>(json)
             ?? throw new InvalidOperationException("Failed to deserialize FCM service account JSON.");
     }
+
+    /// <summary>Resolved FCM v1 send URL plus the OAuth2 bearer token to call it with.</summary>
+    private sealed record FcmEndpoint(string SendUrl, string AccessToken);
 
     private sealed class ServiceAccountCredentials
     {

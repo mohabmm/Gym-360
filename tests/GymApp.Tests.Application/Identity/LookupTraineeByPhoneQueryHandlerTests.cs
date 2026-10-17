@@ -20,7 +20,17 @@ public class LookupTraineeByPhoneQueryHandlerTests
     {
         var email = Email.Create("mohab@example.com").Value;
         var phone = PhoneNumber.Create("+201001596189").Value;
-        return User.Create(email, phone, "hash", "Mohab", "Test", Gender.Male, UserRole.Trainee);
+        return User.Create(
+            new NewUserDetails
+            {
+                Email = email,
+                PhoneNumber = phone,
+                PasswordHash = "hash",
+                FirstName = "Mohab",
+                LastName = "Test",
+                Gender = Gender.Male
+            },
+            UserRole.Trainee);
     }
 
     [Fact]
@@ -54,7 +64,17 @@ public class LookupTraineeByPhoneQueryHandlerTests
     {
         var email = Email.Create("trainer@example.com").Value;
         var phone = PhoneNumber.Create("+201001596189").Value;
-        var trainer = User.Create(email, phone, "hash", "T", "R", Gender.Male, UserRole.Trainer);
+        var trainer = User.Create(
+            new NewUserDetails
+            {
+                Email = email,
+                PhoneNumber = phone,
+                PasswordHash = "hash",
+                FirstName = "T",
+                LastName = "R",
+                Gender = Gender.Male
+            },
+            UserRole.Trainer);
         _userRepository.GetByPhoneAsync(Arg.Any<PhoneNumber>(), Arg.Any<CancellationToken>())
             .Returns(trainer);
 

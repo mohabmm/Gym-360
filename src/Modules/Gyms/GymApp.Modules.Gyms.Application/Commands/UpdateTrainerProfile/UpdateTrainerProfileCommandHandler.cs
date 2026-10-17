@@ -4,6 +4,7 @@ using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.UpdateTrainerProfile;
 
@@ -29,7 +30,7 @@ internal sealed class UpdateTrainerProfileCommandHandler : ICommandHandler<Updat
         if (gym is null)
             return Result.Failure(GymErrors.NotFound);
 
-        var isActive = gym.TrainerIds.Contains(request.TrainerId);
+        var isActive = gym.TrainerIds.Contains(new TrainerId(request.TrainerId));
         var existing = await _trainerRequestRepository.GetAsync(request.GymId, request.TrainerId, cancellationToken);
 
         if (!isActive && existing is null)

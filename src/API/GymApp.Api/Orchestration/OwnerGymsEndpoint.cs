@@ -1,3 +1,4 @@
+using GymApp.Common.Application.Tenancy;
 using GymApp.Common.Infrastructure.Tenancy.Provisioning;
 using GymApp.Common.Presentation;
 using Microsoft.AspNetCore.Builder;
@@ -22,7 +23,7 @@ internal sealed class OwnerGymsEndpoint : IEndpoint
                 return Results.BadRequest(new { error = "OwnerId in body does not match route." });
 
             var registration = await provisioning.ProvisionAsync(
-                request.GymId, ownerId, request.Name, request.Slug, gymCode: null, cancellationToken: ct);
+                new GymProvisioningRequest(request.GymId, ownerId, request.Name, request.Slug), ct);
 
             return Results.Ok(new
             {

@@ -65,7 +65,7 @@ class _PostSessionLogScreenState
       final notes = _trainerNotesController.text.trim();
       final apiClient = ref.read(apiClientProvider);
       await apiClient.postVoid(
-        ApiEndpoints.sessionTrainerLog(widget.sessionId),
+        ApiEndpoints.sessionTrainerLog(SessionId(widget.sessionId)),
         data: {
           'trainerId': trainerId,
           'exercisesPerformed': notes.isEmpty ? '-' : notes,
@@ -96,7 +96,7 @@ class _PostSessionLogScreenState
           });
         }
         await apiClient.postVoid(
-          ApiEndpoints.sessionExerciseLogs(widget.sessionId),
+          ApiEndpoints.sessionExerciseLogs(SessionId(widget.sessionId)),
           data: {'items': payload},
         );
       }

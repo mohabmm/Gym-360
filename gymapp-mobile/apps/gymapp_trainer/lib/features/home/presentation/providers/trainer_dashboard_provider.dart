@@ -124,7 +124,7 @@ final trainerDashboardProvider =
   int totalClients = 0;
   try {
     final members = await apiClient.get<List<dynamic>>(
-      ApiEndpoints.gymMembers(gymId),
+      ApiEndpoints.gymMembers(GymId(gymId)),
       queryParameters: {'page': 1, 'pageSize': 1, 'trainerId': trainerId},
       parser: (data) {
         if (data is Map<String, dynamic>) {
@@ -147,7 +147,7 @@ final trainerDashboardProvider =
   int ratingCount = 0;
   try {
     final profile = await apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.trainerPublicProfile(trainerId),
+      ApiEndpoints.trainerPublicProfile(TrainerId(trainerId)),
       queryParameters: {'gymId': gymId},
       parser: (data) => data is Map<String, dynamic> ? data : {},
     );

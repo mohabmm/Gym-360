@@ -1,4 +1,5 @@
 using GymApp.Modules.Gyms.Application.Contracts;
+using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Modules.Gyms.Infrastructure.Data;
@@ -22,17 +23,20 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: $"Roster Test Gym {Guid.NewGuid():N}",
-            description: null,
-            address: new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Create($"RST{Guid.NewGuid().ToString("N")[..3]}"));
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = $"Roster Test Gym {Guid.NewGuid():N}",
+                Description = null,
+                Address = new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Create($"RST{Guid.NewGuid().ToString("N")[..3]}")
+            });
         gym.Approve();
 
         var memberIds = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToList();
         foreach (var id in memberIds)
-            gym.AddMember(id).IsSuccess.Should().BeTrue();
+            gym.AddMember(new MemberId(id)).IsSuccess.Should().BeTrue();
 
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
@@ -49,11 +53,9 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
         var queries = GetService<IGymQueryService>();
 
         var page1 = await queries.GetMembersAsync(
-            gym.Id, page: 1, pageSize: 1, status: null, section: null, search: null,
-            restrictToMemberIds: clients);
+            new GymId(gym.Id), new MemberRosterRequest(1, 1, RestrictToMemberIds: clients));
         var page2 = await queries.GetMembersAsync(
-            gym.Id, page: 2, pageSize: 1, status: null, section: null, search: null,
-            restrictToMemberIds: clients);
+            new GymId(gym.Id), new MemberRosterRequest(2, 1, RestrictToMemberIds: clients));
 
         page1.TotalCount.Should().Be(2);
         page1.TotalPages.Should().Be(2);
@@ -68,8 +70,7 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
         var (gym, _) = await SeedGymWithMembers(3);
 
         var page = await GetService<IGymQueryService>().GetMembersAsync(
-            gym.Id, page: 1, pageSize: 20, status: null, section: null, search: null,
-            restrictToMemberIds: Array.Empty<Guid>());
+            new GymId(gym.Id), new MemberRosterRequest(1, 20, RestrictToMemberIds: Array.Empty<Guid>()));
 
         page.TotalCount.Should().Be(0);
         page.Items.Should().BeEmpty();
@@ -80,8 +81,7 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
     {
         var (gym, memberIds) = await SeedGymWithMembers(3);
 
-        var page = await GetService<IGymQueryService>().GetMembersAsync(
-            gym.Id, page: 1, pageSize: 20, status: null, section: null, search: null);
+        var page = await GetService<IGymQueryService>().GetMembersAsync(new GymId(gym.Id), new MemberRosterRequest(1, 20));
 
         page.TotalCount.Should().Be(3);
         page.Items.Select(m => m.MemberId).Should().Equal(memberIds);

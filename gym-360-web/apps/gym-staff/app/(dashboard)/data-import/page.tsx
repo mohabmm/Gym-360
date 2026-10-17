@@ -31,8 +31,38 @@ function DataImportContent() {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;
   const { data: jobs, isLoading } = useDataImportJobs(gymId);
-  const startImport = useStartDataImport(gymId);
 
+  return (
+    <div className="space-y-6">
+      <TemplateStep />
+      <UploadStep gymId={gymId} />
+      <JobsSection jobs={jobs} isLoading={isLoading} gymId={gymId!} />
+    </div>
+  );
+}
+
+function TemplateStep() {
+  return (
+    <section className="rounded-xl border bg-card p-6">
+      <h2 className="text-lg font-semibold mb-1">Step 1 — Download the template</h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        The workbook has four tabs: <b>Members</b>, <b>Payments</b>, <b>Sessions</b>, <b>InBody</b>.
+        Every tab uses the gym&apos;s member number as the shared key.
+      </p>
+      <button
+        type="button"
+        onClick={() => downloadImportTemplate()}
+        className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+      >
+        <Download className="h-4 w-4" />
+        Download Excel template
+      </button>
+    </section>
+  );
+}
+
+function UploadStep({ gymId }: { gymId: string | undefined }) {
+  const startImport = useStartDataImport(gymId);
   const [source, setSource] = useState<DataImportSource>('Excel');
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,86 +75,86 @@ function DataImportContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border bg-card p-6">
-        <h2 className="text-lg font-semibold mb-1">Step 1 — Download the template</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          The workbook has four tabs: <b>Members</b>, <b>Payments</b>, <b>Sessions</b>, <b>InBody</b>.
-          Every tab uses the gym&apos;s member number as the shared key.
-        </p>
+    <section className="rounded-xl border bg-card p-6">
+      <h2 className="text-lg font-semibold mb-1">Step 2 — Upload</h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        Export your data from Odoo or Daftra to Excel (or fill in the template) and upload a single
+        <code className="mx-1 rounded bg-muted px-1">.xlsx</code> file (max 10&nbsp;MB).
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col text-sm">
+          <span className="mb-1 text-muted-foreground">Source</span>
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value as DataImportSource)}
+            className="rounded-lg border bg-background px-3 py-2"
+          >
+            <option value="Excel">Excel (template)</option>
+            <option value="Odoo">Odoo export</option>
+            <option value="Daftra">Daftra export</option>
+          </select>
+        </label>
+        <label className="flex flex-col text-sm flex-1 min-w-[240px]">
+          <span className="mb-1 text-muted-foreground">File</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="rounded-lg border bg-background px-3 py-2"
+          />
+        </label>
         <button
           type="button"
-          onClick={() => downloadImportTemplate()}
-          className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted"
+          onClick={handleUpload}
+          disabled={!file || startImport.isPending}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
-          <Download className="h-4 w-4" />
-          Download Excel template
+          {startImport.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+          Upload & start import
         </button>
-      </section>
-
-      <section className="rounded-xl border bg-card p-6">
-        <h2 className="text-lg font-semibold mb-1">Step 2 — Upload</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Export your data from Odoo or Daftra to Excel (or fill in the template) and upload a single
-          <code className="mx-1 rounded bg-muted px-1">.xlsx</code> file (max 10&nbsp;MB).
+      </div>
+      {startImport.isError && (
+        <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          {(startImport.error as Error)?.message ?? 'Upload failed.'}
         </p>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col text-sm">
-            <span className="mb-1 text-muted-foreground">Source</span>
-            <select
-              value={source}
-              onChange={(e) => setSource(e.target.value as DataImportSource)}
-              className="rounded-lg border bg-background px-3 py-2"
-            >
-              <option value="Excel">Excel (template)</option>
-              <option value="Odoo">Odoo export</option>
-              <option value="Daftra">Daftra export</option>
-            </select>
-          </label>
-          <label className="flex flex-col text-sm flex-1 min-w-[240px]">
-            <span className="mb-1 text-muted-foreground">File</span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="rounded-lg border bg-background px-3 py-2"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={handleUpload}
-            disabled={!file || startImport.isPending}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            {startImport.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
-            Upload & start import
-          </button>
-        </div>
-        {startImport.isError && (
-          <p className="mt-3 flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {(startImport.error as Error)?.message ?? 'Upload failed.'}
-          </p>
-        )}
-      </section>
+      )}
+    </section>
+  );
+}
 
-      <section className="rounded-xl border bg-card">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">Recent import jobs</h2>
-          <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
-        </div>
-        <div className="divide-y">
-          {isLoading && <p className="px-6 py-8 text-sm text-muted-foreground">Loading…</p>}
-          {!isLoading && (!jobs || jobs.length === 0) && (
-            <p className="px-6 py-8 text-sm text-muted-foreground">No imports yet. Upload your first workbook above.</p>
-          )}
-          {jobs?.map((job) => (
-            <JobRow key={job.id} job={job} gymId={gymId!} />
-          ))}
-        </div>
-      </section>
-    </div>
+interface JobsProps {
+  jobs: DataImportJob[] | undefined;
+  isLoading: boolean;
+  gymId: string;
+}
+
+function JobList({ jobs, isLoading, gymId }: JobsProps) {
+  if (isLoading) return <p className="px-6 py-8 text-sm text-muted-foreground">Loading…</p>;
+  if (!jobs || jobs.length === 0) {
+    return <p className="px-6 py-8 text-sm text-muted-foreground">No imports yet. Upload your first workbook above.</p>;
+  }
+  return (
+    <>
+      {jobs.map((job) => (
+        <JobRow key={job.id} job={job} gymId={gymId} />
+      ))}
+    </>
+  );
+}
+
+function JobsSection(props: JobsProps) {
+  return (
+    <section className="rounded-xl border bg-card">
+      <div className="flex items-center justify-between border-b px-6 py-4">
+        <h2 className="text-lg font-semibold">Recent import jobs</h2>
+        <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <div className="divide-y">
+        <JobList {...props} />
+      </div>
+    </section>
   );
 }
 

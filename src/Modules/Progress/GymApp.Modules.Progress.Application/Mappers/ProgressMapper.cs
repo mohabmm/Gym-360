@@ -42,18 +42,20 @@ internal static class ProgressMapper
         if (!Enum.TryParse<Domain.Enums.MeasurementUnit>(dto.MeasurementUnit, true, out var unit))
             unit = Domain.Enums.MeasurementUnit.Cm;
 
-        return BodyMeasurements.Create(
-            unit,
-            dto.Chest,
-            dto.Waist,
-            dto.Hips,
-            dto.LeftArm,
-            dto.RightArm,
-            dto.LeftThigh,
-            dto.RightThigh,
-            dto.LeftCalf,
-            dto.RightCalf,
-            dto.Neck);
+        return new BodyMeasurements
+        {
+            MeasurementUnit = unit,
+            Chest = dto.Chest,
+            Waist = dto.Waist,
+            Hips = dto.Hips,
+            LeftArm = dto.LeftArm,
+            RightArm = dto.RightArm,
+            LeftThigh = dto.LeftThigh,
+            RightThigh = dto.RightThigh,
+            LeftCalf = dto.LeftCalf,
+            RightCalf = dto.RightCalf,
+            Neck = dto.Neck
+        };
     }
 
     public static ProgressPhotoDto ToDto(ProgressPhoto photo) =>

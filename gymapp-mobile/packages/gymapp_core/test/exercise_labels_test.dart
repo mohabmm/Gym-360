@@ -21,62 +21,93 @@ void main() {
   group('ExerciseLabels', () {
     // Wire values the BE enums define — every one needs an Arabic label.
     const muscleGroups = [
-      'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps',
-      'Legs', 'Glutes', 'Core', 'Cardio', 'FullBody',
+      'Chest',
+      'Back',
+      'Shoulders',
+      'Biceps',
+      'Triceps',
+      'Legs',
+      'Glutes',
+      'Core',
+      'Cardio',
+      'FullBody',
     ];
     const equipment = [
-      'Barbell', 'Dumbbell', 'Machine', 'Cable', 'Bodyweight',
-      'Kettlebell', 'Band', 'Other', 'None',
+      'Barbell',
+      'Dumbbell',
+      'Machine',
+      'Cable',
+      'Bodyweight',
+      'Kettlebell',
+      'Band',
+      'Other',
+      'None',
     ];
     const categories = ['Strength', 'Cardio', 'Flexibility', 'Plyometric'];
     final arabic = RegExp(r'[؀-ۿ]');
 
     test('every backend enum value has an Arabic label', () {
       for (final v in muscleGroups) {
-        expect(ExerciseLabels.muscleGroup(v, isArabic: true), matches(arabic),
+        expect(ExerciseLabels.muscleGroup(v, language: AppLanguage.arabic),
+            matches(arabic),
             reason: v);
       }
       for (final v in equipment) {
-        expect(ExerciseLabels.equipment(v, isArabic: true), matches(arabic),
+        expect(ExerciseLabels.equipment(v, language: AppLanguage.arabic),
+            matches(arabic),
             reason: v);
       }
       for (final v in categories) {
-        expect(ExerciseLabels.category(v, isArabic: true), matches(arabic),
+        expect(ExerciseLabels.category(v, language: AppLanguage.arabic),
+            matches(arabic),
             reason: v);
       }
     });
 
     test('English keeps the enum name, tidying the unreadable ones', () {
-      expect(ExerciseLabels.muscleGroup('Chest', isArabic: false), 'Chest');
-      expect(ExerciseLabels.muscleGroup('FullBody', isArabic: false),
+      expect(ExerciseLabels.muscleGroup('Chest', language: AppLanguage.english),
+          'Chest');
+      expect(
+          ExerciseLabels.muscleGroup('FullBody', language: AppLanguage.english),
           'Full Body');
-      expect(ExerciseLabels.equipment('None', isArabic: false), 'No equipment');
+      expect(ExerciseLabels.equipment('None', language: AppLanguage.english),
+          'No equipment');
     });
 
     test('lookup is case-insensitive and unknown values pass through', () {
-      expect(ExerciseLabels.muscleGroup('chest', isArabic: true), 'الصدر');
-      expect(ExerciseLabels.muscleGroup('Forearms', isArabic: true), 'Forearms');
-      expect(ExerciseLabels.equipment('', isArabic: true), '');
+      expect(ExerciseLabels.muscleGroup('chest', language: AppLanguage.arabic),
+          'الصدر');
+      expect(
+          ExerciseLabels.muscleGroup('Forearms', language: AppLanguage.arabic),
+          'Forearms');
+      expect(ExerciseLabels.equipment('', language: AppLanguage.arabic), '');
     });
 
     test('muscleGroups joins with the locale separator', () {
       expect(
-        ExerciseLabels.muscleGroups(['Chest', 'Triceps'], isArabic: true),
+        ExerciseLabels.muscleGroups(['Chest', 'Triceps'],
+            language: AppLanguage.arabic),
         'الصدر، الترايسبس',
       );
       expect(
-        ExerciseLabels.muscleGroups(['Chest', 'Triceps'], isArabic: false),
+        ExerciseLabels.muscleGroups(['Chest', 'Triceps'],
+            language: AppLanguage.english),
         'Chest, Triceps',
       );
     });
 
     test('name follows the locale and falls back to English', () {
-      expect(ExerciseLabels.name(_exercise(), isArabic: true), 'ضغط الصدر بالبار');
-      expect(ExerciseLabels.name(_exercise(), isArabic: false),
+      expect(ExerciseLabels.name(_exercise(), language: AppLanguage.arabic),
+          'ضغط الصدر بالبار');
+      expect(ExerciseLabels.name(_exercise(), language: AppLanguage.english),
           'Barbell Bench Press');
-      expect(ExerciseLabels.name(_exercise(nameAr: null), isArabic: true),
+      expect(
+          ExerciseLabels.name(_exercise(nameAr: null),
+              language: AppLanguage.arabic),
           'Barbell Bench Press');
-      expect(ExerciseLabels.name(_exercise(nameAr: '  '), isArabic: true),
+      expect(
+          ExerciseLabels.name(_exercise(nameAr: '  '),
+              language: AppLanguage.arabic),
           'Barbell Bench Press');
     });
 

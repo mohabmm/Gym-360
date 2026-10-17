@@ -70,25 +70,15 @@ public sealed class PdplFunctionalTests : BaseFunctionalTest
     #region POST /api/v1/identity/consent (PDPL Consent)
 
     [Fact]
-    public async Task RecordConsent_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/identity/consent", new
+    public async Task RecordConsent_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync("api/v1/identity/consent", userId => new
         {
             UserId = userId,
             ConsentType = "data_processing",
             IsGranted = true,
             ConsentText = "I consent under Egypt PDPL",
             IpAddress = "127.0.0.1"
-        });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+        }));
 
     [Fact]
     public async Task RecordConsent_NoToken_Returns401()
@@ -108,25 +98,17 @@ public sealed class PdplFunctionalTests : BaseFunctionalTest
     }
 
     [Fact]
-    public async Task RecordConsent_InvalidType_Returns400()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/identity/consent", new
-        {
-            UserId = userId,
-            ConsentType = "",
-            IsGranted = true,
-            ConsentText = "",
-            IpAddress = ""
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.BadRequest);
-    }
+    public async Task RecordConsent_InvalidType_Returns400() =>
+        AssertStatusCode(
+            await PostAsTraineeAsync("api/v1/identity/consent", userId => new
+            {
+                UserId = userId,
+                ConsentType = "",
+                IsGranted = true,
+                ConsentText = "",
+                IpAddress = ""
+            }),
+            HttpStatusCode.BadRequest);
 
     #endregion
 
@@ -137,7 +119,7 @@ public sealed class PdplFunctionalTests : BaseFunctionalTest
     {
         // Step 1: Register
         var email = $"pdpl-e2e-{Guid.NewGuid():N}@test.com";
-        var registerResponse = await RegisterTestUser(email);
+        var registerResponse = await RegisterTestUser(new TestUserRegistration { Email = email });
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // Get an authenticated client (in real flow we'd parse the token from registration)
@@ -164,7 +146,7 @@ public sealed class PdplFunctionalTests : BaseFunctionalTest
         deleteResponse.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
 
         // Step 5: Attempt re-register within 30-day window (restore option)
-        var reRegisterResponse = await RegisterTestUser(email);
+        var reRegisterResponse = await RegisterTestUser(new TestUserRegistration { Email = email });
         // Should succeed as the email is now available (soft-deleted) or offer restore
         reRegisterResponse.StatusCode.Should().BeOneOf(
             HttpStatusCode.Created,

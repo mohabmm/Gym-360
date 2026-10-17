@@ -6,6 +6,7 @@ using GymApp.Modules.Gamification.Domain.Entities;
 using GymApp.Modules.Gamification.Domain.Errors;
 using GymApp.Modules.Gamification.Domain.Repositories;
 using GymApp.Modules.Gamification.Application.Abstractions;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Gamification;
 
@@ -89,8 +90,15 @@ public class SubmitTrainerRatingCommandHandlerTests
         _gymPlanService.GetPlanCodeAsync(command.GymId, Arg.Any<CancellationToken>())
             .Returns("pro");
 
-        var existingRatingResult = TrainerRating.Create(
-            command.GymId, command.TrainerId, command.ClientId, command.SessionId, 4, "Good");
+        var existingRatingResult = TrainerRating.Create(new TrainerRatingDetails
+        {
+            GymId = command.GymId,
+            TrainerId = command.TrainerId,
+            ClientId = command.ClientId,
+            SessionId = command.SessionId,
+            Stars = 4,
+            Comment = "Good"
+        });
         _ratingRepository.GetBySessionAsync(command.SessionId, Arg.Any<CancellationToken>())
             .Returns(existingRatingResult.Value);
 

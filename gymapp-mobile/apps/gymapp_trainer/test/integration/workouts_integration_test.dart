@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import 'helpers/recorded_request.dart';
 import 'helpers/sample_payloads.dart';
 import 'helpers/test_api_client.dart';
 
@@ -13,37 +14,63 @@ void main() {
     t = buildTestApiClient();
   });
 
+  /// Stubs GET [path] with [payload] and fetches it as a typed list.
+  Future<List<T>> fetchList<T>(
+    String path,
+    List<Map<String, dynamic>> payload,
+    T Function(Map<String, dynamic> json) fromJson, {
+    Map<String, dynamic>? query,
+  }) {
+    t.adapter.onGet(path, respond: (_) => t.adapter.ok(payload));
+    return t.apiClient.get<List<T>>(
+      path,
+      queryParameters: query,
+      parser: (data) => (data as List<dynamic>)
+          .map((e) => fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  /// Matches a recorded request by method, path and (optionally) query values.
+  Matcher isRequest(
+    String method,
+    String path, {
+    Map<String, String> query = const {},
+  }) {
+    var matcher = isA<RecordedRequest>()
+        .having((r) => r.method, 'method', method)
+        .having((r) => r.path, 'path', path);
+    query.forEach((key, value) {
+      matcher = matcher.having((r) => r.q(key), 'query[$key]', value);
+    });
+    return matcher;
+  }
+
   group('WorkoutBuilderScreen', () {
     test('GET /training/workouts filtered by trainer+gym', () async {
-      t.adapter.onGet(
+      final workouts = await fetchList(
         ApiEndpoints.workouts,
-        respond: (_) => t.adapter.ok([Samples.workout()]),
+        [Samples.workout()],
+        WorkoutModel.fromJson,
+        query: {'trainerId': kTrainerId, 'gymId': kGymId},
       );
 
-      final workouts = await t.apiClient.get<List<WorkoutModel>>(
-        ApiEndpoints.workouts,
-        queryParameters: {'trainerId': kTrainerId, 'gymId': kGymId},
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => WorkoutModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+      expect(
+        t.onlyRequest,
+        isRequest('GET', '/api/v1/training/workouts',
+            query: {'trainerId': kTrainerId, 'gymId': kGymId}),
       );
-
-      final req = t.onlyRequest;
-      expect(req.method, 'GET');
-      expect(req.path, '/api/v1/training/workouts');
-      expect(req.q('trainerId'), kTrainerId);
-      expect(req.q('gymId'), kGymId);
       expect(workouts.single.exercises, hasLength(1));
     });
 
     test('GET /training/workouts/{id} returns single workout', () async {
       t.adapter.onGet(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         respond: (_) => t.adapter.ok(Samples.workout()),
       );
 
       final w = await t.apiClient.get<WorkoutModel>(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         parser: (d) => WorkoutModel.fromJson(d as Map<String, dynamic>),
       );
 
@@ -79,23 +106,29 @@ void main() {
       );
 
       final body = t.onlyRequest.bodyAsMap!;
-      expect(body['trainerId'], kTrainerId);
-      expect(body['gymId'], kGymId);
-      expect(body['name'], 'Push Day A');
-      expect(body['isTemplate'], false);
-      expect((body['exercises'] as List).single['exerciseId'], 'ex-1');
-      expect((body['exercises'] as List).single['reps'], '10'); // string!
+      expect(
+        body,
+        allOf(
+          containsPair('trainerId', kTrainerId),
+          containsPair('gymId', kGymId),
+          containsPair('name', 'Push Day A'),
+          containsPair('isTemplate', false),
+        ),
+      );
+      final exercise = (body['exercises'] as List).single as Map;
+      expect(exercise['exerciseId'], 'ex-1');
+      expect(exercise['reps'], '10'); // string!
     });
 
     test('PUT /training/workouts/{id} updates workout without trainer/gym',
         () async {
       t.adapter.onPut(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         respond: (_) => t.adapter.noContent(),
       );
 
       await t.apiClient.putVoid(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         data: {
           'name': 'Push Day A v2',
           'description': 'Updated',
@@ -104,8 +137,7 @@ void main() {
       );
 
       final req = t.onlyRequest;
-      expect(req.method, 'PUT');
-      expect(req.path, '/api/v1/training/workouts/workout-1');
+      expect(req, isRequest('PUT', '/api/v1/training/workouts/workout-1'));
       expect(req.bodyAsMap!.containsKey('trainerId'), false);
       expect(req.bodyAsMap!['name'], 'Push Day A v2');
     });
@@ -113,18 +145,11 @@ void main() {
 
   group('TemplateLibraryScreen', () {
     test('GET /training/templates filtered by gym', () async {
-      t.adapter.onGet(
+      final templates = await fetchList(
         ApiEndpoints.workoutTemplates,
-        respond: (_) =>
-            t.adapter.ok([Samples.workout(id: 'tpl-1')]),
-      );
-
-      final templates = await t.apiClient.get<List<WorkoutModel>>(
-        ApiEndpoints.workoutTemplates,
-        queryParameters: {'gymId': kGymId},
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => WorkoutModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        [Samples.workout(id: 'tpl-1')],
+        WorkoutModel.fromJson,
+        query: {'gymId': kGymId},
       );
 
       expect(t.onlyRequest.q('gymId'), kGymId);
@@ -134,16 +159,10 @@ void main() {
 
   group('ExerciseManagerScreen', () {
     test('GET /training/exercises returns full library', () async {
-      t.adapter.onGet(
+      final exercises = await fetchList(
         ApiEndpoints.exercises,
-        respond: (_) => t.adapter.ok([Samples.exercise()]),
-      );
-
-      final exercises = await t.apiClient.get<List<ExerciseModel>>(
-        ApiEndpoints.exercises,
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => ExerciseModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        [Samples.exercise()],
+        ExerciseModel.fromJson,
       );
 
       expect(t.onlyRequest.path, '/api/v1/training/exercises');
@@ -152,17 +171,10 @@ void main() {
 
     test('GET /training/exercises/custom returns trainer-scoped exercises',
         () async {
-      t.adapter.onGet(
+      final customs = await fetchList(
         ApiEndpoints.customExercises,
-        respond: (_) => t.adapter
-            .ok([Samples.exercise(id: 'custom-1')..['scope'] = 'Custom']),
-      );
-
-      final customs = await t.apiClient.get<List<ExerciseModel>>(
-        ApiEndpoints.customExercises,
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => ExerciseModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        [Samples.exercise(id: 'custom-1')..['scope'] = 'Custom'],
+        ExerciseModel.fromJson,
       );
 
       expect(t.onlyRequest.path, '/api/v1/training/exercises/custom');
@@ -190,27 +202,25 @@ void main() {
         },
       );
 
-      final body = t.onlyRequest.bodyAsMap!;
-      expect(body['scope'], 'custom');
-      expect(body['gymId'], kGymId);
-      expect(body['createdBy'], kTrainerId);
-      expect(body['name'], 'Landmine Row');
+      expect(
+        t.onlyRequest.bodyAsMap,
+        allOf(
+          containsPair('scope', 'custom'),
+          containsPair('gymId', kGymId),
+          containsPair('createdBy', kTrainerId),
+          containsPair('name', 'Landmine Row'),
+        ),
+      );
     });
   });
 
   group('ProgramBuilderScreen', () {
     test('GET /training/programs filtered by trainer+gym', () async {
-      t.adapter.onGet(
+      final programs = await fetchList(
         ApiEndpoints.programs,
-        respond: (_) => t.adapter.ok([Samples.program()]),
-      );
-
-      final programs = await t.apiClient.get<List<ProgramModel>>(
-        ApiEndpoints.programs,
-        queryParameters: {'trainerId': kTrainerId, 'gymId': kGymId},
-        parser: (data) => (data as List<dynamic>)
-            .map((e) => ProgramModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        [Samples.program()],
+        ProgramModel.fromJson,
+        query: {'trainerId': kTrainerId, 'gymId': kGymId},
       );
 
       final req = t.onlyRequest;

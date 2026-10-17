@@ -152,7 +152,7 @@ class _AssignPackageScreenState extends ConsumerState<AssignPackageScreen> {
                     title: Text(pkg.name),
                     subtitle: Text(
                         '${pkg.sessionCount} ${isArabic ? 'حصة' : 'sessions'}'),
-                    trailing: Text(NumberFormatter.formatCurrency(pkg.totalPrice)),
+                    trailing: Text(NumberFormatter.formatCurrency(Egp(pkg.totalPrice))),
                   ),
                 );
               }).toList(),

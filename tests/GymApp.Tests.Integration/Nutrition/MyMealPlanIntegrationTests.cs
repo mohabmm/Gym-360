@@ -28,14 +28,17 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: "Test Gym",
-            description: null,
-            address: new Address("Nasr City St", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Generate());
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = "Test Gym",
+                Description = null,
+                Address = new Address("Nasr City St", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Generate()
+            });
         gym.Approve();
-        gym.AddMember(memberId);
+        gym.AddMember(new MemberId(memberId));
 
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
@@ -60,16 +63,26 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         var plan = MealPlan.Create(
             trainerId: trainerId,
             gymId: gymId,
-            name: name,
-            description: null,
-            dailyCalorieTarget: 2200,
-            macroTargets: new MacroTargets(165, 220, 75),
+            details: new MealPlanDetails
+            {
+                Name = name,
+                Description = null,
+                DailyCalorieTarget = 2200,
+                MacroTargets = new MacroTargets(165, 220, 75)
+            },
             isTemplate: false);
 
         plan.AssignToClient(clientId);
 
         await repo.AddAsync(plan);
         await uow.SaveChangesAsync();
+    }
+
+    private async Task<HttpResponseMessage> GetMyMealPlanAsync(Guid userId, Guid gymId)
+    {
+        var client = CreateTraineeClient(userId);
+        client.DefaultRequestHeaders.Add("X-Gym-Id", gymId.ToString());
+        return await client.GetAsync("api/v1/nutrition/me/meal-plan");
     }
 
     [Fact]
@@ -80,10 +93,7 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         var gym = await SeedActiveGymWithMember(userId);
         await SeedAssignedMealPlan(Guid.NewGuid(), gym.Id, userId, "Cut Plan");
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/nutrition/me/meal-plan");
+        var response = await GetMyMealPlanAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -95,10 +105,7 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/nutrition/me/meal-plan");
+        var response = await GetMyMealPlanAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -110,10 +117,7 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(Guid.NewGuid()); // different user
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/nutrition/me/meal-plan");
+        var response = await GetMyMealPlanAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -125,10 +129,7 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedSuspendedGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/nutrition/me/meal-plan");
+        var response = await GetMyMealPlanAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -145,10 +146,7 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         await SeedAssignedMealPlan(Guid.NewGuid(), gymA.Id, userId, "Plan A");
         await SeedAssignedMealPlan(Guid.NewGuid(), gymB.Id, userId, "Plan B");
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gymB.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/nutrition/me/meal-plan");
+        var response = await GetMyMealPlanAsync(userId, gymB.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();
@@ -175,10 +173,7 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
             // This assertion is primarily about the *observed* behaviour: 200 not 403.
         }
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/nutrition/me/meal-plan");
+        var response = await GetMyMealPlanAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK,
             because: "PRD: /me/meal-plan is not plan-gated (PDPL)");

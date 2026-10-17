@@ -4,6 +4,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Errors;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Application.Abstractions;
 
 namespace GymApp.Modules.Billing.Application.Commands.GymFeatureOverrides;
@@ -50,24 +51,28 @@ internal sealed class SetGymFeatureOverrideCommandHandler : ICommandHandler<SetG
         }
         else
         {
-            var gymOverride = GymFeatureOverride.Create(
-                request.GymId,
-                feature.Id,
-                request.Enabled,
-                request.SetBy,
-                request.Reason);
+            var gymOverride = GymFeatureOverride.Create(new GymFeatureOverrideDetails
+            {
+                GymId = request.GymId,
+                FeatureId = feature.Id,
+                OverrideValue = request.Enabled,
+                SetBy = request.SetBy,
+                Reason = request.Reason
+            });
 
             await _overrideRepository.AddAsync(gymOverride, cancellationToken);
         }
 
-        var log = PlanChangeLog.Create(
-            "FeatureOverrideSet",
-            request.SetBy,
-            request.GymId,
-            "GymFeatureOverride",
-            feature.Id,
-            newValue: request.Enabled.ToString(),
-            reason: request.Reason);
+        var log = PlanChangeLog.Create(new PlanChangeLogDetails
+        {
+            ChangeType = "FeatureOverrideSet",
+            ChangedBy = request.SetBy,
+            GymId = request.GymId,
+            EntityType = "GymFeatureOverride",
+            EntityId = feature.Id,
+            NewValue = request.Enabled.ToString(),
+            Reason = request.Reason
+        });
 
         await _changeLogRepository.AddAsync(log, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

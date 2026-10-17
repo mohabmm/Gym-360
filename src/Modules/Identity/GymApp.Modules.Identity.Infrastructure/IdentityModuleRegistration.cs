@@ -51,6 +51,8 @@ public static class IdentityModuleRegistration
         services.AddScoped<IUserDisplayLookup, UserDisplayLookup>();
         services.AddScoped<IUserProfileLookup, UserProfileLookup>();
         services.AddScoped<IUserProfileUpdater, UserProfileUpdater>();
+        services.AddScoped<Application.Queries.GetProfile.AssignedTrainerResolver>();
+        services.AddScoped<Application.Commands.Login.LoginUserResponseBuilder>();
 
         // Register MediatR handlers from Application assembly.
         // Pipeline behaviors are added per-module because MediatR's open behaviors only

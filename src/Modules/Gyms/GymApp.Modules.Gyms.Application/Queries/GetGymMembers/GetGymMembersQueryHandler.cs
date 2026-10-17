@@ -3,6 +3,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.GetGymMembers;
 
@@ -36,14 +37,10 @@ internal sealed class GetGymMembersQueryHandler : IQueryHandler<GetGymMembersQue
         }
 
         var result = await _gymQueryService.GetMembersAsync(
-            request.GymId,
-            request.Page,
-            request.PageSize,
-            request.Status,
-            request.Section,
-            request.Search,
-            cancellationToken,
-            restrictToMemberIds);
+            new GymId(request.GymId),
+            new MemberRosterRequest(
+                request.Page, request.PageSize, request.Status, request.Section, request.Search, restrictToMemberIds),
+            cancellationToken);
 
         return Result.Success(result);
     }

@@ -23,16 +23,15 @@ internal sealed class ProgressPhotoRepository : IProgressPhotoRepository
     public async Task<IReadOnlyList<ProgressPhoto>> GetByUserAsync(
         Guid userId,
         Guid gymId,
-        int page,
-        int pageSize,
+        PageRequest page,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.ProgressPhotos
             .AsNoTracking()
             .Where(e => e.UserId == userId && e.GymId == gymId)
             .OrderByDescending(e => e.Date)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
             .ToListAsync(cancellationToken);
     }
 

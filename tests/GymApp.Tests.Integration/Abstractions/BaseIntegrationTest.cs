@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Json;
 using GymApp.Common.Infrastructure.Authentication;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,36 +23,29 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
     }
 
     /// <summary>
-    /// Creates a JWT access token for testing with the specified claims.
+    /// Creates a JWT access token for testing with the principal's claims. The
+    /// principal's <see cref="TestPrincipal.UserId"/> must already be resolved.
     /// </summary>
-    protected string CreateAccessToken(
-        Guid userId,
-        string email = "test@example.com",
-        string role = "trainee",
-        Guid? gymId = null,
-        string? staffRole = null,
-        string? adminRole = null,
-        string? staffSubRole = null)
+    protected string CreateAccessToken(TestPrincipal principal)
     {
+        var userId = principal.UserId!.Value;
         var jwtService = Scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
         return jwtService.GenerateAccessToken(
-            userId, email, role, gymId, staffRole, adminRole, staffSubRole: staffSubRole);
+            new AccessTokenClaims(userId, $"user-{userId}@test.com", principal.Role)
+            {
+                GymId = principal.GymId,
+                StaffRole = principal.StaffRole,
+                AdminRole = principal.AdminRole,
+                StaffSubRole = principal.StaffSubRole
+            });
     }
 
     /// <summary>
-    /// Creates an authenticated HttpClient for a trainee user.
+    /// Creates an authenticated HttpClient for the given principal.
     /// </summary>
-    protected HttpClient CreateAuthenticatedClient(
-        Guid? userId = null,
-        string role = "trainee",
-        Guid? gymId = null,
-        string? staffRole = null,
-        string? adminRole = null,
-        string? staffSubRole = null)
+    protected HttpClient CreateAuthenticatedClient(TestPrincipal principal)
     {
-        var uid = userId ?? Guid.NewGuid();
-        var token = CreateAccessToken(
-            uid, $"user-{uid}@test.com", role, gymId, staffRole, adminRole, staffSubRole);
+        var token = CreateAccessToken(principal with { UserId = principal.UserId ?? Guid.NewGuid() });
         var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
@@ -61,45 +56,67 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
     /// Creates an authenticated HttpClient for a platform admin.
     /// </summary>
     protected HttpClient CreateAdminClient(Guid? userId = null)
-    {
-        var uid = userId ?? Guid.NewGuid();
-        return CreateAuthenticatedClient(uid, "admin", adminRole: "super_admin");
-    }
+        => CreateAuthenticatedClient(new TestPrincipal("admin") { UserId = userId, AdminRole = "super_admin" });
 
     /// <summary>
     /// Creates an authenticated HttpClient for a gym owner.
     /// </summary>
     protected HttpClient CreateGymOwnerClient(Guid? userId = null, Guid? gymId = null)
-    {
-        var uid = userId ?? Guid.NewGuid();
-        return CreateAuthenticatedClient(uid, "gym_owner", gymId, staffRole: "owner");
-    }
+        => CreateAuthenticatedClient(
+            new TestPrincipal("gym_owner") { UserId = userId, GymId = gymId, StaffRole = "owner" });
 
     /// <summary>
     /// Creates an authenticated HttpClient for a trainer.
     /// </summary>
     protected HttpClient CreateTrainerClient(Guid? userId = null, Guid? gymId = null)
-    {
-        var uid = userId ?? Guid.NewGuid();
-        return CreateAuthenticatedClient(uid, "trainer", gymId);
-    }
+        => CreateAuthenticatedClient(new TestPrincipal("trainer") { UserId = userId, GymId = gymId });
 
     /// <summary>
     /// Creates an authenticated HttpClient for a trainee.
     /// </summary>
     protected HttpClient CreateTraineeClient(Guid? userId = null, Guid? gymId = null)
-    {
-        var uid = userId ?? Guid.NewGuid();
-        return CreateAuthenticatedClient(uid, "trainee", gymId);
-    }
+        => CreateAuthenticatedClient(new TestPrincipal("trainee") { UserId = userId, GymId = gymId });
 
     /// <summary>
     /// Creates an authenticated HttpClient for gym staff.
     /// </summary>
     protected HttpClient CreateStaffClient(Guid? userId = null, Guid? gymId = null)
+        => CreateAuthenticatedClient(
+            new TestPrincipal("gym_staff") { UserId = userId, GymId = gymId, StaffRole = "staff" });
+
+    /// <summary>
+    /// Sends a GET as a fresh trainee whose user id is threaded into the URL.
+    /// </summary>
+    protected Task<HttpResponseMessage> GetAsTraineeAsync(Func<Guid, string> urlForUser)
     {
-        var uid = userId ?? Guid.NewGuid();
-        return CreateAuthenticatedClient(uid, "gym_staff", gymId, staffRole: "staff");
+        var userId = Guid.NewGuid();
+        return CreateTraineeClient(userId).GetAsync(urlForUser(userId));
+    }
+
+    /// <summary>
+    /// Sends a JSON POST as a fresh trainee whose user id is threaded into the body.
+    /// </summary>
+    protected Task<HttpResponseMessage> PostAsTraineeAsync(string url, Func<Guid, object> bodyForUser)
+    {
+        var userId = Guid.NewGuid();
+        return CreateTraineeClient(userId).PostAsJsonAsync(url, bodyForUser(userId));
+    }
+
+    /// <summary>
+    /// Asserts the request was authenticated (not 401) — authorization and the
+    /// handler itself may still reject it.
+    /// </summary>
+    protected static void AssertAuthenticated(HttpResponseMessage response)
+        => response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+
+    /// <summary>
+    /// Asserts the request got past authentication and authorization
+    /// (neither 401 nor 403) — the handler itself may still reject it.
+    /// </summary>
+    protected static void AssertAuthorized(HttpResponseMessage response)
+    {
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
     }
 
     /// <summary>

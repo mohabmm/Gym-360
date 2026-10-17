@@ -30,7 +30,7 @@ class NotificationsScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () async {
-              final repo = ref.read(communicationRepositoryProvider);
+              final repo = ref.read(notificationsRepositoryProvider);
               try {
                 await repo.markAllNotificationsRead();
               } catch (_) {
@@ -142,7 +142,7 @@ class _NotificationTile extends ConsumerWidget {
   Future<void> _handleTap(BuildContext context, WidgetRef ref) async {
     // Mark read first so the badge/list update even if navigation no-ops.
     if (!notification.isRead) {
-      final repo = ref.read(communicationRepositoryProvider);
+      final repo = ref.read(notificationsRepositoryProvider);
       try {
         await repo.markNotificationRead(notification.id);
       } catch (_) {

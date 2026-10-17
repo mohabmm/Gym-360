@@ -1,3 +1,4 @@
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 namespace GymApp.Modules.Gamification.Application.Contracts;
 
 public interface IGamificationQueryService
@@ -16,7 +17,6 @@ public interface IGamificationQueryService
     Task<bool> IsCoachOfTheMonthAsync(
         Guid trainerId,
         Guid gymId,
-        int month,
-        int year,
+        LeaderboardPeriod period,
         CancellationToken cancellationToken = default);
 }

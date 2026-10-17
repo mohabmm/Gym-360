@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Modules.Billing.Domain.Entities;
 
@@ -23,62 +24,44 @@ public sealed class SubscriptionPlan : Entity
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
-    public static SubscriptionPlan Create(
-        string code,
-        string name,
-        decimal monthlyPriceEgp,
-        decimal annualPriceEgp,
-        int memberLimit,
-        int trainerLimit,
-        int staffLimit,
-        string? description = null,
-        bool isPublic = true,
-        bool isTimeLimited = false,
-        DateTime? availableFrom = null,
-        DateTime? availableUntil = null,
-        int sortOrder = 0)
+    public static SubscriptionPlan Create(SubscriptionPlanDetails details)
     {
         return new SubscriptionPlan
         {
             Id = Guid.NewGuid(),
-            Code = code,
-            Name = name,
-            Description = description,
-            MonthlyPriceEgp = monthlyPriceEgp,
-            AnnualPriceEgp = annualPriceEgp,
-            MemberLimit = memberLimit,
-            TrainerLimit = trainerLimit,
-            StaffLimit = staffLimit,
+            Code = details.Code,
+            Name = details.Name,
+            Description = details.Description,
+            MonthlyPriceEgp = details.MonthlyPriceEgp,
+            AnnualPriceEgp = details.AnnualPriceEgp,
+            MemberLimit = details.MemberLimit,
+            TrainerLimit = details.TrainerLimit,
+            StaffLimit = details.StaffLimit,
             IsActive = true,
-            IsPublic = isPublic,
-            IsTimeLimited = isTimeLimited,
-            AvailableFrom = availableFrom,
-            AvailableUntil = availableUntil,
-            SortOrder = sortOrder,
+            IsPublic = details.IsPublic,
+            IsTimeLimited = details.IsTimeLimited,
+            AvailableFrom = details.AvailableFrom,
+            AvailableUntil = details.AvailableUntil,
+            SortOrder = details.SortOrder,
             CreatedAt = DateTime.UtcNow
         };
     }
 
-    public void Update(
-        string name,
-        string? description,
-        decimal monthlyPriceEgp,
-        decimal annualPriceEgp,
-        int memberLimit,
-        int trainerLimit,
-        int staffLimit,
-        bool isPublic,
-        int sortOrder)
+    /// <summary>
+    /// Applies editable catalogue fields. <see cref="Code"/> and the availability window
+    /// (<see cref="IsTimeLimited"/>, <see cref="AvailableFrom"/>, <see cref="AvailableUntil"/>) are immutable after creation.
+    /// </summary>
+    public void Update(SubscriptionPlanDetails details)
     {
-        Name = name;
-        Description = description;
-        MonthlyPriceEgp = monthlyPriceEgp;
-        AnnualPriceEgp = annualPriceEgp;
-        MemberLimit = memberLimit;
-        TrainerLimit = trainerLimit;
-        StaffLimit = staffLimit;
-        IsPublic = isPublic;
-        SortOrder = sortOrder;
+        Name = details.Name;
+        Description = details.Description;
+        MonthlyPriceEgp = details.MonthlyPriceEgp;
+        AnnualPriceEgp = details.AnnualPriceEgp;
+        MemberLimit = details.MemberLimit;
+        TrainerLimit = details.TrainerLimit;
+        StaffLimit = details.StaffLimit;
+        IsPublic = details.IsPublic;
+        SortOrder = details.SortOrder;
         UpdatedAt = DateTime.UtcNow;
     }
 

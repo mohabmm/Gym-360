@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Repositories;
 using GymApp.Modules.Progress.IntegrationEvents;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -31,11 +32,15 @@ internal sealed class StreakMilestoneReachedIntegrationEventHandler : INotificat
             ["gymId"] = notification.GymId.ToString()
         };
 
-        var notif = NotificationTexts.StreakMilestone(notification.MilestoneDay, notification.StreakType).ToNotification(
-            notification.UserId,
-            NotificationType.StreakMilestone,
-            notification.GymId,
-            data);
+        var notif = Notification.CreateLocalized(
+            new NotificationDetails
+            {
+                UserId = notification.UserId,
+                Type = NotificationType.StreakMilestone,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.StreakMilestone(notification.MilestoneDay, notification.StreakType));
 
         await _notificationRepository.AddAsync(notif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

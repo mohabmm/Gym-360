@@ -6,6 +6,7 @@ using GymApp.Modules.Gamification.Domain.Entities;
 using GymApp.Modules.Gamification.Domain.Errors;
 using GymApp.Modules.Gamification.Domain.Repositories;
 using GymApp.Modules.Gamification.Application.Abstractions;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Application.Commands.SubmitTrainerRating;
 
@@ -45,13 +46,15 @@ internal sealed class SubmitTrainerRatingCommandHandler : ICommandHandler<Submit
             return Result.Failure<Guid>(GamificationErrors.AlreadyRatedForSession);
         }
 
-        var ratingResult = TrainerRating.Create(
-            request.GymId,
-            request.TrainerId,
-            request.ClientId,
-            request.SessionId,
-            request.Stars,
-            request.Comment);
+        var ratingResult = TrainerRating.Create(new TrainerRatingDetails
+        {
+            GymId = request.GymId,
+            TrainerId = request.TrainerId,
+            ClientId = request.ClientId,
+            SessionId = request.SessionId,
+            Stars = request.Stars,
+            Comment = request.Comment
+        });
 
         if (ratingResult.IsFailure)
         {

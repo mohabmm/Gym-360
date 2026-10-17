@@ -13,16 +13,18 @@ namespace GymApp.Tests.Domain.Billing;
 public sealed class SessionPackageIdempotencyTests
 {
     private static SessionPackage CreateActivePackage(int totalSessions = 10) =>
-        SessionPackage.Create(
-            gymId: Guid.NewGuid(),
-            trainerId: Guid.NewGuid(),
-            memberId: Guid.NewGuid(),
-            templateId: Guid.NewGuid(),
-            name: "10-pack",
-            totalSessions: totalSessions,
-            pricePerSession: Money.Create(100m, "EGP"),
-            totalPrice: Money.Create(1000m, "EGP"),
-            assignedBy: Guid.NewGuid());
+        SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = Guid.NewGuid(),
+            TrainerId = Guid.NewGuid(),
+            MemberId = Guid.NewGuid(),
+            TemplateId = Guid.NewGuid(),
+            Name = "10-pack",
+            TotalSessions = totalSessions,
+            PricePerSession = Money.Create(100m, "EGP"),
+            TotalPrice = Money.Create(1000m, "EGP"),
+            AssignedBy = Guid.NewGuid()
+        });
 
     [Fact]
     public void UseSession_RepeatedForSameSession_DeductsOnce()

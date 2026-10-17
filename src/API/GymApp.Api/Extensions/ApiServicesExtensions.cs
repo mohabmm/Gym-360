@@ -25,9 +25,31 @@ public static class ApiServicesExtensions
                 new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.CamelCase));
         });
 
+        AddSwagger(builder.Services);
+        AddClientLogsRateLimiter(builder.Services);
+
+        // --- SignalR ---
+        builder.Services.AddSignalR();
+        builder.Services.AddScoped<GymApp.Common.Application.Abstractions.IChatNotifier, GymApp.Api.Hubs.SignalRChatNotifier>();
+
+        // --- Health Checks ---
+        builder.Services.AddHealthChecks()
+            .AddDbContextCheck<OutboxDbContext>("outbox-db", tags: new[] { "ready" })
+            .AddRedis(
+                builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379",
+                name: "redis",
+                tags: new[] { "ready" });
+
+        AddCorsPolicy(builder);
+
+        return builder;
+    }
+
+    private static void AddSwagger(IServiceCollection services)
+    {
         // --- Swagger ---
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(options =>
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(options =>
         {
             options.SwaggerDoc("v1", new() { Title = "GymApp API", Version = "v1" });
             // Many endpoints declare nested "Request" records (e.g. AddMemberEndpoint.Request).
@@ -61,11 +83,14 @@ public static class ApiServicesExtensions
                 }
             });
         });
+    }
 
+    private static void AddClientLogsRateLimiter(IServiceCollection services)
+    {
         // --- Rate limiting ---
         // Used by the client-telemetry ingest endpoint so one crash-looping device
         // can't flood log ingest. Partitioned by authenticated user, else client IP.
-        builder.Services.AddRateLimiter(options =>
+        services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.AddPolicy("client-logs", httpContext =>
@@ -85,19 +110,10 @@ public static class ApiServicesExtensions
                     });
             });
         });
+    }
 
-        // --- SignalR ---
-        builder.Services.AddSignalR();
-        builder.Services.AddScoped<GymApp.Common.Application.Abstractions.IChatNotifier, GymApp.Api.Hubs.SignalRChatNotifier>();
-
-        // --- Health Checks ---
-        builder.Services.AddHealthChecks()
-            .AddDbContextCheck<OutboxDbContext>("outbox-db", tags: new[] { "ready" })
-            .AddRedis(
-                builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379",
-                name: "redis",
-                tags: new[] { "ready" });
-
+    private static void AddCorsPolicy(WebApplicationBuilder builder)
+    {
         // --- CORS ---
         // Origins are read from Cors:AllowedOrigins. We NEVER fall back to AllowAnyOrigin:
         // if the configured list is empty we warn and use a localhost-only fallback so
@@ -129,7 +145,5 @@ public static class ApiServicesExtensions
                       .AllowCredentials(); // needed for SignalR WebSocket
             });
         });
-
-        return builder;
     }
 }

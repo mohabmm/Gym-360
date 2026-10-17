@@ -32,13 +32,13 @@ void main() {
       ApiEndpoints.sessions,
       respond: (_) => t.adapter.ok([Samples.session()]),
     );
-    await ds.getAllSessions(
+    await ds.getAllSessions(const SessionListQuery(
       gymId: 'gym-1',
       memberId: 'user-1',
       status: 'Scheduled',
       page: 3,
       pageSize: 15,
-    );
+    ));
     final q = t.onlyRequest.query;
     expect(q['memberId']!.first, 'user-1');
     expect(q['status']!.first, 'Scheduled');
@@ -48,7 +48,7 @@ void main() {
 
   test('GET /scheduling/sessions/{id} returns single session', () async {
     t.adapter.onGet(
-      ApiEndpoints.sessionById('session-1'),
+      ApiEndpoints.sessionById(const SessionId('session-1')),
       respond: (_) => t.adapter.ok(Samples.session()),
     );
     final s = await ds.getSessionById('session-1');
@@ -110,14 +110,14 @@ void main() {
   test('POST /scheduling/sessions/{id}/cancel sends cancelledBy + reason',
       () async {
     t.adapter.onPost(
-      '${ApiEndpoints.sessionById('session-1')}/cancel',
+      '${ApiEndpoints.sessionById(const SessionId('session-1'))}/cancel',
       respond: (_) => t.adapter.noContent(),
     );
-    await ds.cancelSession(
-      'session-1',
+    await ds.cancelSession(const SessionCancellation(
+      sessionId: 'session-1',
       cancelledBy: 'user-1',
       reason: 'Feeling unwell',
-    );
+    ));
     expect(t.onlyRequest.bodyAsMap, {
       'cancelledBy': 'user-1',
       'reason': 'Feeling unwell',
@@ -127,7 +127,7 @@ void main() {
   test('POST /scheduling/sessions/{id}/member-log stores member feedback',
       () async {
     t.adapter.onPost(
-      ApiEndpoints.sessionMemberLog('session-1'),
+      ApiEndpoints.sessionMemberLog(const SessionId('session-1')),
       respond: (_) => t.adapter.noContent(),
     );
     await ds.logMemberFeedback('session-1', {
@@ -144,11 +144,11 @@ void main() {
       ApiEndpoints.availableSlots,
       respond: (_) => t.adapter.ok([Samples.availabilitySlot()]),
     );
-    await ds.getAvailabilitySlots(
-      'trainer-1',
-      'gym-1',
-      DateTime.utc(2026, 4, 20),
-    );
+    await ds.getAvailabilitySlots(AvailabilitySlotsQuery(
+      trainerId: 'trainer-1',
+      gymId: 'gym-1',
+      date: DateTime.utc(2026, 4, 20),
+    ));
     expect(t.onlyRequest.q('trainerId'), 'trainer-1');
     expect(t.onlyRequest.q('gymId'), 'gym-1');
     expect(t.onlyRequest.q('date'), '2026-04-20');
@@ -156,7 +156,7 @@ void main() {
 
   test('GET classes for a gym on a date', () async {
     t.adapter.onGet(
-      ApiEndpoints.gymClasses('gym-1'),
+      ApiEndpoints.gymClasses(const GymId('gym-1')),
       respond: (_) => t.adapter.ok([Samples.gymClass()]),
     );
     final classes =
@@ -167,27 +167,27 @@ void main() {
 
   test('POST book class sends memberId', () async {
     t.adapter.onPost(
-      ApiEndpoints.bookGymClass('gym-1', 'class-1'),
+      ApiEndpoints.bookGymClass(const GymId('gym-1'), const ClassId('class-1')),
       respond: (_) => t.adapter.noContent(),
     );
-    await ds.bookClass(
+    await ds.bookClass(const ClassBookingRequest(
       gymId: 'gym-1',
       classId: 'class-1',
       memberId: 'user-1',
-    );
+    ));
     expect(t.onlyRequest.bodyAsMap, {'memberId': 'user-1'});
   });
 
   test('DELETE class booking', () async {
     t.adapter.onDelete(
-      ApiEndpoints.cancelGymClassBooking('gym-1', 'class-1', 'book-1'),
+      ApiEndpoints.cancelGymClassBooking(const GymId('gym-1'), const ClassId('class-1'), const BookingId('book-1')),
       respond: (_) => t.adapter.noContent(),
     );
-    await ds.cancelClassBooking(
+    await ds.cancelClassBooking(const ClassBookingCancellation(
       gymId: 'gym-1',
       classId: 'class-1',
       bookingId: 'book-1',
-    );
+    ));
     expect(t.onlyRequest.method, 'DELETE');
   });
 }

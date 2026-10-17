@@ -70,7 +70,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
       // did not, otherwise the second call fails with "already added".
       if (created['memberNumber'] == null) {
         await apiClient.post<void>(
-          ApiEndpoints.gymMembers(gymId),
+          ApiEndpoints.gymMembers(GymId(gymId)),
           data: {'userId': created['userId']},
           parser: (_) {},
         );

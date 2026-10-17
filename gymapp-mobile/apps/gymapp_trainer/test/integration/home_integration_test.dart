@@ -106,7 +106,7 @@ void main() {
 
   test('GET /gyms/{gymId}/members returns paged members', () async {
     t.adapter.onGet(
-      ApiEndpoints.gymMembers(kGymId),
+      ApiEndpoints.gymMembers(kGym),
       respond: (_) => t.adapter.ok({
         'items': [Samples.clientUser()],
         'totalCount': 42,
@@ -116,7 +116,7 @@ void main() {
     );
 
     final raw = await t.apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.gymMembers(kGymId),
+      ApiEndpoints.gymMembers(kGym),
       queryParameters: {'page': 1, 'pageSize': 1},
       parser: (data) => data as Map<String, dynamic>,
     );
@@ -131,12 +131,12 @@ void main() {
   test('GET /gamification/trainers/{id}/public-profile returns displayRating',
       () async {
     t.adapter.onGet(
-      ApiEndpoints.trainerPublicProfile(kTrainerId),
+      ApiEndpoints.trainerPublicProfile(kTrainer),
       respond: (_) => t.adapter.ok(Samples.trainerPublicProfile()),
     );
 
     final profile = await t.apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.trainerPublicProfile(kTrainerId),
+      ApiEndpoints.trainerPublicProfile(kTrainer),
       queryParameters: {'gymId': kGymId},
       parser: (data) => data as Map<String, dynamic>,
     );

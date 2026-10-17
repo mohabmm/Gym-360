@@ -1,5 +1,7 @@
 using GymApp.Common.Application.Tenancy;
+using GymApp.Common.Domain;
 using GymApp.Common.Infrastructure.Tenancy;
+using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -69,116 +71,122 @@ internal sealed class ProcessGymSubscriptionStatusJob : IJob
         }
 
         var dbContext = sp.GetRequiredService<GymsDbContext>();
-        var now = DateTime.UtcNow;
 
         // Load the billing read models once so we can correlate by GymId
         var subscriptions = await dbContext.GymSubscriptions
             .AsNoTracking()
             .ToListAsync(ct);
 
-        var subscriptionByGymId = subscriptions
-            .GroupBy(s => s.GymId)
-            .ToDictionary(g => g.Key, g => g.First());
+        var sweep = new SweepContext(dbContext, subscriptions, DateTime.UtcNow);
 
-        // Step 1: Active → Overdue (NextPaymentDue + 3 days ago)
-        var overdueThreshold = now.AddDays(-3);
-        var activeGymIds = subscriptions
-            .Where(s => s.PaymentStatus == "Paid"
-                        && s.NextPaymentDue.HasValue
-                        && s.NextPaymentDue.Value < overdueThreshold)
-            .Select(s => s.GymId)
-            .ToHashSet();
-
-        if (activeGymIds.Count > 0)
-        {
-            var activeGyms = await dbContext.Gyms
-                .Where(g => g.Status == GymStatus.Active && activeGymIds.Contains(g.Id))
-                .ToListAsync(ct);
-
-            foreach (var g in activeGyms)
-            {
-                var result = g.MarkOverdue();
-                if (result.IsFailure)
-                    _logger.LogWarning("ProcessGymSubscriptionStatusJob: MarkOverdue failed for gym {GymId}: {Error}", g.Id, result.Error);
-                else
-                    _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} marked Overdue.", g.Id);
-            }
-        }
-
-        // Step 2: Overdue → GracePeriod (overdue for more than 7 days)
-        var gracePeriodThreshold = now.AddDays(-7);
-        var overdueGymIds = subscriptions
-            .Where(s => s.PaymentStatus == "Overdue"
-                        && s.OverdueSince.HasValue
-                        && s.OverdueSince.Value < gracePeriodThreshold)
-            .Select(s => s.GymId)
-            .ToHashSet();
-
-        if (overdueGymIds.Count > 0)
-        {
-            var overdueGyms = await dbContext.Gyms
-                .Where(g => g.Status == GymStatus.Active
-                            && g.PaymentStatus == PaymentStatus.Overdue
-                            && overdueGymIds.Contains(g.Id))
-                .ToListAsync(ct);
-
-            foreach (var g in overdueGyms)
-            {
-                var gracePeriodEndsAt = now.AddDays(14);
-                var result = g.EnterGracePeriod(gracePeriodEndsAt);
-                if (result.IsFailure)
-                    _logger.LogWarning("ProcessGymSubscriptionStatusJob: EnterGracePeriod failed for gym {GymId}: {Error}", g.Id, result.Error);
-                else
-                    _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} entered GracePeriod (ends {EndsAt}).", g.Id, gracePeriodEndsAt);
-            }
-        }
-
-        // Step 3: GracePeriod → Suspended (GracePeriodEndsAt has passed)
-        var gracePeriodGymIds = subscriptions
-            .Where(s => s.PaymentStatus == "GracePeriod"
-                        && s.GracePeriodEndsAt.HasValue
-                        && s.GracePeriodEndsAt.Value < now)
-            .Select(s => s.GymId)
-            .ToHashSet();
-
-        if (gracePeriodGymIds.Count > 0)
-        {
-            var gracePeriodGyms = await dbContext.Gyms
-                .Where(g => g.Status == GymStatus.GracePeriod && gracePeriodGymIds.Contains(g.Id))
-                .ToListAsync(ct);
-
-            foreach (var g in gracePeriodGyms)
-            {
-                var result = g.Suspend("Auto-suspended: payment overdue beyond grace period");
-                if (result.IsFailure)
-                    _logger.LogWarning("ProcessGymSubscriptionStatusJob: Suspend failed for gym {GymId}: {Error}", g.Id, result.Error);
-                else
-                    _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} suspended (grace period expired).", g.Id);
-            }
-        }
-
-        // Step 4: Suspended → Terminated (suspended for more than 30 days)
-        var terminationThreshold = now.AddDays(-30);
-        var suspendedGyms = await dbContext.Gyms
-            .Where(g => g.Status == GymStatus.Suspended
-                        && g.SuspendedAt.HasValue
-                        && g.SuspendedAt.Value < terminationThreshold)
-            .ToListAsync(ct);
-
-        foreach (var g in suspendedGyms)
-        {
-            var result = g.Terminate();
-            if (result.IsFailure)
-                _logger.LogWarning("ProcessGymSubscriptionStatusJob: Terminate failed for gym {GymId}: {Error}", g.Id, result.Error);
-            else
-                _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} terminated (suspended 30+ days).", g.Id);
-        }
+        var overdue = await MarkOverdueAsync(sweep, ct);
+        var grace = await EnterGracePeriodAsync(sweep, ct);
+        var suspended = await SuspendExpiredGracePeriodsAsync(sweep, ct);
+        var terminated = await TerminateLongSuspendedAsync(sweep, ct);
 
         await dbContext.SaveChangesAsync(ct);
 
         _logger.LogInformation(
             "ProcessGymSubscriptionStatusJob[{Prefix}]: Completed. Overdue: {Overdue}, Grace: {Grace}, Suspended: {Suspend}, Terminated: {Terminated}.",
             gym?.SchemaPrefix ?? "soft",
-            activeGymIds.Count, overdueGymIds.Count, gracePeriodGymIds.Count, suspendedGyms.Count);
+            overdue, grace, suspended, terminated);
+    }
+
+    // Step 1: Active → Overdue (NextPaymentDue + 3 days ago)
+    private async Task<int> MarkOverdueAsync(SweepContext sweep, CancellationToken ct)
+    {
+        var overdueThreshold = sweep.Now.AddDays(-3);
+        var gymIds = sweep.GymIdsWhere(s => s.PaymentStatus == "Paid"
+                                            && s.NextPaymentDue.HasValue
+                                            && s.NextPaymentDue.Value < overdueThreshold);
+        if (gymIds.Count == 0)
+            return 0;
+
+        var activeGyms = await sweep.Db.Gyms
+            .Where(g => g.Status == GymStatus.Active && gymIds.Contains(g.Id))
+            .ToListAsync(ct);
+
+        foreach (var g in activeGyms)
+            LogTransition(g.MarkOverdue(), nameof(Gym.MarkOverdue), g.Id,
+                () => _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} marked Overdue.", g.Id));
+
+        return gymIds.Count;
+    }
+
+    // Step 2: Overdue → GracePeriod (overdue for more than 7 days)
+    private async Task<int> EnterGracePeriodAsync(SweepContext sweep, CancellationToken ct)
+    {
+        var gracePeriodThreshold = sweep.Now.AddDays(-7);
+        var gymIds = sweep.GymIdsWhere(s => s.PaymentStatus == "Overdue"
+                                            && s.OverdueSince.HasValue
+                                            && s.OverdueSince.Value < gracePeriodThreshold);
+        if (gymIds.Count == 0)
+            return 0;
+
+        var overdueGyms = await sweep.Db.Gyms
+            .Where(g => g.Status == GymStatus.Active
+                        && g.PaymentStatus == PaymentStatus.Overdue
+                        && gymIds.Contains(g.Id))
+            .ToListAsync(ct);
+
+        foreach (var g in overdueGyms)
+        {
+            var gracePeriodEndsAt = sweep.Now.AddDays(14);
+            LogTransition(g.EnterGracePeriod(gracePeriodEndsAt), nameof(Gym.EnterGracePeriod), g.Id,
+                () => _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} entered GracePeriod (ends {EndsAt}).", g.Id, gracePeriodEndsAt));
+        }
+
+        return gymIds.Count;
+    }
+
+    // Step 3: GracePeriod → Suspended (GracePeriodEndsAt has passed)
+    private async Task<int> SuspendExpiredGracePeriodsAsync(SweepContext sweep, CancellationToken ct)
+    {
+        var gymIds = sweep.GymIdsWhere(s => s.PaymentStatus == "GracePeriod"
+                                            && s.GracePeriodEndsAt.HasValue
+                                            && s.GracePeriodEndsAt.Value < sweep.Now);
+        if (gymIds.Count == 0)
+            return 0;
+
+        var gracePeriodGyms = await sweep.Db.Gyms
+            .Where(g => g.Status == GymStatus.GracePeriod && gymIds.Contains(g.Id))
+            .ToListAsync(ct);
+
+        foreach (var g in gracePeriodGyms)
+            LogTransition(g.Suspend("Auto-suspended: payment overdue beyond grace period"), nameof(Gym.Suspend), g.Id,
+                () => _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} suspended (grace period expired).", g.Id));
+
+        return gymIds.Count;
+    }
+
+    // Step 4: Suspended → Terminated (suspended for more than 30 days)
+    private async Task<int> TerminateLongSuspendedAsync(SweepContext sweep, CancellationToken ct)
+    {
+        var terminationThreshold = sweep.Now.AddDays(-30);
+        var suspendedGyms = await sweep.Db.Gyms
+            .Where(g => g.Status == GymStatus.Suspended
+                        && g.SuspendedAt.HasValue
+                        && g.SuspendedAt.Value < terminationThreshold)
+            .ToListAsync(ct);
+
+        foreach (var g in suspendedGyms)
+            LogTransition(g.Terminate(), nameof(Gym.Terminate), g.Id,
+                () => _logger.LogInformation("ProcessGymSubscriptionStatusJob: Gym {GymId} terminated (suspended 30+ days).", g.Id));
+
+        return suspendedGyms.Count;
+    }
+
+    private void LogTransition(Result result, string transition, Guid gymId, Action logSuccess)
+    {
+        if (result.IsFailure)
+            _logger.LogWarning("ProcessGymSubscriptionStatusJob: {Transition} failed for gym {GymId}: {Error}", transition, gymId, result.Error);
+        else
+            logSuccess();
+    }
+
+    private sealed record SweepContext(GymsDbContext Db, List<GymSubscriptionReadModel> Subscriptions, DateTime Now)
+    {
+        public HashSet<Guid> GymIdsWhere(Func<GymSubscriptionReadModel, bool> predicate) =>
+            Subscriptions.Where(predicate).Select(s => s.GymId).ToHashSet();
     }
 }

@@ -45,10 +45,13 @@ internal sealed class CreateConversationCommandHandler : ICommandHandler<CreateC
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         await _chatNotifier.NotifyConversationCreatedAsync(
-            conversation.Id,
-            request.Participant1,
-            request.Participant2,
-            request.GymId,
+            new ConversationCreatedNotification
+            {
+                ConversationId = conversation.Id,
+                InitiatorId = request.Participant1,
+                OtherParticipantId = request.Participant2,
+                GymId = request.GymId
+            },
             cancellationToken);
 
         return Result.Success(conversation.Id);

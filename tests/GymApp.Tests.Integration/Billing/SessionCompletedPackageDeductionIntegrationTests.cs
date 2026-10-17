@@ -34,17 +34,19 @@ public sealed class SessionCompletedPackageDeductionIntegrationTests : BaseInteg
         using var scope = Factory.Services.CreateScope();
         var repo = scope.ServiceProvider.GetRequiredService<ISessionPackageRepository>();
         var uow = scope.ServiceProvider.GetRequiredService<IBillingUnitOfWork>();
-        var pkg = SessionPackage.Create(
-            gymId: _gymId,
-            trainerId: _trainerId,
-            memberId: _memberId,
-            templateId: Guid.NewGuid(),
-            name: "10 Sessions",
-            totalSessions: 10,
-            pricePerSession: Money.Create(500m),
-            totalPrice: Money.Create(5000m),
-            assignedBy: Guid.NewGuid(),
-            expiresAt: DateTime.UtcNow.AddMonths(3));
+        var pkg = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = _gymId,
+            TrainerId = _trainerId,
+            MemberId = _memberId,
+            TemplateId = Guid.NewGuid(),
+            Name = "10 Sessions",
+            TotalSessions = 10,
+            PricePerSession = Money.Create(500m),
+            TotalPrice = Money.Create(5000m),
+            AssignedBy = Guid.NewGuid(),
+            ExpiresAt = DateTime.UtcNow.AddMonths(3)
+        });
         await repo.AddAsync(pkg);
         await uow.SaveChangesAsync();
         return pkg.Id;
@@ -66,19 +68,27 @@ public sealed class SessionCompletedPackageDeductionIntegrationTests : BaseInteg
         return pkg!;
     }
 
-    [Fact]
-    public async Task SessionCompleted_DeductsOneSessionAndRecordsUsage()
+    // Seeds a package, delivers the event built for a fresh session id, and asserts
+    // exactly one session was deducted with a usage row of the expected type.
+    private async Task AssertSingleDeductionAsync(
+        Func<Guid, INotification> eventForSession, PackageUsageType expectedUsage)
     {
         await SeedPackageAsync();
         var sessionId = Guid.NewGuid();
 
-        await PublishAsync(new SessionCompletedIntegrationEvent(sessionId, _trainerId, _memberId, _gymId));
+        await PublishAsync(eventForSession(sessionId));
 
         var pkg = await LoadPackageAsync();
         pkg.RemainingSessions.Should().Be(9);
         pkg.UsageHistory.Should().ContainSingle(u =>
-            u.SessionId == sessionId && u.UsageType == PackageUsageType.Completed);
+            u.SessionId == sessionId && u.UsageType == expectedUsage);
     }
+
+    [Fact]
+    public Task SessionCompleted_DeductsOneSessionAndRecordsUsage() =>
+        AssertSingleDeductionAsync(
+            sessionId => new SessionCompletedIntegrationEvent(sessionId, _trainerId, _memberId, _gymId),
+            PackageUsageType.Completed);
 
     [Fact]
     public async Task SessionCompleted_DeliveredTwice_DeductsOnlyOnce()
@@ -95,19 +105,11 @@ public sealed class SessionCompletedPackageDeductionIntegrationTests : BaseInteg
     }
 
     [Fact]
-    public async Task SessionLateCancelled_DeductsOneSessionAndRecordsUsage()
-    {
-        await SeedPackageAsync();
-        var sessionId = Guid.NewGuid();
-
-        await PublishAsync(new SessionLateCancelledIntegrationEvent(
-            sessionId, _trainerId, _memberId, _gymId, _memberId));
-
-        var pkg = await LoadPackageAsync();
-        pkg.RemainingSessions.Should().Be(9);
-        pkg.UsageHistory.Should().ContainSingle(u =>
-            u.SessionId == sessionId && u.UsageType == PackageUsageType.LateCancelled);
-    }
+    public Task SessionLateCancelled_DeductsOneSessionAndRecordsUsage() =>
+        AssertSingleDeductionAsync(
+            sessionId => new SessionLateCancelledIntegrationEvent(
+                sessionId, _trainerId, _memberId, _gymId, _memberId),
+            PackageUsageType.LateCancelled);
 
     [Fact]
     public async Task SessionCompleted_DeliveredThroughOutbox_RunsEveryModulesHandler()

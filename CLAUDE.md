@@ -34,6 +34,10 @@ See `docs/01_GYMAPP_BACKEND_COMPLETE.md` for full backend reference and solution
 - Enter plan mode for non-trivial features.
 - Run tests after every implementation; integration tests mandatory per feature.
 
+## CodeScene
+
+After changing code, run `code_health_review` on the changed files. If Code Health drops, fix the issues, run the review again, and use `code_health_score` to confirm the result. Before finishing, run `pre_commit_code_health_safeguard` and only stop when it passes.
+
 ## Authoritative Documents
 
 | Priority | File | Purpose |
@@ -51,3 +55,10 @@ Founder decisions that shape code live in `FOUNDER_DECISIONS.md` (Q3 single-gym 
 ## Build Status
 
 All 11 teams complete. See `BUILD_SUMMARY.md` for totals and `DISCOVERED_ISSUES.md` for deviations. Team 9 integration/functional tests are the only partial item.
+
+## CodeScene
+
+After changing code, run `code_health_review` on the changed files. If Code Health drops, fix the issues, run the review again, and use `code_health_score` to confirm the result. Before finishing, run `pre_commit_code_health_safeguard` and only stop when it passes.
+
+- Target: every scored file at Code Health 10 (project 85989).
+- Generated code is exempted in `.codescene/code-health-rules.json` (EF `**/Migrations/*.cs`, Flutter `**/l10n/app_localizations_*.dart`) — never refactor it to satisfy CodeScene; add a narrow rule set instead.

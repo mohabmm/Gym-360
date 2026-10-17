@@ -22,32 +22,28 @@ public abstract class BaseFunctionalTest : IAsyncLifetime
     }
 
     /// <summary>
-    /// Creates a JWT token for testing.
+    /// Creates a JWT token for testing. The principal's <see cref="TestPrincipal.UserId"/>
+    /// must already be resolved.
     /// </summary>
-    protected string CreateToken(
-        Guid userId,
-        string email = "test@example.com",
-        string role = "trainee",
-        Guid? gymId = null,
-        string? staffRole = null,
-        string? adminRole = null)
+    protected string CreateToken(TestPrincipal principal)
     {
+        var userId = principal.UserId!.Value;
         var jwtService = _scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
-        return jwtService.GenerateAccessToken(userId, email, role, gymId, staffRole, adminRole);
+        return jwtService.GenerateAccessToken(
+            new AccessTokenClaims(userId, $"{principal.Role}-{userId}@test.com", principal.Role)
+            {
+                GymId = principal.GymId,
+                StaffRole = principal.StaffRole,
+                AdminRole = principal.AdminRole
+            });
     }
 
     /// <summary>
-    /// Creates an HttpClient authenticated as a specific role.
+    /// Creates an HttpClient authenticated as the given principal.
     /// </summary>
-    protected HttpClient CreateClient(
-        string role = "trainee",
-        Guid? userId = null,
-        Guid? gymId = null,
-        string? staffRole = null,
-        string? adminRole = null)
+    protected HttpClient CreateClient(TestPrincipal principal)
     {
-        var uid = userId ?? Guid.NewGuid();
-        var token = CreateToken(uid, $"{role}-{uid}@test.com", role, gymId, staffRole, adminRole);
+        var token = CreateToken(principal with { UserId = principal.UserId ?? Guid.NewGuid() });
         var client = Factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
@@ -56,44 +52,62 @@ public abstract class BaseFunctionalTest : IAsyncLifetime
     /// <summary>
     /// Creates an HttpClient authenticated as a platform admin (super_admin).
     /// </summary>
-    protected HttpClient CreateAdminClient(Guid? userId = null)
-        => CreateClient("admin", userId, adminRole: "super_admin");
+    protected HttpClient CreateAdminClient()
+        => CreateClient(new TestPrincipal("admin") { AdminRole = "super_admin" });
 
     /// <summary>
     /// Creates an HttpClient authenticated as a support-level admin.
     /// </summary>
-    protected HttpClient CreateSupportClient(Guid? userId = null)
-        => CreateClient("admin", userId, adminRole: "support");
+    protected HttpClient CreateSupportClient()
+        => CreateClient(new TestPrincipal("admin") { AdminRole = "support" });
 
     /// <summary>
     /// Creates an HttpClient authenticated as an analyst-level admin.
     /// </summary>
-    protected HttpClient CreateAnalystClient(Guid? userId = null)
-        => CreateClient("admin", userId, adminRole: "analyst");
+    protected HttpClient CreateAnalystClient()
+        => CreateClient(new TestPrincipal("admin") { AdminRole = "analyst" });
 
     /// <summary>
     /// Creates an HttpClient authenticated as a trainee.
     /// </summary>
     protected HttpClient CreateTraineeClient(Guid? userId = null, Guid? gymId = null)
-        => CreateClient("trainee", userId, gymId);
+        => CreateClient(new TestPrincipal("trainee") { UserId = userId, GymId = gymId });
 
     /// <summary>
     /// Creates an HttpClient authenticated as a trainer.
     /// </summary>
     protected HttpClient CreateTrainerClient(Guid? userId = null, Guid? gymId = null)
-        => CreateClient("trainer", userId, gymId);
+        => CreateClient(new TestPrincipal("trainer") { UserId = userId, GymId = gymId });
 
     /// <summary>
     /// Creates an HttpClient authenticated as a gym owner.
     /// </summary>
     protected HttpClient CreateOwnerClient(Guid? userId = null, Guid? gymId = null)
-        => CreateClient("gym_owner", userId, gymId, staffRole: "owner");
+        => CreateClient(new TestPrincipal("gym_owner") { UserId = userId, GymId = gymId, StaffRole = "owner" });
 
     /// <summary>
     /// Creates an HttpClient authenticated as gym staff.
     /// </summary>
     protected HttpClient CreateStaffClient(Guid? userId = null, Guid? gymId = null)
-        => CreateClient("gym_staff", userId, gymId, staffRole: "staff");
+        => CreateClient(new TestPrincipal("gym_staff") { UserId = userId, GymId = gymId, StaffRole = "staff" });
+
+    /// <summary>
+    /// Sends a GET as a fresh trainee whose user id is threaded into the URL.
+    /// </summary>
+    protected Task<HttpResponseMessage> GetAsTraineeAsync(Func<Guid, string> urlForUser)
+    {
+        var userId = Guid.NewGuid();
+        return CreateTraineeClient(userId).GetAsync(urlForUser(userId));
+    }
+
+    /// <summary>
+    /// Sends a JSON POST as a fresh trainee whose user id is threaded into the body.
+    /// </summary>
+    protected Task<HttpResponseMessage> PostAsTraineeAsync(string url, Func<Guid, object> bodyForUser)
+    {
+        var userId = Guid.NewGuid();
+        return CreateTraineeClient(userId).PostAsJsonAsync(url, bodyForUser(userId));
+    }
 
     /// <summary>
     /// Asserts the response status code matches the expected code.
@@ -114,21 +128,36 @@ public abstract class BaseFunctionalTest : IAsyncLifetime
     }
 
     /// <summary>
+    /// Asserts the request was authenticated (not 401) — authorization and the
+    /// handler itself may still reject it.
+    /// </summary>
+    protected static void AssertAuthenticated(HttpResponseMessage response)
+        => response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+
+    /// <summary>
+    /// Asserts the request got past authentication and authorization
+    /// (neither 401 nor 403) — the handler itself may still reject it.
+    /// </summary>
+    protected static void AssertAuthorized(HttpResponseMessage response)
+    {
+        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+    }
+
+    /// <summary>
     /// Registers a test user and returns the response.
     /// </summary>
-    protected async Task<HttpResponseMessage> RegisterTestUser(
-        string? email = null,
-        string password = "StrongP@ss123!",
-        string role = "Trainee")
+    protected async Task<HttpResponseMessage> RegisterTestUser(TestUserRegistration? registration = null)
     {
+        registration ??= new TestUserRegistration();
         var request = new
         {
-            Email = email ?? $"func-{Guid.NewGuid():N}@test.com",
-            Password = password,
+            Email = registration.Email ?? $"func-{Guid.NewGuid():N}@test.com",
+            Password = registration.Password,
             FirstName = "Test",
             LastName = "User",
             Phone = "+201234567890",
-            Role = role
+            Role = registration.Role
         };
         return await AnonymousClient.PostAsJsonAsync("api/v1/identity/register", request);
     }

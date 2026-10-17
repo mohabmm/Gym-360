@@ -1,5 +1,9 @@
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../models/scheduling_requests.dart';
+
+export '../models/scheduling_requests.dart';
+
 List<dynamic> _unwrapItems(dynamic data) {
   if (data is List) return data;
   if (data is Map<String, dynamic> && data['items'] is List) {
@@ -33,22 +37,10 @@ class SchedulingRemoteDataSource {
   }
 
   /// BE GET /scheduling/sessions requires gymId. Paginated.
-  Future<List<SessionModel>> getAllSessions({
-    required String gymId,
-    String? memberId,
-    String? status,
-    int page = 1,
-    int pageSize = 20,
-  }) async {
+  Future<List<SessionModel>> getAllSessions(SessionListQuery query) async {
     return _apiClient.get<List<SessionModel>>(
       ApiEndpoints.sessions,
-      queryParameters: {
-        'gymId': gymId,
-        if (memberId != null) 'memberId': memberId,
-        if (status != null) 'status': status,
-        'page': page,
-        'pageSize': pageSize,
-      },
+      queryParameters: query.toQueryParameters(),
       parser: (data) => _unwrapItems(data)
           .map<SessionModel>((e) => SessionModel.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -57,7 +49,7 @@ class SchedulingRemoteDataSource {
 
   Future<SessionDetailModel> getSessionById(String id) async {
     return _apiClient.get<SessionDetailModel>(
-      ApiEndpoints.sessionById(id),
+      ApiEndpoints.sessionById(SessionId(id)),
       parser: (data) =>
           SessionDetailModel.fromJson(data as Map<String, dynamic>),
     );
@@ -72,24 +64,17 @@ class SchedulingRemoteDataSource {
     );
   }
 
-  Future<void> cancelSession(
-    String sessionId, {
-    required String cancelledBy,
-    String? reason,
-  }) async {
+  Future<void> cancelSession(SessionCancellation cancellation) async {
     await _apiClient.postVoid(
-      '${ApiEndpoints.sessionById(sessionId)}/cancel',
-      data: {
-        'cancelledBy': cancelledBy,
-        if (reason != null) 'reason': reason,
-      },
+      '${ApiEndpoints.sessionById(SessionId(cancellation.sessionId))}/cancel',
+      data: cancellation.toJson(),
     );
   }
 
   Future<void> logMemberFeedback(
       String sessionId, Map<String, dynamic> body) async {
     await _apiClient.postVoid(
-      ApiEndpoints.sessionMemberLog(sessionId),
+      ApiEndpoints.sessionMemberLog(SessionId(sessionId)),
       data: body,
     );
   }
@@ -97,48 +82,19 @@ class SchedulingRemoteDataSource {
   /// BE GET /scheduling/available-slots returns [{startTime, endTime, isAvailable}].
   /// Each startTime is "HH:mm:ss" (TimeOnly). Returns available slots as "HH:mm" strings.
   Future<List<String>> getAvailabilitySlots(
-      String trainerId, String gymId, DateTime date) async {
+      AvailabilitySlotsQuery query) async {
     return _apiClient.get<List<String>>(
       ApiEndpoints.availableSlots,
-      queryParameters: {
-        'trainerId': trainerId,
-        'gymId': gymId,
-        'date': date.toIso8601String().split('T')[0],
-      },
-      parser: (data) {
-        final list = data is List ? data : const [];
-        return list
-            .cast<Map<String, dynamic>>()
-            .where((e) => e['isAvailable'] == true)
-            .map((e) {
-              final t = (e['startTime'] as String? ?? '');
-              final parts = t.split(':');
-              return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : t;
-            })
-            .where((s) => s.isNotEmpty)
-            .toList();
-      },
+      queryParameters: query.toQueryParameters(),
+      parser: _availableStartTimes,
     );
   }
 
-  Future<WeeklyAvailabilityModel> getWeeklyAvailability({
-    required String trainerId,
-    required String gymId,
-    required DateTime startDate,
-    required DateTime endDate,
-    String? memberId,
-  }) async {
-    String fmt(DateTime d) =>
-        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  Future<WeeklyAvailabilityModel> getWeeklyAvailability(
+      WeeklyAvailabilityQuery query) async {
     return _apiClient.get<WeeklyAvailabilityModel>(
       ApiEndpoints.weeklyAvailability,
-      queryParameters: {
-        'trainerId': trainerId,
-        'gymId': gymId,
-        'startDate': fmt(startDate),
-        'endDate': fmt(endDate),
-        if (memberId != null) 'memberId': memberId,
-      },
+      queryParameters: query.toQueryParameters(),
       parser: (data) =>
           WeeklyAvailabilityModel.fromJson(data as Map<String, dynamic>),
     );
@@ -149,7 +105,7 @@ class SchedulingRemoteDataSource {
     DateTime? date,
   }) async {
     return _apiClient.get<List<GymClassModel>>(
-      ApiEndpoints.gymClasses(gymId),
+      ApiEndpoints.gymClasses(GymId(gymId)),
       queryParameters: {
         if (date != null) 'date': date.toIso8601String().split('T')[0],
       },
@@ -159,26 +115,37 @@ class SchedulingRemoteDataSource {
     );
   }
 
-  Future<void> bookClass({
-    required String gymId,
-    required String classId,
-    required String memberId,
-  }) async {
+  Future<void> bookClass(ClassBookingRequest booking) async {
     await _apiClient.postVoid(
-      ApiEndpoints.bookGymClass(gymId, classId),
-      data: {'memberId': memberId},
+      ApiEndpoints.bookGymClass(GymId(booking.gymId), ClassId(booking.classId)),
+      data: {'memberId': booking.memberId},
     );
   }
 
-  Future<void> cancelClassBooking({
-    required String gymId,
-    required String classId,
-    required String bookingId,
-  }) async {
+  Future<void> cancelClassBooking(ClassBookingCancellation cancellation) async {
     await _apiClient.delete(
-      ApiEndpoints.cancelGymClassBooking(gymId, classId, bookingId),
+      ApiEndpoints.cancelGymClassBooking(
+        GymId(cancellation.gymId),
+        ClassId(cancellation.classId),
+        BookingId(cancellation.bookingId),),
     );
   }
+}
+
+/// Parses `[{startTime, endTime, isAvailable}]` into the start times of the
+/// available slots, as "HH:mm" strings.
+List<String> _availableStartTimes(dynamic data) {
+  final list = data is List ? data : const [];
+  return list
+      .cast<Map<String, dynamic>>()
+      .where((e) => e['isAvailable'] == true)
+      .map((e) {
+        final t = (e['startTime'] as String? ?? '');
+        final parts = t.split(':');
+        return parts.length >= 2 ? '${parts[0]}:${parts[1]}' : t;
+      })
+      .where((s) => s.isNotEmpty)
+      .toList();
 }
 
 /// The backend `GymClassDto` shape matches [GymClassModel] directly —

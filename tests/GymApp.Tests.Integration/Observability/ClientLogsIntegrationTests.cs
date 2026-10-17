@@ -56,7 +56,7 @@ public sealed class ClientLogsIntegrationTests : BaseIntegrationTest
     [Fact]
     public async Task Post_Authenticated_AcceptsWholeBatch()
     {
-        var client = CreateAuthenticatedClient(role: "trainee");
+        var client = CreateAuthenticatedClient(new TestPrincipal("trainee"));
 
         var response = await client.PostAsJsonAsync(
             Endpoint, new { records = new[] { Record(), Record(level: "warning", message: "API 400") } });

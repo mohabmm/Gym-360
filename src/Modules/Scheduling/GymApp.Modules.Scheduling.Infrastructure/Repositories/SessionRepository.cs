@@ -2,6 +2,7 @@ using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,41 +30,19 @@ internal sealed class SessionRepository : ISessionRepository
 
     public async Task<IReadOnlyList<Session>> GetByTrainerAsync(
         Guid trainerId,
-        Guid gymId,
-        DateOnly startDate,
-        DateOnly endDate,
+        GymDateRange range,
         CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Sessions
-            .AsNoTracking()
-            .Include(s => s.TrainerLog)
-            .Include(s => s.MemberLog)
-            .Where(s => s.TrainerId == trainerId
-                && s.GymId == gymId
-                && s.ScheduledDate >= startDate
-                && s.ScheduledDate <= endDate)
-            .OrderBy(s => s.ScheduledDate)
-            .ThenBy(s => s.ScheduledTime)
+        return await InChronologicalOrder(SessionsWithLogsIn(range).Where(s => s.TrainerId == trainerId))
             .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<Session>> GetByMemberAsync(
         Guid memberId,
-        Guid gymId,
-        DateOnly startDate,
-        DateOnly endDate,
+        GymDateRange range,
         CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Sessions
-            .AsNoTracking()
-            .Include(s => s.TrainerLog)
-            .Include(s => s.MemberLog)
-            .Where(s => s.MemberId == memberId
-                && s.GymId == gymId
-                && s.ScheduledDate >= startDate
-                && s.ScheduledDate <= endDate)
-            .OrderBy(s => s.ScheduledDate)
-            .ThenBy(s => s.ScheduledTime)
+        return await InChronologicalOrder(SessionsWithLogsIn(range).Where(s => s.MemberId == memberId))
             .ToListAsync(cancellationToken);
     }
 
@@ -71,18 +50,7 @@ internal sealed class SessionRepository : ISessionRepository
         Guid trainerId,
         CancellationToken cancellationToken = default)
     {
-        var today = GymLocalTime.Today();
-
-        return await _dbContext.Sessions
-            .AsNoTracking()
-            .Where(s => s.TrainerId == trainerId
-                && s.ScheduledDate >= today
-                && s.Status != SessionStatus.CancelledByTrainer
-                && s.Status != SessionStatus.CancelledByMember
-                && s.Status != SessionStatus.LateCancelled
-                && s.Status != SessionStatus.NoShow)
-            .OrderBy(s => s.ScheduledDate)
-            .ThenBy(s => s.ScheduledTime)
+        return await InChronologicalOrder(UpcomingActiveSessions().Where(s => s.TrainerId == trainerId))
             .ToListAsync(cancellationToken);
     }
 
@@ -90,18 +58,7 @@ internal sealed class SessionRepository : ISessionRepository
         Guid memberId,
         CancellationToken cancellationToken = default)
     {
-        var today = GymLocalTime.Today();
-
-        return await _dbContext.Sessions
-            .AsNoTracking()
-            .Where(s => s.MemberId == memberId
-                && s.ScheduledDate >= today
-                && s.Status != SessionStatus.CancelledByTrainer
-                && s.Status != SessionStatus.CancelledByMember
-                && s.Status != SessionStatus.LateCancelled
-                && s.Status != SessionStatus.NoShow)
-            .OrderBy(s => s.ScheduledDate)
-            .ThenBy(s => s.ScheduledTime)
+        return await InChronologicalOrder(UpcomingActiveSessions().Where(s => s.MemberId == memberId))
             .ToListAsync(cancellationToken);
     }
 
@@ -131,19 +88,41 @@ internal sealed class SessionRepository : ISessionRepository
 
     public async Task<int> GetCountByStatusAsync(
         Guid trainerId,
-        Guid gymId,
         SessionStatus status,
-        DateOnly startDate,
-        DateOnly endDate,
+        GymDateRange range,
         CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Sessions
+        return await SessionsIn(range)
             .AsNoTracking()
-            .CountAsync(s => s.TrainerId == trainerId
-                && s.GymId == gymId
-                && s.Status == status
-                && s.ScheduledDate >= startDate
-                && s.ScheduledDate <= endDate,
-                cancellationToken);
+            .CountAsync(s => s.TrainerId == trainerId && s.Status == status, cancellationToken);
     }
+
+    private IQueryable<Session> SessionsIn(GymDateRange range) =>
+        _dbContext.Sessions
+            .Where(s => s.GymId == range.GymId)
+            .Where(s => s.ScheduledDate >= range.From && s.ScheduledDate <= range.To);
+
+    private IQueryable<Session> SessionsWithLogsIn(GymDateRange range) =>
+        SessionsIn(range)
+            .AsNoTracking()
+            .Include(s => s.TrainerLog)
+            .Include(s => s.MemberLog);
+
+    private IQueryable<Session> UpcomingActiveSessions()
+    {
+        var today = GymLocalTime.Today();
+
+        return _dbContext.Sessions
+            .AsNoTracking()
+            .Where(s => s.ScheduledDate >= today)
+            .Where(s => s.Status != SessionStatus.CancelledByTrainer
+                && s.Status != SessionStatus.CancelledByMember
+                && s.Status != SessionStatus.LateCancelled
+                && s.Status != SessionStatus.NoShow);
+    }
+
+    private static IOrderedQueryable<Session> InChronologicalOrder(IQueryable<Session> sessions) =>
+        sessions
+            .OrderBy(s => s.ScheduledDate)
+            .ThenBy(s => s.ScheduledTime);
 }

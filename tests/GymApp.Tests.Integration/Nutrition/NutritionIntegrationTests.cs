@@ -9,40 +9,38 @@ public sealed class NutritionIntegrationTests : BaseIntegrationTest
     public NutritionIntegrationTests(IntegrationTestWebAppFactory factory)
         : base(factory) { }
 
+    private static string Today() => DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+
+    /// <summary>POSTs as a fresh trainee of a fresh gym; both ids are threaded into the body.</summary>
+    private Task<HttpResponseMessage> PostAsGymTraineeAsync(string url, Func<Guid, Guid, object> body)
+    {
+        var userId = Guid.NewGuid();
+        var gymId = Guid.NewGuid();
+        return CreateTraineeClient(userId, gymId).PostAsJsonAsync(url, body(userId, gymId));
+    }
+
+    private async Task AssertAnonymousPostRejectedAsync(string url, object body) =>
+        (await HttpClient.PostAsJsonAsync(url, body)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
     #region Food Logging
 
     [Fact]
-    public async Task LogFood_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId, gymId);
-
-        var request = new
+    public async Task LogFood_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsGymTraineeAsync("api/v1/nutrition/food-log", (userId, gymId) => new
         {
             UserId = userId,
             GymId = gymId,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd"),
+            Date = Today(),
             MealType = "breakfast",
             FoodItems = new[]
             {
                 new { Name = "Eggs", Quantity = 2.0, Unit = "piece", Calories = 140, ProteinG = 12, CarbsG = 1, FatG = 10 }
             }
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/nutrition/food-log", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+        }));
 
     [Fact]
-    public async Task LogFood_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Act
-        var response = await HttpClient.PostAsJsonAsync("api/v1/nutrition/food-log", new
+    public Task LogFood_Unauthenticated_ReturnsUnauthorized() =>
+        AssertAnonymousPostRejectedAsync("api/v1/nutrition/food-log", new
         {
             UserId = Guid.NewGuid(),
             GymId = Guid.NewGuid(),
@@ -50,10 +48,6 @@ public sealed class NutritionIntegrationTests : BaseIntegrationTest
             MealType = "breakfast",
             FoodItems = Array.Empty<object>()
         });
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
 
     [Fact]
     public async Task GetFoodLog_Authenticated_ReturnsResponse()
@@ -90,43 +84,16 @@ public sealed class NutritionIntegrationTests : BaseIntegrationTest
     #region Water Logging
 
     [Fact]
-    public async Task LogWater_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId, gymId);
-
-        var request = new
-        {
-            UserId = userId,
-            GymId = gymId,
-            Date = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd"),
-            AmountMl = 500
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/nutrition/water-log", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task LogWater_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsGymTraineeAsync(
+            "api/v1/nutrition/water-log",
+            (userId, gymId) => new { UserId = userId, GymId = gymId, Date = Today(), AmountMl = 500 }));
 
     [Fact]
-    public async Task LogWater_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Act
-        var response = await HttpClient.PostAsJsonAsync("api/v1/nutrition/water-log", new
-        {
-            UserId = Guid.NewGuid(),
-            GymId = Guid.NewGuid(),
-            Date = "2026-01-01",
-            AmountMl = 250
-        });
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
+    public Task LogWater_Unauthenticated_ReturnsUnauthorized() =>
+        AssertAnonymousPostRejectedAsync(
+            "api/v1/nutrition/water-log",
+            new { UserId = Guid.NewGuid(), GymId = Guid.NewGuid(), Date = "2026-01-01", AmountMl = 250 });
 
     [Fact]
     public async Task GetWaterLog_Authenticated_ReturnsResponse()
@@ -187,19 +154,10 @@ public sealed class NutritionIntegrationTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task CreateMealPlan_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Act
-        var response = await HttpClient.PostAsJsonAsync("api/v1/nutrition/meal-plans", new
-        {
-            TrainerId = Guid.NewGuid(),
-            GymId = Guid.NewGuid(),
-            Name = "Unauthorized Plan"
-        });
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
+    public Task CreateMealPlan_Unauthenticated_ReturnsUnauthorized() =>
+        AssertAnonymousPostRejectedAsync(
+            "api/v1/nutrition/meal-plans",
+            new { TrainerId = Guid.NewGuid(), GymId = Guid.NewGuid(), Name = "Unauthorized Plan" });
 
     [Fact]
     public async Task GetMealPlans_Authenticated_ReturnsResponse()

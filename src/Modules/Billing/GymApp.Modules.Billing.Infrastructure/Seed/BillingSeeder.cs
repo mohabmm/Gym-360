@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,27 @@ public static class BillingSeeder
         // any catalog change made in BillingSeedData.cs (new plan, new feature,
         // toggled plan_feature, edited storage limit) once the tables had rows.
 
+        var newPlanCount = await InsertNewPlansAsync(ctx, logger, ct);
+        var newFeatureCount = await InsertNewFeaturesAsync(ctx, logger, ct);
+
+        // Save plans + features first so plan_features FKs resolve.
+        if (newPlanCount > 0 || newFeatureCount > 0)
+            await ctx.SaveChangesAsync(ct);
+
+        var planFeatures = await SyncPlanFeaturesAsync(ctx, ct);
+        if (planFeatures.HasChanges)
+            logger.LogInformation("BillingSeeder: plan_features +{Added} / ~{Updated}", planFeatures.Added, planFeatures.Updated);
+
+        var storageLimits = await SyncStorageLimitsAsync(ctx, ct);
+        if (storageLimits.HasChanges)
+            logger.LogInformation("BillingSeeder: plan_storage_limits +{Added} / ~{Updated}", storageLimits.Added, storageLimits.Updated);
+
+        await ctx.SaveChangesAsync(ct);
+        logger.LogInformation("BillingSeeder: done");
+    }
+
+    private static async Task<int> InsertNewPlansAsync(BillingDbContext ctx, ILogger logger, CancellationToken ct)
+    {
         var seedPlans = BillingSeedData.GetSubscriptionPlans();
         var existingPlanIds = await ctx.SubscriptionPlans.Select(p => p.Id).ToListAsync(ct);
         var existingPlanIdSet = existingPlanIds.ToHashSet();
@@ -27,6 +49,11 @@ public static class BillingSeeder
             logger.LogInformation("BillingSeeder: inserting {Count} new subscription plans", newPlans.Count);
         }
 
+        return newPlans.Count;
+    }
+
+    private static async Task<int> InsertNewFeaturesAsync(BillingDbContext ctx, ILogger logger, CancellationToken ct)
+    {
         // Features identified by Code (stable, unique). Id is generated per
         // process so we can't compare on it for upsert without losing rows.
         var seedFeatures = BillingSeedData.GetFeatures();
@@ -38,10 +65,11 @@ public static class BillingSeeder
             logger.LogInformation("BillingSeeder: inserting {Count} new features", newFeatures.Count);
         }
 
-        // Save plans + features first so plan_features FKs resolve.
-        if (newPlans.Count > 0 || newFeatures.Count > 0)
-            await ctx.SaveChangesAsync(ct);
+        return newFeatures.Count;
+    }
 
+    private static async Task<SyncCounts> SyncPlanFeaturesAsync(BillingDbContext ctx, CancellationToken ct)
+    {
         // Rebuild the plan-feature matrix using the actual Feature ids in the DB
         // (not the just-generated in-memory ones, which were discarded if a
         // matching code already existed).
@@ -51,58 +79,71 @@ public static class BillingSeeder
         var existingByKey = existingPlanFeatures
             .ToDictionary(pf => (pf.PlanId, pf.FeatureId));
 
-        var addedPf = 0;
-        var updatedPf = 0;
+        var counts = new SyncCounts();
         foreach (var pf in seedPlanFeatures)
         {
             if (existingByKey.TryGetValue((pf.PlanId, pf.FeatureId), out var current))
             {
-                // Sync IsEnabled if BillingSeedData was edited. LimitValue is
-                // intentionally not synced here — it's per-plan-per-feature
-                // override territory and admins may tune it via the UI.
-                if (current.IsEnabled != pf.IsEnabled)
-                {
-                    current.Update(pf.IsEnabled, current.LimitValue);
-                    updatedPf++;
-                }
+                counts.Updated += SyncIsEnabled(current, pf);
+                continue;
             }
-            else
-            {
-                await ctx.PlanFeatures.AddAsync(pf, ct);
-                addedPf++;
-            }
-        }
-        if (addedPf > 0 || updatedPf > 0)
-            logger.LogInformation("BillingSeeder: plan_features +{Added} / ~{Updated}", addedPf, updatedPf);
 
+            await ctx.PlanFeatures.AddAsync(pf, ct);
+            counts.Added++;
+        }
+
+        return counts;
+    }
+
+    // Sync IsEnabled if BillingSeedData was edited. LimitValue is
+    // intentionally not synced here — it's per-plan-per-feature
+    // override territory and admins may tune it via the UI.
+    private static int SyncIsEnabled(PlanFeature current, PlanFeature seed)
+    {
+        if (current.IsEnabled == seed.IsEnabled)
+            return 0;
+
+        current.Update(seed.IsEnabled, current.LimitValue);
+        return 1;
+    }
+
+    private static async Task<SyncCounts> SyncStorageLimitsAsync(BillingDbContext ctx, CancellationToken ct)
+    {
         // Storage limits keyed by (PlanId, ResourceType).
         var seedLimits = BillingSeedData.GetPlanStorageLimits();
         var existingLimits = await ctx.PlanStorageLimits.ToListAsync(ct);
         var limitsByKey = existingLimits
             .ToDictionary(l => (l.PlanId, l.ResourceType));
 
-        var addedLim = 0;
-        var updatedLim = 0;
+        var counts = new SyncCounts();
         foreach (var lim in seedLimits)
         {
             if (limitsByKey.TryGetValue((lim.PlanId, lim.ResourceType), out var current))
             {
-                if (current.LimitValue != lim.LimitValue)
-                {
-                    current.Update(lim.LimitValue);
-                    updatedLim++;
-                }
+                counts.Updated += SyncLimitValue(current, lim);
+                continue;
             }
-            else
-            {
-                await ctx.PlanStorageLimits.AddAsync(lim, ct);
-                addedLim++;
-            }
-        }
-        if (addedLim > 0 || updatedLim > 0)
-            logger.LogInformation("BillingSeeder: plan_storage_limits +{Added} / ~{Updated}", addedLim, updatedLim);
 
-        await ctx.SaveChangesAsync(ct);
-        logger.LogInformation("BillingSeeder: done");
+            await ctx.PlanStorageLimits.AddAsync(lim, ct);
+            counts.Added++;
+        }
+
+        return counts;
+    }
+
+    private static int SyncLimitValue(PlanStorageLimit current, PlanStorageLimit seed)
+    {
+        if (current.LimitValue == seed.LimitValue)
+            return 0;
+
+        current.Update(seed.LimitValue);
+        return 1;
+    }
+
+    private sealed class SyncCounts
+    {
+        public int Added { get; set; }
+        public int Updated { get; set; }
+        public bool HasChanges => Added > 0 || Updated > 0;
     }
 }

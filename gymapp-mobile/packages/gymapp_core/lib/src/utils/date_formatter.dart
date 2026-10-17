@@ -82,20 +82,14 @@ class DateFormatter {
   }
 
   /// Check if a date is today.
-  static bool isToday(DateTime date) {
-    final now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
-  }
+  static bool isToday(DateTime date) => _isSameDay(date, DateTime.now());
 
   /// Check if a date is tomorrow.
-  static bool isTomorrow(DateTime date) {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    return date.year == tomorrow.year &&
-        date.month == tomorrow.month &&
-        date.day == tomorrow.day;
-  }
+  static bool isTomorrow(DateTime date) =>
+      _isSameDay(date, DateTime.now().add(const Duration(days: 1)));
+
+  static bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// Get greeting based on time of day.
   static String getGreeting({String locale = 'ar'}) {

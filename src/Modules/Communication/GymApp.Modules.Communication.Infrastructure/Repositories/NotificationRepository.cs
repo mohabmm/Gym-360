@@ -1,5 +1,6 @@
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 using GymApp.Modules.Communication.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,8 +24,7 @@ internal sealed class NotificationRepository : INotificationRepository
     public async Task<List<Notification>> GetByUserAsync(
         Guid userId,
         Guid? gymId,
-        int page,
-        int pageSize,
+        PageRequest page,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.Notifications
@@ -38,8 +38,8 @@ internal sealed class NotificationRepository : INotificationRepository
 
         return await query
             .OrderByDescending(n => n.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
             .ToListAsync(cancellationToken);
     }
 

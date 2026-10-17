@@ -22,7 +22,10 @@ internal sealed class GetDataImportErrorsQueryHandler : IQueryHandler<GetDataImp
     public async Task<Result<Stream>> Handle(GetDataImportErrorsQuery request, CancellationToken cancellationToken)
     {
         var job = await _repository.GetByIdAsync(request.JobId, cancellationToken);
-        if (job is null || job.GymId != request.GymId || string.IsNullOrEmpty(job.ErrorReportPath))
+        if (job is null || job.GymId != request.GymId)
+            return Result.Failure<Stream>(GymErrors.DataImportJobNotFound);
+
+        if (string.IsNullOrEmpty(job.ErrorReportPath))
             return Result.Failure<Stream>(GymErrors.DataImportJobNotFound);
 
         var stream = await _fileStorage.OpenErrorReportAsync(job.ErrorReportPath, cancellationToken);

@@ -4,16 +4,12 @@ public interface INotificationService
 {
     Task SendNotificationAsync(
         Guid userId,
-        string title,
-        string body,
+        PushContent content,
         string type,
-        Dictionary<string, string>? data = null,
         CancellationToken cancellationToken = default);
 
     Task SendPushNotificationAsync(
         Guid userId,
-        string title,
-        string body,
-        Dictionary<string, string>? data = null,
+        PushContent content,
         CancellationToken cancellationToken = default);
 }

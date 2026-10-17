@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Identity.Application.Abstractions;
+using GymApp.Modules.Identity.Application.Common;
 using GymApp.Modules.Identity.Application.Contracts;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
@@ -39,19 +40,22 @@ internal sealed class CreateGymOwnerCommandHandler : ICommandHandler<CreateGymOw
         if (await _userRepository.ExistsAsync(emailResult.Value, cancellationToken))
             return Result.Failure<CreateGymOwnerResult>(UserErrors.EmailAlreadyExists);
 
-        var phoneResult = PhoneNumber.Create(NormalizePhone(request.Phone, request.Email));
+        var phoneResult = PhoneNumber.Create(MemberPhoneNormalizer.NormalizeOrPlaceholder(request.Phone, request.Email));
         if (phoneResult.IsFailure)
             return Result.Failure<CreateGymOwnerResult>(phoneResult.Error);
 
         var passwordHash = _passwordHasher.Hash(request.Password);
 
         var user = DomainEntities.User.Create(
-            emailResult.Value,
-            phoneResult.Value,
-            passwordHash,
-            request.FirstName,
-            request.LastName,
-            Gender.Male,
+            new NewUserDetails
+            {
+                Email = emailResult.Value,
+                PhoneNumber = phoneResult.Value,
+                PasswordHash = passwordHash,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Gender = Gender.Male
+            },
             UserRole.GymOwner);
 
         user.Activate();
@@ -61,7 +65,12 @@ internal sealed class CreateGymOwnerCommandHandler : ICommandHandler<CreateGymOw
         await _userRepository.AddOwnerAsync(owner, cancellationToken);
 
         var dashboardMode = Enum.Parse<DashboardMode>(request.DashboardMode, ignoreCase: true);
-        var contract = DomainEntities.Contract.Create(owner.Id, dashboardMode, request.PlanTier, DateTime.UtcNow);
+        var contract = DomainEntities.Contract.Create(owner.Id, new ContractDetails
+        {
+            DashboardMode = dashboardMode,
+            PlanTier = request.PlanTier,
+            EffectiveFrom = DateTime.UtcNow
+        });
         await _userRepository.AddContractAsync(contract, cancellationToken);
 
         user.LinkToOwner(owner.Id);
@@ -78,25 +87,5 @@ internal sealed class CreateGymOwnerCommandHandler : ICommandHandler<CreateGymOw
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new CreateGymOwnerResult(user.Id, owner.Id));
-    }
-
-    private static string NormalizePhone(string? raw, string email)
-    {
-        var trimmed = raw?.Trim() ?? string.Empty;
-
-        if (string.IsNullOrEmpty(trimmed))
-        {
-            var hash = Math.Abs(email.GetHashCode()).ToString().PadLeft(10, '0');
-            return "+999" + hash[..Math.Min(10, hash.Length)];
-        }
-
-        var digits = new string(trimmed.Where(c => char.IsDigit(c) || c == '+').ToArray());
-
-        if (digits.StartsWith("+")) return digits;
-        if (digits.StartsWith("00")) return "+" + digits[2..];
-        if (digits.Length == 11 && digits.StartsWith("01")) return "+20" + digits[1..];
-        if (digits.Length == 10 && digits.StartsWith("1")) return "+20" + digits;
-
-        return "+" + digits;
     }
 }

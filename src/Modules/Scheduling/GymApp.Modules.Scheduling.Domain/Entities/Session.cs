@@ -56,30 +56,26 @@ public sealed class Session : Entity
         SessionParticipants participants,
         SessionSchedule schedule,
         SessionType sessionType,
-        string? focus = null)
-    {
-        var session = new Session(participants, schedule, sessionType) { Focus = focus };
-        session.RaiseBooked();
-        return session;
-    }
+        string? focus = null) =>
+        Booked(new Session(participants, schedule, sessionType) { Focus = focus });
 
     public static Session CreateRecurring(
         SessionParticipants participants,
         SessionSchedule schedule,
         SessionType sessionType,
-        string? recurrenceRule)
-    {
-        var session = new Session(participants, schedule, sessionType)
+        string? recurrenceRule) =>
+        Booked(new Session(participants, schedule, sessionType)
         {
             IsRecurring = true,
             RecurrenceRule = recurrenceRule
-        };
-        session.RaiseBooked();
+        });
+
+    private static Session Booked(Session session)
+    {
+        session.RaiseDomainEvent(new SessionBookedDomainEvent(
+            session.Id, session.TrainerId, session.MemberId, session.GymId));
         return session;
     }
-
-    private void RaiseBooked() =>
-        RaiseDomainEvent(new SessionBookedDomainEvent(Id, TrainerId, MemberId, GymId));
 
     /// <param name="nowGymLocal">
     /// Current time as gym-local wall-clock — the same frame ScheduledDate/ScheduledTime
@@ -106,16 +102,16 @@ public sealed class Session : Entity
     }
 
     /// <param name="nowGymLocal">Current time as gym-local wall-clock (see <see cref="Confirm"/>).</param>
-    public Result StartSession(DateTime nowGymLocal, int earlyWindowMinutes, bool allowEarlyStart)
+    public Result StartSession(DateTime nowGymLocal, EarlyStartPolicy earlyStart)
     {
         if (Status != SessionStatus.Confirmed)
             return Result.Failure(SchedulingErrors.InvalidStatusTransition);
 
-        if (!allowEarlyStart)
+        if (!earlyStart.AllowEarlyStart)
         {
             var scheduledStart = ScheduledDate.ToDateTime(ScheduledTime);
-            if (nowGymLocal < scheduledStart.AddMinutes(-earlyWindowMinutes))
-                return Result.Failure(SchedulingErrors.SessionTooEarly(scheduledStart, earlyWindowMinutes));
+            if (nowGymLocal < scheduledStart.AddMinutes(-earlyStart.EarlyWindowMinutes))
+                return Result.Failure(SchedulingErrors.SessionTooEarly(scheduledStart, earlyStart.EarlyWindowMinutes));
         }
 
         Status = SessionStatus.InProgress;
@@ -135,8 +131,10 @@ public sealed class Session : Entity
         return Result.Success();
     }
 
-    public Result Cancel(string reason, Guid cancelledBy, bool isLateCancellation)
+    public Result Cancel(SessionCancellation cancellation)
     {
+        var (reason, cancelledBy, isLateCancellation) = cancellation;
+
         if (Status is SessionStatus.CancelledByTrainer or SessionStatus.CancelledByMember or SessionStatus.LateCancelled)
             return Result.Failure(SchedulingErrors.AlreadyCancelled);
 
@@ -176,7 +174,7 @@ public sealed class Session : Entity
         if (TrainerLog is not null)
             return Result.Failure(SchedulingErrors.TrainerLogAlreadyExists);
 
-        if (!IsInRange(details.ClientEffortRating, 1, 5))
+        if (!IsRating(details.ClientEffortRating))
             return Result.Failure(SchedulingErrors.InvalidRating);
 
         TrainerLog = TrainerLog.Create(Id, details);
@@ -240,17 +238,21 @@ public sealed class Session : Entity
 
     private static Result ValidateMemberLog(MemberLogDetails details)
     {
-        if (!IsInRange(details.Rating, 1, 5))
+        if (!IsRating(details.Rating))
             return Result.Failure(SchedulingErrors.InvalidRating);
 
-        if (!IsInRange(details.PerceivedExertion, 1, 10))
+        if (!IsExertion(details.PerceivedExertion))
             return Result.Failure(SchedulingErrors.InvalidExertion);
 
-        if (!IsInRange(details.Satisfaction, 1, 5))
+        if (!IsRating(details.Satisfaction))
             return Result.Failure(SchedulingErrors.InvalidRating);
 
         return Result.Success();
     }
 
-    private static bool IsInRange(int value, int min, int max) => value >= min && value <= max;
+    // 1–5 scale used for ratings, satisfaction and client effort.
+    private static bool IsRating(int value) => value is >= 1 and <= 5;
+
+    // RPE: 1–10 scale.
+    private static bool IsExertion(int value) => value is >= 1 and <= 10;
 }

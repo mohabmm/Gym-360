@@ -94,7 +94,7 @@ final clientRosterProvider =
   if (gymId == null || trainerId == null) return <ClientSummary>[];
 
   final members = await apiClient.get<List<UserModel>>(
-    ApiEndpoints.gymMembers(gymId),
+    ApiEndpoints.gymMembers(GymId(gymId)),
     queryParameters: {'page': 1, 'pageSize': 100, 'trainerId': trainerId},
     parser: (data) {
       // BE wraps list responses as PagedResponse { items: [...] }.
@@ -140,7 +140,7 @@ final clientDetailProvider =
     // Fetch user (gym-scoped). BE MemberDto carries `memberId` (user id) plus
     // enriched identity fields — alias to `id` before parsing UserModel.
     final user = await apiClient.get<UserModel>(
-      ApiEndpoints.gymMemberById(gymId, clientId),
+      ApiEndpoints.gymMemberById(GymId(gymId), MemberId(clientId)),
       parser: (data) {
         final json = Map<String, dynamic>.from(data as Map);
         json['id'] ??= json['memberId'];
@@ -207,7 +207,7 @@ final clientDetailProvider =
       final trainerId = ref.read(authProvider).user?.id;
       if (trainerId != null) {
         bodyMetrics = await apiClient.get<List<BodyMetricEntryModel>>(
-          ApiEndpoints.clientProgress(clientId),
+          ApiEndpoints.clientProgress(ClientId(clientId)),
           queryParameters: {'trainerId': trainerId, 'gymId': gymId},
           parser: (data) {
             if (data is Map<String, dynamic>) {
@@ -275,7 +275,7 @@ final clientDetailProvider =
     List<ClientNote> notes = <ClientNote>[];
     try {
       notes = await apiClient.get<List<ClientNote>>(
-        ApiEndpoints.gymMemberNotes(gymId, clientId),
+        ApiEndpoints.gymMemberNotes(GymId(gymId), MemberId(clientId)),
         parser: (data) {
           if (data is List) {
             return data

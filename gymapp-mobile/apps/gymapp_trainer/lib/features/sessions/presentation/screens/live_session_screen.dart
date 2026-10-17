@@ -60,7 +60,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     if (testMode) {
       try {
         await apiClient.postVoid(
-          ApiEndpoints.sessionConfirm(widget.sessionId),
+          ApiEndpoints.sessionConfirm(SessionId(widget.sessionId)),
           data: {},
         );
       } catch (_) {}
@@ -75,7 +75,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
 
     try {
       await apiClient.postVoid(
-        ApiEndpoints.sessionStart(widget.sessionId),
+        ApiEndpoints.sessionStart(SessionId(widget.sessionId)),
         data: {},
       );
     } catch (e) {
@@ -86,7 +86,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
       var alreadyRunning = false;
       try {
         final session = await apiClient.get<SessionModel>(
-          ApiEndpoints.sessionById(widget.sessionId),
+          ApiEndpoints.sessionById(SessionId(widget.sessionId)),
           parser: (data) =>
               SessionModel.fromJson(data as Map<String, dynamic>),
         );
@@ -180,7 +180,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
       // Status == Completed. Complete the session FIRST, then push
       // exercise logs.
       await apiClient.postVoid(
-        ApiEndpoints.sessionComplete(widget.sessionId),
+        ApiEndpoints.sessionComplete(SessionId(widget.sessionId)),
         data: {},
       );
 
@@ -222,7 +222,7 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
         }
         try {
           await apiClient.postVoid(
-            ApiEndpoints.sessionExerciseLogs(widget.sessionId),
+            ApiEndpoints.sessionExerciseLogs(SessionId(widget.sessionId)),
             data: {'items': items},
           );
         } catch (_) {

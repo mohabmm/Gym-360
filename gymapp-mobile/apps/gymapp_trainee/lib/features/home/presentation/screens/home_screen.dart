@@ -11,6 +11,7 @@ import '../widgets/next_session_card.dart';
 import '../widgets/weekly_activity_chart.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../../../communication/presentation/widgets/notification_bell.dart';
+import '../../../scheduling/presentation/providers/scheduling_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -27,7 +28,7 @@ class HomeScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(todaysWorkoutProvider);
-          ref.invalidate(upcomingSessionsProvider);
+          ref.invalidate(upcomingSessionsListProvider);
           ref.invalidate(progressDashboardProvider);
           ref.invalidate(todaysWaterProvider);
         },

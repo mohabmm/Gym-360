@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Communication.Domain.Enums;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Domain.Entities;
 
@@ -16,21 +17,16 @@ public sealed class Message : Entity
     public DateTime? ReadAt { get; private set; }
     public DateTime SentAt { get; private set; }
 
-    public static Message Create(
-        Guid conversationId,
-        Guid senderId,
-        string content,
-        string? mediaUrl = null,
-        MediaType mediaType = MediaType.None)
+    public static Message Create(MessageDetails details)
     {
         return new Message
         {
             Id = Guid.NewGuid(),
-            ConversationId = conversationId,
-            SenderId = senderId,
-            Content = content,
-            MediaUrl = mediaUrl,
-            MediaType = mediaType,
+            ConversationId = details.ConversationId,
+            SenderId = details.SenderId,
+            Content = details.Content,
+            MediaUrl = details.MediaUrl,
+            MediaType = details.MediaType,
             IsRead = false,
             SentAt = DateTime.UtcNow
         };

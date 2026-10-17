@@ -1,6 +1,7 @@
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Events;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Tests.Domain.Training;
 
@@ -13,12 +14,21 @@ public sealed class WorkoutTests
         return Workout.Create(
             Guid.NewGuid(),
             Guid.NewGuid(),
-            "Push Day",
-            description: "Upper body push workout",
-            estimatedDurationMinutes: 60,
-            targetMuscleGroups: muscleGroups ?? new List<MuscleGroup> { MuscleGroup.Chest, MuscleGroup.Shoulders, MuscleGroup.Triceps },
+            new WorkoutDetails
+            {
+                Name = "Push Day",
+                Description = "Upper body push workout",
+                EstimatedDurationMinutes = 60,
+                TargetMuscleGroups = muscleGroups ?? new List<MuscleGroup> { MuscleGroup.Chest, MuscleGroup.Shoulders, MuscleGroup.Triceps }
+            },
             isTemplate: isTemplate);
     }
+
+    private static WorkoutExerciseDetails Prescription(Guid exerciseId, int sets, string reps) =>
+        new() { ExerciseId = exerciseId, Sets = sets, Reps = reps };
+
+    private static WorkoutExercise AddExercise(Workout workout, int sets, string reps) =>
+        workout.AddExercise(Prescription(Guid.NewGuid(), sets, reps));
 
     [Fact]
     public void Create_ValidInput_ShouldSetPropertiesCorrectly()
@@ -26,9 +36,13 @@ public sealed class WorkoutTests
         var trainerId = Guid.NewGuid();
         var gymId = Guid.NewGuid();
 
-        var workout = Workout.Create(trainerId, gymId, "Leg Day",
-            description: "Legs", estimatedDurationMinutes: 45,
-            targetMuscleGroups: new List<MuscleGroup> { MuscleGroup.Legs, MuscleGroup.Glutes });
+        var workout = Workout.Create(trainerId, gymId, new WorkoutDetails
+        {
+            Name = "Leg Day",
+            Description = "Legs",
+            EstimatedDurationMinutes = 45,
+            TargetMuscleGroups = new List<MuscleGroup> { MuscleGroup.Legs, MuscleGroup.Glutes }
+        });
 
         workout.Id.Should().NotBeEmpty();
         workout.TrainerId.Should().Be(trainerId);
@@ -60,7 +74,7 @@ public sealed class WorkoutTests
     [Fact]
     public void Create_WithNullMuscleGroups_ShouldHaveEmptyList()
     {
-        var workout = Workout.Create(Guid.NewGuid(), Guid.NewGuid(), "W");
+        var workout = Workout.Create(Guid.NewGuid(), Guid.NewGuid(), new WorkoutDetails { Name = "W" });
 
         workout.TargetMuscleGroups.Should().BeEmpty();
     }
@@ -71,7 +85,7 @@ public sealed class WorkoutTests
         var workout = CreateDefaultWorkout();
         var exerciseId = Guid.NewGuid();
 
-        var we = workout.AddExercise(exerciseId, 3, "12", weight: 50m, restSeconds: 90);
+        var we = workout.AddExercise(Prescription(exerciseId, 3, "12") with { Weight = 50m, RestSeconds = 90 });
 
         workout.WorkoutExercises.Should().HaveCount(1);
         we.ExerciseId.Should().Be(exerciseId);
@@ -87,9 +101,9 @@ public sealed class WorkoutTests
     {
         var workout = CreateDefaultWorkout();
 
-        workout.AddExercise(Guid.NewGuid(), 3, "10");
-        workout.AddExercise(Guid.NewGuid(), 4, "8");
-        workout.AddExercise(Guid.NewGuid(), 3, "12");
+        AddExercise(workout, 3, "10");
+        AddExercise(workout, 4, "8");
+        AddExercise(workout, 3, "12");
 
         workout.WorkoutExercises.Should().HaveCount(3);
         workout.WorkoutExercises[0].Order.Should().Be(1);
@@ -101,9 +115,9 @@ public sealed class WorkoutTests
     public void RemoveExercise_ShouldRemoveAndReorder()
     {
         var workout = CreateDefaultWorkout();
-        var we1 = workout.AddExercise(Guid.NewGuid(), 3, "10");
-        var we2 = workout.AddExercise(Guid.NewGuid(), 4, "8");
-        var we3 = workout.AddExercise(Guid.NewGuid(), 3, "12");
+        var we1 = AddExercise(workout, 3, "10");
+        var we2 = AddExercise(workout, 4, "8");
+        var we3 = AddExercise(workout, 3, "12");
 
         workout.RemoveExercise(we2.Id);
 
@@ -118,7 +132,7 @@ public sealed class WorkoutTests
     public void RemoveExercise_NonExistentId_ShouldDoNothing()
     {
         var workout = CreateDefaultWorkout();
-        workout.AddExercise(Guid.NewGuid(), 3, "10");
+        AddExercise(workout, 3, "10");
 
         workout.RemoveExercise(Guid.NewGuid());
 
@@ -130,8 +144,13 @@ public sealed class WorkoutTests
     {
         var workout = CreateDefaultWorkout();
 
-        workout.Update("Pull Day", null, "Back focus", 50,
-            new List<MuscleGroup> { MuscleGroup.Back, MuscleGroup.Biceps });
+        workout.Update(new WorkoutDetails
+        {
+            Name = "Pull Day",
+            Description = "Back focus",
+            EstimatedDurationMinutes = 50,
+            TargetMuscleGroups = new List<MuscleGroup> { MuscleGroup.Back, MuscleGroup.Biceps }
+        });
 
         workout.Name.Should().Be("Pull Day");
         workout.Description.Should().Be("Back focus");
@@ -144,7 +163,7 @@ public sealed class WorkoutTests
     {
         var workout = CreateDefaultWorkout();
 
-        workout.Update("New", null, null, null, null);
+        workout.Update(new WorkoutDetails { Name = "New" });
 
         workout.TargetMuscleGroups.Should().BeEmpty();
     }
@@ -155,7 +174,7 @@ public sealed class WorkoutTests
         var workout = CreateDefaultWorkout();
         var groupId = Guid.NewGuid();
 
-        var we = workout.AddExercise(Guid.NewGuid(), 3, "10", supersetGroupId: groupId);
+        var we = workout.AddExercise(Prescription(Guid.NewGuid(), 3, "10") with { SupersetGroupId = groupId });
 
         we.SupersetGroupId.Should().Be(groupId);
     }

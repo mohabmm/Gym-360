@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Nutrition.Domain.ValueObjects;
 
 namespace GymApp.Modules.Nutrition.Domain.Entities;
 
@@ -17,29 +18,20 @@ public sealed class FoodDatabase : Entity
     public string Category { get; private set; } = default!;
     public bool IsActive { get; private set; }
 
-    public static FoodDatabase Create(
-        string name,
-        string nameArabic,
-        decimal servingSize,
-        string servingUnit,
-        decimal caloriesPerServing,
-        decimal proteinPerServing,
-        decimal carbsPerServing,
-        decimal fatPerServing,
-        string category)
+    public static FoodDatabase Create(FoodDatabaseDetails details)
     {
         return new FoodDatabase
         {
             Id = Guid.NewGuid(),
-            Name = name,
-            NameArabic = nameArabic,
-            ServingSize = servingSize,
-            ServingUnit = servingUnit,
-            CaloriesPerServing = caloriesPerServing,
-            ProteinPerServing = proteinPerServing,
-            CarbsPerServing = carbsPerServing,
-            FatPerServing = fatPerServing,
-            Category = category,
+            Name = details.Name,
+            NameArabic = details.NameArabic,
+            ServingSize = details.ServingSize,
+            ServingUnit = details.ServingUnit,
+            CaloriesPerServing = details.CaloriesPerServing,
+            ProteinPerServing = details.ProteinPerServing,
+            CarbsPerServing = details.CarbsPerServing,
+            FatPerServing = details.FatPerServing,
+            Category = details.Category,
             IsActive = true
         };
     }

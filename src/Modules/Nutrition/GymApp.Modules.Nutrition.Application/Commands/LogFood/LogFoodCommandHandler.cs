@@ -5,7 +5,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Nutrition.Domain.Entities;
 using GymApp.Modules.Nutrition.Domain.Enums;
 using GymApp.Modules.Nutrition.Domain.Repositories;
-using GymApp.Modules.Nutrition.Domain.ValueObjects;
+using GymApp.Modules.Nutrition.Application.Mappers;
 using GymApp.Modules.Nutrition.Application.Abstractions;
 
 namespace GymApp.Modules.Nutrition.Application.Commands.LogFood;
@@ -55,8 +55,7 @@ internal sealed class LogFoodCommandHandler : ICommandHandler<LogFoodCommand, Gu
             await _foodLogRepository.AddAsync(foodLog, cancellationToken);
         }
 
-        var foodItems = request.FoodItems.Select(fi =>
-            new FoodItem(fi.Name, fi.Quantity, fi.Unit, fi.Calories, fi.Protein, fi.Carbs, fi.Fat));
+        var foodItems = request.FoodItems.Select(NutritionInputMapper.ToFoodItem);
 
         var meal = foodLog.AddMeal(mealType, foodItems);
 

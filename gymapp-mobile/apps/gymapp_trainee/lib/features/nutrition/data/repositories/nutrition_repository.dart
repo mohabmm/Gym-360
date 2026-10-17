@@ -8,12 +8,8 @@ class NutritionRepository {
   NutritionRepository({required NutritionRemoteDataSource remoteDataSource})
       : _remoteDataSource = remoteDataSource;
 
-  Future<FoodLogModel> getFoodLog({
-    required String userId,
-    required String gymId,
-    required DateTime date,
-  }) =>
-      _remoteDataSource.getFoodLog(userId: userId, gymId: gymId, date: date);
+  Future<FoodLogModel> getFoodLog(DailyLogQuery query) =>
+      _remoteDataSource.getFoodLog(query);
 
   /// Returns the food log ID (Guid string).
   Future<String> addFoodEntry(Map<String, dynamic> body) =>
@@ -22,26 +18,12 @@ class NutritionRepository {
   Future<void> deleteFoodEntry(String entryId) =>
       _remoteDataSource.deleteFoodEntry(entryId);
 
-  Future<WaterLogModel> getWaterLog({
-    required String userId,
-    required String gymId,
-    required DateTime date,
-  }) =>
-      _remoteDataSource.getWaterLog(userId: userId, gymId: gymId, date: date);
+  Future<WaterLogModel> getWaterLog(DailyLogQuery query) =>
+      _remoteDataSource.getWaterLog(query);
 
   /// Returns the water log entry ID (Guid string).
-  Future<String> addWaterEntry({
-    required String userId,
-    required String gymId,
-    required DateTime date,
-    required int amountMl,
-  }) =>
-      _remoteDataSource.addWaterEntry(
-        userId: userId,
-        gymId: gymId,
-        date: date,
-        amountMl: amountMl,
-      );
+  Future<String> addWaterEntry(WaterEntryRequest request) =>
+      _remoteDataSource.addWaterEntry(request);
 
   Future<MealPlanModel?> getActiveMealPlan() =>
       _remoteDataSource.getActiveMealPlan();

@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using GymApp.Modules.Nutrition.Domain.Entities;
 using GymApp.Modules.Nutrition.Domain.Repositories;
 using GymApp.Modules.Nutrition.Infrastructure.Persistence;
@@ -21,43 +22,25 @@ internal sealed class MealPlanRepository : IMealPlanRepository
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
     }
 
-    public async Task<List<MealPlan>> GetByTrainerAsync(
+    public Task<List<MealPlan>> GetByTrainerAsync(
         Guid trainerId,
         Guid gymId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.MealPlans
-            .AsNoTracking()
-            .Include(m => m.Days)
-            .Where(m => m.TrainerId == trainerId && m.GymId == gymId)
-            .OrderByDescending(m => m.UpdatedAt)
-            .ToListAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        ListRecentlyUpdatedAsync(m => m.TrainerId == trainerId && m.GymId == gymId, cancellationToken);
 
-    public async Task<List<MealPlan>> GetByClientAsync(
+    public Task<List<MealPlan>> GetByClientAsync(
         Guid clientId,
         Guid gymId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.MealPlans
-            .AsNoTracking()
-            .Include(m => m.Days)
-            .Where(m => m.ClientId == clientId && m.GymId == gymId)
-            .OrderByDescending(m => m.UpdatedAt)
-            .ToListAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        ListRecentlyUpdatedAsync(m => m.ClientId == clientId && m.GymId == gymId, cancellationToken);
 
-    public async Task<List<MealPlan>> GetTemplatesAsync(
+    public Task<List<MealPlan>> GetTemplatesAsync(
         Guid gymId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.MealPlans
-            .AsNoTracking()
-            .Include(m => m.Days)
+        CancellationToken cancellationToken = default) =>
+        ReadOnlyPlansWithDays()
             .Where(m => m.IsTemplate && m.GymId == gymId)
             .OrderBy(m => m.Name)
             .ToListAsync(cancellationToken);
-    }
 
     public async Task AddAsync(MealPlan mealPlan, CancellationToken cancellationToken = default)
     {
@@ -68,4 +51,17 @@ internal sealed class MealPlanRepository : IMealPlanRepository
     {
         _dbContext.MealPlans.Update(mealPlan);
     }
+
+    private Task<List<MealPlan>> ListRecentlyUpdatedAsync(
+        Expression<Func<MealPlan, bool>> predicate,
+        CancellationToken cancellationToken) =>
+        ReadOnlyPlansWithDays()
+            .Where(predicate)
+            .OrderByDescending(m => m.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+    private IQueryable<MealPlan> ReadOnlyPlansWithDays() =>
+        _dbContext.MealPlans
+            .AsNoTracking()
+            .Include(m => m.Days);
 }

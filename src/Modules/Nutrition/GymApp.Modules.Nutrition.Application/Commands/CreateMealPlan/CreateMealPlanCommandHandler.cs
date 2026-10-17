@@ -2,9 +2,8 @@ using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
-using GymApp.Modules.Nutrition.Application.DTOs;
+using GymApp.Modules.Nutrition.Application.Mappers;
 using GymApp.Modules.Nutrition.Domain.Entities;
-using GymApp.Modules.Nutrition.Domain.Enums;
 using GymApp.Modules.Nutrition.Domain.Repositories;
 using GymApp.Modules.Nutrition.Domain.ValueObjects;
 using GymApp.Modules.Nutrition.Application.Abstractions;
@@ -40,35 +39,20 @@ internal sealed class CreateMealPlanCommandHandler : ICommandHandler<CreateMealP
                 "Pro"));
         }
 
-        var macroTargets = new MacroTargets(
-            request.MacroTargets.ProteinGrams,
-            request.MacroTargets.CarbsGrams,
-            request.MacroTargets.FatGrams);
-
         var mealPlan = MealPlan.Create(
             request.TrainerId,
             request.GymId,
-            request.Name,
-            request.Description,
-            request.DailyCalorieTarget,
-            macroTargets,
+            new MealPlanDetails
+            {
+                Name = request.Name,
+                Description = request.Description,
+                DailyCalorieTarget = request.DailyCalorieTarget,
+                MacroTargets = NutritionInputMapper.ToMacroTargets(request.MacroTargets)
+            },
             request.IsTemplate);
 
         foreach (var dayDto in request.Days)
-        {
-            var plannedMeals = MapPlannedMeals(dayDto.PlannedMeals);
-            var alternatives = dayDto.Alternatives is not null
-                ? MapPlannedMeals(dayDto.Alternatives)
-                : null;
-
-            var day = MealPlanDay.Create(
-                mealPlan.Id,
-                dayDto.DayOfWeek,
-                plannedMeals,
-                alternatives);
-
-            mealPlan.AddDay(day);
-        }
+            mealPlan.AddDay(NutritionInputMapper.ToMealPlanDay(mealPlan.Id, dayDto));
 
         await _mealPlanRepository.AddAsync(mealPlan, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -76,17 +60,4 @@ internal sealed class CreateMealPlanCommandHandler : ICommandHandler<CreateMealP
         return Result.Success(mealPlan.Id);
     }
 
-    private static List<PlannedMeal> MapPlannedMeals(List<PlannedMealDto> dtos) =>
-        dtos.Select(pm => new PlannedMeal(
-            Enum.Parse<MealType>(pm.MealType, ignoreCase: true),
-            pm.Name,
-            pm.Description,
-            pm.FoodItems.Select(fi =>
-                new FoodItem(fi.Name, fi.Quantity, fi.Unit, fi.Calories, fi.Protein, fi.Carbs, fi.Fat))
-                .ToList(),
-            pm.TotalCalories,
-            pm.TotalProtein,
-            pm.TotalCarbs,
-            pm.TotalFat))
-        .ToList();
 }

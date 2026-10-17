@@ -20,9 +20,7 @@ internal sealed class ListUsersQueryHandler : IQueryHandler<ListUsersQuery, List
 
     public async Task<Result<List<AdminUserDto>>> Handle(ListUsersQuery request, CancellationToken cancellationToken)
     {
-        UserRole? roleFilter = null;
-        if (!string.IsNullOrWhiteSpace(request.Role) && TryParseRole(request.Role, out var parsed))
-            roleFilter = parsed;
+        var roleFilter = ParseRoleFilter(request.Role);
 
         var users = await _userRepository.ListAsync(roleFilter, cancellationToken);
         var adminRoles = await _userRepository.GetAdminRolesForUsersAsync(
@@ -32,14 +30,7 @@ internal sealed class ListUsersQueryHandler : IQueryHandler<ListUsersQuery, List
         var gymsById = (await _gymRegistry.GetActiveAsync(cancellationToken))
             .ToDictionary(g => g.GymId, g => g.Name);
 
-        var gymsByOwner = new Dictionary<Guid, IReadOnlyList<AdminUserGymDto>>();
-        foreach (var ownerId in users.Where(u => u.OwnerId.HasValue).Select(u => u.OwnerId!.Value).Distinct())
-        {
-            var ownerGyms = await _gymRegistry.GetByOwnerAsync(ownerId, cancellationToken);
-            gymsByOwner[ownerId] = ownerGyms
-                .Select(g => new AdminUserGymDto(g.GymId, g.Name))
-                .ToList();
-        }
+        var gyms = new GymLookups(gymsById, await LoadGymsByOwnerAsync(users, cancellationToken));
 
         var dtos = users
             .Select(u => new AdminUserDto(
@@ -56,72 +47,109 @@ internal sealed class ListUsersQueryHandler : IQueryHandler<ListUsersQuery, List
                 CreatedAt: u.CreatedAt.ToString("O"),
                 LastLoginAt: null,
                 IsYou: false,
-                Gyms: ResolveGyms(u.Role, u.OwnerId, u.GymMemberships, gymsById, gymsByOwner)))
+                Gyms: ResolveGyms(u, gyms)))
             .ToList();
 
         return Result.Success(dtos);
     }
 
-    private static IReadOnlyList<AdminUserGymDto> ResolveGyms(
-        UserRole role,
-        Guid? ownerId,
-        IReadOnlyList<Domain.ValueObjects.GymMembership> memberships,
-        IReadOnlyDictionary<Guid, string> gymsById,
-        IReadOnlyDictionary<Guid, IReadOnlyList<AdminUserGymDto>> gymsByOwner)
+    private sealed record GymLookups(
+        IReadOnlyDictionary<Guid, string> GymsById,
+        IReadOnlyDictionary<Guid, IReadOnlyList<AdminUserGymDto>> GymsByOwner);
+
+    private async Task<Dictionary<Guid, IReadOnlyList<AdminUserGymDto>>> LoadGymsByOwnerAsync(
+        IEnumerable<Domain.Entities.User> users,
+        CancellationToken cancellationToken)
     {
-        if (role == UserRole.GymOwner && ownerId.HasValue && gymsByOwner.TryGetValue(ownerId.Value, out var ownerGyms))
+        var gymsByOwner = new Dictionary<Guid, IReadOnlyList<AdminUserGymDto>>();
+        foreach (var ownerId in users.Where(u => u.OwnerId.HasValue).Select(u => u.OwnerId!.Value).Distinct())
+        {
+            var ownerGyms = await _gymRegistry.GetByOwnerAsync(ownerId, cancellationToken);
+            gymsByOwner[ownerId] = ownerGyms
+                .Select(g => new AdminUserGymDto(g.GymId, g.Name))
+                .ToList();
+        }
+
+        return gymsByOwner;
+    }
+
+    private static IReadOnlyList<AdminUserGymDto> ResolveGyms(Domain.Entities.User user, GymLookups gyms)
+    {
+        if (TryGetOwnedGyms(user, gyms.GymsByOwner, out var ownerGyms))
             return ownerGyms;
 
-        if (role == UserRole.PlatformAdmin)
+        if (user.Role == UserRole.PlatformAdmin)
             return Array.Empty<AdminUserGymDto>();
 
-        return memberships
+        return user.GymMemberships
             .Where(m => m.IsActive)
             .Select(m => new AdminUserGymDto(
                 m.GymId,
-                gymsById.TryGetValue(m.GymId, out var name) ? name : string.Empty))
+                gyms.GymsById.TryGetValue(m.GymId, out var name) ? name : string.Empty))
             .ToList();
     }
 
-    private static bool TryParseRole(string raw, out UserRole role)
+    private static bool TryGetOwnedGyms(
+        Domain.Entities.User user,
+        IReadOnlyDictionary<Guid, IReadOnlyList<AdminUserGymDto>> gymsByOwner,
+        out IReadOnlyList<AdminUserGymDto> ownerGyms)
     {
-        role = raw.ToLowerInvariant() switch
-        {
-            "trainee" => UserRole.Trainee,
-            "trainer" => UserRole.Trainer,
-            "gym_staff" or "staff" => UserRole.GymStaff,
-            "gym_owner" or "owner" => UserRole.GymOwner,
-            "platform_admin" or "admin" => UserRole.PlatformAdmin,
-            _ => UserRole.Trainee
-        };
-        return Enum.IsDefined(typeof(UserRole), role) && raw.Length > 0;
+        ownerGyms = Array.Empty<AdminUserGymDto>();
+        var isOwnerWithAggregate = user.Role == UserRole.GymOwner && user.OwnerId.HasValue;
+        return isOwnerWithAggregate && gymsByOwner.TryGetValue(user.OwnerId!.Value, out ownerGyms!);
     }
 
-    private static string MapRoleClaim(UserRole role) => role switch
+    private static readonly Dictionary<string, UserRole> RoleAliases = new()
     {
-        UserRole.Trainee => "trainee",
-        UserRole.Trainer => "trainer",
-        UserRole.GymStaff => "gym_staff",
-        UserRole.GymOwner => "gym_owner",
-        UserRole.PlatformAdmin => "platform_admin",
-        _ => role.ToString().ToLowerInvariant()
+        ["trainee"] = UserRole.Trainee,
+        ["trainer"] = UserRole.Trainer,
+        ["gym_staff"] = UserRole.GymStaff,
+        ["staff"] = UserRole.GymStaff,
+        ["gym_owner"] = UserRole.GymOwner,
+        ["owner"] = UserRole.GymOwner,
+        ["platform_admin"] = UserRole.PlatformAdmin,
+        ["admin"] = UserRole.PlatformAdmin
     };
 
-    private static string MapAdminRole(AdminRole role) => role switch
+    // Blank → no filter. Unrecognized values fall back to Trainee (existing behavior).
+    private static UserRole? ParseRoleFilter(string? raw) =>
+        string.IsNullOrWhiteSpace(raw)
+            ? null
+            : RoleAliases.GetValueOrDefault(raw.ToLowerInvariant(), UserRole.Trainee);
+
+    private static readonly Dictionary<UserRole, string> RoleClaims = new()
     {
-        AdminRole.SuperAdmin => "super_admin",
-        AdminRole.Admin => "admin",
-        AdminRole.Support => "support",
-        AdminRole.Analyst => "analyst",
-        _ => role.ToString().ToLowerInvariant()
+        [UserRole.Trainee] = "trainee",
+        [UserRole.Trainer] = "trainer",
+        [UserRole.GymStaff] = "gym_staff",
+        [UserRole.GymOwner] = "gym_owner",
+        [UserRole.PlatformAdmin] = "platform_admin"
     };
 
-    private static string MapStatus(UserStatus status) => status switch
+    private static readonly Dictionary<AdminRole, string> AdminRoleClaims = new()
     {
-        UserStatus.PendingVerification => "pending",
-        UserStatus.Active => "active",
-        UserStatus.Suspended => "suspended",
-        UserStatus.Deleted => "inactive",
-        _ => status.ToString().ToLowerInvariant()
+        [AdminRole.SuperAdmin] = "super_admin",
+        [AdminRole.Admin] = "admin",
+        [AdminRole.Support] = "support",
+        [AdminRole.Analyst] = "analyst"
     };
+
+    private static readonly Dictionary<UserStatus, string> StatusLabels = new()
+    {
+        [UserStatus.PendingVerification] = "pending",
+        [UserStatus.Active] = "active",
+        [UserStatus.Suspended] = "suspended",
+        [UserStatus.Deleted] = "inactive"
+    };
+
+    private static string MapRoleClaim(UserRole role) => LookupOrLowerName(RoleClaims, role);
+
+    private static string MapAdminRole(AdminRole role) => LookupOrLowerName(AdminRoleClaims, role);
+
+    private static string MapStatus(UserStatus status) => LookupOrLowerName(StatusLabels, status);
+
+    // Unmapped enum values fall back to their lower-cased name.
+    private static string LookupOrLowerName<TEnum>(IReadOnlyDictionary<TEnum, string> map, TEnum value)
+        where TEnum : struct, Enum =>
+        map.TryGetValue(value, out var label) ? label : value.ToString().ToLowerInvariant();
 }

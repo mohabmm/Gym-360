@@ -1,43 +1,48 @@
 import 'package:intl/intl.dart';
 
+import '../types/app_language.dart';
+import '../types/measurements.dart';
+
 /// Number formatting utilities with Arabic locale support.
 /// Supports Arabic-Indic numerals when needed.
 class NumberFormatter {
   NumberFormatter._();
 
   /// Format number with locale-appropriate separators.
-  static String format(num number, {String locale = 'ar'}) {
-    return NumberFormat('#,##0', locale).format(number);
+  static String format(
+    num number, {
+    AppLanguage language = AppLanguage.arabic,
+  }) {
+    return NumberFormat('#,##0', language.code).format(number);
   }
 
   /// Format as currency (EGP).
   static String formatCurrency(
-    double amount, {
-    String locale = 'ar',
-    String currency = 'EGP',
+    Egp amount, {
+    AppLanguage language = AppLanguage.arabic,
   }) {
-    if (locale == 'ar') {
-      return '${format(amount, locale: locale)} ج.م';
+    if (language.isArabic) {
+      return '${format(amount, language: language)} ج.م';
     }
-    return '$currency ${format(amount, locale: locale)}';
+    return 'EGP ${format(amount, language: language)}';
   }
 
   /// Format as percentage.
-  static String formatPercentage(double value, {int decimals = 1}) {
+  static String formatPercentage(Percent value, {int decimals = 1}) {
     return '${value.toStringAsFixed(decimals)}%';
   }
 
   /// Format weight (kg or lbs).
   static String formatWeight(
     double value, {
-    String unit = 'kg',
+    WeightUnit unit = WeightUnit.kg,
     int decimals = 1,
   }) {
-    return '${value.toStringAsFixed(decimals)} $unit';
+    return '${value.toStringAsFixed(decimals)} ${unit.symbol}';
   }
 
   /// Format height (cm).
-  static String formatHeight(double value, {int decimals = 0}) {
+  static String formatHeight(Centimeters value, {int decimals = 0}) {
     return '${value.toStringAsFixed(decimals)} cm';
   }
 
@@ -48,35 +53,47 @@ class NumberFormatter {
   }
 
   /// Format compact number (1.2K, 3.5M etc.).
-  static String formatCompact(num number, {String locale = 'en'}) {
-    return NumberFormat.compact(locale: locale).format(number);
+  static String formatCompact(
+    num number, {
+    AppLanguage language = AppLanguage.english,
+  }) {
+    return NumberFormat.compact(locale: language.code).format(number);
   }
 
   /// Format water amount in ml/L.
-  static String formatWater(int ml, {String locale = 'ar'}) {
+  static String formatWater(
+    Milliliters ml, {
+    AppLanguage language = AppLanguage.arabic,
+  }) {
     if (ml >= 1000) {
       final liters = ml / 1000;
-      final formatted = liters.toStringAsFixed(liters.truncateToDouble() == liters ? 0 : 1);
-      return locale == 'ar' ? '$formatted لتر' : '${formatted}L';
+      final formatted =
+          liters.toStringAsFixed(liters.truncateToDouble() == liters ? 0 : 1);
+      return language.isArabic ? '$formatted لتر' : '${formatted}L';
     }
-    return locale == 'ar' ? '$ml مل' : '${ml}ml';
+    return language.isArabic ? '$ml مل' : '${ml}ml';
   }
 
   /// Format calories.
-  static String formatCalories(int calories, {String locale = 'ar'}) {
-    return locale == 'ar'
-        ? '${format(calories, locale: locale)} سعرة'
-        : '${format(calories, locale: locale)} cal';
+  static String formatCalories(
+    Kilocalories calories, {
+    AppLanguage language = AppLanguage.arabic,
+  }) {
+    final number = format(calories, language: language);
+    return language.isArabic ? '$number سعرة' : '$number cal';
   }
 
   /// Format rating (e.g., "4.7").
-  static String formatRating(double rating) {
+  static String formatRating(StarRating rating) {
     return rating.toStringAsFixed(1);
   }
 
   /// Format ordinal number (1st, 2nd, 3rd... or Arabic ordinals).
-  static String formatOrdinal(int number, {String locale = 'ar'}) {
-    if (locale == 'ar') {
+  static String formatOrdinal(
+    int number, {
+    AppLanguage language = AppLanguage.arabic,
+  }) {
+    if (language.isArabic) {
       return '#$number';
     }
     if (number % 100 >= 11 && number % 100 <= 13) {
@@ -96,10 +113,10 @@ class NumberFormatter {
 
   /// Format session count (e.g., "5/12 sessions").
   static String formatSessionCount(
-    int used,
-    int total, {
-    String locale = 'ar',
+    SessionUsage usage, {
+    AppLanguage language = AppLanguage.arabic,
   }) {
-    return locale == 'ar' ? '$used/$total جلسة' : '$used/$total sessions';
+    final count = '${usage.used}/${usage.total}';
+    return language.isArabic ? '$count جلسة' : '$count sessions';
   }
 }

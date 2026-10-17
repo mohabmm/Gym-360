@@ -17,7 +17,7 @@ void main() {
 
   test('GET leaderboard by type parses entries + my position', () async {
     t.adapter.onGet(
-      ApiEndpoints.leaderboardByType('workouts_per_month'),
+      ApiEndpoints.leaderboardByType(const LeaderboardType('workouts_per_month')),
       respond: (_) => t.adapter.ok(Samples.leaderboard()),
     );
     final lb = await ds.getLeaderboard('workouts_per_month', gymId: 'gym-1');
@@ -28,7 +28,7 @@ void main() {
 
   test('GET trainer public profile parses rating + badges', () async {
     t.adapter.onGet(
-      ApiEndpoints.trainerPublicProfile('trainer-1'),
+      ApiEndpoints.trainerPublicProfile(const TrainerId('trainer-1')),
       respond: (_) => t.adapter.ok(Samples.trainerPublicProfile()),
     );
     final p = await ds.getTrainerPublicProfile('trainer-1', gymId: 'gym-1');

@@ -7,6 +7,8 @@ using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
+using GymApp.Modules.Training.IntegrationEvents;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.LogWorkout;
 
@@ -15,15 +17,18 @@ internal sealed class LogWorkoutCommandHandler : ICommandHandler<LogWorkoutComma
     private readonly IWorkoutLogRepository _workoutLogRepository;
     private readonly ITrainingUnitOfWork _unitOfWork;
     private readonly IGymPlanService _gymPlanService;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public LogWorkoutCommandHandler(
         IWorkoutLogRepository workoutLogRepository,
         ITrainingUnitOfWork unitOfWork,
-        IGymPlanService gymPlanService)
+        IGymPlanService gymPlanService,
+        IIntegrationEventPublisher integrationEvents)
     {
         _workoutLogRepository = workoutLogRepository;
         _unitOfWork = unitOfWork;
         _gymPlanService = gymPlanService;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result<Guid>> Handle(LogWorkoutCommand request, CancellationToken cancellationToken)
@@ -52,11 +57,14 @@ internal sealed class LogWorkoutCommandHandler : ICommandHandler<LogWorkoutComma
         var workoutLog = WorkoutLog.Create(
             request.UserId,
             request.GymId,
-            request.Date,
-            request.StartedAt,
-            request.WorkoutId,
-            request.Notes,
-            perceivedExertion: request.PerceivedExertion);
+            new WorkoutLogDetails
+            {
+                Date = request.Date,
+                StartedAt = request.StartedAt,
+                WorkoutId = request.WorkoutId,
+                Notes = request.Notes,
+                PerceivedExertion = request.PerceivedExertion
+            });
 
         foreach (var setDto in request.Sets)
         {
@@ -64,15 +72,17 @@ internal sealed class LogWorkoutCommandHandler : ICommandHandler<LogWorkoutComma
                 ? unit
                 : WeightUnit.Kg;
 
-            workoutLog.AddSet(
-                setDto.ExerciseId,
-                setDto.SetNumber,
-                setDto.Reps,
-                setDto.Weight,
-                weightUnit,
-                setDto.DurationSeconds,
-                setDto.IsCompleted,
-                setDto.Notes);
+            workoutLog.AddSet(new LogSetDetails
+            {
+                ExerciseId = setDto.ExerciseId,
+                SetNumber = setDto.SetNumber,
+                Reps = setDto.Reps,
+                Weight = setDto.Weight,
+                WeightUnit = weightUnit,
+                DurationSeconds = setDto.DurationSeconds,
+                IsCompleted = setDto.IsCompleted,
+                Notes = setDto.Notes
+            });
         }
 
         if (request.CompletedAt.HasValue)
@@ -81,6 +91,15 @@ internal sealed class LogWorkoutCommandHandler : ICommandHandler<LogWorkoutComma
         }
 
         await _workoutLogRepository.AddAsync(workoutLog, cancellationToken);
+
+        // Progress keeps the daily workout streak (home stats + weekly activity)
+        // off this event. LoggedAt carries the client's workout date rather than
+        // the UTC clock so a late-evening Cairo workout counts for the right day.
+        _integrationEvents.Enqueue(new WorkoutLoggedIntegrationEvent(
+            request.UserId,
+            request.GymId,
+            request.Date.ToDateTime(TimeOnly.MinValue)));
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(workoutLog.Id);

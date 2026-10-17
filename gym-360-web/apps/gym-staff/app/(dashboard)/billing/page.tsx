@@ -10,6 +10,7 @@ import {
   useCreatePackageTemplate, useUpdatePackageTemplate, useAssignPackage,
 } from '@/lib/hooks/useBilling';
 import { useMembers } from '@/lib/hooks/useMembers';
+import { apiErrorMessage } from '@/lib/api-error';
 
 type MembershipPlan = {
   id: string;
@@ -43,6 +44,33 @@ type ActivePackage = {
 
 const tabs = ['Payments', 'Plans', 'Packages'] as const;
 
+type MutationCallbacks = { onSuccess: () => void; onError: (err: unknown) => void };
+
+interface SaveEntityOptions<T> {
+  label: 'Plan' | 'Template';
+  close: () => void;
+  update: (entity: T, cbs: MutationCallbacks) => void;
+  create: (entity: T, cbs: MutationCallbacks) => void;
+}
+
+// Shared create-or-update flow for plans and package templates: an empty id means "new".
+function saveEntity<T extends { id: string; name: string }>(entity: T | null, opts: SaveEntityOptions<T>) {
+  if (!entity) return;
+  if (!entity.name.trim()) {
+    toast.error(`${opts.label} name required.`);
+    return;
+  }
+  const cbs: MutationCallbacks = {
+    onSuccess: () => {
+      toast.success(`${opts.label} ${entity.id ? 'updated' : 'created'}.`);
+      opts.close();
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, `Failed to save ${opts.label.toLowerCase()}.`)),
+  };
+  if (entity.id) opts.update(entity, cbs);
+  else opts.create(entity, cbs);
+}
+
 export default function BillingPage() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>('Payments');
   const [showRecordPayment, setShowRecordPayment] = useState(false);
@@ -68,9 +96,7 @@ export default function BillingPage() {
   const assignPackage = useAssignPackage();
 
   function showApiError(err: unknown, fallback: string) {
-    const msg = (err as { response?: { data?: { errors?: { message?: string }[] } } })
-      ?.response?.data?.errors?.[0]?.message ?? fallback;
-    toast.error(msg);
+    toast.error(apiErrorMessage(err, fallback));
   }
 
   function submitAssign() {
@@ -123,28 +149,21 @@ export default function BillingPage() {
     setShowPlanModal(true);
   }
   function savePlan() {
-    if (!editingPlan) return;
-    if (!editingPlan.name.trim()) {
-      toast.error('Plan name required.');
-      return;
-    }
-    const onSuccess = () => {
-      toast.success(editingPlan.id ? 'Plan updated.' : 'Plan created.');
-      setShowPlanModal(false);
-      setEditingPlan(null);
-    };
-    const onError = (err: unknown) => showApiError(err, 'Failed to save plan.');
-    if (editingPlan.id) {
-      updatePlan.mutate(
-        { id: editingPlan.id, name: editingPlan.name, durationDays: editingPlan.durationDays, price: editingPlan.price, isActive: editingPlan.isActive },
-        { onSuccess, onError },
-      );
-    } else {
-      createPlan.mutate(
-        { name: editingPlan.name, durationDays: editingPlan.durationDays, price: editingPlan.price },
-        { onSuccess, onError },
-      );
-    }
+    saveEntity(editingPlan, {
+      label: 'Plan',
+      close: () => {
+        setShowPlanModal(false);
+        setEditingPlan(null);
+      },
+      update: (p, cbs) => updatePlan.mutate(
+        { id: p.id, name: p.name, durationDays: p.durationDays, price: p.price, isActive: p.isActive },
+        cbs,
+      ),
+      create: (p, cbs) => createPlan.mutate(
+        { name: p.name, durationDays: p.durationDays, price: p.price },
+        cbs,
+      ),
+    });
   }
 
   function confirmVoidPayment(p: { id: string; memberName: string; amount: number }) {
@@ -159,26 +178,29 @@ export default function BillingPage() {
     );
   }
 
-  function confirmDeactivatePlan(p: MembershipPlan) {
-    if (!confirm(`Deactivate plan "${p.name}"? Existing members keep their plan; new sign-ups won't see it.`)) return;
-    updatePlan.mutate(
-      { id: p.id, isActive: false },
+  // Soft-delete via isActive=false after a native confirm; toasts on either outcome.
+  function deactivate(
+    mutation: { mutate: (vars: { id: string; isActive: boolean }, cbs: MutationCallbacks) => void },
+    id: string,
+    question: string,
+    entity: 'plan' | 'template',
+  ) {
+    if (!confirm(question)) return;
+    mutation.mutate(
+      { id, isActive: false },
       {
-        onSuccess: () => toast.success('Plan deactivated.'),
-        onError: (err) => showApiError(err, 'Failed to deactivate plan.'),
+        onSuccess: () => toast.success(`${entity === 'plan' ? 'Plan' : 'Template'} deactivated.`),
+        onError: (err) => showApiError(err, `Failed to deactivate ${entity}.`),
       },
     );
   }
 
+  function confirmDeactivatePlan(p: MembershipPlan) {
+    deactivate(updatePlan, p.id, `Deactivate plan "${p.name}"? Existing members keep their plan; new sign-ups won't see it.`, 'plan');
+  }
+
   function confirmDeactivateTemplate(t: SessionPackageTemplate) {
-    if (!confirm(`Deactivate package "${t.name}"? Active member packages keep working; new purchases won't see it.`)) return;
-    updateTemplate.mutate(
-      { id: t.id, isActive: false },
-      {
-        onSuccess: () => toast.success('Template deactivated.'),
-        onError: (err) => showApiError(err, 'Failed to deactivate template.'),
-      },
-    );
+    deactivate(updateTemplate, t.id, `Deactivate package "${t.name}"? Active member packages keep working; new purchases won't see it.`, 'template');
   }
 
   function openNewTemplate() {
@@ -190,28 +212,21 @@ export default function BillingPage() {
     setShowTemplateModal(true);
   }
   function saveTemplate() {
-    if (!editingTemplate) return;
-    if (!editingTemplate.name.trim()) {
-      toast.error('Template name required.');
-      return;
-    }
-    const onSuccess = () => {
-      toast.success(editingTemplate.id ? 'Template updated.' : 'Template created.');
-      setShowTemplateModal(false);
-      setEditingTemplate(null);
-    };
-    const onError = (err: unknown) => showApiError(err, 'Failed to save template.');
-    if (editingTemplate.id) {
-      updateTemplate.mutate(
-        { id: editingTemplate.id, name: editingTemplate.name, sessionCount: editingTemplate.sessionCount, pricePerSession: editingTemplate.pricePerSession },
-        { onSuccess, onError },
-      );
-    } else {
-      createTemplate.mutate(
-        { name: editingTemplate.name, sessionCount: editingTemplate.sessionCount, pricePerSession: editingTemplate.pricePerSession },
-        { onSuccess, onError },
-      );
-    }
+    saveEntity(editingTemplate, {
+      label: 'Template',
+      close: () => {
+        setShowTemplateModal(false);
+        setEditingTemplate(null);
+      },
+      update: (t, cbs) => updateTemplate.mutate(
+        { id: t.id, name: t.name, sessionCount: t.sessionCount, pricePerSession: t.pricePerSession },
+        cbs,
+      ),
+      create: (t, cbs) => createTemplate.mutate(
+        { name: t.name, sessionCount: t.sessionCount, pricePerSession: t.pricePerSession },
+        cbs,
+      ),
+    });
   }
 
   const totalRevenue = recentPayments.filter((p) => p.status === 'completed').reduce((s, p) => s + p.amount, 0);

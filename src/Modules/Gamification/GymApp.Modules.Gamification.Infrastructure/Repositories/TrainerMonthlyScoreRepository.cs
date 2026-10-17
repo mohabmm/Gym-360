@@ -2,6 +2,7 @@ using GymApp.Modules.Gamification.Domain.Entities;
 using GymApp.Modules.Gamification.Domain.Repositories;
 using GymApp.Modules.Gamification.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Infrastructure.Repositories;
 
@@ -17,16 +18,15 @@ internal sealed class TrainerMonthlyScoreRepository : ITrainerMonthlyScoreReposi
     public async Task<TrainerMonthlyScore?> GetByTrainerAsync(
         Guid gymId,
         Guid trainerId,
-        int month,
-        int year,
+        LeaderboardPeriod period,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TrainerMonthlyScores
             .FirstOrDefaultAsync(
                 tms => tms.GymId == gymId
                     && tms.TrainerId == trainerId
-                    && tms.Month == month
-                    && tms.Year == year,
+                    && tms.Month == period.Month
+                    && tms.Year == period.Year,
                 cancellationToken);
     }
 

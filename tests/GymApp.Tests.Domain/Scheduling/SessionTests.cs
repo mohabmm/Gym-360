@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
+using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Events;
 using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
@@ -26,20 +27,18 @@ public sealed class SessionTests
             "Upper body");
     }
 
-    private static TrainerLogDetails TrainerLog(string exercisesPerformed, int clientEffortRating) => new()
+    private static readonly TrainerLogDetails ValidTrainerLog = new()
     {
-        ExercisesPerformed = exercisesPerformed,
-        ClientEffortRating = clientEffortRating,
+        ExercisesPerformed = "Exercises",
+        ClientEffortRating = 3,
         AttendanceConfirmed = true
     };
 
-    private static MemberLogDetails MemberLog(
-        int rating, int perceivedExertion, int satisfaction, string? personalNotes = null) => new()
+    private static readonly MemberLogDetails ValidMemberLog = new()
     {
-        Rating = rating,
-        PerceivedExertion = perceivedExertion,
-        Satisfaction = satisfaction,
-        PersonalNotes = personalNotes
+        Rating = 5,
+        PerceivedExertion = 7,
+        Satisfaction = 5
     };
 
     private static Session CreateConfirmedSession()
@@ -53,7 +52,7 @@ public sealed class SessionTests
     private static Session CreateInProgressSession()
     {
         var session = CreateConfirmedSession();
-        session.StartSession(DateTime.UtcNow, 15, true);
+        session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true));
         return session;
     }
 
@@ -160,7 +159,7 @@ public sealed class SessionTests
     {
         var session = CreateConfirmedSession();
 
-        var result = session.StartSession(DateTime.UtcNow, 15, true);
+        var result = session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.InProgress);
@@ -173,7 +172,7 @@ public sealed class SessionTests
     {
         var session = CreateConfirmedSession();
 
-        var result = session.StartSession(new DateTime(2025, 6, 15, 9, 50, 0), 15, allowEarlyStart: false);
+        var result = session.StartSession(new DateTime(2025, 6, 15, 9, 50, 0), new EarlyStartPolicy(15, false));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.InProgress);
@@ -185,13 +184,13 @@ public sealed class SessionTests
         var session = CreateConfirmedSession();
         var tooEarly = new DateTime(2025, 6, 15, 9, 30, 0);
 
-        var blocked = session.StartSession(tooEarly, 15, allowEarlyStart: false);
+        var blocked = session.StartSession(tooEarly, new EarlyStartPolicy(15, false));
 
         blocked.IsFailure.Should().BeTrue();
         blocked.Error.Code.Should().Be("Scheduling.SessionTooEarly");
         session.Status.Should().Be(SessionStatus.Confirmed);
 
-        session.StartSession(tooEarly, 15, allowEarlyStart: true).IsSuccess.Should().BeTrue();
+        session.StartSession(tooEarly, new EarlyStartPolicy(15, true)).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
@@ -199,7 +198,7 @@ public sealed class SessionTests
     {
         var session = CreateDefaultSession();
 
-        var result = session.StartSession(DateTime.UtcNow, 15, true);
+        var result = session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidStatusTransition");
@@ -249,7 +248,7 @@ public sealed class SessionTests
         var session = CreateDefaultSession();
         session.ClearDomainEvents();
 
-        var result = session.Cancel("Changed plans", MemberId, isLateCancellation: false);
+        var result = session.Cancel(new SessionCancellation("Changed plans", MemberId, IsLateCancellation: false));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.CancelledByMember);
@@ -264,7 +263,7 @@ public sealed class SessionTests
     {
         var session = CreateDefaultSession();
 
-        var result = session.Cancel("Sick", TrainerId, isLateCancellation: false);
+        var result = session.Cancel(new SessionCancellation("Sick", TrainerId, IsLateCancellation: false));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.CancelledByTrainer);
@@ -275,7 +274,7 @@ public sealed class SessionTests
     {
         var session = CreateConfirmedSession();
 
-        var result = session.Cancel("Last minute", MemberId, isLateCancellation: true);
+        var result = session.Cancel(new SessionCancellation("Last minute", MemberId, IsLateCancellation: true));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.LateCancelled);
@@ -285,9 +284,9 @@ public sealed class SessionTests
     public void Cancel_WhenAlreadyCancelled_ShouldFail()
     {
         var session = CreateDefaultSession();
-        session.Cancel("reason", MemberId, false);
+        session.Cancel(new SessionCancellation("reason", MemberId, false));
 
-        var result = session.Cancel("again", MemberId, false);
+        var result = session.Cancel(new SessionCancellation("again", MemberId, false));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.AlreadyCancelled");
@@ -298,7 +297,7 @@ public sealed class SessionTests
     {
         var session = CreateInProgressSession();
 
-        var result = session.Cancel("reason", MemberId, false);
+        var result = session.Cancel(new SessionCancellation("reason", MemberId, false));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidStatusTransition");
@@ -310,7 +309,7 @@ public sealed class SessionTests
         var session = CreateInProgressSession();
         session.Complete();
 
-        var result = session.Cancel("reason", MemberId, false);
+        var result = session.Cancel(new SessionCancellation("reason", MemberId, false));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -384,22 +383,27 @@ public sealed class SessionTests
     public void LogTrainerSession_DuplicateLog_ShouldFail()
     {
         var session = CreateDefaultSession();
-        session.LogTrainerSession(TrainerLog("Exercises", 3));
+        session.LogTrainerSession(ValidTrainerLog);
 
-        var result = session.LogTrainerSession(TrainerLog("More", 4));
+        var result = session.LogTrainerSession(ValidTrainerLog with { ExercisesPerformed = "More", ClientEffortRating = 4 });
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.TrainerLogAlreadyExists");
     }
 
+    public static TheoryData<TrainerLogDetails> TrainerLogsWithInvalidRating => new()
+    {
+        ValidTrainerLog with { ClientEffortRating = 0 },
+        ValidTrainerLog with { ClientEffortRating = 6 },
+    };
+
     [Theory]
-    [InlineData(0)]
-    [InlineData(6)]
-    public void LogTrainerSession_InvalidRating_ShouldFail(int rating)
+    [MemberData(nameof(TrainerLogsWithInvalidRating))]
+    public void LogTrainerSession_InvalidRating_ShouldFail(TrainerLogDetails log)
     {
         var session = CreateDefaultSession();
 
-        var result = session.LogTrainerSession(TrainerLog("Ex", rating));
+        var result = session.LogTrainerSession(log);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidRating");
@@ -412,7 +416,7 @@ public sealed class SessionTests
     {
         var session = CreateCompletedSession();
 
-        var result = session.LogMemberSession(MemberLog(5, 7, 5, "Felt great"));
+        var result = session.LogMemberSession(ValidMemberLog with { PersonalNotes = "Felt great" });
 
         result.IsSuccess.Should().BeTrue();
         session.MemberLog.Should().NotBeNull();
@@ -427,9 +431,9 @@ public sealed class SessionTests
     public void LogMemberSession_DuplicateLog_ShouldFail()
     {
         var session = CreateCompletedSession();
-        session.LogMemberSession(MemberLog(4, 6, 4));
+        session.LogMemberSession(ValidMemberLog with { Rating = 4, PerceivedExertion = 6, Satisfaction = 4 });
 
-        var result = session.LogMemberSession(MemberLog(5, 7, 5));
+        var result = session.LogMemberSession(ValidMemberLog);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.MemberLogAlreadyExists");
@@ -440,50 +444,34 @@ public sealed class SessionTests
     {
         var session = CreateDefaultSession();
 
-        var result = session.LogMemberSession(MemberLog(5, 7, 5));
+        var result = session.LogMemberSession(ValidMemberLog);
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.MemberLogRequiresCompletedSession");
         session.MemberLog.Should().BeNull();
     }
 
+    // Rating and satisfaction share the 1-5 scale (and its error); exertion is RPE 1-10.
+    public static TheoryData<MemberLogDetails, Error> MemberLogsOutOfRange => new()
+    {
+        { ValidMemberLog with { Rating = 0 }, SchedulingErrors.InvalidRating },
+        { ValidMemberLog with { Rating = 6 }, SchedulingErrors.InvalidRating },
+        { ValidMemberLog with { PerceivedExertion = 0 }, SchedulingErrors.InvalidExertion },
+        { ValidMemberLog with { PerceivedExertion = 11 }, SchedulingErrors.InvalidExertion },
+        { ValidMemberLog with { Satisfaction = 0 }, SchedulingErrors.InvalidRating },
+        { ValidMemberLog with { Satisfaction = 6 }, SchedulingErrors.InvalidRating },
+    };
+
     [Theory]
-    [InlineData(0, 5, 3)]
-    [InlineData(6, 5, 3)]
-    public void LogMemberSession_InvalidRating_ShouldFail(int rating, int exertion, int satisfaction)
+    [MemberData(nameof(MemberLogsOutOfRange))]
+    public void LogMemberSession_OutOfRangeScore_ShouldFail(MemberLogDetails log, Error expected)
     {
         var session = CreateCompletedSession();
 
-        var result = session.LogMemberSession(MemberLog(rating, exertion, satisfaction));
+        var result = session.LogMemberSession(log);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.InvalidRating");
-    }
-
-    [Theory]
-    [InlineData(3, 0, 3)]
-    [InlineData(3, 11, 3)]
-    public void LogMemberSession_InvalidExertion_ShouldFail(int rating, int exertion, int satisfaction)
-    {
-        var session = CreateCompletedSession();
-
-        var result = session.LogMemberSession(MemberLog(rating, exertion, satisfaction));
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.InvalidExertion");
-    }
-
-    [Theory]
-    [InlineData(3, 5, 0)]
-    [InlineData(3, 5, 6)]
-    public void LogMemberSession_InvalidSatisfaction_ShouldFail(int rating, int exertion, int satisfaction)
-    {
-        var session = CreateCompletedSession();
-
-        var result = session.LogMemberSession(MemberLog(rating, exertion, satisfaction));
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.InvalidRating");
+        result.Error.Code.Should().Be(expected.Code);
     }
 
     // --- Full lifecycle ---
@@ -494,7 +482,7 @@ public sealed class SessionTests
         var session = CreateDefaultSession();
 
         session.Confirm(ClockBeforeSchedule).IsSuccess.Should().BeTrue();
-        session.StartSession(DateTime.UtcNow, 15, true).IsSuccess.Should().BeTrue();
+        session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true)).IsSuccess.Should().BeTrue();
         session.Complete().IsSuccess.Should().BeTrue();
 
         session.Status.Should().Be(SessionStatus.Completed);
