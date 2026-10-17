@@ -81,97 +81,126 @@ async function login(page: Page, base: string, email: string, password: string) 
 
 test.describe.configure({ mode: 'serial' });
 
-test('Phase 1 — admin creates owner + gym', async ({ page }) => {
-  test.setTimeout(120_000);
-  await login(page, ADMIN_BASE, creds.admin.email, creds.admin.password);
+/** Best-effort fill of the first field labelled `label`; missing fields are ignored. */
+async function fillLabelled(page: Page, label: RegExp, value: string) {
+  await page.getByLabel(label).first().fill(value).catch(() => {});
+}
 
-  // Add Gym Owner via /users
+async function recordErrorIfShown(page: Page, message: string) {
+  const errVisible = await page.getByText(/failed|error/i).first().isVisible().catch(() => false);
+  if (errVisible) creds.errors.push(message);
+}
+
+// Add Gym Owner via /users
+async function addGymOwner(page: Page) {
+  const { owner } = creds;
   await page.goto(`${ADMIN_BASE}/users`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /Add Gym Owner/i }).click();
   const modal = page.locator('[role="dialog"], .modal, div:has-text("Add Gym Owner")').last();
-  await modal.locator('input[type="email"]').first().fill(creds.owner.email);
-  await page.getByLabel(/Password/i).first().fill(creds.owner.password).catch(async () => {
+  await modal.locator('input[type="email"]').first().fill(owner.email);
+  await page.getByLabel(/Password/i).first().fill(owner.password).catch(async () => {
     // fallback if label binding differs — fill the second input
-    await modal.locator('input[type="password"]').first().fill(creds.owner.password);
+    await modal.locator('input[type="password"]').first().fill(owner.password);
   });
-  await page.getByLabel(/First Name/i).fill(creds.owner.firstName).catch(() => {});
-  await page.getByLabel(/Last Name/i).fill(creds.owner.lastName).catch(() => {});
-  await page.getByLabel(/Phone/i).fill(creds.owner.phone).catch(() => {});
-  await page.getByLabel(/Company Name/i).fill(creds.owner.companyName).catch(() => {});
-  await page.getByLabel(/Billing Email/i).fill(creds.owner.billingEmail).catch(() => {});
+  await page.getByLabel(/First Name/i).fill(owner.firstName).catch(() => {});
+  await page.getByLabel(/Last Name/i).fill(owner.lastName).catch(() => {});
+  await page.getByLabel(/Phone/i).fill(owner.phone).catch(() => {});
+  await page.getByLabel(/Company Name/i).fill(owner.companyName).catch(() => {});
+  await page.getByLabel(/Billing Email/i).fill(owner.billingEmail).catch(() => {});
   // submit
   await page.getByRole('button', { name: /^Add Owner$|^Create$|^Create Owner$|^Save$/i }).click();
   // Wait for modal close OR error
   await page.waitForTimeout(2500);
-  const errVisible = await page.getByText(/failed|error/i).first().isVisible().catch(() => false);
-  if (errVisible) creds.errors.push('Add Gym Owner: error visible after submit');
+  await recordErrorIfShown(page, 'Add Gym Owner: error visible after submit');
+}
 
-  // Look up ownerId via API directly (admin token from cookie/session). Easier:
-  // hit the admin/users API by authenticated fetch in browser context.
+// Look up ownerId via API directly (admin token from cookie/session). Easier:
+// hit the admin/users API by authenticated fetch in browser context.
+async function captureOwners(page: Page) {
   const ownersResp = await page.evaluate(async () => {
     const r = await fetch('/api/v1/admin/users?role=GymOwner', { credentials: 'include' });
     return { status: r.status, body: await r.text() };
   });
   // capture for debug
   creds.ids.ownersRaw = ownersResp.body.slice(0, 500);
+}
 
-  // Add Gym — go to /gyms → click Add Gym
+// Add Gym — go to /gyms → click Add Gym
+async function addGym(page: Page) {
   await page.goto(`${ADMIN_BASE}/gyms`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: /^Add Gym$/i }).click();
   // The modal accepts: name, gymCode, city, ownerId, ownerEmail (with email->ownerId resolver)
   // Try filling by labels:
-  await page.getByLabel(/Gym Name|^Name$/i).first().fill(creds.gym.name).catch(() => {});
-  await page.getByLabel(/Gym Code|^Code$/i).first().fill(creds.gym.gymCode).catch(() => {});
-  await page.getByLabel(/City/i).first().fill(creds.gym.city).catch(() => {});
+  await fillLabelled(page, /Gym Name|^Name$/i, creds.gym.name);
+  await fillLabelled(page, /Gym Code|^Code$/i, creds.gym.gymCode);
+  await fillLabelled(page, /City/i, creds.gym.city);
   // owner picker — try filling email then waiting for autocomplete
-  const ownerInput = page.getByLabel(/Owner|Owner Email/i).first();
-  await ownerInput.fill(creds.owner.email).catch(() => {});
+  await fillLabelled(page, /Owner|Owner Email/i, creds.owner.email);
   // try submit
   await page.getByRole('button', { name: /^Create Gym$|^Save$/i }).click();
   await page.waitForTimeout(3000);
-  const gymErr = await page.getByText(/failed|error/i).first().isVisible().catch(() => false);
-  if (gymErr) creds.errors.push('Create Gym: error visible after submit');
+  await recordErrorIfShown(page, 'Create Gym: error visible after submit');
+}
+
+test('Phase 1 — admin creates owner + gym', async ({ page }) => {
+  test.setTimeout(120_000);
+  await login(page, ADMIN_BASE, creds.admin.email, creds.admin.password);
+  await addGymOwner(page);
+  await captureOwners(page);
+  await addGym(page);
 });
+
+type Person = { email: string; password: string; firstName: string; lastName: string; phone: string };
+
+type AddPersonFlow = {
+  route: string;
+  openButton: RegExp;
+  missingButtonError: string;
+  person: Person;
+};
+
+/** Opens the add-person modal on `route`, fills it by label and saves (best effort). */
+async function addPerson(page: Page, flow: AddPersonFlow) {
+  const { person } = flow;
+  await page.goto(`${STAFF_BASE}${flow.route}`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('button', { name: flow.openButton }).first().click().catch(() => creds.errors.push(flow.missingButtonError));
+  await page.waitForTimeout(800);
+  await fillLabelled(page, /Email/i, person.email);
+  await fillLabelled(page, /Password/i, person.password);
+  await fillLabelled(page, /First Name/i, person.firstName);
+  await fillLabelled(page, /Last Name/i, person.lastName);
+  await fillLabelled(page, /Phone/i, person.phone);
+  await page.getByRole('button', { name: /^Save$|^Add$|^Create$/i }).first().click().catch(() => {});
+  await page.waitForTimeout(2500);
+}
 
 test('Phase 1 — owner adds staff + trainer + trainee', async ({ page }) => {
   test.setTimeout(120_000);
   await login(page, STAFF_BASE, creds.owner.email, creds.owner.password);
 
   // /staff → add receptionist
-  await page.goto(`${STAFF_BASE}/staff`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /Add Staff|New Staff|Invite Staff/i }).first().click().catch(() => creds.errors.push('Add Staff button missing'));
-  await page.waitForTimeout(800);
-  await page.getByLabel(/Email/i).first().fill(creds.staff.email).catch(() => {});
-  await page.getByLabel(/Password/i).first().fill(creds.staff.password).catch(() => {});
-  await page.getByLabel(/First Name/i).first().fill(creds.staff.firstName).catch(() => {});
-  await page.getByLabel(/Last Name/i).first().fill(creds.staff.lastName).catch(() => {});
-  await page.getByLabel(/Phone/i).first().fill(creds.staff.phone).catch(() => {});
-  await page.getByRole('button', { name: /^Save$|^Add$|^Create$/i }).first().click().catch(() => {});
-  await page.waitForTimeout(2500);
+  await addPerson(page, {
+    route: '/staff',
+    openButton: /Add Staff|New Staff|Invite Staff/i,
+    missingButtonError: 'Add Staff button missing',
+    person: creds.staff,
+  });
 
   // /trainers → add trainer
-  await page.goto(`${STAFF_BASE}/trainers`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /Add Trainer|New Trainer|Invite Trainer/i }).first().click().catch(() => creds.errors.push('Add Trainer button missing'));
-  await page.waitForTimeout(800);
-  await page.getByLabel(/Email/i).first().fill(creds.trainer.email).catch(() => {});
-  await page.getByLabel(/Password/i).first().fill(creds.trainer.password).catch(() => {});
-  await page.getByLabel(/First Name/i).first().fill(creds.trainer.firstName).catch(() => {});
-  await page.getByLabel(/Last Name/i).first().fill(creds.trainer.lastName).catch(() => {});
-  await page.getByLabel(/Phone/i).first().fill(creds.trainer.phone).catch(() => {});
-  await page.getByRole('button', { name: /^Save$|^Add$|^Create$/i }).first().click().catch(() => {});
-  await page.waitForTimeout(2500);
+  await addPerson(page, {
+    route: '/trainers',
+    openButton: /Add Trainer|New Trainer|Invite Trainer/i,
+    missingButtonError: 'Add Trainer button missing',
+    person: creds.trainer,
+  });
 
   // /members → add member (trainee)
-  await page.goto(`${STAFF_BASE}/members`, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: /Add Member|New Member/i }).first().click().catch(() => creds.errors.push('Add Member button missing'));
-  await page.waitForTimeout(800);
-  await page.getByLabel(/Email/i).first().fill(creds.trainee.email).catch(() => {});
-  await page.getByLabel(/Password/i).first().fill(creds.trainee.password).catch(() => {});
-  await page.getByLabel(/First Name/i).first().fill(creds.trainee.firstName).catch(() => {});
-  await page.getByLabel(/Last Name/i).first().fill(creds.trainee.lastName).catch(() => {});
-  await page.getByLabel(/Phone/i).first().fill(creds.trainee.phone).catch(() => {});
-  await page.getByRole('button', { name: /^Save$|^Add$|^Create$/i }).first().click().catch(() => {});
-  await page.waitForTimeout(2500);
+  await addPerson(page, {
+    route: '/members',
+    openButton: /Add Member|New Member/i,
+    missingButtonError: 'Add Member button missing',
+    person: creds.trainee,
+  });
 });
 
 test.afterAll(() => {

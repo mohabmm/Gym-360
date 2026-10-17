@@ -30,22 +30,35 @@ async function listMembers(ctx: any, token: string, gymId: string): Promise<any[
   return body?.data?.items ?? body?.data ?? [];
 }
 
+function jsonAuthHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+function isCreated(res: any): boolean {
+  return res.ok() || res.status() === 201;
+}
+
+function extractUserId(body: any): string | undefined {
+  const data = body?.data;
+  return data?.userId ?? data?.id ?? data;
+}
+
 async function ensureMember(ctx: any, token: string, gymId: string, idx: number): Promise<void> {
   const phone = `+2010000000${(50 + idx).toString().padStart(2, '0')}`;
   const email = `seedmember${idx}@demo.local`;
   const userRes = await ctx.post(`${API}/identity/users/staff-create`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: jsonAuthHeaders(token),
     data: { firstName: `Seed${idx}`, lastName: 'Demo', phone, email },
   });
-  if (!userRes.ok() && userRes.status() !== 201) {
+  if (!isCreated(userRes)) {
     console.warn(`[global-setup] staff-create ${idx} → ${userRes.status()}`);
     return;
   }
   const userBody = await userRes.json().catch(() => ({}));
-  const userId = userBody?.data?.userId ?? userBody?.data?.id ?? userBody?.data;
+  const userId = extractUserId(userBody);
   if (!userId) return;
   await ctx.post(`${API}/gyms/${gymId}/members`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: jsonAuthHeaders(token),
     data: { userId },
   });
 }

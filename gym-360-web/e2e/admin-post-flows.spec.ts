@@ -6,7 +6,7 @@
  * response body so failures show the exact payload + server error.
  */
 
-import { test, expect, type Page, type Request, type Response } from '@playwright/test';
+import { test, expect, type APIRequestContext, type APIResponse, type Page, type Request, type Response } from '@playwright/test';
 
 const ADMIN_EMAIL = 'admin@demo.local';
 const ADMIN_PASSWORD = '123456';
@@ -57,6 +57,85 @@ function uniqueSuffix() {
   return `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
 }
 
+const API_BASE = 'http://localhost:8080/api/v1';
+
+function bearer(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
+
+async function adminToken(request: APIRequestContext): Promise<string> {
+  const t = await request.post(`${API_BASE}/identity/login`, {
+    data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
+  return (await t.json()).data.accessToken as string;
+}
+
+function listItems(json: any): any[] {
+  return json?.data?.items ?? json?.data ?? [];
+}
+
+async function findActiveGym(request: APIRequestContext, token: string): Promise<{ id: string } | undefined> {
+  const list = await request.get(`${API_BASE}/gyms?page=1&pageSize=50`, { headers: bearer(token) });
+  const items = listItems(await list.json());
+  return items.find((g: { status: string }) => String(g.status).toLowerCase() === 'active');
+}
+
+type GymStatusChange = { gymId: string; action: 'suspend' | 'reactivate'; data: Record<string, unknown> };
+
+function setGymStatus(request: APIRequestContext, token: string, change: GymStatusChange): Promise<APIResponse> {
+  return request.post(`${API_BASE}/admin/gyms/${change.gymId}/${change.action}`, {
+    headers: bearer(token),
+    data: change.data,
+  });
+}
+
+async function expect2xx(r: APIResponse) {
+  expect(r.status(), `body=${await r.text()}`).toBeGreaterThanOrEqual(200);
+  expect(r.status()).toBeLessThan(300);
+}
+
+function isSuccess(status: number): boolean {
+  return status >= 200 && status < 300;
+}
+
+/** Asserts a POST was captured and the last one returned 2xx; `describe` builds the failure message. */
+function expectLastPost2xx(captured: Captured[], mustFire: string, describe: (post: Captured) => string) {
+  expect(captured.length, mustFire).toBeGreaterThan(0);
+  const post = captured[captured.length - 1];
+  expect(isSuccess(post.status), describe(post)).toBe(true);
+  return post;
+}
+
+/** Message for a failed UI-driven POST: status, request body and response. */
+function postFailure(label: string) {
+  return (post: Captured) => `${label} returned ${post.status}. body=${JSON.stringify(post.reqBody)} resp=${post.resBody}`;
+}
+
+/** Creates a pending gym for the first owner; returns a skip reason when it cannot. */
+async function seedPendingGym(request: APIRequestContext): Promise<string | null> {
+  const token = await adminToken(request);
+
+  const ownersResp = await request.get(`${API_BASE}/admin/users?role=owner&page=1&pageSize=20`, {
+    headers: bearer(token),
+  });
+  const owners = listItems(await ownersResp.json());
+  if (!owners.length) return 'No gym owners';
+
+  const sfx = uniqueSuffix();
+  const createResp = await request.post(`${API_BASE}/gyms`, {
+    headers: bearer(token),
+    data: {
+      ownerId: owners[0].id,
+      gymCode: `APR${sfx}`.slice(0, 10),
+      name: `Approve UI ${sfx}`,
+      description: null,
+      address: { street: 'TBD', city: 'Cairo', state: 'Cairo', country: 'EG', zipCode: '00000' },
+      contact: { email: 'owner@example.com', phone: '+20000000000' },
+    },
+  });
+  return createResp.ok() ? null : `seed failed ${createResp.status()}`;
+}
+
 test.describe('Admin POST — Gym lifecycle', () => {
   test.beforeEach(async ({ page }) => loginIfNeeded(page));
 
@@ -85,12 +164,7 @@ test.describe('Admin POST — Gym lifecycle', () => {
     await createBtn.click();
     await page.waitForTimeout(3000);
 
-    expect(captured.length, 'POST /gyms must fire').toBeGreaterThan(0);
-    const post = captured[captured.length - 1];
-    expect(
-      post.status >= 200 && post.status < 300,
-      `POST /gyms returned ${post.status}. body=${JSON.stringify(post.reqBody)} resp=${post.resBody}`,
-    ).toBe(true);
+    const post = expectLastPost2xx(captured, 'POST /gyms must fire', postFailure('POST /gyms'));
 
     expect(post.reqBody, 'request body must include gymCode').toHaveProperty('gymCode');
     expect((post.reqBody as Record<string, unknown>).ownerId).not.toBe('00000000-0000-0000-0000-000000000000');
@@ -98,31 +172,8 @@ test.describe('Admin POST — Gym lifecycle', () => {
 
   test('POST /admin/gyms/{id}/approve — UI flow on /gyms/onboarding returns 2xx', async ({ page, request }) => {
     // Seed a pending gym so onboarding has at least one row.
-    const tokenResp = await request.post('http://localhost:8080/api/v1/identity/login', {
-      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-    });
-    const token = (await tokenResp.json()).data.accessToken as string;
-
-    const ownersResp = await request.get('http://localhost:8080/api/v1/admin/users?role=owner&page=1&pageSize=20', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const ownersJson = await ownersResp.json();
-    const owners = ownersJson?.data?.items ?? ownersJson?.data ?? [];
-    if (!owners.length) { test.skip(true, 'No gym owners'); return; }
-
-    const sfx = uniqueSuffix();
-    const createResp = await request.post('http://localhost:8080/api/v1/gyms', {
-      headers: { Authorization: `Bearer ${token}` },
-      data: {
-        ownerId: owners[0].id,
-        gymCode: `APR${sfx}`.slice(0, 10),
-        name: `Approve UI ${sfx}`,
-        description: null,
-        address: { street: 'TBD', city: 'Cairo', state: 'Cairo', country: 'EG', zipCode: '00000' },
-        contact: { email: 'owner@example.com', phone: '+20000000000' },
-      },
-    });
-    if (!createResp.ok()) { test.skip(true, `seed failed ${createResp.status()}`); return; }
+    const skipReason = await seedPendingGym(request);
+    if (skipReason) { test.skip(true, skipReason); return; }
 
     const captured = makePostRecorder(page, (u) => /\/admin\/gyms\/[^/]+\/approve$/.test(u));
 
@@ -140,72 +191,35 @@ test.describe('Admin POST — Gym lifecycle', () => {
     await confirm.click().catch(() => {});
     await page.waitForTimeout(2500);
 
-    expect(captured.length, 'approve POST must fire').toBeGreaterThan(0);
-    const post = captured[captured.length - 1];
-    expect(
-      post.status >= 200 && post.status < 300,
-      `approve returned ${post.status}: ${post.resBody}`,
-    ).toBe(true);
+    expectLastPost2xx(captured, 'approve POST must fire', (post) => `approve returned ${post.status}: ${post.resBody}`);
   });
 
   test('POST /admin/gyms/{id}/suspend — direct API on Active gym returns 2xx', async ({ request }) => {
-    const t = await request.post('http://localhost:8080/api/v1/identity/login', {
-      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-    });
-    const token = (await t.json()).data.accessToken as string;
-
-    const list = await request.get('http://localhost:8080/api/v1/gyms?page=1&pageSize=50', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const lj = await list.json();
-    const items = lj?.data?.items ?? lj?.data ?? [];
-    const activeGym = items.find((g: { status: string }) => String(g.status).toLowerCase() === 'active');
+    const token = await adminToken(request);
+    const activeGym = await findActiveGym(request, token);
     if (!activeGym) { test.skip(true, 'No active gym available'); return; }
 
-    const r = await request.post(`http://localhost:8080/api/v1/admin/gyms/${activeGym.id}/suspend`, {
-      headers: { Authorization: `Bearer ${token}` },
-      data: { reason: 'E2E suspend' },
-    });
-    expect(r.status(), `body=${await r.text()}`).toBeGreaterThanOrEqual(200);
-    expect(r.status()).toBeLessThan(300);
+    const r = await setGymStatus(request, token, { gymId: activeGym.id, action: 'suspend', data: { reason: 'E2E suspend' } });
+    await expect2xx(r);
 
     // restore: reactivate the gym we just suspended so other tests are not affected
-    await request.post(`http://localhost:8080/api/v1/admin/gyms/${activeGym.id}/reactivate`, {
-      headers: { Authorization: `Bearer ${token}` },
-      data: {},
-    });
+    await setGymStatus(request, token, { gymId: activeGym.id, action: 'reactivate', data: {} });
   });
 
   test('POST /admin/gyms/{id}/reactivate — direct API after suspend returns 2xx', async ({ request }) => {
-    const t = await request.post('http://localhost:8080/api/v1/identity/login', {
-      data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
-    });
-    const token = (await t.json()).data.accessToken as string;
-
-    const list = await request.get('http://localhost:8080/api/v1/gyms?page=1&pageSize=50', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const lj = await list.json();
-    const items = lj?.data?.items ?? lj?.data ?? [];
-    const activeGym = items.find((g: { status: string }) => String(g.status).toLowerCase() === 'active');
+    const token = await adminToken(request);
+    const activeGym = await findActiveGym(request, token);
     if (!activeGym) { test.skip(true, 'No active gym available'); return; }
 
     // suspend first
-    const sus = await request.post(`http://localhost:8080/api/v1/admin/gyms/${activeGym.id}/suspend`, {
-      headers: { Authorization: `Bearer ${token}` },
-      data: { reason: 'pre-reactivate' },
-    });
+    const sus = await setGymStatus(request, token, { gymId: activeGym.id, action: 'suspend', data: { reason: 'pre-reactivate' } });
     if (!sus.ok()) { test.skip(true, `pre-suspend failed ${sus.status()}`); return; }
 
     // Allow status update to settle (outbox / event propagation)
     await new Promise((res) => setTimeout(res, 500));
 
-    const r = await request.post(`http://localhost:8080/api/v1/admin/gyms/${activeGym.id}/reactivate`, {
-      headers: { Authorization: `Bearer ${token}` },
-      data: {},
-    });
-    expect(r.status(), `body=${await r.text()}`).toBeGreaterThanOrEqual(200);
-    expect(r.status()).toBeLessThan(300);
+    const r = await setGymStatus(request, token, { gymId: activeGym.id, action: 'reactivate', data: {} });
+    await expect2xx(r);
   });
 });
 
@@ -238,12 +252,7 @@ test.describe('Admin POST — Plans & Features', () => {
     await submit.click();
     await page.waitForTimeout(2500);
 
-    expect(captured.length, 'POST /admin/plans must fire').toBeGreaterThan(0);
-    const post = captured[captured.length - 1];
-    expect(
-      post.status >= 200 && post.status < 300,
-      `create plan returned ${post.status}. body=${JSON.stringify(post.reqBody)} resp=${post.resBody}`,
-    ).toBe(true);
+    expectLastPost2xx(captured, 'POST /admin/plans must fire', postFailure('create plan'));
   });
 
   test('POST /admin/features — create feature returns 2xx', async ({ page }) => {
@@ -274,12 +283,7 @@ test.describe('Admin POST — Plans & Features', () => {
     await submit.click();
     await page.waitForTimeout(2500);
 
-    expect(captured.length, 'POST /admin/features must fire').toBeGreaterThan(0);
-    const post = captured[captured.length - 1];
-    expect(
-      post.status >= 200 && post.status < 300,
-      `create feature returned ${post.status}. body=${JSON.stringify(post.reqBody)} resp=${post.resBody}`,
-    ).toBe(true);
+    expectLastPost2xx(captured, 'POST /admin/features must fire', postFailure('create feature'));
   });
 
   test('POST /admin/deploy/{scope}/{id} — deploy after toggle returns 2xx', async ({ page }) => {
@@ -306,12 +310,7 @@ test.describe('Admin POST — Plans & Features', () => {
     await page.locator('button:has-text("Deploy Now")').last().click();
     await page.waitForTimeout(3000);
 
-    expect(captured.length, 'POST /admin/deploy must fire').toBeGreaterThan(0);
-    const post = captured[captured.length - 1];
-    expect(
-      post.status >= 200 && post.status < 300,
-      `deploy returned ${post.status}. body=${JSON.stringify(post.reqBody)} resp=${post.resBody}`,
-    ).toBe(true);
+    expectLastPost2xx(captured, 'POST /admin/deploy must fire', postFailure('deploy'));
   });
 });
 
@@ -348,12 +347,7 @@ test.describe('Admin POST — Identity & Settings', () => {
     await submit.click();
     await page.waitForTimeout(2500);
 
-    expect(captured.length, 'POST /admin/users must fire').toBeGreaterThan(0);
-    const post = captured[captured.length - 1];
-    expect(
-      post.status >= 200 && post.status < 300,
-      `add admin returned ${post.status}. body=${JSON.stringify(post.reqBody)} resp=${post.resBody}`,
-    ).toBe(true);
+    expectLastPost2xx(captured, 'POST /admin/users must fire', postFailure('add admin'));
   });
 });
 
@@ -396,8 +390,7 @@ test.describe('Admin POST — Direct API contract checks', () => {
         sortOrder: 999,
       },
     });
-    expect(r.status(), `body=${await r.text()}`).toBeGreaterThanOrEqual(200);
-    expect(r.status()).toBeLessThan(300);
+    await expect2xx(r);
   });
 
   test('POST /api/v1/admin/features with valid payload returns 2xx', async ({ request }) => {
@@ -411,8 +404,7 @@ test.describe('Admin POST — Direct API contract checks', () => {
         category: 'Training',
       },
     });
-    expect(r.status(), `body=${await r.text()}`).toBeGreaterThanOrEqual(200);
-    expect(r.status()).toBeLessThan(300);
+    await expect2xx(r);
   });
 
   test('POST /api/v1/admin/users with valid payload returns 2xx', async ({ request }) => {
@@ -426,8 +418,7 @@ test.describe('Admin POST — Direct API contract checks', () => {
         adminRole: 'support',
       },
     });
-    expect(r.status(), `body=${await r.text()}`).toBeGreaterThanOrEqual(200);
-    expect(r.status()).toBeLessThan(300);
+    await expect2xx(r);
   });
 
   test('POST /api/v1/admin/deploy/all returns 2xx', async ({ request }) => {
@@ -435,7 +426,6 @@ test.describe('Admin POST — Direct API contract checks', () => {
       headers: { Authorization: `Bearer ${token}` },
       data: { deployedBy: '00000000-0000-0000-0000-000000000000' },
     });
-    expect(r.status(), `body=${await r.text()}`).toBeGreaterThanOrEqual(200);
-    expect(r.status()).toBeLessThan(300);
+    await expect2xx(r);
   });
 });

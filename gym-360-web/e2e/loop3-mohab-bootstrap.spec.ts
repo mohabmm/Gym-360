@@ -13,7 +13,7 @@
  * Run: npx playwright test e2e/loop3-mohab-bootstrap.spec.ts --project=chromium --workers=1
  */
 
-import { test, expect, Page, request } from '@playwright/test';
+import { test, expect, Locator, Page, request } from '@playwright/test';
 import { writeFileSync } from 'fs';
 
 const ADMIN_BASE = 'http://localhost:3000';
@@ -140,6 +140,61 @@ test('Loop3 — admin creates gym via /gyms UI', async ({ page }) => {
   await page.waitForTimeout(2_500);
 });
 
+/** Waits (best effort) for an API response whose URL contains `urlPart` and uses `method`. */
+async function waitForApiCall(page: Page, urlPart: string, method: string, timeout = 15_000) {
+  await page
+    .waitForResponse((r) => r.url().includes(urlPart) && r.request().method() === method, { timeout })
+    .catch(() => {});
+}
+
+/** Modal in @gym360/ui is a position-fixed div with no role. Anchor on the heading. */
+async function modalByHeading(page: Page, name: string) {
+  const heading = page.getByRole('heading', { name });
+  await heading.waitFor({ state: 'visible', timeout: 10_000 });
+  return heading.locator('xpath=ancestor::div[contains(@class,"rounded")][1]');
+}
+
+/** Fills the modal's inputs in DOM order. */
+async function fillInputsInOrder(modal: Locator, values: string[]) {
+  const inputs = modal.locator('input');
+  for (const [index, value] of values.entries()) {
+    await inputs.nth(index).fill(value);
+  }
+}
+
+async function selectProPlan(planSelect: Locator) {
+  await planSelect.selectOption({ label: 'Pro' }).catch(async () => {
+    // fallback: pick option whose text contains 'Pro'
+    const opts = await planSelect.locator('option').allTextContents();
+    const idx = opts.findIndex((t) => /pro/i.test(t));
+    if (idx >= 0) await planSelect.selectOption({ index: idx });
+  });
+}
+
+// Click Change Plan, select Pro, fill reason, submit.
+async function changePlanToPro(page: Page) {
+  await page.locator('button:has-text("Change Plan")').first().click();
+  const modal = await modalByHeading(page, 'Change Plan');
+  await selectProPlan(modal.locator('select').first());
+  // Reason field (textarea)
+  const reasonEl = modal.locator('textarea, input[type="text"]').last();
+  await reasonEl.fill('Loop3 upgrade').catch(() => {});
+  await modal.getByRole('button', { name: /^Change Plan$|Updating/i }).click();
+  await waitForApiCall(page, '/subscription/plan', 'PUT');
+  await page.waitForTimeout(1_500);
+}
+
+// Deploy via /plans page sticky bar.
+async function deployPlanChanges(page: Page) {
+  await page.goto(`${ADMIN_BASE}/plans`, { waitUntil: 'networkidle' });
+  // Click "Deploy Changes" or "Deploy Now" — tolerate either label
+  await page.locator('button:has-text("Deploy")').first().click({ timeout: 10_000 }).catch(() => {});
+  // Confirm modal "Deploy Now" button
+  await page.locator('button:has-text("Deploy Now")').last().click({ timeout: 10_000 }).catch(() => {});
+  await waitForApiCall(page, '/admin/deploy/', 'POST');
+  await page.waitForTimeout(1_500);
+}
+
 test('Loop3 — admin sets Pro plan + deploys via UI', async ({ page }) => {
   test.setTimeout(120_000);
   await loginCredentials(page, ADMIN_BASE, creds.admin.email, creds.admin.password);
@@ -156,36 +211,61 @@ test('Loop3 — admin sets Pro plan + deploys via UI', async ({ page }) => {
   await page.locator('button:has-text("Subscription & Features")').first().click();
   await page.waitForTimeout(500);
 
-  // Click Change Plan, select Pro, fill reason, submit.
-  await page.locator('button:has-text("Change Plan")').first().click();
-  {
-    const heading = page.getByRole('heading', { name: 'Change Plan' });
-    await heading.waitFor({ state: 'visible', timeout: 10_000 });
-    const modal = heading.locator('xpath=ancestor::div[contains(@class,"rounded")][1]');
-    const planSelect = modal.locator('select').first();
-    await planSelect.selectOption({ label: 'Pro' }).catch(async () => {
-      // fallback: pick option whose text contains 'Pro'
-      const opts = await planSelect.locator('option').allTextContents();
-      const idx = opts.findIndex((t) => /pro/i.test(t));
-      if (idx >= 0) await planSelect.selectOption({ index: idx });
-    });
-    // Reason field (textarea)
-    const reasonEl = modal.locator('textarea, input[type="text"]').last();
-    await reasonEl.fill('Loop3 upgrade').catch(() => {});
-    await modal.getByRole('button', { name: /^Change Plan$|Updating/i }).click();
-  }
-  await page.waitForResponse((r) => r.url().includes('/subscription/plan') && r.request().method() === 'PUT', { timeout: 15_000 }).catch(() => {});
-  await page.waitForTimeout(1_500);
-
-  // Deploy via /plans page sticky bar.
-  await page.goto(`${ADMIN_BASE}/plans`, { waitUntil: 'networkidle' });
-  // Click "Deploy Changes" or "Deploy Now" — tolerate either label
-  await page.locator('button:has-text("Deploy")').first().click({ timeout: 10_000 }).catch(() => {});
-  // Confirm modal "Deploy Now" button
-  await page.locator('button:has-text("Deploy Now")').last().click({ timeout: 10_000 }).catch(() => {});
-  await page.waitForResponse((r) => r.url().includes('/admin/deploy/') && r.request().method() === 'POST', { timeout: 15_000 }).catch(() => {});
-  await page.waitForTimeout(1_500);
+  await changePlanToPro(page);
+  await deployPlanChanges(page);
 });
+
+// Owner with multi-gym scope lands on /select-gym (or auto-redirects). Click "Open" on first card.
+async function openFirstGymIfPrompted(page: Page) {
+  if (!page.url().includes('/select-gym')) return;
+  await page.getByRole('button', { name: /Open/i }).first().click();
+  await page.waitForURL((u) => !u.pathname.includes('/select-gym'), { timeout: 15_000 });
+}
+
+// ---- /staff → Add Staff ---------------------------------------------------
+async function addStaffViaUi(page: Page) {
+  await page.goto(`${STAFF_BASE}/staff`, { waitUntil: 'networkidle' });
+  await page.waitForLoadState('networkidle').catch(() => {});
+  const addStaffBtn = page.locator('button:has-text("Add Staff")').first();
+  await addStaffBtn.waitFor({ state: 'visible', timeout: 10_000 });
+  await addStaffBtn.click();
+  await page.waitForTimeout(500);
+  const modal = await modalByHeading(page, 'Add Staff Member');
+  // Order: FirstName, LastName, Email, Phone, Password
+  const { firstName, lastName, email, phone, password } = creds.staff;
+  await fillInputsInOrder(modal, [firstName, lastName, email, phone, password]);
+  // Role select left at default (manager); we don't care for staff smoke.
+  await modal.getByRole('button', { name: /^Add Staff$|^Adding\.\.\.$/i }).click();
+  await waitForApiCall(page, '/staff/create', 'POST');
+  await page.waitForTimeout(2_000);
+}
+
+// ---- /trainers → Add Trainer ---------------------------------------------
+async function addTrainerViaUi(page: Page) {
+  await page.goto(`${STAFF_BASE}/trainers`, { waitUntil: 'networkidle' });
+  await page.locator('button:has-text("Add Trainer")').first().click();
+  const modal = await modalByHeading(page, 'Add Trainer');
+  const { firstName, lastName, email, phone } = creds.trainer;
+  await fillInputsInOrder(modal, [firstName, lastName, email, phone]);
+  await modal.getByRole('button', { name: /^Add Trainer$|Adding/i }).click();
+  await waitForApiCall(page, '/trainers', 'POST');
+  await page.waitForTimeout(2_000);
+}
+
+// ---- /members → Add Member ------------------------------------------------
+async function addMemberViaUi(page: Page) {
+  await page.goto(`${STAFF_BASE}/members`, { waitUntil: 'networkidle' });
+  await page.locator('button:has-text("Add Member")').first().click();
+  await page.waitForTimeout(500);
+  const modal = await modalByHeading(page, 'Add Member');
+  // Members modal: [Name, Phone, Email] inputs + [Floor] select
+  const { firstName, lastName, phone, email } = creds.trainee;
+  await fillInputsInOrder(modal, [`${firstName} ${lastName}`, phone, email]);
+  // Floor select — leave default 'Mens'.
+  await modal.getByRole('button', { name: /^Add Member$|Adding/i }).click();
+  await waitForApiCall(page, '/members', 'POST');
+  await page.waitForTimeout(2_500);
+}
 
 test('Loop3 — owner adds staff/trainer/trainee via :3001 UI', async ({ browser }) => {
   test.setTimeout(240_000);
@@ -193,72 +273,11 @@ test('Loop3 — owner adds staff/trainer/trainee via :3001 UI', async ({ browser
   const page = await ctx.newPage();
 
   await loginCredentials(page, STAFF_BASE, creds.owner.email, creds.owner.password);
+  await openFirstGymIfPrompted(page);
 
-  // Owner with multi-gym scope lands on /select-gym (or auto-redirects). Click "Open" on first card.
-  if (page.url().includes('/select-gym')) {
-    await page.getByRole('button', { name: /Open/i }).first().click();
-    await page.waitForURL((u) => !u.pathname.includes('/select-gym'), { timeout: 15_000 });
-  }
-
-  // ---- /staff → Add Staff ---------------------------------------------------
-  await page.goto(`${STAFF_BASE}/staff`, { waitUntil: 'networkidle' });
-  await page.waitForLoadState('networkidle').catch(() => {});
-  const addStaffBtn = page.locator('button:has-text("Add Staff")').first();
-  await addStaffBtn.waitFor({ state: 'visible', timeout: 10_000 });
-  await addStaffBtn.click();
-  await page.waitForTimeout(500);
-  {
-    const heading = page.getByRole('heading', { name: 'Add Staff Member' });
-    await heading.waitFor({ state: 'visible', timeout: 10_000 });
-    const modal = heading.locator('xpath=ancestor::div[contains(@class,"rounded")][1]');
-    const inputs = modal.locator('input');
-    // Order: FirstName, LastName, Email, Phone, Password
-    await inputs.nth(0).fill(creds.staff.firstName);
-    await inputs.nth(1).fill(creds.staff.lastName);
-    await inputs.nth(2).fill(creds.staff.email);
-    await inputs.nth(3).fill(creds.staff.phone);
-    await inputs.nth(4).fill(creds.staff.password);
-    // Role select left at default (manager); we don't care for staff smoke.
-    await modal.getByRole('button', { name: /^Add Staff$|^Adding\.\.\.$/i }).click();
-  }
-  await page.waitForResponse((r) => r.url().includes('/staff/create') && r.request().method() === 'POST', { timeout: 15_000 }).catch(() => {});
-  await page.waitForTimeout(2_000);
-
-  // ---- /trainers → Add Trainer ---------------------------------------------
-  await page.goto(`${STAFF_BASE}/trainers`, { waitUntil: 'networkidle' });
-  await page.locator('button:has-text("Add Trainer")').first().click();
-  {
-    const heading = page.getByRole('heading', { name: 'Add Trainer' });
-    await heading.waitFor({ state: 'visible', timeout: 10_000 });
-    const modal = heading.locator('xpath=ancestor::div[contains(@class,"rounded")][1]');
-    const inputs = modal.locator('input');
-    await inputs.nth(0).fill(creds.trainer.firstName);
-    await inputs.nth(1).fill(creds.trainer.lastName);
-    await inputs.nth(2).fill(creds.trainer.email);
-    await inputs.nth(3).fill(creds.trainer.phone);
-    await modal.getByRole('button', { name: /^Add Trainer$|Adding/i }).click();
-  }
-  await page.waitForResponse((r) => r.url().includes('/trainers') && r.request().method() === 'POST', { timeout: 15_000 }).catch(() => {});
-  await page.waitForTimeout(2_000);
-
-  // ---- /members → Add Member ------------------------------------------------
-  await page.goto(`${STAFF_BASE}/members`, { waitUntil: 'networkidle' });
-  await page.locator('button:has-text("Add Member")').first().click();
-  await page.waitForTimeout(500);
-  {
-    const heading = page.getByRole('heading', { name: 'Add Member' });
-    await heading.waitFor({ state: 'visible', timeout: 10_000 });
-    const modal = heading.locator('xpath=ancestor::div[contains(@class,"rounded")][1]');
-    const inputs = modal.locator('input');
-    // Members modal: [Name, Phone, Email] inputs + [Floor] select
-    await inputs.nth(0).fill(`${creds.trainee.firstName} ${creds.trainee.lastName}`);
-    await inputs.nth(1).fill(creds.trainee.phone);
-    await inputs.nth(2).fill(creds.trainee.email);
-    // Floor select — leave default 'Mens'.
-    await modal.getByRole('button', { name: /^Add Member$|Adding/i }).click();
-  }
-  await page.waitForResponse((r) => r.url().includes('/members') && r.request().method() === 'POST', { timeout: 15_000 }).catch(() => {});
-  await page.waitForTimeout(2_500);
+  await addStaffViaUi(page);
+  await addTrainerViaUi(page);
+  await addMemberViaUi(page);
 
   await ctx.close();
 });

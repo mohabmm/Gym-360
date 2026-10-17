@@ -12,11 +12,14 @@ export const API = process.env.STAGING_API || 'https://staging-api.gym-365.com';
 // APIRequestContext baseURL, since a leading-slash path resets to the origin
 // root and silently drops the `/api/v1` prefix (→ 404).
 export const V1 = `${API}/api/v1`;
-export const ADMIN = {
+/** Login credentials for one account. */
+export type Credentials = { email: string; password: string };
+
+export const ADMIN: Credentials = {
   email: process.env.ADMIN_EMAIL || 'admin@demo.local',
   password: process.env.ADMIN_PASSWORD || '123456',
 };
-export const STAFF = {
+export const STAFF: Credentials = {
   email: process.env.STAFF_EMAIL || 'staff@demo.local',
   password: process.env.STAFF_PASSWORD || '123456',
 };
@@ -33,7 +36,7 @@ export function e2eTag(): string {
 }
 
 /** UI login via the NextAuth credentials form. Lands on a non-/login route. */
-export async function uiLogin(page: Page, email: string, password: string): Promise<void> {
+export async function uiLogin(page: Page, { email, password }: Credentials): Promise<void> {
   await page.goto('/login', { waitUntil: 'domcontentloaded' });
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', password);
@@ -55,31 +58,38 @@ export async function apiContext(): Promise<APIRequestContext> {
   });
 }
 
+/** First gym the user can act on, read from /identity/me (owners have no gym in the login token). */
+async function fetchFirstGymId(ctx: APIRequestContext, headers: Record<string, string>): Promise<string | undefined> {
+  const me = await ctx.get(`${V1}/identity/me`, { headers });
+  if (!me.ok()) return undefined;
+  const data = (await me.json())?.data ?? {};
+  const gyms = data.ownedGyms ?? data.gyms ?? [];
+  return gyms?.[0]?.gymId;
+}
+
+type ApiSession = { token: string; gymId?: string };
+
+/** Exchanges the session token for a gym-scoped one; keeps it when selection fails. */
+async function selectGym(ctx: APIRequestContext, { token, gymId }: ApiSession): Promise<string> {
+  const sel = await ctx.post(`${V1}/identity/select-gym`, {
+    headers: auth(token),
+    data: { gymId },
+  });
+  if (!sel.ok()) return token;
+  return (await sel.json())?.data?.accessToken ?? token;
+}
+
 /** Login through the API and return a gym-scoped bearer token + gymId. */
 export async function apiLogin(
   ctx: APIRequestContext,
-  email: string,
-  password: string,
-): Promise<{ token: string; gymId?: string }> {
+  { email, password }: Credentials,
+): Promise<ApiSession> {
   const res = await ctx.post(`${V1}/identity/login`, { data: { email, password } });
   if (!res.ok()) throw new Error(`api login ${email} -> ${res.status()}`);
   let token = (await res.json())?.data?.accessToken as string;
-  let gymId = decodeJwt(token)?.gymId as string | undefined;
   // Pick up a gym scope if the login token has none (owners).
-  if (!gymId) {
-    const me = await ctx.get(`${V1}/identity/me`, { headers: auth(token) });
-    if (me.ok()) {
-      const data = (await me.json())?.data ?? {};
-      gymId = (data.ownedGyms ?? data.gyms ?? [])?.[0]?.gymId;
-    }
-  }
-  if (gymId) {
-    const sel = await ctx.post(`${V1}/identity/select-gym`, {
-      headers: auth(token),
-      data: { gymId },
-    });
-    if (sel.ok()) token = (await sel.json())?.data?.accessToken ?? token;
-  }
+  const gymId = (decodeJwt(token)?.gymId as string | undefined) || (await fetchFirstGymId(ctx, auth(token)));
+  if (gymId) token = await selectGym(ctx, { token, gymId });
   return { token, gymId };
 }
 
