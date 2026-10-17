@@ -28,12 +28,15 @@ public sealed class MemberEndpointsAuthorizationIntegrationTests : BaseIntegrati
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: $"Authz Test Gym {Guid.NewGuid():N}",
-            description: null,
-            address: new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Create($"AUZ{Guid.NewGuid().ToString("N")[..3]}"));
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = $"Authz Test Gym {Guid.NewGuid():N}",
+                Description = null,
+                Address = new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Create($"AUZ{Guid.NewGuid().ToString("N")[..3]}")
+            });
         gym.Approve();
         _memberId = Guid.NewGuid();
         _otherMemberId = Guid.NewGuid();

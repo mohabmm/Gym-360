@@ -5,11 +5,7 @@ namespace GymApp.Common.Infrastructure.Tenancy.Provisioning;
 public interface IGymProvisioningService
 {
     Task<GymRegistration> ProvisionAsync(
-        Guid gymId,
-        Guid ownerId,
-        string name,
-        string slug,
-        string? gymCode = null,
+        GymProvisioningRequest request,
         CancellationToken cancellationToken = default);
 
     Task DeprovisionAsync(Guid gymId, CancellationToken cancellationToken = default);

@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Events;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Domain.Entities;
 
@@ -8,26 +9,7 @@ public sealed class Announcement : Entity
 {
     private Announcement() : base() { }
 
-    private Announcement(
-        Guid id,
-        Guid gymId,
-        string title,
-        string content,
-        string? imageUrl,
-        AnnouncementCategory category,
-        TargetAudience targetAudience,
-        DateTime? scheduledAt,
-        Guid createdBy) : base(id)
-    {
-        GymId = gymId;
-        Title = title;
-        Content = content;
-        ImageUrl = imageUrl;
-        Category = category;
-        TargetAudience = targetAudience;
-        ScheduledAt = scheduledAt;
-        CreatedBy = createdBy;
-    }
+    private Announcement(Guid id) : base(id) { }
 
     public Guid GymId { get; private set; }
     public string Title { get; private set; } = default!;
@@ -41,24 +23,21 @@ public sealed class Announcement : Entity
 
     public static Announcement Create(
         Guid gymId,
-        string title,
-        string content,
-        string? imageUrl,
-        AnnouncementCategory category,
-        TargetAudience targetAudience,
+        AnnouncementDetails details,
         DateTime? scheduledAt,
         Guid createdBy)
     {
-        return new Announcement(
-            Guid.NewGuid(),
-            gymId,
-            title,
-            content,
-            imageUrl,
-            category,
-            targetAudience,
-            scheduledAt,
-            createdBy);
+        return new Announcement(Guid.NewGuid())
+        {
+            GymId = gymId,
+            Title = details.Title,
+            Content = details.Content,
+            ImageUrl = details.ImageUrl,
+            Category = details.Category,
+            TargetAudience = details.TargetAudience,
+            ScheduledAt = scheduledAt,
+            CreatedBy = createdBy
+        };
     }
 
     public void Publish()
@@ -72,12 +51,12 @@ public sealed class Announcement : Entity
         PublishedAt = null;
     }
 
-    public void Update(string title, string content, string? imageUrl, AnnouncementCategory category, TargetAudience targetAudience)
+    public void Update(AnnouncementDetails details)
     {
-        Title = title;
-        Content = content;
-        ImageUrl = imageUrl;
-        Category = category;
-        TargetAudience = targetAudience;
+        Title = details.Title;
+        Content = details.Content;
+        ImageUrl = details.ImageUrl;
+        Category = details.Category;
+        TargetAudience = details.TargetAudience;
     }
 }

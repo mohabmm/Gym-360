@@ -21,12 +21,15 @@ public sealed class KioskPinIntegrationTests : BaseIntegrationTest
         var unitOfWork = GetService<IGymsUnitOfWork>();
 
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: $"Kiosk Test Gym {Guid.NewGuid():N}",
-            description: "Fixture gym for kiosk PIN tests",
-            address: new Address("1 Test St", "Cairo", "Cairo", "EG", "11511", 30.04, 31.24),
-            contactInfo: new ContactInfo("kiosk@test.local", "+201000000000", null),
-            gymCode: GymCode.Generate());
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = $"Kiosk Test Gym {Guid.NewGuid():N}",
+                Description = "Fixture gym for kiosk PIN tests",
+                Address = new Address("1 Test St", "Cairo", "Cairo", "EG", "11511", 30.04, 31.24),
+                ContactInfo = new ContactInfo("kiosk@test.local", "+201000000000", null),
+                GymCode = GymCode.Generate()
+            });
 
         await repository.AddAsync(gym);
         await unitOfWork.SaveChangesAsync();

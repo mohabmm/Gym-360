@@ -91,16 +91,16 @@ internal sealed class IdentityJwtTokenService : Application.Contracts.IJwtTokenS
         }
 
         var token = _jwtTokenService.GenerateAccessToken(
-            user.Id,
-            user.Email.Value,
-            user.Role.ToRoleClaim(),
-            gymId,
-            staffRole,
-            adminRole,
-            principalType,
-            user.OwnerId,
-            schemaPrefix,
-            staffSubRole);
+            new Common.Infrastructure.Authentication.AccessTokenClaims(user.Id, user.Email.Value, user.Role.ToRoleClaim())
+            {
+                GymId = gymId,
+                StaffRole = staffRole,
+                AdminRole = adminRole,
+                PrincipalType = principalType,
+                OwnerId = user.OwnerId,
+                SchemaPrefix = schemaPrefix,
+                StaffSubRole = staffSubRole
+            });
 
         return token;
     }
@@ -136,16 +136,16 @@ internal sealed class IdentityJwtTokenService : Application.Contracts.IJwtTokenS
         }
 
         return _jwtTokenService.GenerateAccessToken(
-            user.Id,
-            user.Email.Value,
-            user.Role.ToRoleClaim(),
-            gymId,
-            staffRole,
-            adminRole,
-            principalType,
-            user.OwnerId,
-            schemaPrefix,
-            staffSubRole);
+            new Common.Infrastructure.Authentication.AccessTokenClaims(user.Id, user.Email.Value, user.Role.ToRoleClaim())
+            {
+                GymId = gymId,
+                StaffRole = staffRole,
+                AdminRole = adminRole,
+                PrincipalType = principalType,
+                OwnerId = user.OwnerId,
+                SchemaPrefix = schemaPrefix,
+                StaffSubRole = staffSubRole
+            });
     }
 
     public Task<string> GenerateRefreshTokenAsync(CancellationToken cancellationToken = default)

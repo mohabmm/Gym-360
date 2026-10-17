@@ -64,20 +64,7 @@ public static class DemoGymSeeder
 
         if (gym is null)
         {
-            gym = Gym.Create(
-                ownerId: ownerAggregateId.Value,
-                name: "FirstGym",
-                description: "Default demo gym seeded for development",
-                address: new Address(
-                    Street: "1 El-Tahrir St",
-                    City: "Cairo",
-                    State: "Cairo",
-                    Country: "EG",
-                    ZipCode: "11511"),
-                contactInfo: new ContactInfo(
-                    Email: "info@demogym.local",
-                    Phone: "+20223456789"),
-                gymCode: GymCode.Create(DemoGymCode));
+            gym = CreateDemoGym(ownerAggregateId.Value);
 
             gym.Approve();
             gymsCtx.Gyms.Add(gym);
@@ -153,7 +140,7 @@ public static class DemoGymSeeder
             if (traineeId is null) continue;
 
             var assigned = await memberDirectory.RegisterAsync(
-                gym.Id, traineeId.Value, preferredNumber: null, section, ct);
+                new GymMemberRegistration(gym.Id, traineeId.Value, PreferredNumber: null, section), ct);
             traineeNumbers[email] = assigned;
 
             // Mirror member into the Gym.MemberIds JSON so IsActiveMemberAsync
@@ -174,4 +161,23 @@ public static class DemoGymSeeder
 
         logger.LogInformation("DemoGymSeeder: done ({GymId})", gym.Id);
     }
+
+    private static Gym CreateDemoGym(Guid ownerId) =>
+        Gym.Create(
+            ownerId,
+            new GymDetails
+            {
+                Name = "FirstGym",
+                Description = "Default demo gym seeded for development",
+                Address = new Address(
+                    Street: "1 El-Tahrir St",
+                    City: "Cairo",
+                    State: "Cairo",
+                    Country: "EG",
+                    ZipCode: "11511"),
+                ContactInfo = new ContactInfo(
+                    Email: "info@demogym.local",
+                    Phone: "+20223456789"),
+                GymCode = GymCode.Create(DemoGymCode)
+            });
 }

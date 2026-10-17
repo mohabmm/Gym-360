@@ -47,12 +47,14 @@ internal sealed class UpdateClassCommandHandler : ICommandHandler<UpdateClassCom
             request.Schedule.DurationMinutes,
             request.Schedule.IsRecurring);
 
-        gymClass.Update(
-            request.Name,
-            request.Description,
-            schedule,
-            request.Capacity,
-            request.WaitlistEnabled);
+        gymClass.Update(new GymClassDetails
+        {
+            Name = request.Name,
+            Description = request.Description,
+            Schedule = schedule,
+            Capacity = request.Capacity,
+            WaitlistEnabled = request.WaitlistEnabled
+        });
 
         _gymClassRepository.Update(gymClass);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

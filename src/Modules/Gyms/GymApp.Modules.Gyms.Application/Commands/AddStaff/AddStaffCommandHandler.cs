@@ -1,13 +1,11 @@
-using GymApp.Modules.Billing.Shared;
-using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
-using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
+using GymApp.Modules.Gyms.Application.Services;
 using GymApp.Modules.Gyms.IntegrationEvents;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddStaff;
@@ -16,23 +14,20 @@ internal sealed class AddStaffCommandHandler : ICommandHandler<AddStaffCommand>
 {
     private readonly IGymRepository _gymRepository;
     private readonly IStaffRoleRepository _staffRoleRepository;
-    private readonly IGymPlanService _gymPlanService;
-    private readonly IGymQueryService _gymQueryService;
+    private readonly GymSeatLimitChecker _seatLimits;
     private readonly IGymsUnitOfWork _unitOfWork;
     private readonly IIntegrationEventPublisher _integrationEvents;
 
     public AddStaffCommandHandler(
         IGymRepository gymRepository,
         IStaffRoleRepository staffRoleRepository,
-        IGymPlanService gymPlanService,
-        IGymQueryService gymQueryService,
+        GymSeatLimitChecker seatLimits,
         IGymsUnitOfWork unitOfWork,
         IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
         _staffRoleRepository = staffRoleRepository;
-        _gymPlanService = gymPlanService;
-        _gymQueryService = gymQueryService;
+        _seatLimits = seatLimits;
         _unitOfWork = unitOfWork;
         _integrationEvents = integrationEvents;
     }
@@ -43,11 +38,9 @@ internal sealed class AddStaffCommandHandler : ICommandHandler<AddStaffCommand>
         if (gym is null)
             return Result.Failure(GymErrors.NotFound);
 
-        var staffLimit = await _gymPlanService.GetStaffLimitAsync(request.GymId, cancellationToken);
-        var currentCount = await _gymQueryService.GetStaffCountAsync(request.GymId, cancellationToken);
-
-        if (staffLimit > 0 && currentCount >= staffLimit)
-            return Result.Failure(PlanErrors.LimitExceeded("staff", currentCount, staffLimit));
+        var seat = await _seatLimits.EnsureStaffSeatAsync(request.GymId, cancellationToken);
+        if (seat.IsFailure)
+            return seat;
 
         // Check if user already has a staff role at this gym
         var existingRole = await _staffRoleRepository.GetByUserAndGymAsync(request.UserId, request.GymId, cancellationToken);

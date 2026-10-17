@@ -12,10 +12,12 @@ internal sealed class AddMemberNoteEndpoint : IEndpoint
 {
     internal sealed record Request(string Content);
 
+    internal sealed record MemberRoute(Guid GymId, Guid MemberId);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("api/v1/gyms/{gymId:guid}/members/{memberId:guid}/notes",
-            async (Guid gymId, Guid memberId, Request request, HttpContext httpContext, ISender sender) =>
+            async ([AsParameters] MemberRoute route, Request request, HttpContext httpContext, ISender sender) =>
         {
             var userId = httpContext.User.FindFirst("sub")?.Value
                       ?? httpContext.User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
@@ -24,8 +26,8 @@ internal sealed class AddMemberNoteEndpoint : IEndpoint
                 return Results.Unauthorized();
 
             var command = new AddMemberNoteCommand(
-                gymId,
-                memberId,
+                route.GymId,
+                route.MemberId,
                 createdBy,
                 request.Content);
 

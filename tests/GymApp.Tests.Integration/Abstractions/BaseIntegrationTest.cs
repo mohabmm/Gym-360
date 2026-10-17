@@ -33,8 +33,13 @@ public abstract class BaseIntegrationTest : IAsyncLifetime
         string? staffSubRole = null)
     {
         var jwtService = Scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
-        return jwtService.GenerateAccessToken(
-            userId, email, role, gymId, staffRole, adminRole, staffSubRole: staffSubRole);
+        return jwtService.GenerateAccessToken(new AccessTokenClaims(userId, email, role)
+        {
+            GymId = gymId,
+            StaffRole = staffRole,
+            AdminRole = adminRole,
+            StaffSubRole = staffSubRole
+        });
     }
 
     /// <summary>

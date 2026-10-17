@@ -14,28 +14,7 @@ public sealed class Gym : Entity
 
     private Gym() : base() { }
 
-    private Gym(
-        Guid id,
-        Guid ownerId,
-        string name,
-        string? description,
-        Address address,
-        ContactInfo contactInfo,
-        GymCode gymCode) : base(id)
-    {
-        OwnerId = ownerId;
-        Name = name;
-        Description = description;
-        Address = address;
-        ContactInfo = contactInfo;
-        GymCode = gymCode;
-        Status = GymStatus.PendingApproval;
-        PaymentStatus = PaymentStatus.Paid;
-        Branding = new Branding();
-        SocialLinks = new SocialLinks();
-        CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-    }
+    private Gym(Guid id) : base(id) { }
 
     public Guid OwnerId { get; private set; }
     public string Name { get; private set; } = default!;
@@ -58,57 +37,50 @@ public sealed class Gym : Entity
     public IReadOnlyList<Guid> MemberIds => _memberIds.AsReadOnly();
     public IReadOnlyList<Guid> TrainerIds => _trainerIds.AsReadOnly();
 
-    public static Gym Create(
-        Guid ownerId,
-        string name,
-        string? description,
-        Address address,
-        ContactInfo contactInfo,
-        GymCode gymCode)
-        => Create(Guid.NewGuid(), ownerId, name, description, address, contactInfo, gymCode);
+    public static Gym Create(Guid ownerId, GymDetails details)
+        => Create(Guid.NewGuid(), ownerId, details);
 
-    public static Gym Create(
-        Guid id,
-        Guid ownerId,
-        string name,
-        string? description,
-        Address address,
-        ContactInfo contactInfo,
-        GymCode gymCode)
+    public static Gym Create(Guid id, Guid ownerId, GymDetails details)
     {
-        var gym = new Gym(
-            id,
-            ownerId,
-            name,
-            description,
-            address,
-            contactInfo,
-            gymCode);
+        var gym = new Gym(id)
+        {
+            OwnerId = ownerId,
+            Name = details.Name,
+            Description = details.Description,
+            Address = details.Address,
+            ContactInfo = details.ContactInfo,
+            GymCode = details.GymCode,
+            Status = GymStatus.PendingApproval,
+            PaymentStatus = PaymentStatus.Paid,
+            Branding = new Branding(),
+            SocialLinks = new SocialLinks(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
         gym.RaiseDomainEvent(new GymRegisteredDomainEvent(gym.Id));
         return gym;
     }
 
-    public Result Approve()
-    {
-        if (Status != GymStatus.PendingApproval)
-            return Result.Failure(Errors.GymErrors.NotPendingApproval);
-
-        Status = GymStatus.Active;
-        UpdatedAt = DateTime.UtcNow;
-        RaiseDomainEvent(new GymApprovedDomainEvent(Id));
-        return Result.Success();
-    }
+    public Result Approve() =>
+        ResolvePendingApproval(GymStatus.Active, new GymApprovedDomainEvent(Id));
 
     public Result Reject(string reason)
     {
+        var result = ResolvePendingApproval(GymStatus.Rejected, new GymRejectedDomainEvent(Id, reason));
+        if (result.IsSuccess)
+            SuspensionReason = reason;
+        return result;
+    }
+
+    private Result ResolvePendingApproval(GymStatus outcome, IDomainEvent domainEvent)
+    {
         if (Status != GymStatus.PendingApproval)
             return Result.Failure(Errors.GymErrors.NotPendingApproval);
 
-        Status = GymStatus.Rejected;
-        SuspensionReason = reason;
-        UpdatedAt = DateTime.UtcNow;
-        RaiseDomainEvent(new GymRejectedDomainEvent(Id, reason));
+        Status = outcome;
+        Touch();
+        RaiseDomainEvent(domainEvent);
         return Result.Success();
     }
 
@@ -124,7 +96,7 @@ public sealed class Gym : Entity
         PaymentStatus = PaymentStatus.Suspended;
         SuspendedAt = DateTime.UtcNow;
         SuspensionReason = reason;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         RaiseDomainEvent(new GymSuspendedDomainEvent(Id, reason));
         return Result.Success();
     }
@@ -139,7 +111,7 @@ public sealed class Gym : Entity
         SuspendedAt = null;
         SuspensionReason = null;
         GracePeriodEndsAt = null;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         RaiseDomainEvent(new GymReactivatedDomainEvent(Id));
         return Result.Success();
     }
@@ -150,7 +122,7 @@ public sealed class Gym : Entity
             return Result.Failure(Errors.GymErrors.GymTerminated);
 
         Status = GymStatus.Terminated;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         return Result.Success();
     }
 
@@ -160,7 +132,7 @@ public sealed class Gym : Entity
             return Result.Failure(Errors.GymErrors.NotApproved);
 
         PaymentStatus = PaymentStatus.Overdue;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         return Result.Success();
     }
 
@@ -172,49 +144,38 @@ public sealed class Gym : Entity
         Status = GymStatus.GracePeriod;
         PaymentStatus = PaymentStatus.GracePeriod;
         GracePeriodEndsAt = endsAt;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         return Result.Success();
     }
 
     public void UpdateBranding(Branding branding)
     {
         Branding = branding;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     public void UpdateSocialLinks(SocialLinks socialLinks)
     {
         SocialLinks = socialLinks;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     public void SetOperatingHours(List<DaySchedule> hours)
     {
         _operatingHours.Clear();
         _operatingHours.AddRange(hours);
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     public void SetAmenities(List<string> amenities)
     {
         _amenities.Clear();
         _amenities.AddRange(amenities);
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
-    public Result AddMember(Guid memberId)
-    {
-        if (Status != GymStatus.Active)
-            return Result.Failure(Errors.GymErrors.NotApproved);
-
-        if (_memberIds.Contains(memberId))
-            return Result.Failure(Errors.GymErrors.MemberAlreadyAdded);
-
-        _memberIds.Add(memberId);
-        UpdatedAt = DateTime.UtcNow;
-        RaiseDomainEvent(new MemberAddedToGymDomainEvent(Id, memberId));
-        return Result.Success();
-    }
+    public Result AddMember(Guid memberId) =>
+        AddToRoster(_memberIds, memberId, Errors.GymErrors.MemberAlreadyAdded, new MemberAddedToGymDomainEvent(Id, memberId));
 
     public Result RemoveMember(Guid memberId)
     {
@@ -222,22 +183,25 @@ public sealed class Gym : Entity
             return Result.Failure(Errors.GymErrors.MemberNotFound);
 
         _memberIds.Remove(memberId);
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         RaiseDomainEvent(new MemberRemovedFromGymDomainEvent(Id, memberId));
         return Result.Success();
     }
 
-    public Result AddTrainer(Guid trainerId)
+    public Result AddTrainer(Guid trainerId) =>
+        AddToRoster(_trainerIds, trainerId, Errors.GymErrors.TrainerAlreadyAdded, new TrainerAddedToGymDomainEvent(Id, trainerId));
+
+    private Result AddToRoster(List<Guid> roster, Guid personId, Error alreadyAdded, IDomainEvent domainEvent)
     {
         if (Status != GymStatus.Active)
             return Result.Failure(Errors.GymErrors.NotApproved);
 
-        if (_trainerIds.Contains(trainerId))
-            return Result.Failure(Errors.GymErrors.TrainerAlreadyAdded);
+        if (roster.Contains(personId))
+            return Result.Failure(alreadyAdded);
 
-        _trainerIds.Add(trainerId);
-        UpdatedAt = DateTime.UtcNow;
-        RaiseDomainEvent(new TrainerAddedToGymDomainEvent(Id, trainerId));
+        roster.Add(personId);
+        Touch();
+        RaiseDomainEvent(domainEvent);
         return Result.Success();
     }
 
@@ -247,7 +211,7 @@ public sealed class Gym : Entity
             return Result.Success();
 
         _trainerIds.Remove(trainerId);
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         return Result.Success();
     }
 
@@ -257,20 +221,22 @@ public sealed class Gym : Entity
         Description = description;
         Address = address;
         ContactInfo = contactInfo;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     public void SetKioskPin(string pinHash)
     {
         KioskPinHash = pinHash;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         RaiseDomainEvent(new GymKioskPinSetDomainEvent(Id));
     }
 
     public void ClearKioskPin()
     {
         KioskPinHash = null;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
         RaiseDomainEvent(new GymKioskPinClearedDomainEvent(Id));
     }
+
+    private void Touch() => UpdatedAt = DateTime.UtcNow;
 }

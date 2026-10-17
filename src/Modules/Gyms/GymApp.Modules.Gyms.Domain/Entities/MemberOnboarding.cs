@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Domain.Entities;
 
@@ -6,24 +7,7 @@ public sealed class MemberOnboarding : Entity
 {
     private MemberOnboarding() : base() { }
 
-    private MemberOnboarding(
-        Guid id,
-        Guid gymId,
-        Guid memberId,
-        string? medicalHistory,
-        string? fitnessGoals,
-        string? injuries,
-        string? medications,
-        string? fitnessLevel) : base(id)
-    {
-        GymId = gymId;
-        MemberId = memberId;
-        MedicalHistory = medicalHistory;
-        FitnessGoals = fitnessGoals;
-        Injuries = injuries;
-        Medications = medications;
-        FitnessLevel = fitnessLevel;
-    }
+    private MemberOnboarding(Guid id) : base(id) { }
 
     public Guid GymId { get; private set; }
     public Guid MemberId { get; private set; }
@@ -33,37 +17,23 @@ public sealed class MemberOnboarding : Entity
     public string? Medications { get; private set; }
     public string? FitnessLevel { get; private set; }
 
-    public static MemberOnboarding Create(
-        Guid gymId,
-        Guid memberId,
-        string? medicalHistory,
-        string? fitnessGoals,
-        string? injuries,
-        string? medications,
-        string? fitnessLevel)
+    public static MemberOnboarding Create(Guid gymId, Guid memberId, OnboardingDetails details)
     {
-        return new MemberOnboarding(
-            Guid.NewGuid(),
-            gymId,
-            memberId,
-            medicalHistory,
-            fitnessGoals,
-            injuries,
-            medications,
-            fitnessLevel);
+        var onboarding = new MemberOnboarding(Guid.NewGuid())
+        {
+            GymId = gymId,
+            MemberId = memberId
+        };
+        onboarding.Update(details);
+        return onboarding;
     }
 
-    public void Update(
-        string? medicalHistory,
-        string? fitnessGoals,
-        string? injuries,
-        string? medications,
-        string? fitnessLevel)
+    public void Update(OnboardingDetails details)
     {
-        MedicalHistory = medicalHistory;
-        FitnessGoals = fitnessGoals;
-        Injuries = injuries;
-        Medications = medications;
-        FitnessLevel = fitnessLevel;
+        MedicalHistory = details.MedicalHistory;
+        FitnessGoals = details.FitnessGoals;
+        Injuries = details.Injuries;
+        Medications = details.Medications;
+        FitnessLevel = details.FitnessLevel;
     }
 }

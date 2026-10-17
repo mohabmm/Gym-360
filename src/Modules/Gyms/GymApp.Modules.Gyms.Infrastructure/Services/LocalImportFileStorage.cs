@@ -14,8 +14,9 @@ internal sealed class LocalImportFileStorage : IImportFileStorage
         Directory.CreateDirectory(_rootPath);
     }
 
-    public async Task<string> SaveUploadAsync(Guid gymId, Guid jobId, string originalFileName, Stream content, CancellationToken cancellationToken = default)
+    public async Task<string> SaveUploadAsync(ImportUpload upload, CancellationToken cancellationToken = default)
     {
+        var (gymId, jobId, originalFileName, content) = upload;
         var gymDir = Path.Combine(_rootPath, gymId.ToString("N"), "uploads");
         Directory.CreateDirectory(gymDir);
 
