@@ -10,34 +10,27 @@ internal sealed class SignalRChatNotifier : IChatNotifier
     public SignalRChatNotifier(IHubContext<ChatHub> hub) => _hub = hub;
 
     public async Task NotifyMessageReceivedAsync(
-        Guid conversationId,
-        Guid senderId,
-        Guid recipientId,
-        Guid messageId,
-        string content,
-        string? mediaUrl,
-        string? mediaType,
-        DateTime sentAt,
+        ChatMessageNotification message,
         CancellationToken cancellationToken = default)
     {
         var payload = new
         {
-            conversationId,
-            id = messageId,
-            senderId,
-            content,
-            mediaUrl,
-            mediaType,
-            sentAt,
+            conversationId = message.ConversationId,
+            id = message.MessageId,
+            senderId = message.SenderId,
+            content = message.Content,
+            mediaUrl = message.MediaUrl,
+            mediaType = message.MediaType,
+            sentAt = message.SentAt,
         };
 
         // Fan out to whoever is currently in the conversation (open thread)
-        await _hub.Clients.Group(ChatHub.ConversationGroup(conversationId))
+        await _hub.Clients.Group(ChatHub.ConversationGroup(message.ConversationId))
             .SendAsync(ChatHub.MessageReceivedEvent, payload, cancellationToken);
 
         // Plus a per-user signal so recipients with no conversation open still see
         // their inbox refresh / unread-count bump.
-        await _hub.Clients.Group(ChatHub.UserGroup(recipientId))
+        await _hub.Clients.Group(ChatHub.UserGroup(message.RecipientId))
             .SendAsync(ChatHub.MessageReceivedEvent, payload, cancellationToken);
     }
 
@@ -53,16 +46,19 @@ internal sealed class SignalRChatNotifier : IChatNotifier
     }
 
     public async Task NotifyConversationCreatedAsync(
-        Guid conversationId,
-        Guid initiatorId,
-        Guid otherParticipantId,
-        Guid gymId,
+        ConversationCreatedNotification conversation,
         CancellationToken cancellationToken = default)
     {
-        var payload = new { conversationId, initiatorId, otherParticipantId, gymId };
-        await _hub.Clients.Group(ChatHub.UserGroup(otherParticipantId))
+        var payload = new
+        {
+            conversationId = conversation.ConversationId,
+            initiatorId = conversation.InitiatorId,
+            otherParticipantId = conversation.OtherParticipantId,
+            gymId = conversation.GymId,
+        };
+        await _hub.Clients.Group(ChatHub.UserGroup(conversation.OtherParticipantId))
             .SendAsync(ChatHub.ConversationCreatedEvent, payload, cancellationToken);
-        await _hub.Clients.Group(ChatHub.UserGroup(initiatorId))
+        await _hub.Clients.Group(ChatHub.UserGroup(conversation.InitiatorId))
             .SendAsync(ChatHub.ConversationCreatedEvent, payload, cancellationToken);
     }
 }

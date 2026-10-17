@@ -35,7 +35,7 @@ internal sealed class TrainerAddedToGymIntegrationEventHandler
             return;
         }
 
-        if (user.GymMemberships.Any(m => m.GymId == n.GymId && m.Role == UserRole.Trainer && m.IsActive))
+        if (user.GymMemberships.Any(m => m.IsActiveAs(n.GymId, UserRole.Trainer)))
             return;
 
         var linkResult = user.LinkToGym(n.GymId, UserRole.Trainer, null, null);

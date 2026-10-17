@@ -50,14 +50,17 @@ internal sealed class SendMessageCommandHandler : ICommandHandler<SendMessageCom
         try
         {
             await _chatNotifier.NotifyMessageReceivedAsync(
-                conversation.Id,
-                request.SenderId,
-                recipient,
-                message.Id,
-                message.Content,
-                message.MediaUrl,
-                message.MediaType.ToString(),
-                message.SentAt,
+                new ChatMessageNotification
+                {
+                    ConversationId = conversation.Id,
+                    SenderId = request.SenderId,
+                    RecipientId = recipient,
+                    MessageId = message.Id,
+                    Content = message.Content,
+                    MediaUrl = message.MediaUrl,
+                    MediaType = message.MediaType.ToString(),
+                    SentAt = message.SentAt
+                },
                 cancellationToken);
         }
         catch

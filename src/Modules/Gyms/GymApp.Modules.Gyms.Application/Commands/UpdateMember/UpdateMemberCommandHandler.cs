@@ -34,9 +34,10 @@ internal sealed class UpdateMemberCommandHandler : ICommandHandler<UpdateMemberC
 
         // First and last name are either both parsed from Name or both null.
         var (firstName, lastName) = SplitName(request.Name);
-        if (firstName is not null || request.Phone is not null)
+        var profileChanges = new UserProfileChanges(firstName, lastName, request.Phone);
+        if (profileChanges.HasAny)
         {
-            await _profileUpdater.UpdateAsync(request.MemberId, firstName, lastName, request.Phone, cancellationToken);
+            await _profileUpdater.UpdateAsync(request.MemberId, profileChanges, cancellationToken);
         }
 
         _memberRepository.Update(member);
