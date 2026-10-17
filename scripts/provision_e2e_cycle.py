@@ -23,7 +23,19 @@ TAG = f"e2e_{TS}"
 DEFAULT_PWD = "Test@1234"
 
 
-def req(method, path, body=None, token=None, timeout=15):
+REQUEST_TIMEOUT = 15
+PRO_PLAN_ID = "00000000-0000-0000-0001-000000000003"
+
+
+def _decode_error(e):
+    body = e.read()
+    try:
+        return e.code, json.loads(body)
+    except Exception:
+        return e.code, body.decode(errors="replace")
+
+
+def req(method, path, body=None, token=None):
     url = path if path.startswith("http") else f"{API}{path}"
     data = json.dumps(body).encode() if body is not None else None
     headers = {"Content-Type": "application/json"}
@@ -31,15 +43,11 @@ def req(method, path, body=None, token=None, timeout=15):
         headers["Authorization"] = f"Bearer {token}"
     r = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(r, timeout=timeout) as resp:
+        with urllib.request.urlopen(r, timeout=REQUEST_TIMEOUT) as resp:
             body = resp.read()
             return resp.status, json.loads(body) if body else None
     except urllib.error.HTTPError as e:
-        body = e.read()
-        try:
-            return e.code, json.loads(body)
-        except Exception:
-            return e.code, body.decode(errors="replace")
+        return _decode_error(e)
 
 
 def expect(name, code, expected, payload):
@@ -55,17 +63,36 @@ def token_of(payload):
     return payload["data"]["accessToken"]
 
 
-def main():
-    creds = {"tag": TAG, "ts": TS, "api": API, "accounts": {}}
+def login(label, email, password):
+    code, p = req("POST", "/identity/login", {"email": email, "password": password})
+    expect(label, code, 200, p)
+    return token_of(p)
 
+
+def try_select_gym(token, gym_id):
+    """select-gym; keep the old token when the call is not 200."""
+    code, p = req("POST", "/identity/select-gym", {"gymId": gym_id}, token=token)
+    return token_of(p) if code == 200 else token
+
+
+def initial_password(p):
+    pwd = p["data"].get("initialPassword") if isinstance(p["data"], dict) else None
+    return pwd or DEFAULT_PWD
+
+
+def extract_gym_id(data):
+    return data["gymId"] if isinstance(data, dict) and "gymId" in data else data
+
+
+def admin_login(creds):
     # 1. admin login
-    code, p = req("POST", "/identity/login", {"email": "admin@demo.local", "password": "123456"})
-    expect("admin login", code, 200, p)
-    admin_token = token_of(p)
+    admin_token = login("admin login", "admin@demo.local", "123456")
     creds["accounts"]["admin"] = {"email": "admin@demo.local", "token": admin_token}
+    return admin_token
 
+
+def create_owner(admin_token, owner_email):
     # 2. create owner via /admin/owners (provisions User+Owner+Contract, links user.owner_id)
-    owner_email = f"owner_{TAG}@e2e.local"
     code, p = req("POST", "/admin/owners", {
         "email": owner_email, "password": DEFAULT_PWD,
         "firstName": "OwnerE2E", "lastName": TAG,
@@ -77,8 +104,10 @@ def main():
     owner_user_id = p["data"]["userId"]
     owner_aggregate_id = p["data"]["ownerId"]
     print(f"  owner_user_id={owner_user_id} owner_aggregate_id={owner_aggregate_id}")
-    owner_id = owner_aggregate_id  # gym ownerId field expects Owner.Id
+    return owner_aggregate_id  # gym ownerId field expects Owner.Id
 
+
+def register_gym(creds, admin_token, owner_id):
     # 3. register gym autoApprove
     code, p = req("POST", "/gyms", {
         "ownerId": owner_id,
@@ -89,30 +118,40 @@ def main():
         "autoApprove": True,
     }, token=admin_token)
     expect("register gym", code, [200, 201], p)
-    gym_id = p["data"]["gymId"] if isinstance(p["data"], dict) and "gymId" in p["data"] else p["data"]
+    gym_id = extract_gym_id(p["data"])
     creds["gym"] = {"id": gym_id, "name": f"E2E Gym {TS}"}
     print(f"  gym_id={gym_id}")
+    return gym_id
 
+
+def _plan_data(code, p):
+    return p.get("data") if code == 200 and p else None
+
+
+def wait_for_plan(admin_token, gym_id):
     # 4. poll plan event applied (Pro subscription expected via GymApprovedIntegrationEvent)
     deadline = time.time() + 30
     plan_seen = None
     while time.time() < deadline:
         code, p = req("GET", f"/billing/plans?gymId={gym_id}", token=admin_token)
-        if code == 200 and p and p.get("data"):
-            plan_seen = p["data"]
+        plan_seen = _plan_data(code, p)
+        if plan_seen:
             break
         time.sleep(1)
     print(f"  plans-after-event: {'yes' if plan_seen else 'no'}")
 
+
+def owner_session(creds, owner_email, owner_id, gym_id):
     # 5. owner login + select-gym
-    code, p = req("POST", "/identity/login", {"email": owner_email, "password": DEFAULT_PWD})
-    expect("owner login", code, 200, p)
-    owner_token = token_of(p)
+    owner_token = login("owner login", owner_email, DEFAULT_PWD)
     code, p = req("POST", "/identity/select-gym", {"gymId": gym_id}, token=owner_token)
     expect("owner select-gym", code, 200, p)
     owner_token = token_of(p)
     creds["accounts"]["owner"] = {"email": owner_email, "password": DEFAULT_PWD, "id": owner_id, "token": owner_token}
+    return owner_token
 
+
+def create_staff(creds, admin_token, gym_id):
     # 6. create staff (Manager) via admin endpoint
     staff_email = f"staff_{TAG}@e2e.local"
     code, p = req("POST", f"/admin/gyms/{gym_id}/staff/create", {
@@ -121,14 +160,12 @@ def main():
         "phone": "+201000000001", "staffSubRole": "manager",
     }, token=admin_token)
     expect("create staff", code, [200, 201], p)
-    code, p = req("POST", "/identity/login", {"email": staff_email, "password": DEFAULT_PWD})
-    expect("staff login", code, 200, p)
-    staff_token = token_of(p)
-    code, p = req("POST", "/identity/select-gym", {"gymId": gym_id}, token=staff_token)
-    if code == 200:
-        staff_token = token_of(p)
+    staff_token = try_select_gym(login("staff login", staff_email, DEFAULT_PWD), gym_id)
     creds["accounts"]["staff"] = {"email": staff_email, "password": DEFAULT_PWD, "token": staff_token}
+    return staff_token
 
+
+def create_trainer(creds, staff_token, gym_id):
     # 7. trainer via staff-create-trainer (needs staff JWT with gym selected)
     trainer_email = f"trainer_{TAG}@e2e.local"
     code, p = req("POST", "/identity/users/staff-create-trainer", {
@@ -136,42 +173,46 @@ def main():
         "phone": "+201000000002", "email": trainer_email,
     }, token=staff_token)
     expect("create trainer", code, [200, 201], p)
-    trainer_pwd = p["data"].get("initialPassword") if isinstance(p["data"], dict) else None
-    trainer_pwd = trainer_pwd or DEFAULT_PWD
-    code, p = req("POST", "/identity/login", {"email": trainer_email, "password": trainer_pwd})
-    expect("trainer login", code, 200, p)
-    trainer_token = token_of(p)
-    code, p = req("POST", "/identity/select-gym", {"gymId": gym_id}, token=trainer_token)
-    if code == 200:
-        trainer_token = token_of(p)
+    trainer_pwd = initial_password(p)
+    trainer_token = try_select_gym(login("trainer login", trainer_email, trainer_pwd), gym_id)
     creds["accounts"]["trainer"] = {"email": trainer_email, "password": trainer_pwd, "token": trainer_token}
+    return trainer_email
 
+
+def upgrade_to_pro(admin_token, gym_id):
     # 7b. Upgrade gym to Pro plan so feature-gated flows work
-    PRO_PLAN_ID = "00000000-0000-0000-0001-000000000003"
-    code, p = req("PUT", f"/admin/gyms/{gym_id}/subscription/plan",
+    code, _ = req("PUT", f"/admin/gyms/{gym_id}/subscription/plan",
                   {"planId": PRO_PLAN_ID, "reason": "e2e cycle"}, token=admin_token)
     print(f"  upgrade-to-Pro: {code}")
 
-    # 7c. Look up trainer user id, add to gym, approve so it lists
-    code, p = req("GET", f"/admin/users?search={trainer_email}", token=admin_token)
-    trainer_user_id = None
-    if code == 200:
-        items = p.get("data") or []
-        if isinstance(items, dict):
-            items = items.get("items") or []
-        for u in items:
-            if u.get("email") == trainer_email:
-                trainer_user_id = u.get("id")
-                break
-    if trainer_user_id:
-        code, _ = req("POST", f"/gyms/{gym_id}/trainers",
-                      {"trainerId": trainer_user_id, "bio": "e2e", "specializations": ["strength"]},
-                      token=owner_token)
-        print(f"  add-trainer-to-gym: {code}")
-        code, _ = req("POST", f"/gyms/{gym_id}/trainers/{trainer_user_id}/approve", {}, token=owner_token)
-        print(f"  approve-trainer: {code}")
-        creds["trainer_id"] = trainer_user_id
 
+def _user_items(p):
+    items = p.get("data") or []
+    if isinstance(items, dict):
+        items = items.get("items") or []
+    return items
+
+
+def find_user_id(admin_token, email):
+    code, p = req("GET", f"/admin/users?search={email}", token=admin_token)
+    if code != 200:
+        return None
+    return next((u.get("id") for u in _user_items(p) if u.get("email") == email), None)
+
+
+def attach_trainer(creds, owner_token, gym_id, trainer_user_id):
+    if not trainer_user_id:
+        return
+    code, _ = req("POST", f"/gyms/{gym_id}/trainers",
+                  {"trainerId": trainer_user_id, "bio": "e2e", "specializations": ["strength"]},
+                  token=owner_token)
+    print(f"  add-trainer-to-gym: {code}")
+    code, _ = req("POST", f"/gyms/{gym_id}/trainers/{trainer_user_id}/approve", {}, token=owner_token)
+    print(f"  approve-trainer: {code}")
+    creds["trainer_id"] = trainer_user_id
+
+
+def create_trainee(creds, staff_token):
     # 8. trainee via staff-create
     trainee_email = f"trainee_{TAG}@e2e.local"
     code, p = req("POST", "/identity/users/staff-create", {
@@ -179,19 +220,36 @@ def main():
         "phone": "+201000000003", "email": trainee_email, "section": "general",
     }, token=staff_token)
     expect("create trainee", code, [200, 201], p)
-    trainee_pwd = p["data"].get("initialPassword") if isinstance(p["data"], dict) else None
-    trainee_pwd = trainee_pwd or DEFAULT_PWD
-    code, p = req("POST", "/identity/login", {"email": trainee_email, "password": trainee_pwd})
-    expect("trainee login", code, 200, p)
-    trainee_token = token_of(p)
+    trainee_pwd = initial_password(p)
+    trainee_token = login("trainee login", trainee_email, trainee_pwd)
     creds["accounts"]["trainee"] = {"email": trainee_email, "password": trainee_pwd, "token": trainee_token}
 
+
+def write_creds(creds):
     out = OUT_DIR / f"creds_{TS}.json"
     out.write_text(json.dumps(creds, indent=2))
     latest = OUT_DIR / "creds_latest.json"
     latest.write_text(json.dumps(creds, indent=2))
     print(f"OK  wrote {out}")
     print(f"OK  wrote {latest}")
+
+
+def main():
+    creds = {"tag": TAG, "ts": TS, "api": API, "accounts": {}}
+    admin_token = admin_login(creds)
+    owner_email = f"owner_{TAG}@e2e.local"
+    owner_id = create_owner(admin_token, owner_email)
+    gym_id = register_gym(creds, admin_token, owner_id)
+    wait_for_plan(admin_token, gym_id)
+    owner_token = owner_session(creds, owner_email, owner_id, gym_id)
+    staff_token = create_staff(creds, admin_token, gym_id)
+    trainer_email = create_trainer(creds, staff_token, gym_id)
+    upgrade_to_pro(admin_token, gym_id)
+    # 7c. Look up trainer user id, add to gym, approve so it lists
+    trainer_user_id = find_user_id(admin_token, trainer_email)
+    attach_trainer(creds, owner_token, gym_id, trainer_user_id)
+    create_trainee(creds, staff_token)
+    write_creds(creds)
 
 
 if __name__ == "__main__":

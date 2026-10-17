@@ -9,12 +9,13 @@ JWTS = {r: (ROOT/"test_logs/preprod"/f"jwt_{r}.txt").read_text().strip()
         for r in ["admin","owner","staff","trainer","trainee"]}
 GYM = "bdaeb6ec-5302-45e3-aa75-e86756a22490"
 
-def req(method, path, role=None, body=None, headers=None):
+def req(method, path, role=None, **opts):
+    """opts: body= (JSON payload), headers= (extra request headers)."""
+    body = opts.get("body")
     url = BASE + path
     r = urllib.request.Request(url, method=method)
     if role: r.add_header("Authorization", f"Bearer {JWTS[role]}")
-    if headers:
-        for k,v in headers.items(): r.add_header(k,v)
+    for k,v in (opts.get("headers") or {}).items(): r.add_header(k,v)
     data = None
     if body is not None:
         r.add_header("Content-Type", "application/json")

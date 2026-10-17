@@ -1,7 +1,4 @@
 # Playwright staging-suite artifacts (kept out of git).
-# This nested .gitignore exists because the staging_loop periodically
-# `git reset`s tracked files at the repo root, reverting edits to the root
-# .gitignore. A new file here survives that reset.
 playwright-report-staging/
 test-results/
 e2e/staging/.auth/
