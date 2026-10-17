@@ -9,6 +9,9 @@ public sealed class NutritionFunctionalTests : BaseFunctionalTest
     public NutritionFunctionalTests(FunctionalTestWebAppFactory factory)
         : base(factory) { }
 
+    private async Task AssertAnonymousPostRejectedAsync(string url, object body) =>
+        AssertStatusCode(await AnonymousClient.PostAsJsonAsync(url, body), HttpStatusCode.Unauthorized);
+
     #region POST /api/v1/nutrition/food-log
 
     [Fact]
@@ -37,10 +40,8 @@ public sealed class NutritionFunctionalTests : BaseFunctionalTest
     }
 
     [Fact]
-    public async Task LogFood_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/nutrition/food-log", new
+    public Task LogFood_NoToken_Returns401() =>
+        AssertAnonymousPostRejectedAsync("api/v1/nutrition/food-log", new
         {
             UserId = Guid.NewGuid(),
             GymId = Guid.NewGuid(),
@@ -48,10 +49,6 @@ public sealed class NutritionFunctionalTests : BaseFunctionalTest
             MealType = "breakfast",
             FoodItems = Array.Empty<object>()
         });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
 
     #endregion
 
@@ -79,20 +76,10 @@ public sealed class NutritionFunctionalTests : BaseFunctionalTest
     }
 
     [Fact]
-    public async Task LogWater_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/nutrition/water-log", new
-        {
-            UserId = Guid.NewGuid(),
-            GymId = Guid.NewGuid(),
-            Date = "2026-01-01",
-            AmountMl = 250
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public Task LogWater_NoToken_Returns401() =>
+        AssertAnonymousPostRejectedAsync(
+            "api/v1/nutrition/water-log",
+            new { UserId = Guid.NewGuid(), GymId = Guid.NewGuid(), Date = "2026-01-01", AmountMl = 250 });
 
     #endregion
 
@@ -203,19 +190,13 @@ public sealed class NutritionFunctionalTests : BaseFunctionalTest
     }
 
     [Fact]
-    public async Task CreateMealPlan_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/nutrition/meal-plans", new
+    public Task CreateMealPlan_NoToken_Returns401() =>
+        AssertAnonymousPostRejectedAsync("api/v1/nutrition/meal-plans", new
         {
             TrainerId = Guid.NewGuid(),
             GymId = Guid.NewGuid(),
             Name = "Test"
         });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
 
     [Fact]
     public async Task GetMealPlans_Authenticated_ProcessesRequest()

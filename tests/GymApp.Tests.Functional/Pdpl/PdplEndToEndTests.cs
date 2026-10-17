@@ -134,7 +134,7 @@ public sealed class PdplEndToEndTests : BaseFunctionalTest
     {
         // Arrange: Register user
         var email = $"pdpl-export-{Guid.NewGuid():N}@test.com";
-        var registerResponse = await RegisterTestUser(email);
+        var registerResponse = await RegisterTestUser(new TestUserRegistration { Email = email });
         registerResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // Use an authenticated client

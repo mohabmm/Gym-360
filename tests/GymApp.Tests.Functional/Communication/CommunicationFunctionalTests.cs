@@ -9,69 +9,52 @@ public sealed class CommunicationFunctionalTests : BaseFunctionalTest
     public CommunicationFunctionalTests(FunctionalTestWebAppFactory factory)
         : base(factory) { }
 
+    private const string ConversationsUrl = "api/v1/communication/conversations";
+    private const string BroadcastUrl = "api/v1/communication/broadcast";
+
+    private static string ConversationsForUserUrl(Guid userId) =>
+        $"{ConversationsUrl}?userId={userId}&gymId={Guid.NewGuid()}";
+
+    private static string NotificationsForUserUrl(Guid userId) =>
+        $"api/v1/communication/notifications?userId={userId}";
+
+    private static object ConversationBody(Guid initiatorId) => new
+    {
+        GymId = Guid.NewGuid(),
+        InitiatorId = initiatorId,
+        ParticipantId = Guid.NewGuid(),
+        Type = "direct"
+    };
+
+    private static object BroadcastBody(Guid gymId, string content) => new
+    {
+        GymId = gymId,
+        SenderId = Guid.NewGuid(),
+        Content = content,
+        TargetAudience = "all"
+    };
+
     #region Conversations
 
     [Fact]
-    public async Task CreateConversation_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/communication/conversations", new
-        {
-            GymId = Guid.NewGuid(),
-            InitiatorId = userId,
-            ParticipantId = Guid.NewGuid(),
-            Type = "direct"
-        });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task CreateConversation_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(ConversationsUrl, userId => ConversationBody(userId)));
 
     [Fact]
-    public async Task CreateConversation_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/communication/conversations", new
-        {
-            GymId = Guid.NewGuid(),
-            InitiatorId = Guid.NewGuid(),
-            ParticipantId = Guid.NewGuid(),
-            Type = "direct"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task CreateConversation_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(ConversationsUrl, ConversationBody(Guid.NewGuid())),
+            HttpStatusCode.Unauthorized);
 
     [Fact]
-    public async Task GetConversations_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/conversations?userId={userId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetConversations_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await GetAsTraineeAsync(ConversationsForUserUrl));
 
     [Fact]
-    public async Task GetConversations_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.GetAsync(
-            $"api/v1/communication/conversations?userId={Guid.NewGuid()}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task GetConversations_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.GetAsync(ConversationsForUserUrl(Guid.NewGuid())),
+            HttpStatusCode.Unauthorized);
 
     #endregion
 
@@ -146,96 +129,38 @@ public sealed class CommunicationFunctionalTests : BaseFunctionalTest
     #region Notifications
 
     [Fact]
-    public async Task GetNotifications_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/notifications?userId={userId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetNotifications_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await GetAsTraineeAsync(NotificationsForUserUrl));
 
     [Fact]
-    public async Task GetNotifications_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.GetAsync(
-            $"api/v1/communication/notifications?userId={Guid.NewGuid()}");
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task GetNotifications_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.GetAsync(NotificationsForUserUrl(Guid.NewGuid())),
+            HttpStatusCode.Unauthorized);
 
     [Fact]
-    public async Task GetUnreadCount_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/notifications/unread-count?userId={userId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetUnreadCount_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/communication/notifications/unread-count?userId={userId}"));
 
     [Fact]
-    public async Task MarkNotificationRead_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/communication/notifications/{Guid.NewGuid()}/read",
-            new { UserId = userId });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task MarkNotificationRead_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
+            $"api/v1/communication/notifications/{Guid.NewGuid()}/read", userId => new { UserId = userId }));
 
     [Fact]
-    public async Task MarkAllRead_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            "api/v1/communication/notifications/read-all",
-            new { UserId = userId });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task MarkAllRead_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
+            "api/v1/communication/notifications/read-all", userId => new { UserId = userId }));
 
     #endregion
 
     #region Notification Preferences
 
     [Fact]
-    public async Task GetPreferences_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/notifications/preferences?userId={userId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetPreferences_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/communication/notifications/preferences?userId={userId}"));
 
     [Fact]
     public async Task UpdatePreferences_Authenticated_ProcessesRequest()
@@ -273,53 +198,28 @@ public sealed class CommunicationFunctionalTests : BaseFunctionalTest
         var client = CreateOwnerClient(gymId: gymId);
 
         // Act
-        var response = await client.PostAsJsonAsync("api/v1/communication/broadcast", new
-        {
-            GymId = gymId,
-            SenderId = Guid.NewGuid(),
-            Content = "Gym will be closed tomorrow for maintenance",
-            TargetAudience = "all"
-        });
+        var response = await client.PostAsJsonAsync(
+            BroadcastUrl, BroadcastBody(gymId, "Gym will be closed tomorrow for maintenance"));
 
         // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        AssertAuthenticated(response);
     }
 
     [Fact]
-    public async Task Broadcast_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/communication/broadcast", new
-        {
-            GymId = Guid.NewGuid(),
-            SenderId = Guid.NewGuid(),
-            Content = "Test broadcast",
-            TargetAudience = "all"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task Broadcast_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(BroadcastUrl, BroadcastBody(Guid.NewGuid(), "Test broadcast")),
+            HttpStatusCode.Unauthorized);
 
     #endregion
 
     #region Device Token
 
     [Fact]
-    public async Task RegisterDeviceToken_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync(
+    public async Task RegisterDeviceToken_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
             "api/v1/communication/notifications/device-token",
-            new { UserId = userId, Token = $"fcm-{Guid.NewGuid()}", Platform = "android" });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+            userId => new { UserId = userId, Token = $"fcm-{Guid.NewGuid()}", Platform = "android" }));
 
     #endregion
 }

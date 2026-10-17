@@ -1,3 +1,4 @@
+using System.Globalization;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 
 namespace GymApp.Tests.Application.Scheduling;
@@ -9,29 +10,29 @@ namespace GymApp.Tests.Application.Scheduling;
 /// </summary>
 public class GymLocalTimeTests
 {
-    private static DateTime Utc(int y, int m, int d, int h, int min) =>
-        new(y, m, d, h, min, 0, DateTimeKind.Utc);
-
     [Theory]
     // Summer time (UTC+3)
-    [InlineData(2026, 7, 14, 20, 59, 2026, 7, 14)] // 23:59 Cairo
-    [InlineData(2026, 7, 14, 21, 0, 2026, 7, 15)]  // 00:00 Cairo — already tomorrow locally
-    [InlineData(2026, 7, 14, 23, 30, 2026, 7, 15)] // 02:30 Cairo
-    [InlineData(2026, 7, 15, 0, 0, 2026, 7, 15)]
+    [InlineData("2026-07-14T20:59:00Z", "2026-07-14")] // 23:59 Cairo
+    [InlineData("2026-07-14T21:00:00Z", "2026-07-15")] // 00:00 Cairo — already tomorrow locally
+    [InlineData("2026-07-14T23:30:00Z", "2026-07-15")] // 02:30 Cairo
+    [InlineData("2026-07-15T00:00:00Z", "2026-07-15")]
     // Winter time (UTC+2)
-    [InlineData(2026, 1, 14, 21, 59, 2026, 1, 14)] // 23:59 Cairo
-    [InlineData(2026, 1, 14, 22, 0, 2026, 1, 15)]  // 00:00 Cairo
-    [InlineData(2026, 1, 14, 12, 0, 2026, 1, 14)]
-    public void Today_IsTheCairoCalendarDate(
-        int y, int m, int d, int h, int min, int ey, int em, int ed)
+    [InlineData("2026-01-14T21:59:00Z", "2026-01-14")] // 23:59 Cairo
+    [InlineData("2026-01-14T22:00:00Z", "2026-01-15")] // 00:00 Cairo
+    [InlineData("2026-01-14T12:00:00Z", "2026-01-14")]
+    public void Today_IsTheCairoCalendarDate(string utcInstant, string expectedCairoDate)
     {
-        GymLocalTime.Today(Utc(y, m, d, h, min)).Should().Be(new DateOnly(ey, em, ed));
+        var utc = DateTime.Parse(
+            utcInstant, CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+
+        GymLocalTime.Today(utc).Should().Be(DateOnly.Parse(expectedCairoDate, CultureInfo.InvariantCulture));
     }
 
     [Fact]
     public void FromUtc_And_ToUtc_RoundTrip()
     {
-        var utc = Utc(2026, 10, 12, 18, 0);
+        var utc = new DateTime(2026, 10, 12, 18, 0, 0, DateTimeKind.Utc);
 
         var local = GymLocalTime.FromUtc(utc);
 

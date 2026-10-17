@@ -53,35 +53,56 @@ public class GetMyPaymentsQueryHandlerTests
         return ctor.Invoke(args);
     }
 
-    private object CreateQuery(Guid userId, Guid gymId, int page = 1, int pageSize = 20)
+    private sealed record Paging(int Page = 1, int PageSize = 20);
+
+    private object CreateQuery(Member member, Paging paging)
     {
         var ctor = QueryType.GetConstructors()
             .OrderByDescending(c => c.GetParameters().Length)
             .First();
-        var parameters = ctor.GetParameters();
-        var args = new object?[parameters.Length];
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            var p = parameters[i];
-            if (p.ParameterType == typeof(Guid))
-            {
-                args[i] = p.Name!.Contains("gym", StringComparison.OrdinalIgnoreCase) ? gymId : userId;
-            }
-            else if (p.ParameterType == typeof(int))
-            {
-                args[i] = p.Name!.Contains("size", StringComparison.OrdinalIgnoreCase) ? pageSize : page;
-            }
-            else if (p.HasDefaultValue)
-            {
-                args[i] = p.DefaultValue;
-            }
-            else
-            {
-                // strings, DateOnly?, enums — leave null; handler should treat as "all"/unset
-                args[i] = null;
-            }
-        }
+        var args = ctor.GetParameters()
+            .Select(p => QueryArgument(p, member, paging))
+            .ToArray();
         return ctor.Invoke(args);
+    }
+
+    // strings, DateOnly?, enums without defaults — leave null; handler should treat as "all"/unset
+    private static object? QueryArgument(ParameterInfo p, Member member, Paging paging)
+    {
+        var name = p.Name!;
+        if (p.ParameterType == typeof(Guid))
+            return name.Contains("gym", StringComparison.OrdinalIgnoreCase) ? member.GymId : member.UserId;
+        if (p.ParameterType == typeof(int))
+            return name.Contains("size", StringComparison.OrdinalIgnoreCase) ? paging.PageSize : paging.Page;
+        return p.HasDefaultValue ? p.DefaultValue : null;
+    }
+
+    /// <summary>The calling trainee and the gym named by X-Gym-Id.</summary>
+    private sealed record Member(Guid UserId, Guid GymId);
+
+    private static Member NewMember() => new(Guid.NewGuid(), Guid.NewGuid());
+
+    private void GivenActiveMember(Member member)
+    {
+        _membershipChecker.IsGymSuspendedAsync(member.GymId, Arg.Any<CancellationToken>()).Returns(false);
+        _membershipChecker.IsActiveMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>()).Returns(true);
+    }
+
+    private void GivenPayments(Member member, List<Payment> payments) =>
+        _paymentRepository.GetByMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>())
+            .Returns(payments);
+
+    private async Task<dynamic> ExecuteAsync(Member member, Paging? paging = null)
+    {
+        var handler = CreateHandler();
+        var query = CreateQuery(member, paging ?? new Paging());
+        return await InvokeHandleAsync(handler, query);
+    }
+
+    private static void AssertFailedWith(dynamic result, GymApp.Common.Domain.Error expected)
+    {
+        ((bool)result.IsFailure).Should().BeTrue();
+        ((string)result.Error.Code).Should().Be(expected.Code);
     }
 
     private static async Task<dynamic> InvokeHandleAsync(object handler, object query)
@@ -93,13 +114,13 @@ public class GetMyPaymentsQueryHandlerTests
         return resultProp.GetValue(task)!;
     }
 
-    private static Payment BuildCompletedPayment(Guid gymId, Guid memberId, DateTime? paidAt = null, decimal amount = 500m)
+    private static Payment BuildCompletedPayment(Member member, DateTime? paidAt = null)
     {
         var payment = Payment.Create(new PaymentDetails
         {
-            GymId = gymId,
-            MemberId = memberId,
-            Amount = Money.Create(amount),
+            GymId = member.GymId,
+            MemberId = member.UserId,
+            Amount = Money.Create(500m),
             PaymentMethod = PaymentMethod.Cash,
             Purpose = PaymentPurpose.Membership,
             ReceiptNumber = $"REC-TEST-{Guid.NewGuid():N}".Substring(0, 20),
@@ -119,52 +140,32 @@ public class GetMyPaymentsQueryHandlerTests
     public async Task Should_ReturnGymSuspendedError_When_GymIsSuspended()
     {
         // PRD: "403 GYM_SUSPENDED"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        _membershipChecker.IsGymSuspendedAsync(member.GymId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
-
-        ((bool)result.IsFailure).Should().BeTrue();
-        ((string)result.Error.Code).Should().Be(GymAccessErrors.GymSuspended.Code);
+        AssertFailedWith(await ExecuteAsync(member), GymAccessErrors.GymSuspended);
     }
 
     [Fact]
     public async Task Should_ReturnNotAMemberError_When_CallerHasNoActiveMembership()
     {
         // PRD: "403 NOT_A_MEMBER_OF_GYM"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(false);
+        var member = NewMember();
+        _membershipChecker.IsGymSuspendedAsync(member.GymId, Arg.Any<CancellationToken>()).Returns(false);
+        _membershipChecker.IsActiveMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
-
-        ((bool)result.IsFailure).Should().BeTrue();
-        ((string)result.Error.Code).Should().Be(GymAccessErrors.NotAMemberOfGym.Code);
+        AssertFailedWith(await ExecuteAsync(member), GymAccessErrors.NotAMemberOfGym);
     }
 
     [Fact]
     public async Task Should_ReturnEmptyResult_When_TraineeHasNoPayments()
     {
         // PRD: "200 with data: [] when no payments"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
-        _paymentRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Payment>());
+        var member = NewMember();
+        GivenActiveMember(member);
+        GivenPayments(member, new List<Payment>());
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member);
 
         ((bool)result.IsSuccess).Should().BeTrue();
         CountItems((object?)result.Value).Should().Be(0);
@@ -174,22 +175,16 @@ public class GetMyPaymentsQueryHandlerTests
     public async Task Should_IncludeVoidedPayments_When_VoidedPaymentsExist()
     {
         // PRD (Q9): "Voided payments ARE included with status: 'Voided'" — regression
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        GivenActiveMember(member);
 
-        var voided = BuildCompletedPayment(gymId, userId, paidAt: DateTime.UtcNow.AddDays(-2));
+        var voided = BuildCompletedPayment(member, paidAt: DateTime.UtcNow.AddDays(-2));
         voided.Void("Recorded against wrong member");
-        var completed = BuildCompletedPayment(gymId, userId, paidAt: DateTime.UtcNow.AddDays(-1));
+        var completed = BuildCompletedPayment(member, paidAt: DateTime.UtcNow.AddDays(-1));
 
-        _paymentRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Payment> { voided, completed });
+        GivenPayments(member, new List<Payment> { voided, completed });
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member);
 
         ((bool)result.IsSuccess).Should().BeTrue();
         var items = EnumerateItems((object?)result.Value).ToList();
@@ -213,22 +208,16 @@ public class GetMyPaymentsQueryHandlerTests
     public async Task Should_ReturnPaginationMetadata_When_ResultsExceedOnePage()
     {
         // PRD: "page=1 pageSize=2 with 5 records returns 2 items + meta {page, pageSize, total: 5, totalPages: 3}"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        GivenActiveMember(member);
 
         var payments = Enumerable.Range(0, 5)
-            .Select(i => BuildCompletedPayment(gymId, userId, paidAt: DateTime.UtcNow.AddDays(-i)))
+            .Select(i => BuildCompletedPayment(member, paidAt: DateTime.UtcNow.AddDays(-i)))
             .ToList();
 
-        _paymentRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(payments);
+        GivenPayments(member, payments);
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId, page: 1, pageSize: 2);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member, new Paging(Page: 1, PageSize: 2));
 
         ((bool)result.IsSuccess).Should().BeTrue();
 
@@ -262,17 +251,11 @@ public class GetMyPaymentsQueryHandlerTests
         // PRD: "pageSize > 100 is clamped to 100 (or rejected with 400 — match whatever PRD says)"
         // PRD query-param block states: "pageSize (optional, default 20, max 50)".
         // So pageSize=500 must either be clamped to 50 or rejected with a validation failure.
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
-        _paymentRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Payment>());
+        var member = NewMember();
+        GivenActiveMember(member);
+        GivenPayments(member, new List<Payment>());
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId, page: 1, pageSize: 500);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member, new Paging(Page: 1, PageSize: 500));
 
         if ((bool)result.IsSuccess)
         {
@@ -295,22 +278,16 @@ public class GetMyPaymentsQueryHandlerTests
     public async Task Should_SortByPaidAtDescending_When_ReturningPayments()
     {
         // PRD: "Sorted by paidAt descending"
-        var userId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymId, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymId, userId, Arg.Any<CancellationToken>()).Returns(true);
+        var member = NewMember();
+        GivenActiveMember(member);
 
-        var older = BuildCompletedPayment(gymId, userId, paidAt: new DateTime(2026, 1, 1, 10, 0, 0));
-        var newer = BuildCompletedPayment(gymId, userId, paidAt: new DateTime(2026, 4, 1, 10, 0, 0));
+        var older = BuildCompletedPayment(member, paidAt: new DateTime(2026, 1, 1, 10, 0, 0));
+        var newer = BuildCompletedPayment(member, paidAt: new DateTime(2026, 4, 1, 10, 0, 0));
 
         // Return in non-sorted order to force the handler to sort.
-        _paymentRepository.GetByMemberAsync(gymId, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Payment> { older, newer });
+        GivenPayments(member, new List<Payment> { older, newer });
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymId);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member);
 
         ((bool)result.IsSuccess).Should().BeTrue();
         var items = EnumerateItems((object?)result.Value).ToList();
@@ -328,21 +305,15 @@ public class GetMyPaymentsQueryHandlerTests
     public async Task Should_ScopeResultsToRequestedGym_When_TraineeHasPaymentsAtMultipleGyms()
     {
         // PRD: "Multi-gym scoping" — Q3
-        var userId = Guid.NewGuid();
-        var gymB = Guid.NewGuid();
-        _membershipChecker.IsGymSuspendedAsync(gymB, Arg.Any<CancellationToken>()).Returns(false);
-        _membershipChecker.IsActiveMemberAsync(gymB, userId, Arg.Any<CancellationToken>()).Returns(true);
-        _paymentRepository.GetByMemberAsync(gymB, userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Payment>());
+        var member = NewMember(); // requested gym is gym B
+        GivenActiveMember(member);
+        GivenPayments(member, new List<Payment>());
 
-        var handler = CreateHandler();
-        var query = CreateQuery(userId, gymB);
-
-        dynamic result = await InvokeHandleAsync(handler, query);
+        dynamic result = await ExecuteAsync(member);
 
         ((bool)result.IsSuccess).Should().BeTrue();
         await _paymentRepository.Received(1)
-            .GetByMemberAsync(gymB, userId, Arg.Any<CancellationToken>());
+            .GetByMemberAsync(member.GymId, member.UserId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -357,23 +328,18 @@ public class GetMyPaymentsQueryHandlerTests
 
     private static int CountItems(object? value) => EnumerateItems(value).Count();
 
-    private static IEnumerable<object> EnumerateItems(object? value)
+    private static IEnumerable<object> EnumerateItems(object? value) =>
+        ItemsCollection(value)?.Cast<object>() ?? Enumerable.Empty<object>();
+
+    // PagedResponse<T>.Items when present, otherwise the value itself if it is a collection.
+    private static System.Collections.IEnumerable? ItemsCollection(object? value)
     {
-        if (value is null) yield break;
+        if (value is null) return null;
 
         var itemsProp = value.GetType().GetProperty("Items");
         if (itemsProp is not null)
-        {
-            if (itemsProp.GetValue(value) is System.Collections.IEnumerable items)
-            {
-                foreach (var i in items) yield return i;
-            }
-            yield break;
-        }
+            return itemsProp.GetValue(value) as System.Collections.IEnumerable;
 
-        if (value is System.Collections.IEnumerable e && value is not string)
-        {
-            foreach (var i in e) yield return i;
-        }
+        return value is System.Collections.IEnumerable e and not string ? e : null;
     }
 }

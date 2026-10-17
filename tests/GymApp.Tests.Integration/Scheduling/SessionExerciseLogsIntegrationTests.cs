@@ -15,12 +15,15 @@ public sealed class SessionExerciseLogsIntegrationTests : BaseIntegrationTest
     public SessionExerciseLogsIntegrationTests(IntegrationTestWebAppFactory factory)
         : base(factory) { }
 
+    private static string LogsUrl(Guid sessionId) => $"api/v1/scheduling/sessions/{sessionId}/exercise-logs";
+
+    private static object SquatLogs(int sets) =>
+        new { Items = new[] { new { ExerciseName = "Squat", OrderIndex = 0, Sets = sets, Reps = "10" } } };
+
     [Fact]
     public async Task PostExerciseLogs_Unauthenticated_ReturnsUnauthorized()
     {
-        var response = await HttpClient.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{Guid.NewGuid()}/exercise-logs",
-            new { Items = new[] { new { ExerciseName = "Squat", OrderIndex = 0, Sets = 3, Reps = "10" } } });
+        var response = await HttpClient.PostAsJsonAsync(LogsUrl(Guid.NewGuid()), SquatLogs(sets: 3));
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -53,18 +56,9 @@ public sealed class SessionExerciseLogsIntegrationTests : BaseIntegrationTest
     public async Task PostExerciseLogs_InvalidPayload_RejectsZeroSets()
     {
         var trainerId = Guid.NewGuid();
-        var client = CreateTrainerClient(trainerId);
         var sessionId = await SeedCompletedSessionAsync(trainerId, Guid.NewGuid());
 
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{sessionId}/exercise-logs",
-            new
-            {
-                Items = new[]
-                {
-                    new { ExerciseName = "Squat", OrderIndex = 0, Sets = 0, Reps = "10" }
-                }
-            });
+        var response = await CreateTrainerClient(trainerId).PostAsJsonAsync(LogsUrl(sessionId), SquatLogs(sets: 0));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -73,19 +67,9 @@ public sealed class SessionExerciseLogsIntegrationTests : BaseIntegrationTest
     public async Task PostExerciseLogs_NonCompletedSession_ReturnsBadRequest()
     {
         var trainerId = Guid.NewGuid();
-        var memberId = Guid.NewGuid();
-        var client = CreateTrainerClient(trainerId);
-        var sessionId = await SeedSessionAsync(trainerId, memberId, SessionStatus.Pending);
+        var sessionId = await SeedSessionAsync(trainerId, Guid.NewGuid(), SessionStatus.Pending);
 
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{sessionId}/exercise-logs",
-            new
-            {
-                Items = new[]
-                {
-                    new { ExerciseName = "Squat", OrderIndex = 0, Sets = 3, Reps = "10" }
-                }
-            });
+        var response = await CreateTrainerClient(trainerId).PostAsJsonAsync(LogsUrl(sessionId), SquatLogs(sets: 3));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -130,16 +114,7 @@ public sealed class SessionExerciseLogsIntegrationTests : BaseIntegrationTest
         var memberId = Guid.NewGuid();
         var sessionId = await SeedCompletedSessionAsync(trainerId, memberId);
 
-        var trainerClient = CreateTrainerClient(trainerId);
-        await trainerClient.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{sessionId}/exercise-logs",
-            new
-            {
-                Items = new[]
-                {
-                    new { ExerciseName = "Squat", OrderIndex = 0, Sets = 3, Reps = "10" }
-                }
-            });
+        await CreateTrainerClient(trainerId).PostAsJsonAsync(LogsUrl(sessionId), SquatLogs(sets: 3));
 
         var foreignClient = CreateTraineeClient(Guid.NewGuid());
         var response = await foreignClient.GetAsync(

@@ -72,6 +72,13 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         await uow.SaveChangesAsync();
     }
 
+    private async Task<HttpResponseMessage> GetMyPackagesAsync(Guid userId, Guid gymId)
+    {
+        var client = CreateTraineeClient(userId);
+        client.DefaultRequestHeaders.Add("X-Gym-Id", gymId.ToString());
+        return await client.GetAsync("api/v1/billing/me/packages");
+    }
+
     [Fact]
     public async Task Should_Return200WithData_When_ActiveMemberHasPackages()
     {
@@ -79,10 +86,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var gym = await SeedActiveGymWithMember(userId);
         await SeedPackage(gym.Id, userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -93,10 +97,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -107,10 +108,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(Guid.NewGuid());
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -121,10 +119,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedSuspendedGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -140,10 +135,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         await SeedPackage(gymA.Id, userId, "Package A");
         await SeedPackage(gymB.Id, userId, "Package B");
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gymB.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gymB.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();
@@ -169,10 +161,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         await SeedPackage(gym.Id, userId, "My Package");
         await SeedPackage(gym.Id, otherMember, "Other's Package");
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();

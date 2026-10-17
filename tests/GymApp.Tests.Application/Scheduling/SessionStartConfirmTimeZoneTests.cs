@@ -1,4 +1,5 @@
 using GymApp.Common.Application.Abstractions;
+using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Application.Commands.ConfirmSession;
@@ -55,13 +56,30 @@ public class SessionStartConfirmTimeZoneTests
     private ConfirmSessionCommandHandler ConfirmHandler() =>
         new(_sessionRepository, _unitOfWork, _clock);
 
+    private Task<Result> StartAt(Session session, DateTime utcNow)
+    {
+        _clock.UtcNow.Returns(utcNow);
+        return StartHandler().Handle(new StartSessionCommand(session.Id), CancellationToken.None);
+    }
+
+    private Task<Result> ConfirmAt(Session session, DateTime utcNow)
+    {
+        _clock.UtcNow.Returns(utcNow);
+        return ConfirmHandler().Handle(new ConfirmSessionCommand(session.Id), CancellationToken.None);
+    }
+
+    private static void AssertRejected(Result result, string expectedCode)
+    {
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(expectedCode);
+    }
+
     [Fact]
     public async Task Start_TenMinutesBeforeCairoStartTime_Succeeds()
     {
         var session = ArrangeSession(confirmed: true);
-        _clock.UtcNow.Returns(Utc(17, 50)); // 20:50 Cairo — inside the 15-min early window
 
-        var result = await StartHandler().Handle(new StartSessionCommand(session.Id), CancellationToken.None);
+        var result = await StartAt(session, Utc(17, 50)); // 20:50 Cairo — inside the 15-min early window
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.InProgress);
@@ -71,9 +89,8 @@ public class SessionStartConfirmTimeZoneTests
     public async Task Start_AtCairoStartTime_Succeeds()
     {
         var session = ArrangeSession(confirmed: true);
-        _clock.UtcNow.Returns(Utc(18, 0)); // 21:00 Cairo
 
-        var result = await StartHandler().Handle(new StartSessionCommand(session.Id), CancellationToken.None);
+        var result = await StartAt(session, Utc(18, 0)); // 21:00 Cairo
 
         result.IsSuccess.Should().BeTrue();
     }
@@ -82,12 +99,10 @@ public class SessionStartConfirmTimeZoneTests
     public async Task Start_AnHourBeforeCairoStartTime_IsTooEarly()
     {
         var session = ArrangeSession(confirmed: true);
-        _clock.UtcNow.Returns(Utc(17, 0)); // 20:00 Cairo
 
-        var result = await StartHandler().Handle(new StartSessionCommand(session.Id), CancellationToken.None);
+        var result = await StartAt(session, Utc(17, 0)); // 20:00 Cairo
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.SessionTooEarly");
+        AssertRejected(result, "Scheduling.SessionTooEarly");
         session.Status.Should().Be(SessionStatus.Confirmed);
     }
 
@@ -95,9 +110,8 @@ public class SessionStartConfirmTimeZoneTests
     public async Task Confirm_BeforeCairoStartTime_Succeeds()
     {
         var session = ArrangeSession(confirmed: false);
-        _clock.UtcNow.Returns(Utc(17, 50)); // 20:50 Cairo
 
-        var result = await ConfirmHandler().Handle(new ConfirmSessionCommand(session.Id), CancellationToken.None);
+        var result = await ConfirmAt(session, Utc(17, 50)); // 20:50 Cairo
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.Confirmed);
@@ -107,12 +121,10 @@ public class SessionStartConfirmTimeZoneTests
     public async Task Confirm_AfterCairoStartTimeHasPassed_IsRejected()
     {
         var session = ArrangeSession(confirmed: false);
-        _clock.UtcNow.Returns(Utc(18, 30)); // 21:30 Cairo — session time already passed
 
-        var result = await ConfirmHandler().Handle(new ConfirmSessionCommand(session.Id), CancellationToken.None);
+        var result = await ConfirmAt(session, Utc(18, 30)); // 21:30 Cairo — session time already passed
 
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Scheduling.SessionInPast");
+        AssertRejected(result, "Scheduling.SessionInPast");
         session.Status.Should().Be(SessionStatus.Pending);
     }
 }

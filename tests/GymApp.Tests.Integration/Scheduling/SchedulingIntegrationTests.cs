@@ -224,73 +224,32 @@ public sealed class SchedulingIntegrationTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task GetAvailability_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var trainerId = Guid.NewGuid();
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/scheduling/availability?trainerId={trainerId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetAvailability_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await CreateTraineeClient().GetAsync(
+            $"api/v1/scheduling/availability?trainerId={Guid.NewGuid()}&gymId={Guid.NewGuid()}"));
 
     #endregion
 
     #region Get Sessions
 
     [Fact]
-    public async Task GetSessions_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/scheduling/sessions?userId={userId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetSessions_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/scheduling/sessions?userId={userId}&gymId={Guid.NewGuid()}"));
 
     [Fact]
-    public async Task GetUpcomingSessions_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/scheduling/sessions/upcoming?userId={userId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetUpcomingSessions_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/scheduling/sessions/upcoming?userId={userId}&gymId={Guid.NewGuid()}"));
 
     #endregion
 
     #region No-Show
 
     [Fact]
-    public async Task MarkNoShow_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var sessionId = Guid.NewGuid();
-        var client = CreateTrainerClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{sessionId}/no-show",
-            new { MarkedBy = Guid.NewGuid() });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task MarkNoShow_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await CreateTrainerClient().PostAsJsonAsync(
+            $"api/v1/scheduling/sessions/{Guid.NewGuid()}/no-show", new { MarkedBy = Guid.NewGuid() }));
 
     #endregion
 }
