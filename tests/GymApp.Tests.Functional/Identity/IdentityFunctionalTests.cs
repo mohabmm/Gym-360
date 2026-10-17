@@ -9,6 +9,20 @@ public sealed class IdentityFunctionalTests : BaseFunctionalTest
     public IdentityFunctionalTests(FunctionalTestWebAppFactory factory)
         : base(factory) { }
 
+    private Task<HttpResponseMessage> PostRegisterAsync(string email, string password) =>
+        AnonymousClient.PostAsJsonAsync("api/v1/identity/register", new
+        {
+            Email = email,
+            Password = password,
+            FirstName = "Test",
+            LastName = "User",
+            Phone = "+201234567890",
+            Role = "Trainee"
+        });
+
+    private Task<HttpResponseMessage> PostLoginAsync(string email, string password) =>
+        AnonymousClient.PostAsJsonAsync("api/v1/identity/login", new { Email = email, Password = password });
+
     #region POST /api/v1/identity/register
 
     [Fact]
@@ -22,71 +36,31 @@ public sealed class IdentityFunctionalTests : BaseFunctionalTest
     }
 
     [Fact]
-    public async Task Register_MissingEmail_Returns400()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/identity/register", new
-        {
-            Email = "",
-            Password = "StrongP@ss123!",
-            FirstName = "Test",
-            LastName = "User",
-            Phone = "+201234567890",
-            Role = "Trainee"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.BadRequest);
-    }
+    public async Task Register_MissingEmail_Returns400() =>
+        AssertStatusCode(await PostRegisterAsync("", "StrongP@ss123!"), HttpStatusCode.BadRequest);
 
     [Fact]
-    public async Task Register_MissingPassword_Returns400()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/identity/register", new
-        {
-            Email = $"nopwd-{Guid.NewGuid():N}@test.com",
-            Password = "",
-            FirstName = "Test",
-            LastName = "User",
-            Phone = "+201234567890",
-            Role = "Trainee"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.BadRequest);
-    }
+    public async Task Register_MissingPassword_Returns400() =>
+        AssertStatusCode(
+            await PostRegisterAsync($"nopwd-{Guid.NewGuid():N}@test.com", ""), HttpStatusCode.BadRequest);
 
     [Theory]
     [InlineData("weak")]
     [InlineData("12345")]
     [InlineData("abc")]
-    public async Task Register_WeakPassword_Returns400(string password)
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/identity/register", new
-        {
-            Email = $"weakpwd-{Guid.NewGuid():N}@test.com",
-            Password = password,
-            FirstName = "Test",
-            LastName = "User",
-            Phone = "+201234567890",
-            Role = "Trainee"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.BadRequest);
-    }
+    public async Task Register_WeakPassword_Returns400(string password) =>
+        AssertStatusCode(
+            await PostRegisterAsync($"weakpwd-{Guid.NewGuid():N}@test.com", password), HttpStatusCode.BadRequest);
 
     [Fact]
     public async Task Register_DuplicateEmail_ReturnsConflictOrBadRequest()
     {
         // Arrange
         var email = $"dup-{Guid.NewGuid():N}@test.com";
-        await RegisterTestUser(email);
+        await RegisterTestUser(new TestUserRegistration { Email = email });
 
         // Act
-        var response = await RegisterTestUser(email);
+        var response = await RegisterTestUser(new TestUserRegistration { Email = email });
 
         // Assert - could be 400 or 409 depending on implementation
         response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.Conflict);
@@ -98,7 +72,7 @@ public sealed class IdentityFunctionalTests : BaseFunctionalTest
     public async Task Register_ValidRoles_Returns201(string role)
     {
         // Act
-        var response = await RegisterTestUser(role: role);
+        var response = await RegisterTestUser(new TestUserRegistration { Role = role });
 
         // Assert
         AssertStatusCode(response, HttpStatusCode.Created);
@@ -114,17 +88,10 @@ public sealed class IdentityFunctionalTests : BaseFunctionalTest
         // Arrange
         var email = $"login-{Guid.NewGuid():N}@test.com";
         var password = "StrongP@ss123!";
-        await RegisterTestUser(email, password);
+        await RegisterTestUser(new TestUserRegistration { Email = email, Password = password });
 
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/identity/login", new
-        {
-            Email = email,
-            Password = password
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.OK);
+        // Act + Assert
+        AssertStatusCode(await PostLoginAsync(email, password), HttpStatusCode.OK);
     }
 
     [Fact]
@@ -132,32 +99,17 @@ public sealed class IdentityFunctionalTests : BaseFunctionalTest
     {
         // Arrange
         var email = $"loginfail-{Guid.NewGuid():N}@test.com";
-        await RegisterTestUser(email, "StrongP@ss123!");
+        await RegisterTestUser(new TestUserRegistration { Email = email, Password = "StrongP@ss123!" });
 
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/identity/login", new
-        {
-            Email = email,
-            Password = "WrongP@ssword!"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
+        // Act + Assert
+        AssertStatusCode(await PostLoginAsync(email, "WrongP@ssword!"), HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task Login_NonExistentUser_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/identity/login", new
-        {
-            Email = $"nobody-{Guid.NewGuid():N}@test.com",
-            Password = "P@ssword123!"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task Login_NonExistentUser_Returns401() =>
+        AssertStatusCode(
+            await PostLoginAsync($"nobody-{Guid.NewGuid():N}@test.com", "P@ssword123!"),
+            HttpStatusCode.Unauthorized);
 
     #endregion
 

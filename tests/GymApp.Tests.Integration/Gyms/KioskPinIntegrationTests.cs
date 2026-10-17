@@ -41,12 +41,16 @@ public sealed class KioskPinIntegrationTests : BaseIntegrationTest
     // must mint staffSubRole so Manager is authorized (Owner passes via its own
     // staffRole=owner branch).
     private HttpClient ManagerClient(Guid gymId) =>
-        CreateAuthenticatedClient(role: "gym_staff", gymId: gymId,
-            staffRole: "manager", staffSubRole: "Manager");
+        CreateAuthenticatedClient(new TestPrincipal("gym_staff")
+        {
+            GymId = gymId, StaffRole = "manager", StaffSubRole = "Manager"
+        });
 
     private HttpClient ReceptionistClient(Guid gymId) =>
-        CreateAuthenticatedClient(role: "gym_staff", gymId: gymId,
-            staffRole: "receptionist", staffSubRole: "Receptionist");
+        CreateAuthenticatedClient(new TestPrincipal("gym_staff")
+        {
+            GymId = gymId, StaffRole = "receptionist", StaffSubRole = "Receptionist"
+        });
 
     private HttpClient OwnerClient(Guid gymId, Guid? ownerId = null) =>
         CreateGymOwnerClient(userId: ownerId, gymId: gymId);

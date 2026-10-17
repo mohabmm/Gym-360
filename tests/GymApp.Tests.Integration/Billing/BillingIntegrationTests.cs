@@ -9,6 +9,12 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
     public BillingIntegrationTests(IntegrationTestWebAppFactory factory)
         : base(factory) { }
 
+    private const string AssignUrl = "api/v1/billing/packages/assign";
+    private const string PaymentsUrl = "api/v1/billing/payments";
+
+    private async Task AssertAnonymousPostRejectedAsync(string url, object body) =>
+        (await HttpClient.PostAsJsonAsync(url, body)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
     #region Package Templates
 
     [Fact]
@@ -34,20 +40,10 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task CreatePackageTemplate_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Act
-        var response = await HttpClient.PostAsJsonAsync("api/v1/billing/package-templates", new
-        {
-            GymId = Guid.NewGuid(),
-            Name = "Test",
-            SessionCount = 5,
-            PricePerSession = 100.0m
-        });
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
+    public Task CreatePackageTemplate_Unauthenticated_ReturnsUnauthorized() =>
+        AssertAnonymousPostRejectedAsync(
+            "api/v1/billing/package-templates",
+            new { GymId = Guid.NewGuid(), Name = "Test", SessionCount = 5, PricePerSession = 100.0m });
 
     [Fact]
     public async Task GetPackageTemplates_Authenticated_ReturnsResponse()
@@ -70,11 +66,9 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
     [Fact]
     public async Task AssignSessionPackage_Authenticated_ProcessesRequest()
     {
-        // Arrange
         var gymId = Guid.NewGuid();
-        var client = CreateStaffClient(gymId: gymId);
 
-        var request = new
+        AssertAuthenticated(await CreateStaffClient(gymId: gymId).PostAsJsonAsync(AssignUrl, new
         {
             GymId = gymId,
             TrainerId = Guid.NewGuid(),
@@ -82,20 +76,12 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
             TemplateId = Guid.NewGuid(),
             AssignedBy = Guid.NewGuid(),
             ExpiresAt = DateTime.UtcNow.AddMonths(3)
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/billing/packages/assign", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        }));
     }
 
     [Fact]
-    public async Task AssignSessionPackage_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Act
-        var response = await HttpClient.PostAsJsonAsync("api/v1/billing/packages/assign", new
+    public Task AssignSessionPackage_Unauthenticated_ReturnsUnauthorized() =>
+        AssertAnonymousPostRejectedAsync(AssignUrl, new
         {
             GymId = Guid.NewGuid(),
             TrainerId = Guid.NewGuid(),
@@ -103,10 +89,6 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
             TemplateId = Guid.NewGuid(),
             AssignedBy = Guid.NewGuid()
         });
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
 
     [Fact]
     public async Task GetSessionPackages_Authenticated_ReturnsResponse()
@@ -143,11 +125,9 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
     [Fact]
     public async Task RecordPayment_Authenticated_ProcessesRequest()
     {
-        // Arrange
         var gymId = Guid.NewGuid();
-        var client = CreateStaffClient(gymId: gymId);
 
-        var request = new
+        AssertAuthenticated(await CreateStaffClient(gymId: gymId).PostAsJsonAsync(PaymentsUrl, new
         {
             GymId = gymId,
             MemberId = Guid.NewGuid(),
@@ -156,20 +136,12 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
             PaymentMethod = "cash",
             Description = "Monthly membership",
             ReceivedBy = Guid.NewGuid()
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/billing/payments", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        }));
     }
 
     [Fact]
-    public async Task RecordPayment_Unauthenticated_ReturnsUnauthorized()
-    {
-        // Act
-        var response = await HttpClient.PostAsJsonAsync("api/v1/billing/payments", new
+    public Task RecordPayment_Unauthenticated_ReturnsUnauthorized() =>
+        AssertAnonymousPostRejectedAsync(PaymentsUrl, new
         {
             GymId = Guid.NewGuid(),
             MemberId = Guid.NewGuid(),
@@ -178,10 +150,6 @@ public sealed class BillingIntegrationTests : BaseIntegrationTest
             PaymentMethod = "cash",
             ReceivedBy = Guid.NewGuid()
         });
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
 
     [Fact]
     public async Task GetPayments_Authenticated_ReturnsResponse()

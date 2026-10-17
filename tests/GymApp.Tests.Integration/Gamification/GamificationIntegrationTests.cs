@@ -9,6 +9,11 @@ public sealed class GamificationIntegrationTests : BaseIntegrationTest
     public GamificationIntegrationTests(IntegrationTestWebAppFactory factory)
         : base(factory) { }
 
+    private static string TrainerUrl(string path) =>
+        $"api/v1/gamification/trainers/{path}?gymId={Guid.NewGuid()}";
+
+    private static string TrainerUrl(Guid trainerId, string path) => TrainerUrl($"{trainerId}/{path}");
+
     #region Trainer Ratings
 
     [Fact]
@@ -81,20 +86,8 @@ public sealed class GamificationIntegrationTests : BaseIntegrationTest
     #region Trainer Ratings View
 
     [Fact]
-    public async Task GetTrainerRatings_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var client = CreateGymOwnerClient();
-        var trainerId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/gamification/trainers/{trainerId}/ratings?gymId={gymId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetTrainerRatings_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await CreateGymOwnerClient().GetAsync(TrainerUrl(Guid.NewGuid(), "ratings")));
 
     [Fact]
     public async Task GetTrainerRatings_Unauthenticated_ReturnsUnauthorized()
@@ -112,20 +105,8 @@ public sealed class GamificationIntegrationTests : BaseIntegrationTest
     #region Trainer Public Profile
 
     [Fact]
-    public async Task GetTrainerPublicProfile_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-        var trainerId = Guid.NewGuid();
-        var gymId = Guid.NewGuid();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/gamification/trainers/{trainerId}/public-profile?gymId={gymId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetTrainerPublicProfile_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await CreateTraineeClient().GetAsync(TrainerUrl(Guid.NewGuid(), "public-profile")));
 
     [Fact]
     public async Task GetTrainerPublicProfile_Unauthenticated_ReturnsUnauthorized()
@@ -143,19 +124,9 @@ public sealed class GamificationIntegrationTests : BaseIntegrationTest
     #region Leaderboards
 
     [Fact]
-    public async Task GetMemberLeaderboard_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-        var gymId = Guid.NewGuid();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/gamification/leaderboards/weight_loss?gymId={gymId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetMemberLeaderboard_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await CreateTraineeClient().GetAsync(
+            $"api/v1/gamification/leaderboards/weight_loss?gymId={Guid.NewGuid()}"));
 
     [Fact]
     public async Task GetMemberLeaderboard_Unauthenticated_ReturnsUnauthorized()
@@ -232,34 +203,12 @@ public sealed class GamificationIntegrationTests : BaseIntegrationTest
     #region Coach of the Month
 
     [Fact]
-    public async Task GetCoachOfTheMonth_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-        var gymId = Guid.NewGuid();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/gamification/trainers/coach-of-the-month?gymId={gymId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetCoachOfTheMonth_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await CreateTraineeClient().GetAsync(TrainerUrl("coach-of-the-month")));
 
     [Fact]
-    public async Task GetCoachLeaderboard_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-        var gymId = Guid.NewGuid();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/gamification/trainers/coach-leaderboard?gymId={gymId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetCoachLeaderboard_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await CreateTraineeClient().GetAsync(TrainerUrl("coach-leaderboard")));
 
     #endregion
 
@@ -268,16 +217,9 @@ public sealed class GamificationIntegrationTests : BaseIntegrationTest
     [Fact]
     public async Task GetTrainerMonthlyScores_Authenticated_ReturnsResponse()
     {
-        // Arrange
         var trainerId = Guid.NewGuid();
-        var client = CreateTrainerClient(trainerId);
 
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/gamification/trainers/{trainerId}/monthly-scores?gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        AssertAuthenticated(await CreateTrainerClient(trainerId).GetAsync(TrainerUrl(trainerId, "monthly-scores")));
     }
 
     #endregion

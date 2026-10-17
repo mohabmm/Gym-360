@@ -6,8 +6,63 @@ namespace GymApp.Tests.Functional.Admin;
 
 public sealed class AdminFunctionalTests : BaseFunctionalTest
 {
+    private const string PlansUrl = "api/v1/admin/plans";
+    private const string OwnersUrl = "api/v1/admin/owners";
+    private const string GlobalDeployUrl = "api/v1/admin/deploy/global";
+    private const string FeatureMatrixUrl = "api/v1/admin/plans/feature-matrix";
+
     public AdminFunctionalTests(FunctionalTestWebAppFactory factory)
         : base(factory) { }
+
+    private static string PlanFeatureUrl() =>
+        $"api/v1/admin/plans/{Guid.NewGuid()}/features/{Guid.NewGuid()}";
+
+    private static string GymUrl(Guid gymId, string action) => $"api/v1/admin/gyms/{gymId}/{action}";
+
+    private static string RandomGymUrl(string action) => GymUrl(Guid.NewGuid(), action);
+
+    private static string PlanChangeLogUrl() =>
+        $"api/v1/admin/plan-change-log?gymId={Guid.NewGuid()}&page=1&pageSize=20";
+
+    private static string UniqueSuffix() => Guid.NewGuid().ToString("N").Substring(0, 8);
+
+    private static object DeployBody() => new { DeployedBy = Guid.NewGuid() };
+
+    private static object BasicPlan(string code, string name) => new
+    {
+        Code = code,
+        Name = name,
+        MonthlyPrice = 99.0,
+        AnnualPrice = 990.0,
+        MemberLimit = 10,
+        TrainerLimit = 2,
+        StaffLimit = 1,
+        IsPublic = true,
+        SortOrder = 1
+    };
+
+    private static object PlaceholderOwner() => new
+    {
+        Email = "x@x.com",
+        Password = "Owner1234!",
+        FirstName = "X",
+        LastName = "Y",
+        CompanyName = "X",
+        BillingEmail = "x@x.com",
+        PlanTier = "Pro",
+        DashboardMode = "Both"
+    };
+
+    private static object StaffBody(string email, string password, string firstName, string lastName) => new
+    {
+        Email = email,
+        Password = password,
+        FirstName = firstName,
+        LastName = lastName,
+        StaffSubRole = "Receptionist"
+    };
+
+    private static object PlaceholderStaff() => StaffBody("x@x.com", "Staff1234!", "X", "Y");
 
     #region POST /api/v1/admin/plans
 
@@ -18,7 +73,7 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
         var client = CreateAdminClient();
 
         // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/plans", new
+        var response = await client.PostAsJsonAsync(PlansUrl, new
         {
             Code = $"plan-{Guid.NewGuid():N}".Substring(0, 20),
             Name = "Test Plan",
@@ -33,31 +88,15 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
         });
 
         // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+        AssertAuthorized(response);
     }
 
     [Fact]
     public async Task CreatePlan_AsSupport_Returns403()
     {
-        // Arrange
-        var client = CreateSupportClient();
+        var response = await CreateSupportClient().PostAsJsonAsync(
+            PlansUrl, BasicPlan("support-plan", "Support Plan"));
 
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/plans", new
-        {
-            Code = "support-plan",
-            Name = "Support Plan",
-            MonthlyPrice = 99.0,
-            AnnualPrice = 990.0,
-            MemberLimit = 10,
-            TrainerLimit = 2,
-            StaffLimit = 1,
-            IsPublic = true,
-            SortOrder = 1
-        });
-
-        // Assert
         // Support role has adminRole claim but the endpoint requires platform_admin policy
         // which checks for adminRole claim - so support should still be allowed
         // unless the policy is specifically checking for super_admin/admin value
@@ -67,45 +106,18 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task CreatePlan_AsTrainee_Returns403()
     {
-        // Arrange
-        var client = CreateTraineeClient();
+        var response = await CreateTraineeClient().PostAsJsonAsync(
+            PlansUrl, BasicPlan("trainee-plan", "Trainee Plan"));
 
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/plans", new
-        {
-            Code = "trainee-plan",
-            Name = "Trainee Plan",
-            MonthlyPrice = 99.0,
-            AnnualPrice = 990.0,
-            MemberLimit = 10,
-            TrainerLimit = 2,
-            StaffLimit = 1,
-            IsPublic = true,
-            SortOrder = 1
-        });
-
-        // Assert
         AssertStatusCode(response, HttpStatusCode.Forbidden);
     }
 
     [Fact]
     public async Task CreatePlan_NoToken_Returns401()
     {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/admin/plans", new
-        {
-            Code = "noauth",
-            Name = "No Auth Plan",
-            MonthlyPrice = 99.0,
-            AnnualPrice = 990.0,
-            MemberLimit = 10,
-            TrainerLimit = 2,
-            StaffLimit = 1,
-            IsPublic = true,
-            SortOrder = 1
-        });
+        var response = await AnonymousClient.PostAsJsonAsync(
+            PlansUrl, BasicPlan("noauth", "No Auth Plan"));
 
-        // Assert
         AssertStatusCode(response, HttpStatusCode.Unauthorized);
     }
 
@@ -116,31 +128,18 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task TogglePlanFeature_AsAdmin_ProcessesRequest()
     {
-        // Arrange
-        var client = CreateAdminClient();
+        var response = await CreateAdminClient().PutAsJsonAsync(
+            PlanFeatureUrl(), new { IsEnabled = true, LimitValue = (int?)null });
 
-        // Act
-        var response = await client.PutAsJsonAsync(
-            $"api/v1/admin/plans/{Guid.NewGuid()}/features/{Guid.NewGuid()}",
-            new { IsEnabled = true, LimitValue = (int?)null });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+        AssertAuthorized(response);
     }
 
     [Fact]
     public async Task TogglePlanFeature_AsTrainee_Returns403()
     {
-        // Arrange
-        var client = CreateTraineeClient();
+        var response = await CreateTraineeClient().PutAsJsonAsync(
+            PlanFeatureUrl(), new { IsEnabled = true });
 
-        // Act
-        var response = await client.PutAsJsonAsync(
-            $"api/v1/admin/plans/{Guid.NewGuid()}/features/{Guid.NewGuid()}",
-            new { IsEnabled = true });
-
-        // Assert
         AssertStatusCode(response, HttpStatusCode.Forbidden);
     }
 
@@ -149,132 +148,53 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
     #region POST /api/v1/admin/deploy/{scope}/{id}
 
     [Fact]
-    public async Task Deploy_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/deploy/global",
-            new { DeployedBy = Guid.NewGuid() });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task Deploy_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().PostAsJsonAsync(GlobalDeployUrl, DeployBody()));
 
     [Fact]
-    public async Task Deploy_AsTrainee_Returns403()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/deploy/global",
-            new { DeployedBy = Guid.NewGuid() });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task Deploy_AsTrainee_Returns403() =>
+        AssertStatusCode(
+            await CreateTraineeClient().PostAsJsonAsync(GlobalDeployUrl, DeployBody()),
+            HttpStatusCode.Forbidden);
 
     [Fact]
-    public async Task Deploy_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/admin/deploy/global",
-            new { DeployedBy = Guid.NewGuid() });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task Deploy_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(GlobalDeployUrl, DeployBody()),
+            HttpStatusCode.Unauthorized);
 
     [Fact]
-    public async Task Deploy_WithTargetGym_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-        var gymId = Guid.NewGuid();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/admin/deploy/gym/{gymId}",
-            new { DeployedBy = Guid.NewGuid() });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task Deploy_WithTargetGym_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().PostAsJsonAsync(
+            $"api/v1/admin/deploy/gym/{Guid.NewGuid()}", DeployBody()));
 
     #endregion
 
     #region GET /api/v1/admin/plans
 
     [Fact]
-    public async Task GetAllPlans_AsAdmin_Returns200()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.GetAsync("api/v1/admin/plans");
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.OK);
-    }
+    public async Task GetAllPlans_AsAdmin_Returns200() =>
+        AssertStatusCode(await CreateAdminClient().GetAsync(PlansUrl), HttpStatusCode.OK);
 
     [Fact]
-    public async Task GetAllPlans_AsTrainee_Returns403()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.GetAsync("api/v1/admin/plans");
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task GetAllPlans_AsTrainee_Returns403() =>
+        AssertStatusCode(await CreateTraineeClient().GetAsync(PlansUrl), HttpStatusCode.Forbidden);
 
     [Fact]
-    public async Task GetAllPlans_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.GetAsync("api/v1/admin/plans");
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task GetAllPlans_NoToken_Returns401() =>
+        AssertStatusCode(await AnonymousClient.GetAsync(PlansUrl), HttpStatusCode.Unauthorized);
 
     #endregion
 
     #region Feature Matrix
 
     [Fact]
-    public async Task GetFeatureMatrix_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.GetAsync("api/v1/admin/plans/feature-matrix");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task GetFeatureMatrix_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().GetAsync(FeatureMatrixUrl));
 
     [Fact]
-    public async Task GetFeatureMatrix_AsTrainee_Returns403()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.GetAsync("api/v1/admin/plans/feature-matrix");
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task GetFeatureMatrix_AsTrainee_Returns403() =>
+        AssertStatusCode(await CreateTraineeClient().GetAsync(FeatureMatrixUrl), HttpStatusCode.Forbidden);
 
     #endregion
 
@@ -283,69 +203,37 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task SetGymFeatureOverride_AsAdmin_ProcessesRequest()
     {
-        // Arrange
-        var client = CreateAdminClient();
         var gymId = Guid.NewGuid();
 
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/admin/gyms/{gymId}/feature-overrides",
+        var response = await CreateAdminClient().PostAsJsonAsync(
+            GymUrl(gymId, "feature-overrides"),
             new { GymId = gymId, FeatureCode = "custom_exercises", IsEnabled = true, Reason = "VIP" });
 
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+        AssertAuthorized(response);
     }
 
     [Fact]
-    public async Task GetGymFeatureOverrides_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/feature-overrides");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task GetGymFeatureOverrides_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().GetAsync(RandomGymUrl("feature-overrides")));
 
     #endregion
 
     #region Gym Subscription Management
 
     [Fact]
-    public async Task GetGymSubscription_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/subscription");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task GetGymSubscription_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().GetAsync(RandomGymUrl("subscription")));
 
     [Fact]
     public async Task ChangeGymPlan_AsAdmin_ProcessesRequest()
     {
-        // Arrange
-        var client = CreateAdminClient();
         var gymId = Guid.NewGuid();
 
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/admin/gyms/{gymId}/change-plan",
+        var response = await CreateAdminClient().PostAsJsonAsync(
+            GymUrl(gymId, "change-plan"),
             new { GymId = gymId, NewPlanId = Guid.NewGuid(), Reason = "Upgrade", ChangedBy = Guid.NewGuid() });
 
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+        AssertAuthorized(response);
     }
 
     #endregion
@@ -353,97 +241,37 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
     #region Plan Change Log
 
     [Fact]
-    public async Task GetPlanChangeLog_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/admin/plan-change-log?gymId={Guid.NewGuid()}&page=1&pageSize=20");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task GetPlanChangeLog_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().GetAsync(PlanChangeLogUrl()));
 
     [Fact]
-    public async Task GetPlanChangeLog_AsTrainee_Returns403()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/admin/plan-change-log?gymId={Guid.NewGuid()}&page=1&pageSize=20");
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task GetPlanChangeLog_AsTrainee_Returns403() =>
+        AssertStatusCode(await CreateTraineeClient().GetAsync(PlanChangeLogUrl()), HttpStatusCode.Forbidden);
 
     #endregion
 
     #region Gym Suspension (Admin)
 
     [Fact]
-    public async Task SuspendGym_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/suspend",
-            new { Reason = "Policy violation" });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task SuspendGym_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().PostAsJsonAsync(
+            RandomGymUrl("suspend"), new { Reason = "Policy violation" }));
 
     [Fact]
-    public async Task SuspendGym_AsTrainer_Returns403()
-    {
-        // Arrange
-        var client = CreateTrainerClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/suspend",
-            new { Reason = "Attempt" });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task SuspendGym_AsTrainer_Returns403() =>
+        AssertStatusCode(
+            await CreateTrainerClient().PostAsJsonAsync(RandomGymUrl("suspend"), new { Reason = "Attempt" }),
+            HttpStatusCode.Forbidden);
 
     [Fact]
-    public async Task ReactivateGym_AsAdmin_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateAdminClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/reactivate", new { });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
-    }
+    public async Task ReactivateGym_AsAdmin_ProcessesRequest() =>
+        AssertAuthorized(await CreateAdminClient().PostAsJsonAsync(RandomGymUrl("reactivate"), new { }));
 
     [Fact]
-    public async Task ReactivateGym_AsTrainer_Returns403()
-    {
-        // Arrange
-        var client = CreateTrainerClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/admin/gyms/{Guid.NewGuid()}/reactivate", new { });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task ReactivateGym_AsTrainer_Returns403() =>
+        AssertStatusCode(
+            await CreateTrainerClient().PostAsJsonAsync(RandomGymUrl("reactivate"), new { }),
+            HttpStatusCode.Forbidden);
 
     #endregion
 
@@ -454,10 +282,10 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
     {
         // Arrange
         var client = CreateAdminClient();
-        var unique = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var unique = UniqueSuffix();
 
         // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/owners", new
+        var response = await client.PostAsJsonAsync(OwnersUrl, new
         {
             Email = $"owner-{unique}@example.com",
             Password = "Owner1234!",
@@ -493,67 +321,36 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
         };
 
         // Act
-        await client.PostAsJsonAsync("api/v1/admin/owners", payload);
-        var second = await client.PostAsJsonAsync("api/v1/admin/owners", payload);
+        await client.PostAsJsonAsync(OwnersUrl, payload);
+        var second = await client.PostAsJsonAsync(OwnersUrl, payload);
 
         // Assert
         AssertStatusCode(second, HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task CreateGymOwner_AsTrainee_Returns403()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/owners", new
-        {
-            Email = "x@x.com",
-            Password = "Owner1234!",
-            FirstName = "X",
-            LastName = "Y",
-            CompanyName = "X",
-            BillingEmail = "x@x.com",
-            PlanTier = "Pro",
-            DashboardMode = "Both"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task CreateGymOwner_AsTrainee_Returns403() =>
+        AssertStatusCode(
+            await CreateTraineeClient().PostAsJsonAsync(OwnersUrl, PlaceholderOwner()),
+            HttpStatusCode.Forbidden);
 
     [Fact]
-    public async Task CreateGymOwner_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/admin/owners", new
-        {
-            Email = "x@x.com",
-            Password = "Owner1234!",
-            FirstName = "X",
-            LastName = "Y",
-            CompanyName = "X",
-            BillingEmail = "x@x.com",
-            PlanTier = "Pro",
-            DashboardMode = "Both"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task CreateGymOwner_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(OwnersUrl, PlaceholderOwner()),
+            HttpStatusCode.Unauthorized);
 
     [Fact]
     public async Task CreateGymStaff_AsAdmin_ProcessesRequest()
     {
         // Arrange
         var client = CreateAdminClient();
-        var unique = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var unique = UniqueSuffix();
 
         // Act — gymId is random, so the create-user step succeeds but AddStaff likely fails
         // with NotFound. We only assert auth passed (not 401/403) since the test database
         // does not seed real gyms here.
-        var response = await client.PostAsJsonAsync($"api/v1/admin/gyms/{Guid.NewGuid()}/staff/create", new
+        var response = await client.PostAsJsonAsync(RandomGymUrl("staff/create"), new
         {
             Email = $"staff-{unique}@example.com",
             Password = "Staff1234!",
@@ -564,64 +361,28 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
         });
 
         // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-        response.StatusCode.Should().NotBe(HttpStatusCode.Forbidden);
+        AssertAuthorized(response);
     }
 
     [Fact]
-    public async Task CreateGymStaff_AsTrainee_Returns403()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync($"api/v1/admin/gyms/{Guid.NewGuid()}/staff/create", new
-        {
-            Email = "x@x.com",
-            Password = "Staff1234!",
-            FirstName = "X",
-            LastName = "Y",
-            StaffSubRole = "Receptionist"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Forbidden);
-    }
+    public async Task CreateGymStaff_AsTrainee_Returns403() =>
+        AssertStatusCode(
+            await CreateTraineeClient().PostAsJsonAsync(RandomGymUrl("staff/create"), PlaceholderStaff()),
+            HttpStatusCode.Forbidden);
 
     [Fact]
-    public async Task CreateGymStaff_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync($"api/v1/admin/gyms/{Guid.NewGuid()}/staff/create", new
-        {
-            Email = "x@x.com",
-            Password = "Staff1234!",
-            FirstName = "X",
-            LastName = "Y",
-            StaffSubRole = "Receptionist"
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task CreateGymStaff_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(RandomGymUrl("staff/create"), PlaceholderStaff()),
+            HttpStatusCode.Unauthorized);
 
     [Fact]
     public async Task CreateGymStaff_ShortPassword_Returns400()
     {
-        // Arrange
-        var client = CreateAdminClient();
+        var body = StaffBody($"short-{Guid.NewGuid():N}@example.com", "short", "Short", "Pass");
 
-        // Act
-        var response = await client.PostAsJsonAsync($"api/v1/admin/gyms/{Guid.NewGuid()}/staff/create", new
-        {
-            Email = $"short-{Guid.NewGuid():N}@example.com",
-            Password = "short",
-            FirstName = "Short",
-            LastName = "Pass",
-            StaffSubRole = "Receptionist"
-        });
+        var response = await CreateAdminClient().PostAsJsonAsync(RandomGymUrl("staff/create"), body);
 
-        // Assert
         AssertStatusCode(response, HttpStatusCode.BadRequest);
     }
 
@@ -629,18 +390,17 @@ public sealed class AdminFunctionalTests : BaseFunctionalTest
     public async Task CreateGymOwner_InvalidPlanTier_Returns400()
     {
         // Arrange
-        var client = CreateAdminClient();
-        var unique = Guid.NewGuid().ToString("N").Substring(0, 8);
+        var email = $"bad-plan-{UniqueSuffix()}@example.com";
 
         // Act
-        var response = await client.PostAsJsonAsync("api/v1/admin/owners", new
+        var response = await CreateAdminClient().PostAsJsonAsync(OwnersUrl, new
         {
-            Email = $"bad-plan-{unique}@example.com",
+            Email = email,
             Password = "Owner1234!",
             FirstName = "Bad",
             LastName = "Plan",
             CompanyName = "X",
-            BillingEmail = $"bad-plan-{unique}@example.com",
+            BillingEmail = email,
             PlanTier = "Diamond",
             DashboardMode = "Both"
         });
