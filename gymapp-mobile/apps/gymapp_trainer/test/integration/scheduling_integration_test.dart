@@ -123,12 +123,12 @@ void main() {
 
     test('POST /scheduling/sessions/{id}/confirm accepts a booking', () async {
       t.adapter.onPost(
-        '${ApiEndpoints.sessionById('session-1')}/confirm',
+        '${ApiEndpoints.sessionById(const SessionId('session-1'))}/confirm',
         respond: (_) => t.adapter.noContent(),
       );
 
       await t.apiClient
-          .postVoid('${ApiEndpoints.sessionById('session-1')}/confirm');
+          .postVoid('${ApiEndpoints.sessionById(const SessionId('session-1'))}/confirm');
 
       final req = t.onlyRequest;
       expect(req.method, 'POST');
@@ -138,12 +138,12 @@ void main() {
     test('POST /scheduling/sessions/{id}/cancel declines with reason',
         () async {
       t.adapter.onPost(
-        '${ApiEndpoints.sessionById('session-1')}/cancel',
+        '${ApiEndpoints.sessionById(const SessionId('session-1'))}/cancel',
         respond: (_) => t.adapter.noContent(),
       );
 
       await t.apiClient.postVoid(
-        '${ApiEndpoints.sessionById('session-1')}/cancel',
+        '${ApiEndpoints.sessionById(const SessionId('session-1'))}/cancel',
         data: {'cancelledBy': kTrainerId, 'reason': 'declined by trainer'},
       );
 

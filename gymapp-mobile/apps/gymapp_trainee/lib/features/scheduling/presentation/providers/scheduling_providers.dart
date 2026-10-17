@@ -112,7 +112,7 @@ final gymSessionPolicyProvider =
   final api = ref.watch(apiClientProvider);
   try {
     return await api.get<GymSessionPolicyModel>(
-      ApiEndpoints.gymSessionPolicy(gymId),
+      ApiEndpoints.gymSessionPolicy(GymId(gymId)),
       parser: (data) =>
           GymSessionPolicyModel.fromJson(data as Map<String, dynamic>),
     );

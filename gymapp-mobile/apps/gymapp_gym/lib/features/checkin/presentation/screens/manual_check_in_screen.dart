@@ -42,7 +42,7 @@ class _ManualCheckInScreenState extends ConsumerState<ManualCheckInScreen> {
 
       final apiClient = ref.read(apiClientProvider);
       final result = await apiClient.post<CheckInResultModel>(
-        ApiEndpoints.checkIn(gymId),
+        ApiEndpoints.checkIn(GymId(gymId)),
         data: {
           'method': 'MemberNumber',
           'memberNumber': number,

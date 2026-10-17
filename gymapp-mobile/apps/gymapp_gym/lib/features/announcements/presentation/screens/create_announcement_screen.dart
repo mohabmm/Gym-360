@@ -52,7 +52,7 @@ class _CreateAnnouncementScreenState
         );
       }
       await apiClient.post<void>(
-        ApiEndpoints.gymAnnouncements(gymId),
+        ApiEndpoints.gymAnnouncements(GymId(gymId)),
         data: {
           'title': _titleController.text.trim(),
           'content': _bodyController.text.trim(),

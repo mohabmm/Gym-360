@@ -146,17 +146,17 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     final storage = ref.read(secureStorageProvider);
     await storage.saveTokens(
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
+      accessToken: AccessToken(response.accessToken),
+      refreshToken: RefreshToken(response.refreshToken),
     );
-    await storage.saveUserId(response.user.id);
+    await storage.saveUserId(UserId(response.user.id));
 
     // Determine gym ID: backend login returns a scalar user.gymId for the active
     // membership. Fall back to gymMemberships[0] for apps/flows that populate it
     // (some responses embed the full list, e.g. multi-gym trainer).
     final gymId = response.user.loginGymId;
     if (gymId != null && gymId.isNotEmpty) {
-      await storage.saveCurrentGymId(gymId);
+      await storage.saveCurrentGymId(GymId(gymId));
     }
 
     // The login response (UserResponse) omits gymMemberships / memberNumber.
@@ -212,7 +212,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
   /// QR/code flow. Trainees cannot switch gyms after linking.
   Future<void> setActiveGym(String gymId) async {
     final storage = ref.read(secureStorageProvider);
-    await storage.saveCurrentGymId(gymId);
+    await storage.saveCurrentGymId(GymId(gymId));
 
     final currentState = state.valueOrNull;
     if (currentState != null) {
@@ -319,7 +319,7 @@ final gymBrandingProvider = FutureProvider<GymBrandingModel?>((ref) async {
   try {
     final apiClient = ref.read(apiClientProvider);
     final branding = await apiClient.get<GymBrandingModel>(
-      ApiEndpoints.gymBranding(gymId),
+      ApiEndpoints.gymBranding(GymId(gymId)),
       parser: (data) =>
           GymBrandingModel.fromJson(data as Map<String, dynamic>),
     );

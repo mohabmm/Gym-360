@@ -175,7 +175,7 @@ class MemberDetailScreen extends ConsumerWidget {
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.receipt),
                           title: Text(
-                            NumberFormatter.formatCurrency(p.amount),
+                            NumberFormatter.formatCurrency(Egp(p.amount)),
                           ),
                           subtitle: p.createdAt != null
                               ? Text(DateFormatter.formatShort(p.createdAt!))
@@ -394,8 +394,8 @@ class MemberDetailScreen extends ConsumerWidget {
       final gymId = ref.read(currentGymIdProvider);
       await apiClient.post<void>(
         freeze
-            ? ApiEndpoints.gymMemberFreeze(gymId, memberId)
-            : ApiEndpoints.gymMemberUnfreeze(gymId, memberId),
+            ? ApiEndpoints.gymMemberFreeze(GymId(gymId), MemberId(memberId))
+            : ApiEndpoints.gymMemberUnfreeze(GymId(gymId), MemberId(memberId)),
         parser: (_) {},
       );
       ref.invalidate(memberDetailProvider(memberId));
@@ -443,7 +443,7 @@ class MemberDetailScreen extends ConsumerWidget {
     try {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
-      await apiClient.delete(ApiEndpoints.gymMemberById(gymId, memberId));
+      await apiClient.delete(ApiEndpoints.gymMemberById(GymId(gymId), MemberId(memberId)));
       ref.invalidate(membersProvider);
       messenger.showSnackBar(
         SnackBar(

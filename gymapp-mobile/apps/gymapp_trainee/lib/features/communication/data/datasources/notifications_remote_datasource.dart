@@ -30,7 +30,7 @@ class NotificationsRemoteDataSource {
 
   /// BE PUT /communication/notifications/{id}/read — caller derived from JWT.
   Future<void> markNotificationRead(String id) async {
-    await _apiClient.putVoid(ApiEndpoints.notificationMarkRead(id));
+    await _apiClient.putVoid(ApiEndpoints.notificationMarkRead(NotificationId(id)));
   }
 
   /// BE PUT /communication/notifications/read-all — caller derived from JWT.

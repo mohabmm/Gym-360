@@ -86,7 +86,7 @@ final membersProvider =
   }
 
   return apiClient.getPaginated<UserModel>(
-    ApiEndpoints.gymMembers(gymId),
+    ApiEndpoints.gymMembers(GymId(gymId)),
     params: PaginationParams(
       page: filter.page,
       pageSize: AppConstants.paginationPageSize,
@@ -112,7 +112,7 @@ Future<UserModel?> findMemberByNumber(
   if (query.isEmpty || gymId.isEmpty) return null;
 
   final result = await apiClient.getPaginated<UserModel>(
-    ApiEndpoints.gymMembers(gymId),
+    ApiEndpoints.gymMembers(GymId(gymId)),
     params: const PaginationParams(page: 1, pageSize: 50),
     additionalParams: {'search': query},
     itemParser: (json) => UserModel.fromJson(_normalizeMemberJson(json)),
@@ -145,7 +145,7 @@ final memberDetailProvider =
     // migrated to currentGymIdProvider
     final gymId = ref.watch(currentGymIdProvider);
     return apiClient.get<UserModel>(
-      ApiEndpoints.gymMemberById(gymId, memberId),
+      ApiEndpoints.gymMemberById(GymId(gymId), MemberId(memberId)),
       parser: (data) =>
           UserModel.fromJson(_normalizeMemberJson(data as Map<String, dynamic>)),
     );
@@ -163,7 +163,7 @@ final memberPaymentsProvider =
   (ref, memberId) async {
     final apiClient = ref.watch(apiClientProvider);
     return apiClient.get<List<PaymentModel>>(
-      ApiEndpoints.billingMemberPayments(memberId),
+      ApiEndpoints.billingMemberPayments(MemberId(memberId)),
       parser: (data) => (data as List)
           .map((e) => PaymentModel.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -180,7 +180,7 @@ final nextMemberNumberProvider = FutureProvider.autoDispose<String>((ref) async 
   final gymId = ref.watch(currentGymIdProvider);
   try {
     final result = await apiClient.get<String>(
-      '${ApiEndpoints.gymMembers(gymId)}/next-number',
+      '${ApiEndpoints.gymMembers(GymId(gymId))}/next-number',
       parser: (data) => data.toString(),
     );
     return result;

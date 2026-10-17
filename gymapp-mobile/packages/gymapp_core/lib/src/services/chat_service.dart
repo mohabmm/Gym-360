@@ -6,6 +6,7 @@ import '../constants/api_endpoints.dart';
 import '../models/message_model.dart';
 import '../network/api_base_url.dart';
 import '../network/api_client.dart';
+import '../types/entity_ids.dart';
 import 'chat_requests.dart';
 
 export 'chat_requests.dart';
@@ -47,7 +48,7 @@ class ChatService {
 
   Future<List<MessageModel>> listMessages(String conversationId, {int page = 1, int pageSize = 100}) async {
     final res = await _api.dio.get(
-      ApiEndpoints.messages(conversationId),
+      ApiEndpoints.messages(ConversationId(conversationId)),
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
     return _pageItems(res, MessageModel.fromJson);
@@ -80,7 +81,7 @@ class ChatService {
 
   Future<String> sendMessage(String conversationId, MessageDraft draft) async {
     final res = await _api.dio.post(
-      ApiEndpoints.messages(conversationId),
+      ApiEndpoints.messages(ConversationId(conversationId)),
       data: draft.toJson(),
     );
     return res.data?['data'] as String;

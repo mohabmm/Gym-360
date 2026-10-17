@@ -87,8 +87,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
         final storage = ref.read(secureStorageProvider);
         await storage.saveTokens(
-          accessToken: response.accessToken,
-          refreshToken: response.refreshToken,
+          accessToken: AccessToken(response.accessToken),
+          refreshToken: RefreshToken(response.refreshToken),
         );
         try {
           response = await apiClient.post<AuthResponse>(

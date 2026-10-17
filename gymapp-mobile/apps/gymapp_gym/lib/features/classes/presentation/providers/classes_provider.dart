@@ -84,7 +84,7 @@ final classesProvider =
   final gymId = _requireGymId(ref);
   final apiClient = ref.watch(apiClientProvider);
   return apiClient.get<List<GymClassModel>>(
-    ApiEndpoints.gymClasses(gymId),
+    ApiEndpoints.gymClasses(GymId(gymId)),
     parser: (data) => (data as List)
         .map((e) => GymClassModel.fromJson(_normalizeClassJson(e as Map<String, dynamic>)))
         .toList(),
@@ -97,7 +97,7 @@ final classDetailProvider =
     final gymId = _requireGymId(ref);
     final apiClient = ref.watch(apiClientProvider);
     return apiClient.get<GymClassModel>(
-      ApiEndpoints.gymClassById(gymId, classId),
+      ApiEndpoints.gymClassById(GymId(gymId), ClassId(classId)),
       parser: (data) => GymClassModel.fromJson(
           _normalizeClassJson(data as Map<String, dynamic>)),
     );
@@ -123,7 +123,7 @@ final classAttendanceProvider =
     final gymId = _requireGymId(ref);
     final apiClient = ref.watch(apiClientProvider);
     return apiClient.get<List<UserModel>>(
-      ApiEndpoints.gymClassAttendance(gymId, classId),
+      ApiEndpoints.gymClassAttendance(GymId(gymId), ClassId(classId)),
       parser: (data) => (data as List)
           .map((e) =>
               UserModel.fromJson(_normalizeMemberJson(e as Map<String, dynamic>)))
@@ -138,7 +138,7 @@ final classWaitlistProvider =
     final gymId = _requireGymId(ref);
     final apiClient = ref.watch(apiClientProvider);
     return apiClient.get<List<UserModel>>(
-      ApiEndpoints.gymClassWaitlist(gymId, classId),
+      ApiEndpoints.gymClassWaitlist(GymId(gymId), ClassId(classId)),
       parser: (data) => (data as List)
           .map((e) =>
               UserModel.fromJson(_normalizeMemberJson(e as Map<String, dynamic>)))

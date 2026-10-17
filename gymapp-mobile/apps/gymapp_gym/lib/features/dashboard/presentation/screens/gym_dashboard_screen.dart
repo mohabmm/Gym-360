@@ -160,7 +160,7 @@ class _KpiRow extends StatelessWidget {
         if (showRevenue) ...[
           StatCard.gradient(
             label: isArabic ? 'ايراد الشهر' : 'Revenue this month',
-            value: NumberFormatter.formatCurrency(data.revenueThisMonth),
+            value: NumberFormatter.formatCurrency(Egp(data.revenueThisMonth)),
             icon: Icons.trending_up_rounded,
             trend: data.revenueTrend,
             trendUp: true,

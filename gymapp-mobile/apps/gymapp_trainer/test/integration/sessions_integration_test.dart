@@ -15,12 +15,12 @@ void main() {
 
   test('GET /scheduling/sessions/{id} returns single session', () async {
     t.adapter.onGet(
-      ApiEndpoints.sessionById('session-1'),
+      ApiEndpoints.sessionById(const SessionId('session-1')),
       respond: (_) => t.adapter.ok(Samples.session()),
     );
 
     final s = await t.apiClient.get<SessionModel>(
-      ApiEndpoints.sessionById('session-1'),
+      ApiEndpoints.sessionById(const SessionId('session-1')),
       parser: (d) => SessionModel.fromJson(d as Map<String, dynamic>),
     );
 
@@ -34,12 +34,12 @@ void main() {
   test('LiveSessionScreen — POST /sessions/{id}/trainer-log on complete',
       () async {
     t.adapter.onPost(
-      ApiEndpoints.sessionTrainerLog('session-1'),
+      ApiEndpoints.sessionTrainerLog(const SessionId('session-1')),
       respond: (_) => t.adapter.noContent(),
     );
 
     await t.apiClient.postVoid(
-      ApiEndpoints.sessionTrainerLog('session-1'),
+      ApiEndpoints.sessionTrainerLog(const SessionId('session-1')),
       data: {
         'trainerId': kTrainerId,
         'exercisesPerformed':
@@ -62,13 +62,13 @@ void main() {
   test('LiveSessionScreen — attendance=true but no performed sets sends "-"',
       () async {
     t.adapter.onPost(
-      ApiEndpoints.sessionTrainerLog('session-2'),
+      ApiEndpoints.sessionTrainerLog(const SessionId('session-2')),
       respond: (_) => t.adapter.noContent(),
     );
 
     // Simulate UI path: _sets empty, notes empty → exercisesSummary = '-'.
     await t.apiClient.postVoid(
-      ApiEndpoints.sessionTrainerLog('session-2'),
+      ApiEndpoints.sessionTrainerLog(const SessionId('session-2')),
       data: {
         'trainerId': kTrainerId,
         'exercisesPerformed': '-',
@@ -84,12 +84,12 @@ void main() {
 
   test('PostSessionLogScreen — trainer-log carries nextSessionFocus', () async {
     t.adapter.onPost(
-      ApiEndpoints.sessionTrainerLog('session-1'),
+      ApiEndpoints.sessionTrainerLog(const SessionId('session-1')),
       respond: (_) => t.adapter.noContent(),
     );
 
     await t.apiClient.postVoid(
-      ApiEndpoints.sessionTrainerLog('session-1'),
+      ApiEndpoints.sessionTrainerLog(const SessionId('session-1')),
       data: {
         'trainerId': kTrainerId,
         'exercisesPerformed': 'Focus on pull day tomorrow',
@@ -106,7 +106,7 @@ void main() {
 
   test('403 feature-gated error maps to FeatureGatedException', () async {
     t.adapter.onPost(
-      ApiEndpoints.sessionTrainerLog('session-1'),
+      ApiEndpoints.sessionTrainerLog(const SessionId('session-1')),
       respond: (_) => t.adapter.error(
         403,
         code: 'PLAN.FEATURE_NOT_AVAILABLE',
@@ -120,7 +120,7 @@ void main() {
 
     await expectLater(
       t.apiClient.postVoid(
-        ApiEndpoints.sessionTrainerLog('session-1'),
+        ApiEndpoints.sessionTrainerLog(const SessionId('session-1')),
         data: {
           'trainerId': kTrainerId,
           'exercisesPerformed': '-',

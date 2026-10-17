@@ -48,7 +48,7 @@ void main() {
 
   test('GET /scheduling/sessions/{id} returns single session', () async {
     t.adapter.onGet(
-      ApiEndpoints.sessionById('session-1'),
+      ApiEndpoints.sessionById(const SessionId('session-1')),
       respond: (_) => t.adapter.ok(Samples.session()),
     );
     final s = await ds.getSessionById('session-1');
@@ -110,7 +110,7 @@ void main() {
   test('POST /scheduling/sessions/{id}/cancel sends cancelledBy + reason',
       () async {
     t.adapter.onPost(
-      '${ApiEndpoints.sessionById('session-1')}/cancel',
+      '${ApiEndpoints.sessionById(const SessionId('session-1'))}/cancel',
       respond: (_) => t.adapter.noContent(),
     );
     await ds.cancelSession(const SessionCancellation(
@@ -127,7 +127,7 @@ void main() {
   test('POST /scheduling/sessions/{id}/member-log stores member feedback',
       () async {
     t.adapter.onPost(
-      ApiEndpoints.sessionMemberLog('session-1'),
+      ApiEndpoints.sessionMemberLog(const SessionId('session-1')),
       respond: (_) => t.adapter.noContent(),
     );
     await ds.logMemberFeedback('session-1', {
@@ -156,7 +156,7 @@ void main() {
 
   test('GET classes for a gym on a date', () async {
     t.adapter.onGet(
-      ApiEndpoints.gymClasses('gym-1'),
+      ApiEndpoints.gymClasses(const GymId('gym-1')),
       respond: (_) => t.adapter.ok([Samples.gymClass()]),
     );
     final classes =
@@ -167,7 +167,7 @@ void main() {
 
   test('POST book class sends memberId', () async {
     t.adapter.onPost(
-      ApiEndpoints.bookGymClass('gym-1', 'class-1'),
+      ApiEndpoints.bookGymClass(const GymId('gym-1'), const ClassId('class-1')),
       respond: (_) => t.adapter.noContent(),
     );
     await ds.bookClass(const ClassBookingRequest(
@@ -180,7 +180,7 @@ void main() {
 
   test('DELETE class booking', () async {
     t.adapter.onDelete(
-      ApiEndpoints.cancelGymClassBooking('gym-1', 'class-1', 'book-1'),
+      ApiEndpoints.cancelGymClassBooking(const GymId('gym-1'), const ClassId('class-1'), const BookingId('book-1')),
       respond: (_) => t.adapter.noContent(),
     );
     await ds.cancelClassBooking(const ClassBookingCancellation(

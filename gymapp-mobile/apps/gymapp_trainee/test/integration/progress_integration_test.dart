@@ -101,7 +101,7 @@ void main() {
 
   test('DELETE /progress/photos/{id} carries userId query', () async {
     t.adapter.onDelete(
-      ApiEndpoints.progressPhotoById('ph-1'),
+      ApiEndpoints.progressPhotoById(const ProgressPhotoId('ph-1')),
       respond: (_) => t.adapter.noContent(),
     );
     await ds.deleteProgressPhoto('ph-1', userId: 'user-1');

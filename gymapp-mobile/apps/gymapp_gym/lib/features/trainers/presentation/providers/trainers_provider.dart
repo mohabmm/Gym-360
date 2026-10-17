@@ -33,7 +33,7 @@ final trainersProvider =
   // migrated to currentGymIdProvider
   final gymId = ref.watch(currentGymIdProvider);
   return apiClient.get<List<UserModel>>(
-    ApiEndpoints.gymTrainers(gymId),
+    ApiEndpoints.gymTrainers(GymId(gymId)),
     parser: (data) => (data as List)
         .map((e) => _trainerStubFromJson(e as Map<String, dynamic>))
         .toList(),
@@ -58,7 +58,7 @@ final pendingTrainersProvider =
   // migrated to currentGymIdProvider
   final gymId = ref.watch(currentGymIdProvider);
   return apiClient.get<List<UserModel>>(
-    ApiEndpoints.gymTrainers(gymId),
+    ApiEndpoints.gymTrainers(GymId(gymId)),
     queryParameters: const {'status': 'pending'},
     parser: (data) => (data as List)
         .map((e) => _trainerStubFromJson(e as Map<String, dynamic>))
@@ -72,7 +72,7 @@ final trainerRatingsProvider =
   (ref, trainerId) async {
     final apiClient = ref.watch(apiClientProvider);
     return apiClient.get<List<TrainerRatingModel>>(
-      ApiEndpoints.trainerDetailedRatings(trainerId),
+      ApiEndpoints.trainerDetailedRatings(TrainerId(trainerId)),
       parser: (data) => (data as List)
           .map((e) => TrainerRatingModel.fromJson(e as Map<String, dynamic>))
           .toList(),

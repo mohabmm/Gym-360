@@ -95,7 +95,7 @@ class ProgressRemoteDataSource {
     required String userId,
   }) async {
     await _apiClient.delete(
-      ApiEndpoints.progressPhotoById(id),
+      ApiEndpoints.progressPhotoById(ProgressPhotoId(id)),
       queryParameters: {'userId': userId},
     );
   }

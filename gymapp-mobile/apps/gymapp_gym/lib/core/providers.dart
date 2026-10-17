@@ -159,7 +159,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
         );
         if (active.gymId.isNotEmpty) {
           resolvedGymId = active.gymId;
-          await storage.saveCurrentGymId(resolvedGymId);
+          await storage.saveCurrentGymId(GymId(resolvedGymId));
         }
       }
 
@@ -218,10 +218,10 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     final storage = ref.read(secureStorageProvider);
     await storage.saveTokens(
-      accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
+      accessToken: AccessToken(response.accessToken),
+      refreshToken: RefreshToken(response.refreshToken),
     );
-    await storage.saveUserId(response.user.id);
+    await storage.saveUserId(UserId(response.user.id));
 
     final userBox = Hive.box(StorageKeys.userBox);
     await userBox.put(StorageKeys.cachedUser, response.user.toJson());
@@ -230,7 +230,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // Fall back to the gymMemberships list when it's embedded in the response.
     final gymId = response.user.loginGymId;
     if (gymId != null && gymId.isNotEmpty) {
-      await storage.saveCurrentGymId(gymId);
+      await storage.saveCurrentGymId(GymId(gymId));
     }
 
     // The per-gym tier (owner / manager / receptionist) drives every
@@ -265,7 +265,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
   Future<void> switchGym(String gymId) async {
     final storage = ref.read(secureStorageProvider);
-    await storage.saveCurrentGymId(gymId);
+    await storage.saveCurrentGymId(GymId(gymId));
 
     final currentState = state.valueOrNull;
     if (currentState != null) {
@@ -361,7 +361,7 @@ final activeGymProvider = FutureProvider<GymModel?>((ref) async {
   try {
     final apiClient = ref.read(apiClientProvider);
     final gym = await apiClient.get<GymModel>(
-      ApiEndpoints.gymById(gymId),
+      ApiEndpoints.gymById(GymId(gymId)),
       parser: (data) =>
           GymModel.fromJson(_normalizeGymJson(data as Map<String, dynamic>)),
     );
@@ -449,7 +449,7 @@ final gymBrandingProvider = FutureProvider<GymBrandingModel?>((ref) async {
   try {
     final apiClient = ref.read(apiClientProvider);
     final branding = await apiClient.get<GymBrandingModel>(
-      ApiEndpoints.gymBranding(gymId),
+      ApiEndpoints.gymBranding(GymId(gymId)),
       parser: (data) =>
           GymBrandingModel.fromJson(data as Map<String, dynamic>),
     );

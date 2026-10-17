@@ -58,7 +58,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
     try {
       final apiClient = ref.read(apiClientProvider);
       final raw = await apiClient.get<Map<String, dynamic>>(
-        ApiEndpoints.programById(widget.programId!),
+        ApiEndpoints.programById(ProgramId(widget.programId!)),
         parser: (data) =>
             data is Map ? Map<String, dynamic>.from(data) : <String, dynamic>{},
       );

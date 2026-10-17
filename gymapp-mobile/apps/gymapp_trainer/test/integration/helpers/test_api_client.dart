@@ -6,6 +6,15 @@ import 'mock_http_adapter.dart';
 const String kTrainerId = 'trainer-1';
 const String kGymId = 'gym-1';
 const String kClientId = 'client-1';
+
+/// Typed forms of the ids above, for the [ApiEndpoints] path builders.
+const kTrainer = TrainerId(kTrainerId);
+const kGym = GymId(kGymId);
+const kClient = ClientId(kClientId);
+
+/// [kClientId] as addressed by the gym-staff `/members/{memberId}` routes.
+const kClientMember = MemberId(kClientId);
+
 const String kAccessToken = 'test-jwt';
 
 class TestApiClient {
@@ -72,13 +81,13 @@ TestApiClient buildTestApiClient({
   TestSession session = const TestSession(),
   String baseUrl = 'https://test.api.gymapp.local',
 }) {
-  final storage = FakeSecureStorage(
-    accessToken: session.accessToken,
-    refreshToken: session.refreshToken,
-    userId: session.userId,
-    currentGymId: session.gymId,
-    userRole: 'Trainer',
-  );
+  final storage = FakeSecureStorage({
+    SecureStorageKey.accessToken: session.accessToken,
+    SecureStorageKey.refreshToken: session.refreshToken,
+    SecureStorageKey.userId: session.userId,
+    SecureStorageKey.currentGymId: session.gymId,
+    SecureStorageKey.userRole: 'Trainer',
+  });
   final client = ApiClient(
     baseUrl: baseUrl,
     storage: storage,
