@@ -1,42 +1,35 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
 
+type StaffToken = { role?: string; gymId?: unknown; staffSubRole?: string } | null;
+
+const STAFF_ROLES = ['gym_staff', 'gym_owner'];
+const RECEPTIONIST_PATHS = ['/', '/members', '/check-ins', '/billing'];
+
+const isStaffRole = (token: StaffToken) => !!token?.role && STAFF_ROLES.includes(token.role);
+
+// Hard-mode multi-tenancy: any Owner without an active gymId goes to
+// /select-gym (the page handles the zero-owned-gyms case with a sign-out CTA).
+const ownerNeedsGym = (token: NonNullable<StaffToken>, path: string) =>
+  token.role === 'gym_owner' && !token.gymId && path !== '/select-gym';
+
+const isReceptionistPathAllowed = (path: string) =>
+  RECEPTIONIST_PATHS.some((p) => path === p || path.startsWith(p + '/'));
+
+// Settings: managers can see settings but not billing (enforced in the page, not here).
+function resolveRedirect(token: StaffToken, path: string): string | null {
+  // Must be gym_staff or gym_owner
+  if (!token || !isStaffRole(token)) return '/login';
+  if (ownerNeedsGym(token, path)) return '/select-gym';
+  // Receptionist restrictions
+  if (token.staffSubRole === 'receptionist' && !isReceptionistPathAllowed(path)) return '/';
+  return null;
+}
+
 export default withAuth(
   function middleware(req) {
-    const token = req.nextauth.token;
-    const path = req.nextUrl.pathname;
-
-    // Must be gym_staff or gym_owner
-    if (!token?.role || !['gym_staff', 'gym_owner'].includes(token.role)) {
-      return NextResponse.redirect(new URL('/login', req.url));
-    }
-
-    // Hard-mode multi-tenancy: any Owner without an active gymId goes to
-    // /select-gym (the page handles the zero-owned-gyms case with a sign-out CTA).
-    const hasGymId = !!token.gymId;
-    if (
-      token.role === 'gym_owner' &&
-      !hasGymId &&
-      path !== '/select-gym'
-    ) {
-      return NextResponse.redirect(new URL('/select-gym', req.url));
-    }
-
-    // Receptionist restrictions
-    if (token.staffSubRole === 'receptionist') {
-      const allowed = ['/', '/members', '/check-ins', '/billing'];
-      const isAllowed = allowed.some((p) => path === p || path.startsWith(p + '/'));
-      if (!isAllowed) {
-        return NextResponse.redirect(new URL('/', req.url));
-      }
-    }
-
-    // Billing settings: owner only
-    if (path === '/settings' && token.staffSubRole !== 'owner') {
-      // Managers can see settings but not billing
-    }
-
-    return NextResponse.next();
+    const target = resolveRedirect(req.nextauth.token as StaffToken, req.nextUrl.pathname);
+    return target ? NextResponse.redirect(new URL(target, req.url)) : NextResponse.next();
   },
   {
     callbacks: {
