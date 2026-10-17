@@ -36,7 +36,7 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
 
         var memberIds = Enumerable.Range(0, count).Select(_ => Guid.NewGuid()).ToList();
         foreach (var id in memberIds)
-            gym.AddMember(id).IsSuccess.Should().BeTrue();
+            gym.AddMember(new MemberId(id)).IsSuccess.Should().BeTrue();
 
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
@@ -53,9 +53,9 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
         var queries = GetService<IGymQueryService>();
 
         var page1 = await queries.GetMembersAsync(
-            gym.Id, new MemberRosterRequest(1, 1, RestrictToMemberIds: clients));
+            new GymId(gym.Id), new MemberRosterRequest(1, 1, RestrictToMemberIds: clients));
         var page2 = await queries.GetMembersAsync(
-            gym.Id, new MemberRosterRequest(2, 1, RestrictToMemberIds: clients));
+            new GymId(gym.Id), new MemberRosterRequest(2, 1, RestrictToMemberIds: clients));
 
         page1.TotalCount.Should().Be(2);
         page1.TotalPages.Should().Be(2);
@@ -70,7 +70,7 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
         var (gym, _) = await SeedGymWithMembers(3);
 
         var page = await GetService<IGymQueryService>().GetMembersAsync(
-            gym.Id, new MemberRosterRequest(1, 20, RestrictToMemberIds: Array.Empty<Guid>()));
+            new GymId(gym.Id), new MemberRosterRequest(1, 20, RestrictToMemberIds: Array.Empty<Guid>()));
 
         page.TotalCount.Should().Be(0);
         page.Items.Should().BeEmpty();
@@ -81,7 +81,7 @@ public sealed class TrainerRosterPagingIntegrationTests : BaseIntegrationTest
     {
         var (gym, memberIds) = await SeedGymWithMembers(3);
 
-        var page = await GetService<IGymQueryService>().GetMembersAsync(gym.Id, new MemberRosterRequest(1, 20));
+        var page = await GetService<IGymQueryService>().GetMembersAsync(new GymId(gym.Id), new MemberRosterRequest(1, 20));
 
         page.TotalCount.Should().Be(3);
         page.Items.Select(m => m.MemberId).Should().Equal(memberIds);

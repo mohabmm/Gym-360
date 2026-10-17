@@ -7,6 +7,7 @@ using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Application.Services;
 using GymApp.Modules.Gyms.IntegrationEvents;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddTrainer;
 
@@ -42,7 +43,7 @@ internal sealed class AddTrainerCommandHandler : ICommandHandler<AddTrainerComma
         if (seat.IsFailure)
             return seat;
 
-        var result = gym.AddTrainer(request.TrainerId);
+        var result = gym.AddTrainer(new TrainerId(request.TrainerId));
         if (result.IsFailure)
             return result;
 

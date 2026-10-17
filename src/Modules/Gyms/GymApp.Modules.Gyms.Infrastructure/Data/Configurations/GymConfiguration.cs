@@ -3,11 +3,18 @@ using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace GymApp.Modules.Gyms.Infrastructure.Data.Configurations;
 
 internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
 {
+    private static readonly ValueConverter<MemberId, Guid> MemberIdConverter =
+        new(id => id.Value, value => new MemberId(value));
+
+    private static readonly ValueConverter<TrainerId, Guid> TrainerIdConverter =
+        new(id => id.Value, value => new TrainerId(value));
+
     public void Configure(EntityTypeBuilder<Gym> builder)
     {
         ConfigureIdentity(builder);
@@ -120,11 +127,14 @@ internal sealed class GymConfiguration : IEntityTypeConfiguration<Gym>
             .HasMaxLength(100);
 
         // IReadOnlyList cannot be used directly with PrimitiveCollection — configure via backing field.
-        builder.PrimitiveCollection<List<Guid>>("_memberIds")
-            .HasColumnName("MemberIds");
+        // The typed ids convert element-wise to Guid, so the JSON columns keep their Guid-array shape.
+        builder.PrimitiveCollection<List<MemberId>>("_memberIds")
+            .HasColumnName("MemberIds")
+            .ElementType(e => e.HasConversion(MemberIdConverter));
 
-        builder.PrimitiveCollection<List<Guid>>("_trainerIds")
-            .HasColumnName("TrainerIds");
+        builder.PrimitiveCollection<List<TrainerId>>("_trainerIds")
+            .HasColumnName("TrainerIds")
+            .ElementType(e => e.HasConversion(TrainerIdConverter));
     }
 
     private static void ConfigureLifecycle(EntityTypeBuilder<Gym> builder)

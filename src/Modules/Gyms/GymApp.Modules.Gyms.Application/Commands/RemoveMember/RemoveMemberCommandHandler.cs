@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.RemoveMember;
 
@@ -23,7 +24,7 @@ internal sealed class RemoveMemberCommandHandler : ICommandHandler<RemoveMemberC
         if (gym is null)
             return Result.Failure(GymErrors.NotFound);
 
-        var result = gym.RemoveMember(request.MemberId);
+        var result = gym.RemoveMember(new MemberId(request.MemberId));
         if (result.IsFailure)
             return result;
 

@@ -284,7 +284,7 @@ public sealed class GymTests
     public void AddMember_WhenActive_ShouldSucceed()
     {
         var gym = CreateActiveGym();
-        var memberId = Guid.NewGuid();
+        var memberId = new MemberId(Guid.NewGuid());
 
         gym.AddMember(memberId).IsSuccess.Should().BeTrue();
 
@@ -297,7 +297,7 @@ public sealed class GymTests
     {
         var gym = CreateDefaultGym(); // PendingApproval
 
-        var result = gym.AddMember(Guid.NewGuid());
+        var result = gym.AddMember(new MemberId(Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Gyms.NotApproved");
@@ -305,13 +305,13 @@ public sealed class GymTests
 
     [Fact]
     public void AddMember_Duplicate_ShouldFail() =>
-        AssertSecondAddRejected((gym, id) => gym.AddMember(id), "Gyms.MemberAlreadyAdded");
+        AssertSecondAddRejected((gym, id) => gym.AddMember(new MemberId(id)), "Gyms.MemberAlreadyAdded");
 
     [Fact]
     public void RemoveMember_WhenExists_ShouldSucceed()
     {
         var gym = CreateActiveGym();
-        var memberId = Guid.NewGuid();
+        var memberId = new MemberId(Guid.NewGuid());
         gym.AddMember(memberId);
         gym.ClearDomainEvents();
 
@@ -326,7 +326,7 @@ public sealed class GymTests
     {
         var gym = CreateActiveGym();
 
-        var result = gym.RemoveMember(Guid.NewGuid());
+        var result = gym.RemoveMember(new MemberId(Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Gyms.MemberNotFound");
@@ -336,7 +336,7 @@ public sealed class GymTests
     public void AddTrainer_WhenActive_ShouldSucceed()
     {
         var gym = CreateActiveGym();
-        var trainerId = Guid.NewGuid();
+        var trainerId = new TrainerId(Guid.NewGuid());
 
         gym.AddTrainer(trainerId).IsSuccess.Should().BeTrue();
 
@@ -346,7 +346,7 @@ public sealed class GymTests
 
     [Fact]
     public void AddTrainer_Duplicate_ShouldFail() =>
-        AssertSecondAddRejected((gym, id) => gym.AddTrainer(id), "Gyms.TrainerAlreadyAdded");
+        AssertSecondAddRejected((gym, id) => gym.AddTrainer(new TrainerId(id)), "Gyms.TrainerAlreadyAdded");
 
     // --- Update methods ---
 

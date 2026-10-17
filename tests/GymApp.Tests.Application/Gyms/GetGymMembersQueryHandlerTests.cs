@@ -2,6 +2,7 @@ using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Application.Queries.GetGymMembers;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Gyms;
 
@@ -37,7 +38,7 @@ public class GetGymMembersQueryHandlerTests
             Page: 1, PageSize: 1, TotalCount: 2, TotalPages: 2);
         _gymQueryService
             .GetMembersAsync(
-                _gymId,
+                new GymId(_gymId),
                 Arg.Is<MemberRosterRequest>(r =>
                     r.Page == 1 && r.PageSize == 1 && r.RestrictToMemberIds != null && r.RestrictToMemberIds.SequenceEqual(clients)),
                 Arg.Any<CancellationToken>())
@@ -57,7 +58,7 @@ public class GetGymMembersQueryHandlerTests
         await _sut.Handle(new GetGymMembersQuery(_gymId, 1, 20, null, null), CancellationToken.None);
 
         await _gymQueryService.Received(1).GetMembersAsync(
-            _gymId, new MemberRosterRequest(1, 20), Arg.Any<CancellationToken>());
+            new GymId(_gymId), new MemberRosterRequest(1, 20), Arg.Any<CancellationToken>());
         await _trainerAssignmentLookup.DidNotReceiveWithAnyArgs()
             .GetClientsForTrainerAsync(default, default, default);
     }

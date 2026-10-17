@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Errors;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.GetGymTrainerById;
 
@@ -17,7 +18,7 @@ internal sealed class GetGymTrainerByIdQueryHandler : IQueryHandler<GetGymTraine
 
     public async Task<Result<TrainerDto>> Handle(GetGymTrainerByIdQuery request, CancellationToken cancellationToken)
     {
-        var trainer = await _gymQueryService.GetTrainerByIdAsync(request.GymId, request.TrainerId, cancellationToken);
+        var trainer = await _gymQueryService.GetTrainerByIdAsync(new GymId(request.GymId), new TrainerId(request.TrainerId), cancellationToken);
 
         if (trainer is null)
             return Result.Failure<TrainerDto>(GymErrors.TrainerNotFound);

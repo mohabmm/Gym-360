@@ -35,7 +35,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
                 GymCode = GymCode.Generate()
             });
         gym.Approve();
-        gym.AddMember(memberId);
+        gym.AddMember(new MemberId(memberId));
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
         return gym;
@@ -155,7 +155,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         // Add the other member so we can create a package for them.
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var freshGym = await gymsDb.Gyms.FindAsync(gym.Id);
-        freshGym!.AddMember(otherMember);
+        freshGym!.AddMember(new MemberId(otherMember));
         await gymsDb.SaveChangesAsync();
 
         await SeedPackage(gym.Id, userId, "My Package");

@@ -9,8 +9,8 @@ public sealed class Gym : Entity
 {
     private readonly List<DaySchedule> _operatingHours = new();
     private readonly List<string> _amenities = new();
-    private readonly List<Guid> _memberIds = new();
-    private readonly List<Guid> _trainerIds = new();
+    private readonly List<MemberId> _memberIds = new();
+    private readonly List<TrainerId> _trainerIds = new();
 
     private Gym() : base() { }
 
@@ -34,8 +34,8 @@ public sealed class Gym : Entity
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public string? KioskPinHash { get; private set; }
-    public IReadOnlyList<Guid> MemberIds => _memberIds.AsReadOnly();
-    public IReadOnlyList<Guid> TrainerIds => _trainerIds.AsReadOnly();
+    public IReadOnlyList<MemberId> MemberIds => _memberIds.AsReadOnly();
+    public IReadOnlyList<TrainerId> TrainerIds => _trainerIds.AsReadOnly();
 
     public static Gym Create(Guid ownerId, GymDetails details)
         => Create(Guid.NewGuid(), ownerId, details);
@@ -174,24 +174,25 @@ public sealed class Gym : Entity
         Touch();
     }
 
-    public Result AddMember(Guid memberId) =>
-        AddToRoster(_memberIds, memberId, Errors.GymErrors.MemberAlreadyAdded, new MemberAddedToGymDomainEvent(Id, memberId));
+    public Result AddMember(MemberId memberId) =>
+        AddToRoster(_memberIds, memberId, Errors.GymErrors.MemberAlreadyAdded, new MemberAddedToGymDomainEvent(Id, memberId.Value));
 
-    public Result RemoveMember(Guid memberId)
+    public Result RemoveMember(MemberId memberId)
     {
         if (!_memberIds.Contains(memberId))
             return Result.Failure(Errors.GymErrors.MemberNotFound);
 
         _memberIds.Remove(memberId);
         Touch();
-        RaiseDomainEvent(new MemberRemovedFromGymDomainEvent(Id, memberId));
+        RaiseDomainEvent(new MemberRemovedFromGymDomainEvent(Id, memberId.Value));
         return Result.Success();
     }
 
-    public Result AddTrainer(Guid trainerId) =>
-        AddToRoster(_trainerIds, trainerId, Errors.GymErrors.TrainerAlreadyAdded, new TrainerAddedToGymDomainEvent(Id, trainerId));
+    public Result AddTrainer(TrainerId trainerId) =>
+        AddToRoster(_trainerIds, trainerId, Errors.GymErrors.TrainerAlreadyAdded, new TrainerAddedToGymDomainEvent(Id, trainerId.Value));
 
-    private Result AddToRoster(List<Guid> roster, Guid personId, Error alreadyAdded, IDomainEvent domainEvent)
+    private Result AddToRoster<TId>(List<TId> roster, TId personId, Error alreadyAdded, IDomainEvent domainEvent)
+        where TId : struct
     {
         if (Status != GymStatus.Active)
             return Result.Failure(Errors.GymErrors.NotApproved);
@@ -205,7 +206,7 @@ public sealed class Gym : Entity
         return Result.Success();
     }
 
-    public Result RemoveTrainer(Guid trainerId)
+    public Result RemoveTrainer(TrainerId trainerId)
     {
         if (!_trainerIds.Contains(trainerId))
             return Result.Success();

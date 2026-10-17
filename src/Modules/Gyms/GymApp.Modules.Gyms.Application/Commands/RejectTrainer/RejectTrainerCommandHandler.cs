@@ -4,6 +4,7 @@ using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.RejectTrainer;
 
@@ -34,14 +35,14 @@ internal sealed class RejectTrainerCommandHandler : ICommandHandler<RejectTraine
 
         if (trainerRequest is null)
         {
-            gym.RemoveTrainer(request.TrainerId);
+            gym.RemoveTrainer(new TrainerId(request.TrainerId));
             var newRequest = GymTrainerRequest.CreateRejected(request.GymId, request.TrainerId);
             await _trainerRequestRepository.AddAsync(newRequest, cancellationToken);
         }
         else
         {
             trainerRequest.Reject();
-            gym.RemoveTrainer(request.TrainerId);
+            gym.RemoveTrainer(new TrainerId(request.TrainerId));
             _trainerRequestRepository.Update(trainerRequest);
         }
 

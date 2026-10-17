@@ -24,7 +24,7 @@ public class AddTrainerCommandHandlerTests
     public AddTrainerCommandHandlerTests()
     {
         _planService.GetTrainerLimitAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
-        _queryService.GetTrainerCountAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(0);
+        _queryService.GetTrainerCountAsync(Arg.Any<GymId>(), Arg.Any<CancellationToken>()).Returns(0);
         _trainerRequestRepository.GetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((GymTrainerRequest?)null);
         _sut = new AddTrainerCommandHandler(

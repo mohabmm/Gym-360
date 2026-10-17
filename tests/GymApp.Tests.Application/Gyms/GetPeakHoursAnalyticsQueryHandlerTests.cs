@@ -3,6 +3,7 @@ using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Application.Queries.GetPeakHoursAnalytics;
 using GymApp.Modules.Gyms.Domain.Errors;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Tests.Application.Gyms;
 
@@ -33,7 +34,7 @@ public class GetPeakHoursAnalyticsQueryHandlerTests
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("PLAN.FEATURE_NOT_AVAILABLE");
         await _queryService.DidNotReceive().GetPeakHoursAsync(
-            Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            Arg.Any<GymId>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public class GetPeakHoursAnalyticsQueryHandlerTests
             TimezoneOffsetMinutes: 180,
             TotalCheckIns: 3,
             Buckets: new[] { new PeakHourBucket(DayOfWeek: 1, Hour: 19, Count: 3) });
-        _queryService.GetPeakHoursAsync(gymId, Arg.Any<DateTime>(), Arg.Any<DateTime>(), 180, Arg.Any<CancellationToken>())
+        _queryService.GetPeakHoursAsync(new GymId(gymId), Arg.Any<DateTime>(), Arg.Any<DateTime>(), 180, Arg.Any<CancellationToken>())
             .Returns(expected);
 
         var query = new GetPeakHoursAnalyticsQuery(gymId, null, null, 180);
@@ -68,7 +69,7 @@ public class GetPeakHoursAnalyticsQueryHandlerTests
         var gymId = Guid.NewGuid();
         _planService.IsFeatureEnabledAsync(gymId, GetPeakHoursAnalyticsQueryHandler.FeatureCode, Arg.Any<CancellationToken>())
             .Returns(true);
-        _queryService.GetPeakHoursAsync(gymId, Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _queryService.GetPeakHoursAsync(new GymId(gymId), Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((PeakHoursAnalyticsResponse?)null);
 
         var query = new GetPeakHoursAnalyticsQuery(gymId, null, null, 180);

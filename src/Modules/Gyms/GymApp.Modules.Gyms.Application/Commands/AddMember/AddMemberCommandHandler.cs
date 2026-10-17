@@ -6,6 +6,7 @@ using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Application.Services;
 using GymApp.Modules.Gyms.IntegrationEvents;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddMember;
 
@@ -41,7 +42,7 @@ internal sealed class AddMemberCommandHandler : ICommandHandler<AddMemberCommand
         if (seat.IsFailure)
             return seat;
 
-        var result = gym.AddMember(request.UserId);
+        var result = gym.AddMember(new MemberId(request.UserId));
         if (result.IsFailure)
             return result;
 

@@ -5,6 +5,7 @@ using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.ListGyms;
 
@@ -91,7 +92,7 @@ internal sealed class ListGymsQueryHandler : IQueryHandler<ListGymsQuery, PagedR
             accessor.Set(reg.GymId, reg.SchemaPrefix, isOwnerScope: false);
 
             var qs = sp.GetRequiredService<IGymQueryService>();
-            return await qs.GetGymByIdAsync(reg.GymId, cancellationToken);
+            return await qs.GetGymByIdAsync(new GymId(reg.GymId), cancellationToken);
         }
         catch (Exception ex)
         {

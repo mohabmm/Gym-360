@@ -38,7 +38,7 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
                 GymCode = GymCode.Generate()
             });
         gym.Approve();
-        gym.AddMember(memberId);
+        gym.AddMember(new MemberId(memberId));
 
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();

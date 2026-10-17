@@ -40,8 +40,8 @@ public sealed class MemberEndpointsAuthorizationIntegrationTests : BaseIntegrati
         gym.Approve();
         _memberId = Guid.NewGuid();
         _otherMemberId = Guid.NewGuid();
-        gym.AddMember(_memberId);
-        gym.AddMember(_otherMemberId);
+        gym.AddMember(new MemberId(_memberId));
+        gym.AddMember(new MemberId(_otherMemberId));
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
         _gymId = gym.Id;
