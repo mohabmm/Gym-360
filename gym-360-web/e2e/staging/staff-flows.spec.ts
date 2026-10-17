@@ -57,7 +57,7 @@ test.describe('Staff — auth', () => {
     });
 
     test('S03 valid credentials log in to the dashboard', async ({ page }) => {
-      await uiLogin(page, STAFF.email, STAFF.password);
+      await uiLogin(page, STAFF);
       expect(page.url()).not.toContain('/login');
       await expect(page.locator('main, h1, h2').first()).toBeVisible();
     });
@@ -166,7 +166,7 @@ test.describe('Staff — write flows (E2E-tagged, cleaned up)', () => {
     page,
   }) => {
     const ctx = await apiContext();
-    const { token, gymId } = await apiLogin(ctx, STAFF.email, STAFF.password);
+    const { token, gymId } = await apiLogin(ctx, STAFF);
     test.skip(!gymId, 'no gym scope for staff account');
 
     const tag = e2eTag();
@@ -204,7 +204,7 @@ test.describe('Staff — write flows (E2E-tagged, cleaned up)', () => {
 
   test('S41 create announcement via API appears in the list, then cleaned up', async ({ page }) => {
     const ctx = await apiContext();
-    const { token, gymId } = await apiLogin(ctx, STAFF.email, STAFF.password);
+    const { token, gymId } = await apiLogin(ctx, STAFF);
     test.skip(!gymId, 'no gym scope for staff account');
 
     const tag = e2eTag();
@@ -248,7 +248,7 @@ test.describe('Staff — write flows (E2E-tagged, cleaned up)', () => {
   // It does NOT reproduce the live cross-gym trigger — see README "Known bug".
   test('S43 staff-create-trainer must not 500 (fresh + same-account reuse)', async ({}) => {
     const ctx = await apiContext();
-    const { token } = await apiLogin(ctx, STAFF.email, STAFF.password);
+    const { token } = await apiLogin(ctx, STAFF);
     const tag = e2eTag();
     const data = {
       firstName: tag,
