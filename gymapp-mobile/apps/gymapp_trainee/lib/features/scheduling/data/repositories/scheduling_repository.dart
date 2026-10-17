@@ -14,16 +14,8 @@ class SchedulingRepository {
   }) =>
       _remoteDataSource.getUpcomingSessions(userId: userId, gymId: gymId);
 
-  Future<List<SessionModel>> getAllSessions({
-    required String gymId,
-    String? memberId,
-    String? status,
-  }) =>
-      _remoteDataSource.getAllSessions(
-        gymId: gymId,
-        memberId: memberId,
-        status: status,
-      );
+  Future<List<SessionModel>> getAllSessions(SessionListQuery query) =>
+      _remoteDataSource.getAllSessions(query);
 
   Future<SessionDetailModel> getSessionById(String id) =>
       _remoteDataSource.getSessionById(id);
@@ -32,39 +24,19 @@ class SchedulingRepository {
   Future<String> bookSession(BookSessionRequest request) =>
       _remoteDataSource.bookSession(request);
 
-  Future<void> cancelSession(
-    String sessionId, {
-    required String cancelledBy,
-    String? reason,
-  }) =>
-      _remoteDataSource.cancelSession(
-        sessionId,
-        cancelledBy: cancelledBy,
-        reason: reason,
-      );
+  Future<void> cancelSession(SessionCancellation cancellation) =>
+      _remoteDataSource.cancelSession(cancellation);
 
   Future<void> logMemberFeedback(
           String sessionId, Map<String, dynamic> body) =>
       _remoteDataSource.logMemberFeedback(sessionId, body);
 
-  Future<List<String>> getAvailabilitySlots(
-          String trainerId, String gymId, DateTime date) =>
-      _remoteDataSource.getAvailabilitySlots(trainerId, gymId, date);
+  Future<List<String>> getAvailabilitySlots(AvailabilitySlotsQuery query) =>
+      _remoteDataSource.getAvailabilitySlots(query);
 
-  Future<WeeklyAvailabilityModel> getWeeklyAvailability({
-    required String trainerId,
-    required String gymId,
-    required DateTime startDate,
-    required DateTime endDate,
-    String? memberId,
-  }) =>
-      _remoteDataSource.getWeeklyAvailability(
-        trainerId: trainerId,
-        gymId: gymId,
-        startDate: startDate,
-        endDate: endDate,
-        memberId: memberId,
-      );
+  Future<WeeklyAvailabilityModel> getWeeklyAvailability(
+          WeeklyAvailabilityQuery query) =>
+      _remoteDataSource.getWeeklyAvailability(query);
 
   Future<List<GymClassModel>> getClasses({
     required String gymId,
@@ -72,25 +44,9 @@ class SchedulingRepository {
   }) =>
       _remoteDataSource.getClasses(gymId: gymId, date: date);
 
-  Future<void> bookClass({
-    required String gymId,
-    required String classId,
-    required String memberId,
-  }) =>
-      _remoteDataSource.bookClass(
-        gymId: gymId,
-        classId: classId,
-        memberId: memberId,
-      );
+  Future<void> bookClass(ClassBookingRequest booking) =>
+      _remoteDataSource.bookClass(booking);
 
-  Future<void> cancelClassBooking({
-    required String gymId,
-    required String classId,
-    required String bookingId,
-  }) =>
-      _remoteDataSource.cancelClassBooking(
-        gymId: gymId,
-        classId: classId,
-        bookingId: bookingId,
-      );
+  Future<void> cancelClassBooking(ClassBookingCancellation cancellation) =>
+      _remoteDataSource.cancelClassBooking(cancellation);
 }

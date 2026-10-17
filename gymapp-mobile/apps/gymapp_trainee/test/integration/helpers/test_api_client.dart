@@ -28,23 +28,39 @@ class TestApiClient {
   }
 }
 
+/// Credentials + gym context seeded into [FakeSecureStorage].
+class TestSession {
+  const TestSession({
+    this.accessToken = 'test-jwt',
+    this.refreshToken = 'test-refresh',
+    this.userId = 'user-1',
+    this.gymId = 'gym-1',
+  });
+
+  /// No tokens, user or gym — for flows that run before authentication.
+  static const anonymous =
+      TestSession(accessToken: '', refreshToken: '', userId: '', gymId: '');
+
+  final String accessToken;
+  final String refreshToken;
+  final String userId;
+  final String gymId;
+}
+
 /// Builds an [ApiClient] with the real interceptor stack (auth, gym-id, error)
 /// wired up, pointed at a [MockHttpAdapter].
 ///
 /// Seeds the in-memory secure storage with a token + gym id so every request
 /// carries the Authorization + X-Gym-Id headers the BE expects.
 TestApiClient buildTestApiClient({
-  String accessToken = 'test-jwt',
-  String refreshToken = 'test-refresh',
-  String userId = 'user-1',
-  String gymId = 'gym-1',
+  TestSession session = const TestSession(),
   String baseUrl = 'https://test.api.gymapp.local',
 }) {
   final storage = FakeSecureStorage(
-    accessToken: accessToken,
-    refreshToken: refreshToken,
-    userId: userId,
-    currentGymId: gymId,
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    userId: session.userId,
+    currentGymId: session.gymId,
   );
   final client = ApiClient(
     baseUrl: baseUrl,

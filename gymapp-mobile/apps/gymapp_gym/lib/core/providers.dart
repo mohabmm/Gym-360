@@ -197,6 +197,9 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     }
   }
 
+  /// BE role claims admitted by the staff app (GymStaff, GymOwner).
+  static const _allowedRoles = {'staff', 'owner'};
+
   Future<void> login(AuthResponse response, {String? staffRole}) async {
     // App-gate: this is the gym staff app — only GymStaff (Receptionist /
     // Manager) and GymOwner principals are allowed. Reject trainees, trainers,
@@ -204,8 +207,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
     // instead of cascading 403s when staff-only endpoints reject their JWT.
     // BE serializes roles via UserRoleExtensions.ToRoleClaim:
     // GymStaff → "staff", GymOwner → "owner".
-    final role = response.user.role.toLowerCase();
-    if (role != 'staff' && role != 'owner') {
+    if (!_allowedRoles.contains(response.user.role.toLowerCase())) {
       throw const ApiException(
         message:
             'This app is for gym staff and owners only. Use the role-specific app for your account.',
@@ -226,11 +228,7 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
     // Backend login returns a scalar user.gymId for the active membership.
     // Fall back to the gymMemberships list when it's embedded in the response.
-    String? gymId = response.user.gymId;
-    if ((gymId == null || gymId.isEmpty) &&
-        response.user.gymMemberships?.isNotEmpty == true) {
-      gymId = response.user.gymMemberships!.first.gymId;
-    }
+    final gymId = response.user.loginGymId;
     if (gymId != null && gymId.isNotEmpty) {
       await storage.saveCurrentGymId(gymId);
     }
@@ -520,3 +518,14 @@ final staffRoleProvider = Provider<String?>((ref) {
   final authState = ref.watch(authProvider);
   return authState.valueOrNull?.staffRole;
 });
+
+extension on UserModel {
+  /// The scalar `gymId`, falling back to the first membership when blank.
+  String? get loginGymId {
+    final scalar = gymId;
+    if (scalar != null && scalar.isNotEmpty) return scalar;
+    final memberships = gymMemberships;
+    if (memberships == null || memberships.isEmpty) return scalar;
+    return memberships.first.gymId;
+  }
+}

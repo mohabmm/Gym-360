@@ -6,6 +6,9 @@ import '../constants/api_endpoints.dart';
 import '../models/message_model.dart';
 import '../network/api_base_url.dart';
 import '../network/api_client.dart';
+import 'chat_requests.dart';
+
+export 'chat_requests.dart';
 
 typedef MessageReceivedHandler = void Function(Map<String, dynamic> payload);
 typedef MessagesReadHandler = void Function(Map<String, dynamic> payload);
@@ -39,11 +42,7 @@ class ChatService {
       ApiEndpoints.conversations,
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
-    final items = (res.data?['data']?['items'] as List?) ?? const [];
-    return items
-        .whereType<Map>()
-        .map((m) => ConversationModel.fromJson(Map<String, dynamic>.from(m)))
-        .toList();
+    return _pageItems(res, ConversationModel.fromJson);
   }
 
   Future<List<MessageModel>> listMessages(String conversationId, {int page = 1, int pageSize = 100}) async {
@@ -51,17 +50,25 @@ class ChatService {
       ApiEndpoints.messages(conversationId),
       queryParameters: {'page': page, 'pageSize': pageSize},
     );
+    return _pageItems(res, MessageModel.fromJson);
+  }
+
+  /// Unwraps `{ data: { items: [...] } }` into typed models.
+  List<T> _pageItems<T>(
+    Response<dynamic> res,
+    T Function(Map<String, dynamic> json) fromJson,
+  ) {
     final items = (res.data?['data']?['items'] as List?) ?? const [];
     return items
         .whereType<Map>()
-        .map((m) => MessageModel.fromJson(Map<String, dynamic>.from(m)))
+        .map((m) => fromJson(Map<String, dynamic>.from(m)))
         .toList();
   }
 
-  Future<String> createOrGetConversation({required String gymId, required String participant2}) async {
+  Future<String> createOrGetConversation(ConversationParticipants participants) async {
     final res = await _api.dio.post(
       ApiEndpoints.conversations,
-      data: {'gymId': gymId, 'participant2': participant2},
+      data: participants.toJson(),
     );
     final id = res.data?['data'];
     if (id is String) return id;
@@ -71,14 +78,10 @@ class ChatService {
     );
   }
 
-  Future<String> sendMessage(String conversationId, String content, {String? mediaUrl, String? mediaType}) async {
+  Future<String> sendMessage(String conversationId, MessageDraft draft) async {
     final res = await _api.dio.post(
       ApiEndpoints.messages(conversationId),
-      data: {
-        'content': content,
-        if (mediaUrl != null) 'mediaUrl': mediaUrl,
-        if (mediaType != null) 'mediaType': mediaType,
-      },
+      data: draft.toJson(),
     );
     return res.data?['data'] as String;
   }
@@ -96,7 +99,7 @@ class ChatService {
   }
 
   Future<void> connectHub() async {
-    if (_hub != null && _hub!.state == HubConnectionState.Connected) return;
+    if (_isConnected(_hub)) return;
 
     final hub = HubConnectionBuilder()
         .withUrl(
@@ -108,18 +111,7 @@ class ChatService {
         .withAutomaticReconnect(retryDelays: [0, 2000, 5000, 10000, 30000])
         .build();
 
-    hub.on('message_received', (args) {
-      final data = _firstArg(args);
-      if (data != null) onMessageReceived?.call(data);
-    });
-    hub.on('messages_read', (args) {
-      final data = _firstArg(args);
-      if (data != null) onMessagesRead?.call(data);
-    });
-    hub.on('conversation_created', (args) {
-      final data = _firstArg(args);
-      if (data != null) onConversationCreated?.call(data);
-    });
+    _bindHandlers(hub);
 
     try {
       await hub.start();
@@ -131,8 +123,8 @@ class ChatService {
   }
 
   Future<void> joinConversation(String conversationId) async {
-    final hub = _hub;
-    if (hub == null || hub.state != HubConnectionState.Connected) return;
+    final hub = _connectedHub;
+    if (hub == null) return;
     try {
       await hub.invoke('JoinConversation', args: [conversationId]);
     } catch (e) {
@@ -141,8 +133,8 @@ class ChatService {
   }
 
   Future<void> leaveConversation(String conversationId) async {
-    final hub = _hub;
-    if (hub == null || hub.state != HubConnectionState.Connected) return;
+    final hub = _connectedHub;
+    if (hub == null) return;
     try {
       await hub.invoke('LeaveConversation', args: [conversationId]);
     } catch (e) {
@@ -155,6 +147,28 @@ class ChatService {
       await _hub?.stop();
     } catch (_) {}
     _hub = null;
+  }
+
+  HubConnection? get _connectedHub => _isConnected(_hub) ? _hub : null;
+
+  static bool _isConnected(HubConnection? hub) =>
+      hub != null && hub.state == HubConnectionState.Connected;
+
+  void _bindHandlers(HubConnection hub) {
+    hub.on('message_received', _forward(() => onMessageReceived));
+    hub.on('messages_read', _forward(() => onMessagesRead));
+    hub.on('conversation_created', _forward(() => onConversationCreated));
+  }
+
+  /// Forwards the event's first map argument to the handler current at
+  /// dispatch time (handlers may be (re)assigned after [connectHub]).
+  MethodInvocationFunc _forward(
+    void Function(Map<String, dynamic> payload)? Function() handler,
+  ) {
+    return (args) {
+      final data = _firstArg(args);
+      if (data != null) handler()?.call(data);
+    };
   }
 
   Map<String, dynamic>? _firstArg(List<Object?>? args) {

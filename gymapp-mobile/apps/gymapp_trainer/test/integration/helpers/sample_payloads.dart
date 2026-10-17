@@ -4,8 +4,8 @@
 class Samples {
   Samples._();
 
-  static Map<String, dynamic> trainerUser({String id = 'trainer-1'}) => {
-        'id': id,
+  static Map<String, dynamic> trainerUser() => {
+        'id': 'trainer-1',
         'email': 'coach@test.local',
         'firstName': 'Omar',
         'lastName': 'Hassan',
@@ -44,12 +44,12 @@ class Samples {
         'goals': ['WeightLoss', 'Toning'],
       };
 
-  static Map<String, dynamic> authResponse({String role = 'Trainer'}) => {
+  static Map<String, dynamic> authResponse() => {
         'accessToken': 'new-access-token',
         'refreshToken': 'new-refresh-token',
         'user': {
           ...trainerUser(),
-          'role': role,
+          'role': 'Trainer',
         },
         'expiresAt': '2026-05-16T10:00:00.000Z',
       };
@@ -102,8 +102,8 @@ class Samples {
         'isActive': true,
       };
 
-  static Map<String, dynamic> program({String id = 'prog-1'}) => {
-        'id': id,
+  static Map<String, dynamic> program() => {
+        'id': 'prog-1',
         'name': '8-Week Strength',
         'trainerId': 'trainer-1',
         'durationWeeks': 8,
@@ -163,8 +163,8 @@ class Samples {
         'lastMessageAt': '2026-04-15T18:00:00.000Z',
       };
 
-  static Map<String, dynamic> message({String id = 'msg-1'}) => {
-        'id': id,
+  static Map<String, dynamic> message() => {
+        'id': 'msg-1',
         'conversationId': 'conv-1',
         'senderId': 'client-1',
         'senderName': 'Mona Ali',
@@ -175,8 +175,8 @@ class Samples {
         'sentAt': '2026-04-15T18:00:00.000Z',
       };
 
-  static Map<String, dynamic> mealPlan({String id = 'mp-1'}) => {
-        'id': id,
+  static Map<String, dynamic> mealPlan() => {
+        'id': 'mp-1',
         'name': 'Cut plan',
         'trainerId': 'trainer-1',
         'traineeId': '',
@@ -194,8 +194,8 @@ class Samples {
   /// Mirrors backend `FoodDatabaseItemDto` — per-serving macros +
   /// `nameArabic`, not the per-100g/`nameAr` shape `FoodItemModel` declares.
   /// Clients must go through `FoodItemModel.fromFoodDatabaseJson` to parse it.
-  static Map<String, dynamic> foodItem({String id = 'food-1'}) => {
-        'id': id,
+  static Map<String, dynamic> foodItem() => {
+        'id': 'food-1',
         'name': 'Ful medames',
         'nameArabic': 'فول مدمس',
         'servingSize': 100.0,
@@ -207,8 +207,8 @@ class Samples {
         'category': 'Protein',
       };
 
-  static Map<String, dynamic> bodyMetric({String id = 'bm-1'}) => {
-        'id': id,
+  static Map<String, dynamic> bodyMetric() => {
+        'id': 'bm-1',
         'userId': 'client-1',
         'gymId': 'gym-1',
         'date': '2026-04-15',
@@ -219,16 +219,16 @@ class Samples {
         'createdAt': '2026-04-15T08:00:00.000Z',
       };
 
-  static Map<String, dynamic> remoteWorkoutStatus({bool isActive = true}) => {
+  static Map<String, dynamic> remoteWorkoutStatus() => {
         'clientId': 'client-1',
         'trainerId': 'trainer-1',
-        'isActive': isActive,
-        if (isActive) 'activatedAt': '2026-04-15T08:00:00.000Z',
-        if (isActive) 'reason': 'Out of town',
+        'isActive': true,
+        'activatedAt': '2026-04-15T08:00:00.000Z',
+        'reason': 'Out of town',
       };
 
-  static Map<String, dynamic> sessionPackage({String id = 'pkg-1'}) => {
-        'id': id,
+  static Map<String, dynamic> sessionPackage() => {
+        'id': 'pkg-1',
         'gymId': 'gym-1',
         'memberId': 'client-1',
         'trainerId': 'trainer-1',
@@ -243,8 +243,8 @@ class Samples {
         'expiryDate': '2026-07-01T00:00:00.000Z',
       };
 
-  static Map<String, dynamic> clientNote({String id = 'note-1'}) => {
-        'id': id,
+  static Map<String, dynamic> clientNote() => {
+        'id': 'note-1',
         'content': 'Client has right-shoulder tightness',
         'createdAt': '2026-04-10T14:00:00.000Z',
       };
@@ -279,8 +279,8 @@ class Samples {
         'specialization': 'Strength',
       };
 
-  static Map<String, dynamic> gym({String id = 'gym-1'}) => {
-        'id': id,
+  static Map<String, dynamic> gym() => {
+        'id': 'gym-1',
         'name': 'Tameeni Test Gym',
         'gymCode': 'TAMEENI-1',
         'status': 'Active',

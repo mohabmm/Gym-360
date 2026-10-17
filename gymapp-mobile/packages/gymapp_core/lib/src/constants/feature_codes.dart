@@ -51,49 +51,45 @@ class FeatureCodes {
   static const String planPro = 'Pro';
   static const String planBusiness = 'Business';
 
+  /// Minimum plan per feature. Unknown features default to [planBusiness].
+  static const Map<String, String> _minimumPlan = {
+    memberManagement: planFree,
+    qrCheckIn: planFree,
+    basicAnalytics: planFree,
+    basicAnnouncements: planFree,
+    workoutBuilder: planStarter,
+    workoutTemplates: planStarter,
+    sessionBooking: planStarter,
+    classManagement: planStarter,
+    progressTracking: planStarter,
+    sessionFeedback: planStarter,
+    trainerManagement: planStarter,
+    paymentRecording: planStarter,
+    receipts: planStarter,
+    sessionPackages: planStarter,
+    nutritionTracking: planPro,
+    mealPlans: planPro,
+    remoteWorkout: planPro,
+    multiWeekPrograms: planPro,
+    leaderboards: planPro,
+    trainerRatings: planPro,
+    gymBranding: planPro,
+    advancedAnalytics: planPro,
+    peakHoursAnalytics: planPro,
+    churnAlerts: planPro,
+    coachLeaderboard: planPro,
+    testimonialModeration: planPro,
+    mealPlanBuilder: planPro,
+    whiteLabel: planBusiness,
+    apiAccess: planBusiness,
+    customExerciseLibrary: planBusiness,
+    pdfReports: planBusiness,
+    churnAi: planBusiness,
+    customPermissions: planBusiness,
+    multiLocation: planBusiness,
+  };
+
   /// Returns the minimum plan required for a given feature.
-  static String requiredPlanFor(String featureCode) {
-    switch (featureCode) {
-      case memberManagement:
-      case qrCheckIn:
-      case basicAnalytics:
-      case basicAnnouncements:
-        return planFree;
-      case workoutBuilder:
-      case workoutTemplates:
-      case sessionBooking:
-      case classManagement:
-      case progressTracking:
-      case sessionFeedback:
-      case trainerManagement:
-      case paymentRecording:
-      case receipts:
-      case sessionPackages:
-        return planStarter;
-      case nutritionTracking:
-      case mealPlans:
-      case remoteWorkout:
-      case multiWeekPrograms:
-      case leaderboards:
-      case trainerRatings:
-      case gymBranding:
-      case advancedAnalytics:
-      case peakHoursAnalytics:
-      case churnAlerts:
-      case coachLeaderboard:
-      case testimonialModeration:
-      case mealPlanBuilder:
-        return planPro;
-      case whiteLabel:
-      case apiAccess:
-      case customExerciseLibrary:
-      case pdfReports:
-      case churnAi:
-      case customPermissions:
-      case multiLocation:
-        return planBusiness;
-      default:
-        return planBusiness;
-    }
-  }
+  static String requiredPlanFor(String featureCode) =>
+      _minimumPlan[featureCode] ?? planBusiness;
 }

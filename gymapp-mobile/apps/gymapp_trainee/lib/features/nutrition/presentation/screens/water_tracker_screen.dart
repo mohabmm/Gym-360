@@ -5,6 +5,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 
 import '../../../../core/providers.dart';
 import '../../../home/presentation/providers/home_providers.dart';
+import '../../data/models/nutrition_requests.dart';
 import '../providers/nutrition_providers.dart';
 
 String _fmtLiters(double liters) {
@@ -240,12 +241,12 @@ class _WaterButtonState extends ConsumerState<_WaterButton> {
         throw Exception('No authenticated user or active gym');
       }
       final repo = ref.read(nutritionRepositoryProvider);
-      await repo.addWaterEntry(
+      await repo.addWaterEntry(WaterEntryRequest(
         userId: userId,
         gymId: gymId,
         date: DateTime.now(),
         amountMl: widget.amount,
-      );
+      ));
       ref.invalidate(waterLogProvider);
       ref.invalidate(todaysWaterProvider);
     } catch (_) {

@@ -39,11 +39,11 @@ final bodyMetricsProvider =
   if (userId == null || gymId == null) return const [];
   final repo = ref.watch(progressRepositoryProvider);
   final metricType = ref.watch(selectedMetricTypeProvider);
-  return repo.getBodyMetrics(
+  return repo.getBodyMetrics(BodyMetricsQuery(
     userId: userId,
     gymId: gymId,
     metricType: metricType,
-  );
+  ));
 });
 
 final progressPhotosProvider =

@@ -16,10 +16,7 @@ void main() {
   setUp(() {
     t = buildTestApiClient(
       // login / register run BEFORE the user is authenticated — start clean.
-      accessToken: '',
-      refreshToken: '',
-      userId: '',
-      gymId: '',
+      session: TestSession.anonymous,
     );
   });
 

@@ -1,12 +1,6 @@
 import 'package:gymapp_core/gymapp_core.dart';
 
-List<dynamic> _unwrapItems(dynamic data) {
-  if (data is List) return data;
-  if (data is Map<String, dynamic> && data['items'] is List) {
-    return data['items'] as List<dynamic>;
-  }
-  return const [];
-}
+import 'paged_items.dart';
 
 class CommunicationRemoteDataSource {
   final ApiClient _apiClient;
@@ -30,7 +24,7 @@ class CommunicationRemoteDataSource {
         'pageSize': pageSize,
       },
       parser: (data) {
-        final list = _unwrapItems(data)
+        final list = unwrapItems(data)
             .map<ConversationModel>(
                 (e) => ConversationModel.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -58,7 +52,7 @@ class CommunicationRemoteDataSource {
         'pageSize': pageSize,
       },
       parser: (data) {
-        final list = _unwrapItems(data)
+        final list = unwrapItems(data)
             .map<MessageModel>(
                 (e) => MessageModel.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -72,17 +66,11 @@ class CommunicationRemoteDataSource {
   /// BE POST /communication/conversations/{id}/messages — sender derived from JWT.
   Future<String> sendMessage({
     required String conversationId,
-    required String content,
-    String? mediaUrl,
-    String? mediaType,
+    required MessageDraft draft,
   }) async {
     return _apiClient.post<String>(
       ApiEndpoints.messages(conversationId),
-      data: {
-        'content': content,
-        if (mediaUrl != null) 'mediaUrl': mediaUrl,
-        if (mediaType != null) 'mediaType': mediaType,
-      },
+      data: draft.toJson(),
       parser: (data) => data.toString(),
     );
   }
@@ -108,85 +96,9 @@ class CommunicationRemoteDataSource {
         'page': page,
         'pageSize': pageSize,
       },
-      parser: (data) => _unwrapItems(data)
+      parser: (data) => unwrapItems(data)
           .map<AnnouncementModel>((e) => AnnouncementModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-    );
-  }
-
-  /// BE GET /communication/notifications — caller derived from JWT.
-  Future<List<NotificationModel>> getNotifications({
-    String? gymId,
-    int page = 1,
-    int pageSize = 20,
-  }) async {
-    return _apiClient.get<List<NotificationModel>>(
-      ApiEndpoints.notifications,
-      queryParameters: {
-        if (gymId != null) 'gymId': gymId,
-        'page': page,
-        'pageSize': pageSize,
-      },
-      parser: (data) => _unwrapItems(data)
-          .map<NotificationModel>((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
-  }
-
-  /// BE PUT /communication/notifications/{id}/read — caller derived from JWT.
-  Future<void> markNotificationRead(String id) async {
-    await _apiClient.putVoid(ApiEndpoints.notificationMarkRead(id));
-  }
-
-  /// BE PUT /communication/notifications/read-all — caller derived from JWT.
-  Future<void> markAllNotificationsRead() async {
-    await _apiClient.putVoid(ApiEndpoints.notificationsReadAll);
-  }
-
-  /// BE GET /communication/notifications/unread-count — caller derived from JWT.
-  /// Response: { unreadNotifications, unreadMessages }. Returns unread
-  /// notifications count (bell badge); tolerant of legacy/int shapes.
-  Future<int> getUnreadNotificationCount({String? gymId}) async {
-    return _apiClient.get<int>(
-      ApiEndpoints.notificationsUnreadCount,
-      queryParameters: {
-        if (gymId != null) 'gymId': gymId,
-      },
-      parser: (data) {
-        if (data is int) return data;
-        if (data is Map) {
-          if (data['unreadNotifications'] is int) {
-            return data['unreadNotifications'] as int;
-          }
-          if (data['notifications'] is int) return data['notifications'] as int;
-          if (data['count'] is int) return data['count'] as int;
-        }
-        return 0;
-      },
-    );
-  }
-
-  /// BE GET /communication/notification-preferences — caller derived from JWT.
-  Future<NotificationPreferenceModel> getNotificationPreferences({
-    String? gymId,
-  }) async {
-    return _apiClient.get<NotificationPreferenceModel>(
-      ApiEndpoints.notificationPreferences,
-      queryParameters: {
-        if (gymId != null) 'gymId': gymId,
-      },
-      parser: (data) => NotificationPreferenceModel.fromJson(
-          data as Map<String, dynamic>),
-    );
-  }
-
-  /// BE PUT /communication/notification-preferences expects userId, gymId,
-  /// preferences list, quietHoursStart, quietHoursEnd.
-  Future<void> updateNotificationPreferences(
-      Map<String, dynamic> body) async {
-    await _apiClient.putVoid(
-      ApiEndpoints.notificationPreferences,
-      data: body,
     );
   }
 }

@@ -10,28 +10,32 @@ import '../../../../core/providers.dart';
 Map<String, dynamic> _normalizeStaffJson(Map<String, dynamic> json) {
   final normalized = Map<String, dynamic>.from(json);
   if (normalized['staffRole'] == null && normalized['role'] != null) {
-    final role = (normalized['role'] as String).toLowerCase();
-    normalized['staffRole'] = role;
+    normalized['staffRole'] = (normalized['role'] as String).toLowerCase();
   }
-  if (normalized['name'] == null) {
-    final first = (normalized['firstName'] as String?)?.trim() ?? '';
-    final last = (normalized['lastName'] as String?)?.trim() ?? '';
-    final fullName = '$first $last'.trim();
-    if (fullName.isNotEmpty) {
-      normalized['name'] = fullName;
-    } else {
-      final uid = (normalized['userId'] as String?) ?? '';
-      final shortId = uid.length >= 4 ? uid.substring(0, 4) : uid;
-      normalized['name'] = shortId.isEmpty ? 'Staff' : 'Staff #$shortId';
-    }
-  }
-  if (normalized['phone'] == null && normalized['phoneNumber'] != null) {
-    normalized['phone'] = normalized['phoneNumber'];
-  }
-  if (normalized['photoUrl'] == null && normalized['profilePhotoUrl'] != null) {
-    normalized['photoUrl'] = normalized['profilePhotoUrl'];
-  }
+  normalized['name'] ??= _fallbackStaffName(normalized);
+  _copyIfMissing(normalized, from: 'phoneNumber', to: 'phone');
+  _copyIfMissing(normalized, from: 'profilePhotoUrl', to: 'photoUrl');
   return normalized;
+}
+
+/// "First Last", else "Staff #<first 4 of userId>", else "Staff".
+String _fallbackStaffName(Map<String, dynamic> json) {
+  final first = (json['firstName'] as String?)?.trim() ?? '';
+  final last = (json['lastName'] as String?)?.trim() ?? '';
+  final fullName = '$first $last'.trim();
+  if (fullName.isNotEmpty) return fullName;
+  final uid = (json['userId'] as String?) ?? '';
+  final shortId = uid.length >= 4 ? uid.substring(0, 4) : uid;
+  return shortId.isEmpty ? 'Staff' : 'Staff #$shortId';
+}
+
+/// Fills [to] from the legacy key [from] when [to] is absent.
+void _copyIfMissing(
+  Map<String, dynamic> json, {
+  required String from,
+  required String to,
+}) {
+  if (json[to] == null && json[from] != null) json[to] = json[from];
 }
 
 final staffListProvider =

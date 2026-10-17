@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gymapp_core/gymapp_core.dart' show TelemetryNavigatorObserver;
+import 'package:gymapp_core/gymapp_core.dart'
+    show TelemetryNavigatorObserver, UserModel;
 
 import 'providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -320,15 +321,38 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 /// Placeholder for the More tab - it's defined inline here since it's
 /// a navigation hub rather than a feature screen.
+/// A "More" menu entry: icon, Arabic label, English label, route.
+typedef _MoreDestination = (IconData, String, String, String);
+
+const List<_MoreDestination> _moreFeatures = [
+  (Icons.qr_code, 'تسجيل الحضور', 'Check-in', AppRoutes.checkin),
+  (Icons.card_membership, 'العضوية', 'Membership', AppRoutes.membership),
+  (Icons.restaurant_outlined, 'التغذية', 'Nutrition', AppRoutes.nutrition),
+  (Icons.chat_outlined, 'المحادثة', 'Chat', AppRoutes.chat),
+  (Icons.campaign_outlined, 'الإعلانات', 'Announcements', AppRoutes.announcements),
+  (Icons.leaderboard_outlined, 'المتصدرين', 'Leaderboard', AppRoutes.leaderboard),
+];
+
+const _MoreDestination _moreSettings =
+    (Icons.settings_outlined, 'الإعدادات', 'Settings', AppRoutes.settings);
+
 class _MoreScreen extends ConsumerWidget {
   const _MoreScreen();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final authState = ref.watch(authProvider);
     final user = authState.valueOrNull?.user;
+
+    Widget tile(_MoreDestination d) {
+      final (icon, ar, en, route) = d;
+      return _MoreTile(
+        icon: icon,
+        label: isArabic ? ar : en,
+        onTap: () => context.go(route),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -338,80 +362,58 @@ class _MoreScreen extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
           // User card
-          if (user != null)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundImage: user.photoUrl != null
-                        ? NetworkImage(user.photoUrl!)
-                        : null,
-                    child: user.photoUrl == null
-                        ? Text(
-                            user.firstName[0].toUpperCase(),
-                            style: const TextStyle(fontSize: 20),
-                          )
-                        : null,
+          if (user != null) _MoreUserCard(user: user, isArabic: isArabic),
+          const Divider(),
+          ..._moreFeatures.map(tile),
+          const Divider(),
+          tile(_moreSettings),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoreUserCard extends StatelessWidget {
+  final UserModel user;
+  final bool isArabic;
+
+  const _MoreUserCard({required this.user, required this.isArabic});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundImage:
+                user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+            child: user.photoUrl == null
+                ? Text(
+                    user.firstName[0].toUpperCase(),
+                    style: const TextStyle(fontSize: 20),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${user.firstName} ${user.lastName}',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                if (user.memberNumber != null)
+                  Text(
+                    '${isArabic ? 'رقم العضوية: ' : 'Member #'}${user.memberNumber}',
+                    style: theme.textTheme.bodySmall,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${user.firstName} ${user.lastName}',
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        if (user.memberNumber != null)
-                          Text(
-                            '${isArabic ? 'رقم العضوية: ' : 'Member #'}${user.memberNumber}',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-          const Divider(),
-          _MoreTile(
-            icon: Icons.qr_code,
-            label: isArabic ? 'تسجيل الحضور' : 'Check-in',
-            onTap: () => context.go(AppRoutes.checkin),
-          ),
-          _MoreTile(
-            icon: Icons.card_membership,
-            label: isArabic ? 'العضوية' : 'Membership',
-            onTap: () => context.go(AppRoutes.membership),
-          ),
-          _MoreTile(
-            icon: Icons.restaurant_outlined,
-            label: isArabic ? 'التغذية' : 'Nutrition',
-            onTap: () => context.go(AppRoutes.nutrition),
-          ),
-          _MoreTile(
-            icon: Icons.chat_outlined,
-            label: isArabic ? 'المحادثة' : 'Chat',
-            onTap: () => context.go(AppRoutes.chat),
-          ),
-          _MoreTile(
-            icon: Icons.campaign_outlined,
-            label: isArabic ? 'الإعلانات' : 'Announcements',
-            onTap: () => context.go(AppRoutes.announcements),
-          ),
-          _MoreTile(
-            icon: Icons.leaderboard_outlined,
-            label: isArabic ? 'المتصدرين' : 'Leaderboard',
-            onTap: () => context.go(AppRoutes.leaderboard),
-          ),
-          const Divider(),
-          _MoreTile(
-            icon: Icons.settings_outlined,
-            label: isArabic ? 'الإعدادات' : 'Settings',
-            onTap: () => context.go(AppRoutes.settings),
           ),
         ],
       ),

@@ -21,15 +21,11 @@ class CommunicationRepository {
   /// Returns the message ID (Guid string). Sender derived from JWT.
   Future<String> sendMessage({
     required String conversationId,
-    required String content,
-    String? mediaUrl,
-    String? mediaType,
+    required MessageDraft draft,
   }) =>
       _remoteDataSource.sendMessage(
         conversationId: conversationId,
-        content: content,
-        mediaUrl: mediaUrl,
-        mediaType: mediaType,
+        draft: draft,
       );
 
   Future<void> markMessagesRead({required String conversationId}) =>
@@ -39,24 +35,4 @@ class CommunicationRepository {
     required String gymId,
   }) =>
       _remoteDataSource.getAnnouncements(gymId: gymId);
-
-  Future<List<NotificationModel>> getNotifications({String? gymId}) =>
-      _remoteDataSource.getNotifications(gymId: gymId);
-
-  Future<void> markNotificationRead(String id) =>
-      _remoteDataSource.markNotificationRead(id);
-
-  Future<void> markAllNotificationsRead() =>
-      _remoteDataSource.markAllNotificationsRead();
-
-  Future<int> getUnreadNotificationCount({String? gymId}) =>
-      _remoteDataSource.getUnreadNotificationCount(gymId: gymId);
-
-  Future<NotificationPreferenceModel> getNotificationPreferences({
-    String? gymId,
-  }) =>
-      _remoteDataSource.getNotificationPreferences(gymId: gymId);
-
-  Future<void> updateNotificationPreferences(Map<String, dynamic> body) =>
-      _remoteDataSource.updateNotificationPreferences(body);
 }

@@ -30,13 +30,13 @@ void main() {
       ApiEndpoints.bodyMetrics,
       respond: (_) => t.adapter.ok([Samples.bodyMetric()]),
     );
-    await ds.getBodyMetrics(
+    await ds.getBodyMetrics(BodyMetricsQuery(
       userId: 'user-1',
       gymId: 'gym-1',
       metricType: 'Weight',
       from: DateTime.utc(2026, 1, 1),
       to: DateTime.utc(2026, 4, 16),
-    );
+    ));
     final q = t.onlyRequest.query;
     expect(q['metricType']!.first, 'Weight');
     expect(q['from']!.first, '2026-01-01');

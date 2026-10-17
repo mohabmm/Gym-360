@@ -11,28 +11,31 @@ import 'package:flutter/material.dart';
 /// `NoShow` and `InProgress` all fell through to the default branch and were
 /// rendered as raw English inside the Arabic-first UI. This single source of
 /// truth normalizes the status and covers every enum value.
-String sessionStatusLabel(String status, bool isArabic) {
-  switch (_normalize(status)) {
-    case 'pending':
-      return isArabic ? 'قيد الانتظار' : 'Pending';
-    case 'confirmed':
-      return isArabic ? 'مؤكد' : 'Confirmed';
-    case 'inprogress':
-      return isArabic ? 'جارية' : 'In Progress';
-    case 'completed':
-      return isArabic ? 'مكتمل' : 'Completed';
-    case 'cancelled':
-    case 'cancelledbytrainer':
-      return isArabic ? 'ألغاه المدرب' : 'Cancelled by trainer';
-    case 'cancelledbymember':
-      return isArabic ? 'ألغاه المتدرب' : 'Cancelled by trainee';
-    case 'latecancelled':
-      return isArabic ? 'إلغاء متأخر' : 'Late Cancelled';
-    case 'noshow':
-      return isArabic ? 'لم يحضر' : 'No Show';
-    default:
-      return status;
-  }
+String sessionStatusLabel(String status, bool isArabic) =>
+    _localized(_statusLabels, status, isArabic);
+
+/// Normalized status → (Arabic, English).
+const Map<String, (String, String)> _statusLabels = {
+  'pending': ('قيد الانتظار', 'Pending'),
+  'confirmed': ('مؤكد', 'Confirmed'),
+  'inprogress': ('جارية', 'In Progress'),
+  'completed': ('مكتمل', 'Completed'),
+  'cancelled': ('ألغاه المدرب', 'Cancelled by trainer'),
+  'cancelledbytrainer': ('ألغاه المدرب', 'Cancelled by trainer'),
+  'cancelledbymember': ('ألغاه المتدرب', 'Cancelled by trainee'),
+  'latecancelled': ('إلغاء متأخر', 'Late Cancelled'),
+  'noshow': ('لم يحضر', 'No Show'),
+};
+
+/// Looks up [raw] (normalized) in [labels]; unknown values are returned as-is.
+String _localized(
+  Map<String, (String, String)> labels,
+  String raw,
+  bool isArabic,
+) {
+  final label = labels[_normalize(raw)];
+  if (label == null) return raw;
+  return isArabic ? label.$1 : label.$2;
 }
 
 Color sessionStatusColor(String status) {
@@ -57,18 +60,15 @@ Color sessionStatusColor(String status) {
 /// Localizes the BE SessionType enum (PersonalTraining/Assessment/FollowUp).
 /// The session-detail screen previously printed the raw enum string, leaking
 /// English into the Arabic-first UI. Labels mirror the booking sheet.
-String sessionTypeLabel(String type, bool isArabic) {
-  switch (_normalize(type)) {
-    case 'personaltraining':
-      return isArabic ? 'تدريب شخصي' : 'Personal Training';
-    case 'assessment':
-      return isArabic ? 'تقييم' : 'Assessment';
-    case 'followup':
-      return isArabic ? 'متابعة' : 'Follow-up';
-    default:
-      return type;
-  }
-}
+String sessionTypeLabel(String type, bool isArabic) =>
+    _localized(_typeLabels, type, isArabic);
+
+/// Normalized session type → (Arabic, English).
+const Map<String, (String, String)> _typeLabels = {
+  'personaltraining': ('تدريب شخصي', 'Personal Training'),
+  'assessment': ('تقييم', 'Assessment'),
+  'followup': ('متابعة', 'Follow-up'),
+};
 
 /// Lowercases and strips separators so `Late_Cancelled`, `LATE-CANCELLED`,
 /// `LateCancelled` and `late cancelled` all collapse to `latecancelled`.
