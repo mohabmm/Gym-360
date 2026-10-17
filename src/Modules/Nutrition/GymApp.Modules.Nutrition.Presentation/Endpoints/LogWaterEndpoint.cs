@@ -17,7 +17,7 @@ internal sealed class LogWaterEndpoint : IEndpoint
             // Prefer JWT-bound gymId so a trainee can't write to a foreign tenant by spoofing body.
             // Fall back to body for back-compat with older clients during rollout.
             var gymId = CallerContext.TryGetGymId(httpContext, out var jwtGym) ? jwtGym : request.GymId;
-            if (request.GymId != Guid.Empty && jwtGym != Guid.Empty && request.GymId != jwtGym)
+            if (IsCrossGymWrite(request.GymId, jwtGym))
                 return ApiResults.Problem(new GymApp.Common.Domain.Error(
                     "AUTH.CROSS_GYM_FORBIDDEN", "Body gymId does not match the caller's tenant."));
 
@@ -40,6 +40,15 @@ internal sealed class LogWaterEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .RequireAuthorization();
+    }
+
+    // Both gym ids are known and disagree: the body targets a tenant other than the caller's.
+    private static bool IsCrossGymWrite(Guid bodyGymId, Guid jwtGymId)
+    {
+        if (bodyGymId == Guid.Empty || jwtGymId == Guid.Empty)
+            return false;
+
+        return bodyGymId != jwtGymId;
     }
 }
 

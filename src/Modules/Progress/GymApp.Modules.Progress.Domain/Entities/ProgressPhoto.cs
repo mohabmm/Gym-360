@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Progress.Domain.DomainEvents;
 using GymApp.Modules.Progress.Domain.Enums;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Domain.Entities;
 
@@ -8,28 +9,7 @@ public sealed class ProgressPhoto : Entity
 {
     private ProgressPhoto() { }
 
-    private ProgressPhoto(
-        Guid id,
-        Guid userId,
-        Guid gymId,
-        string photoUrl,
-        string thumbnailUrl,
-        PhotoAngle angle,
-        DateOnly date,
-        bool isSharedWithTrainer,
-        string? notes)
-        : base(id)
-    {
-        UserId = userId;
-        GymId = gymId;
-        PhotoUrl = photoUrl;
-        ThumbnailUrl = thumbnailUrl;
-        Angle = angle;
-        Date = date;
-        IsSharedWithTrainer = isSharedWithTrainer;
-        Notes = notes;
-        CreatedAt = DateTime.UtcNow;
-    }
+    private ProgressPhoto(Guid id) : base(id) { }
 
     public Guid UserId { get; private set; }
     public Guid GymId { get; private set; }
@@ -41,26 +21,20 @@ public sealed class ProgressPhoto : Entity
     public string? Notes { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public static Result<ProgressPhoto> Create(
-        Guid userId,
-        Guid gymId,
-        string photoUrl,
-        string thumbnailUrl,
-        PhotoAngle angle,
-        DateOnly date,
-        bool isSharedWithTrainer = false,
-        string? notes = null)
+    public static Result<ProgressPhoto> Create(Guid userId, Guid gymId, ProgressPhotoDetails details)
     {
-        var photo = new ProgressPhoto(
-            Guid.NewGuid(),
-            userId,
-            gymId,
-            photoUrl,
-            thumbnailUrl,
-            angle,
-            date,
-            isSharedWithTrainer,
-            notes);
+        var photo = new ProgressPhoto(Guid.NewGuid())
+        {
+            UserId = userId,
+            GymId = gymId,
+            PhotoUrl = details.PhotoUrl,
+            ThumbnailUrl = details.ThumbnailUrl,
+            Angle = details.Angle,
+            Date = details.Date,
+            IsSharedWithTrainer = details.IsSharedWithTrainer,
+            Notes = details.Notes,
+            CreatedAt = DateTime.UtcNow
+        };
 
         photo.RaiseDomainEvent(new ProgressPhotoUploadedDomainEvent(photo.Id, userId));
 

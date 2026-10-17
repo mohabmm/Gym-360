@@ -27,10 +27,7 @@ public sealed class MealPlan : Entity
     public static MealPlan Create(
         Guid trainerId,
         Guid gymId,
-        string name,
-        string? description,
-        decimal dailyCalorieTarget,
-        MacroTargets macroTargets,
+        MealPlanDetails details,
         bool isTemplate)
     {
         var plan = new MealPlan
@@ -39,10 +36,10 @@ public sealed class MealPlan : Entity
             TrainerId = trainerId,
             ClientId = null,
             GymId = gymId,
-            Name = name,
-            Description = description,
-            DailyCalorieTarget = dailyCalorieTarget,
-            MacroTargets = macroTargets,
+            Name = details.Name,
+            Description = details.Description,
+            DailyCalorieTarget = details.DailyCalorieTarget,
+            MacroTargets = details.MacroTargets,
             IsTemplate = isTemplate,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -73,16 +70,12 @@ public sealed class MealPlan : Entity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateDetails(
-        string name,
-        string? description,
-        decimal dailyCalorieTarget,
-        MacroTargets macroTargets)
+    public void UpdateDetails(MealPlanDetails details)
     {
-        Name = name;
-        Description = description;
-        DailyCalorieTarget = dailyCalorieTarget;
-        MacroTargets = macroTargets;
+        Name = details.Name;
+        Description = details.Description;
+        DailyCalorieTarget = details.DailyCalorieTarget;
+        MacroTargets = details.MacroTargets;
         UpdatedAt = DateTime.UtcNow;
     }
 }

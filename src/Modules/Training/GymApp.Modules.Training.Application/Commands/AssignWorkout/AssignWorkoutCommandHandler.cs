@@ -5,6 +5,7 @@ using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.AssignWorkout;
 
@@ -33,16 +34,18 @@ internal sealed class AssignWorkoutCommandHandler : ICommandHandler<AssignWorkou
             return Result.Failure<Guid>(TrainingErrors.WorkoutNotFound);
         }
 
-        var assignment = WorkoutAssignment.Create(
-            request.TrainerId,
-            request.ClientId,
-            request.GymId,
-            AssignmentType.Workout,
-            DateOnly.FromDateTime(request.StartDate),
-            workoutId: request.WorkoutId,
-            endDate: request.EndDate.HasValue ? DateOnly.FromDateTime(request.EndDate.Value) : null,
-            notes: request.Notes,
-            isRemoteMode: request.IsRemoteMode);
+        var assignment = WorkoutAssignment.Create(new WorkoutAssignmentDetails
+        {
+            TrainerId = request.TrainerId,
+            ClientId = request.ClientId,
+            GymId = request.GymId,
+            AssignmentType = AssignmentType.Workout,
+            StartDate = DateOnly.FromDateTime(request.StartDate),
+            WorkoutId = request.WorkoutId,
+            EndDate = request.EndDate.HasValue ? DateOnly.FromDateTime(request.EndDate.Value) : null,
+            Notes = request.Notes,
+            IsRemoteMode = request.IsRemoteMode
+        });
 
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

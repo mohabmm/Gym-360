@@ -28,10 +28,13 @@ internal sealed class GetExercisesQueryHandler : IQueryHandler<GetExercisesQuery
 
         var exercises = await _exerciseRepository.GetAllAsync(
             request.GymId,
-            muscleGroup: muscleGroup,
-            equipment: equipment,
-            searchTerm: request.Search,
-            cancellationToken: cancellationToken);
+            new ExerciseFilter
+            {
+                MuscleGroup = muscleGroup,
+                Equipment = equipment,
+                SearchTerm = request.Search
+            },
+            cancellationToken);
 
         var totalCount = exercises.Count;
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);

@@ -3,6 +3,7 @@ using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Nutrition.Domain.Repositories;
+using GymApp.Modules.Nutrition.Domain.ValueObjects;
 
 namespace GymApp.Modules.Nutrition.Application.Commands.LogWater;
 
@@ -35,10 +36,7 @@ internal sealed class LogWaterCommandHandler : ICommandHandler<LogWaterCommand, 
         // The repository handles the unique-index race on (UserId, Date) — see
         // WaterLogRepository.UpsertAndAppendEntryAsync.
         var waterLog = await _waterLogRepository.UpsertAndAppendEntryAsync(
-            request.UserId,
-            request.GymId,
-            request.Date,
-            request.AmountMl,
+            new WaterIntake(request.UserId, request.GymId, request.Date, request.AmountMl),
             cancellationToken);
 
         return Result.Success(waterLog.Id);

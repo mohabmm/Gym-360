@@ -1,4 +1,5 @@
 using GymApp.Modules.Nutrition.Domain.Entities;
+using GymApp.Modules.Nutrition.Domain.ValueObjects;
 
 namespace GymApp.Modules.Nutrition.Domain.Repositories;
 
@@ -13,9 +14,6 @@ public interface IWaterLogRepository
     // for (userId, gymId, date) and appends `amountMl` as a new entry. Implementations
     // must handle SQL Server unique-index collisions internally and retry as needed.
     Task<WaterLog> UpsertAndAppendEntryAsync(
-        Guid userId,
-        Guid gymId,
-        DateOnly date,
-        int amountMl,
+        WaterIntake intake,
         CancellationToken cancellationToken = default);
 }

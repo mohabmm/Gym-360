@@ -21,7 +21,7 @@ internal sealed class GetProgressPhotosQueryHandler : IQueryHandler<GetProgressP
         int pageSize = request.PageSize < 1 ? 10 : request.PageSize;
 
         var photos = await _repository.GetByUserAsync(
-            request.UserId, request.GymId, page, pageSize, cancellationToken);
+            request.UserId, request.GymId, new PageRequest(page, pageSize), cancellationToken);
 
         int totalCount = await _repository.GetCountAsync(
             request.UserId, request.GymId, cancellationToken);

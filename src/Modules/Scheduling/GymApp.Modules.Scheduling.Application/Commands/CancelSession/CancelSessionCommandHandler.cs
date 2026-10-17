@@ -7,6 +7,7 @@ using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.IntegrationEvents;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.CancelSession;
 
@@ -52,7 +53,7 @@ internal sealed class CancelSessionCommandHandler : ICommandHandler<CancelSessio
 
         var reason = request.Reason ?? "No reason provided";
 
-        var result = session.Cancel(reason, request.CancelledBy, isLateCancellation);
+        var result = session.Cancel(new SessionCancellation(reason, request.CancelledBy, isLateCancellation));
         if (result.IsFailure)
             return result;
 

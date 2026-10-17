@@ -22,17 +22,17 @@ internal sealed class GetUpcomingSessionsEndpoint : IEndpoint
             if (!UserContext.TryGetUserId(httpContext, out var authenticatedUserId))
                 return Results.Unauthorized();
 
-            var resolvedGymId = gymId ?? gymIdHeader ?? UserContext.TryGetGymId(httpContext);
-            if (resolvedGymId is null || resolvedGymId == Guid.Empty)
+            var resolvedGymId = ResolveGymId(httpContext, gymId, gymIdHeader);
+            if (resolvedGymId is null)
                 return ApiResults.Problem(
                     "GYM_CONTEXT_REQUIRED",
                     "The X-Gym-Id header (or gymId query parameter) is required.",
                     400);
 
-            var resolvedUserId = userId ?? authenticatedUserId;
-            var resolvedRole = role ?? UserContext.GetRole(httpContext) ?? "trainee";
-
-            var query = new GetUpcomingSessionsQuery(resolvedUserId, resolvedGymId.Value, resolvedRole);
+            var query = new GetUpcomingSessionsQuery(
+                userId ?? authenticatedUserId,
+                resolvedGymId.Value,
+                ResolveRole(httpContext, role));
 
             var result = await sender.Send(query);
 
@@ -48,4 +48,14 @@ internal sealed class GetUpcomingSessionsEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .RequireAuthorization();
     }
+
+    // Query string wins over the X-Gym-Id header, which wins over the JWT; an empty id counts as missing.
+    private static Guid? ResolveGymId(HttpContext httpContext, Guid? queryGymId, Guid? headerGymId)
+    {
+        var gymId = queryGymId ?? headerGymId ?? UserContext.TryGetGymId(httpContext);
+        return gymId == Guid.Empty ? null : gymId;
+    }
+
+    private static string ResolveRole(HttpContext httpContext, string? queryRole) =>
+        queryRole ?? UserContext.GetRole(httpContext) ?? "trainee";
 }

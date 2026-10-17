@@ -52,7 +52,7 @@ public sealed class SessionTests
     private static Session CreateInProgressSession()
     {
         var session = CreateConfirmedSession();
-        session.StartSession(DateTime.UtcNow, 15, true);
+        session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true));
         return session;
     }
 
@@ -159,7 +159,7 @@ public sealed class SessionTests
     {
         var session = CreateConfirmedSession();
 
-        var result = session.StartSession(DateTime.UtcNow, 15, true);
+        var result = session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.InProgress);
@@ -172,7 +172,7 @@ public sealed class SessionTests
     {
         var session = CreateConfirmedSession();
 
-        var result = session.StartSession(new DateTime(2025, 6, 15, 9, 50, 0), 15, allowEarlyStart: false);
+        var result = session.StartSession(new DateTime(2025, 6, 15, 9, 50, 0), new EarlyStartPolicy(15, false));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.InProgress);
@@ -184,13 +184,13 @@ public sealed class SessionTests
         var session = CreateConfirmedSession();
         var tooEarly = new DateTime(2025, 6, 15, 9, 30, 0);
 
-        var blocked = session.StartSession(tooEarly, 15, allowEarlyStart: false);
+        var blocked = session.StartSession(tooEarly, new EarlyStartPolicy(15, false));
 
         blocked.IsFailure.Should().BeTrue();
         blocked.Error.Code.Should().Be("Scheduling.SessionTooEarly");
         session.Status.Should().Be(SessionStatus.Confirmed);
 
-        session.StartSession(tooEarly, 15, allowEarlyStart: true).IsSuccess.Should().BeTrue();
+        session.StartSession(tooEarly, new EarlyStartPolicy(15, true)).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public sealed class SessionTests
     {
         var session = CreateDefaultSession();
 
-        var result = session.StartSession(DateTime.UtcNow, 15, true);
+        var result = session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidStatusTransition");
@@ -248,7 +248,7 @@ public sealed class SessionTests
         var session = CreateDefaultSession();
         session.ClearDomainEvents();
 
-        var result = session.Cancel("Changed plans", MemberId, isLateCancellation: false);
+        var result = session.Cancel(new SessionCancellation("Changed plans", MemberId, IsLateCancellation: false));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.CancelledByMember);
@@ -263,7 +263,7 @@ public sealed class SessionTests
     {
         var session = CreateDefaultSession();
 
-        var result = session.Cancel("Sick", TrainerId, isLateCancellation: false);
+        var result = session.Cancel(new SessionCancellation("Sick", TrainerId, IsLateCancellation: false));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.CancelledByTrainer);
@@ -274,7 +274,7 @@ public sealed class SessionTests
     {
         var session = CreateConfirmedSession();
 
-        var result = session.Cancel("Last minute", MemberId, isLateCancellation: true);
+        var result = session.Cancel(new SessionCancellation("Last minute", MemberId, IsLateCancellation: true));
 
         result.IsSuccess.Should().BeTrue();
         session.Status.Should().Be(SessionStatus.LateCancelled);
@@ -284,9 +284,9 @@ public sealed class SessionTests
     public void Cancel_WhenAlreadyCancelled_ShouldFail()
     {
         var session = CreateDefaultSession();
-        session.Cancel("reason", MemberId, false);
+        session.Cancel(new SessionCancellation("reason", MemberId, false));
 
-        var result = session.Cancel("again", MemberId, false);
+        var result = session.Cancel(new SessionCancellation("again", MemberId, false));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.AlreadyCancelled");
@@ -297,7 +297,7 @@ public sealed class SessionTests
     {
         var session = CreateInProgressSession();
 
-        var result = session.Cancel("reason", MemberId, false);
+        var result = session.Cancel(new SessionCancellation("reason", MemberId, false));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Scheduling.InvalidStatusTransition");
@@ -309,7 +309,7 @@ public sealed class SessionTests
         var session = CreateInProgressSession();
         session.Complete();
 
-        var result = session.Cancel("reason", MemberId, false);
+        var result = session.Cancel(new SessionCancellation("reason", MemberId, false));
 
         result.IsFailure.Should().BeTrue();
     }
@@ -482,7 +482,7 @@ public sealed class SessionTests
         var session = CreateDefaultSession();
 
         session.Confirm(ClockBeforeSchedule).IsSuccess.Should().BeTrue();
-        session.StartSession(DateTime.UtcNow, 15, true).IsSuccess.Should().BeTrue();
+        session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true)).IsSuccess.Should().BeTrue();
         session.Complete().IsSuccess.Should().BeTrue();
 
         session.Status.Should().Be(SessionStatus.Completed);

@@ -7,6 +7,7 @@ using GymApp.Modules.Training.Application.DTOs;
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
+using GymApp.Modules.Training.Domain.ValueObjects;
 using GymApp.Modules.Training.Application.Abstractions;
 using GymApp.Modules.Training.IntegrationEvents;
 
@@ -87,8 +88,13 @@ public class LogWorkoutCommandHandlerTests
             .Returns(true);
 
         var existingLog = WorkoutLog.Create(
-            command.UserId, command.GymId, command.Date, command.StartedAt,
-            command.WorkoutId, "Existing log");
+            command.UserId, command.GymId, new WorkoutLogDetails
+            {
+                Date = command.Date,
+                StartedAt = command.StartedAt,
+                WorkoutId = command.WorkoutId,
+                Notes = "Existing log"
+            });
         _workoutLogRepository.GetByUserAndDateAsync(
             command.UserId, command.Date, command.WorkoutId, Arg.Any<CancellationToken>())
             .Returns(existingLog);
@@ -136,7 +142,12 @@ public class LogWorkoutCommandHandlerTests
         _workoutLogRepository.GetByUserAndDateAsync(
             command.UserId, command.Date, command.WorkoutId, Arg.Any<CancellationToken>())
             .Returns(WorkoutLog.Create(
-                command.UserId, command.GymId, command.Date, command.StartedAt, command.WorkoutId, null));
+                command.UserId, command.GymId, new WorkoutLogDetails
+                {
+                    Date = command.Date,
+                    StartedAt = command.StartedAt,
+                    WorkoutId = command.WorkoutId
+                }));
 
         // Act
         await _sut.Handle(command, CancellationToken.None);

@@ -5,6 +5,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.StartSession;
 
@@ -46,7 +47,7 @@ internal sealed class StartSessionCommandHandler : ICommandHandler<StartSessionC
         // gym-local "now" — comparing with raw UtcNow kept Cairo trainers locked out
         // until 2–3 hours after the session was due to begin.
         var result = session.StartSession(
-            GymLocalTime.FromUtc(_dateTimeProvider.UtcNow), EarlyWindowMinutes, allowEarlyStart);
+            GymLocalTime.FromUtc(_dateTimeProvider.UtcNow), new EarlyStartPolicy(EarlyWindowMinutes, allowEarlyStart));
         if (result.IsFailure)
             return result;
 

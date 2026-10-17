@@ -77,23 +77,15 @@ internal sealed class SchedulingQueryService : ISchedulingQueryService
             session.SessionType.ToString());
     }
 
-    public async Task<int> GetTrainerSessionsForMonthAsync(
+    public Task<int> GetTrainerSessionsForMonthAsync(
         Guid trainerId,
         Guid gymId,
-        int year,
-        int month,
+        DateOnly month,
         CancellationToken cancellationToken = default)
     {
-        var startDate = new DateOnly(year, month, 1);
+        var startDate = new DateOnly(month.Year, month.Month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
-        return await _dbContext.Sessions
-            .AsNoTracking()
-            .CountAsync(s => s.TrainerId == trainerId
-                && s.GymId == gymId
-                && s.ScheduledDate >= startDate
-                && s.ScheduledDate <= endDate
-                && s.Status == SessionStatus.Completed,
-                cancellationToken);
+        return GetCompletedSessionCountAsync(trainerId, gymId, startDate, endDate, cancellationToken);
     }
 }

@@ -4,6 +4,7 @@ using GymApp.Modules.Scheduling.Application.DTOs;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Errors;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Queries.GetWeeklyAvailability;
 
@@ -39,7 +40,7 @@ internal sealed class GetWeeklyAvailabilityQueryHandler
             request.TrainerId, request.GymId, cancellationToken);
 
         var sessions = await _sessionRepository.GetByTrainerAsync(
-            request.TrainerId, request.GymId, request.StartDate, request.EndDate, cancellationToken);
+            request.TrainerId, new GymDateRange(request.GymId, request.StartDate, request.EndDate), cancellationToken);
 
         var activeSessions = sessions.Where(SlotGrid.HoldsSlot).ToList();
 
