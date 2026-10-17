@@ -49,7 +49,7 @@ class SchedulingRemoteDataSource {
 
   Future<SessionDetailModel> getSessionById(String id) async {
     return _apiClient.get<SessionDetailModel>(
-      ApiEndpoints.sessionById(id),
+      ApiEndpoints.sessionById(SessionId(id)),
       parser: (data) =>
           SessionDetailModel.fromJson(data as Map<String, dynamic>),
     );
@@ -66,7 +66,7 @@ class SchedulingRemoteDataSource {
 
   Future<void> cancelSession(SessionCancellation cancellation) async {
     await _apiClient.postVoid(
-      '${ApiEndpoints.sessionById(cancellation.sessionId)}/cancel',
+      '${ApiEndpoints.sessionById(SessionId(cancellation.sessionId))}/cancel',
       data: cancellation.toJson(),
     );
   }
@@ -74,7 +74,7 @@ class SchedulingRemoteDataSource {
   Future<void> logMemberFeedback(
       String sessionId, Map<String, dynamic> body) async {
     await _apiClient.postVoid(
-      ApiEndpoints.sessionMemberLog(sessionId),
+      ApiEndpoints.sessionMemberLog(SessionId(sessionId)),
       data: body,
     );
   }
@@ -105,7 +105,7 @@ class SchedulingRemoteDataSource {
     DateTime? date,
   }) async {
     return _apiClient.get<List<GymClassModel>>(
-      ApiEndpoints.gymClasses(gymId),
+      ApiEndpoints.gymClasses(GymId(gymId)),
       queryParameters: {
         if (date != null) 'date': date.toIso8601String().split('T')[0],
       },
@@ -117,7 +117,7 @@ class SchedulingRemoteDataSource {
 
   Future<void> bookClass(ClassBookingRequest booking) async {
     await _apiClient.postVoid(
-      ApiEndpoints.bookGymClass(booking.gymId, booking.classId),
+      ApiEndpoints.bookGymClass(GymId(booking.gymId), ClassId(booking.classId)),
       data: {'memberId': booking.memberId},
     );
   }
@@ -125,10 +125,9 @@ class SchedulingRemoteDataSource {
   Future<void> cancelClassBooking(ClassBookingCancellation cancellation) async {
     await _apiClient.delete(
       ApiEndpoints.cancelGymClassBooking(
-        cancellation.gymId,
-        cancellation.classId,
-        cancellation.bookingId,
-      ),
+        GymId(cancellation.gymId),
+        ClassId(cancellation.classId),
+        BookingId(cancellation.bookingId),),
     );
   }
 }

@@ -29,14 +29,14 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
       final gymId = ref.read(currentGymIdProvider);
       final apiClient = ref.read(apiClientProvider);
       final gym = await apiClient.get<Map<String, dynamic>>(
-        ApiEndpoints.gymById(gymId),
+        ApiEndpoints.gymById(GymId(gymId)),
         parser: (data) => data as Map<String, dynamic>,
       );
       final current =
           ((gym['amenities'] as List?) ?? []).map((e) => e.toString()).toList();
       if (current.contains(value)) return;
       await apiClient.put<void>(
-        ApiEndpoints.gymById(gymId),
+        ApiEndpoints.gymById(GymId(gymId)),
         data: _buildUpdatePayload(gym, [...current, value]),
         parser: (_) {},
       );
@@ -130,14 +130,14 @@ class _AmenitiesScreenState extends ConsumerState<AmenitiesScreen> {
                               final gymId = ref.read(currentGymIdProvider);
                               final apiClient = ref.read(apiClientProvider);
                               final gym = await apiClient.get<Map<String, dynamic>>(
-                                ApiEndpoints.gymById(gymId),
+                                ApiEndpoints.gymById(GymId(gymId)),
                                 parser: (data) => data as Map<String, dynamic>,
                               );
                               final current = ((gym['amenities'] as List?) ?? [])
                                   .map((e) => e.toString())
                                   .toList();
                               await apiClient.put<void>(
-                                ApiEndpoints.gymById(gymId),
+                                ApiEndpoints.gymById(GymId(gymId)),
                                 data: _buildUpdatePayload(
                                   gym,
                                   current.where((a) => a != amenity).toList(),

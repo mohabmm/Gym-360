@@ -51,7 +51,7 @@ class _EditMemberScreenState extends ConsumerState<EditMemberScreen> {
       // migrated to currentGymIdProvider
       final gymId = ref.read(currentGymIdProvider);
       await apiClient.put<void>(
-        ApiEndpoints.gymMemberById(gymId, widget.memberId),
+        ApiEndpoints.gymMemberById(GymId(gymId), MemberId(widget.memberId)),
         data: {
           'firstName': _firstNameController.text.trim(),
           'lastName': _lastNameController.text.trim(),

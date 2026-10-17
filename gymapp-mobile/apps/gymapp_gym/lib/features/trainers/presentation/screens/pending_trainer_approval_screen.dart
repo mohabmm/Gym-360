@@ -94,7 +94,7 @@ class PendingTrainerApprovalScreen extends ConsumerWidget {
       // migrated to currentGymIdProvider
       final gymId = ref.read(currentGymIdProvider);
       await apiClient.post<void>(
-        '${ApiEndpoints.gymTrainers(gymId)}/$trainerId/approve',
+        '${ApiEndpoints.gymTrainers(GymId(gymId))}/$trainerId/approve',
         parser: (_) {},
       );
       ref.invalidate(pendingTrainersProvider);
@@ -113,7 +113,7 @@ class PendingTrainerApprovalScreen extends ConsumerWidget {
       // migrated to currentGymIdProvider
       final gymId = ref.read(currentGymIdProvider);
       await apiClient.post<void>(
-        '${ApiEndpoints.gymTrainers(gymId)}/$trainerId/reject',
+        '${ApiEndpoints.gymTrainers(GymId(gymId))}/$trainerId/reject',
         parser: (_) {},
       );
       ref.invalidate(pendingTrainersProvider);

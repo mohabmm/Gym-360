@@ -42,7 +42,7 @@ void main() {
   group('Chat thread screen', () {
     test('GET messages for a conversation', () async {
       t.adapter.onGet(
-        ApiEndpoints.messages('conv-1'),
+        ApiEndpoints.messages(const ConversationId('conv-1')),
         respond: (_) => t.adapter.ok([Samples.message()]),
       );
       final msgs = await ds.getMessages('conv-1');
@@ -52,7 +52,7 @@ void main() {
     test('POST send message returns message id and omits null media fields',
         () async {
       t.adapter.onPost(
-        ApiEndpoints.messages('conv-1'),
+        ApiEndpoints.messages(const ConversationId('conv-1')),
         respond: (_) => t.adapter.created('msg-new'),
       );
       final id = await ds.sendMessage(
@@ -67,7 +67,7 @@ void main() {
 
     test('PUT mark conversation read sends no body (user from JWT)', () async {
       t.adapter.onPut(
-        '${ApiEndpoints.conversationById('conv-1')}/read',
+        '${ApiEndpoints.conversationById(const ConversationId('conv-1'))}/read',
         respond: (_) => t.adapter.noContent(),
       );
       await ds.markMessagesRead(conversationId: 'conv-1');
@@ -102,7 +102,7 @@ void main() {
 
     test('PUT notifications/{id}/read sends no body (user from JWT)', () async {
       t.adapter.onPut(
-        ApiEndpoints.notificationMarkRead('notif-1'),
+        ApiEndpoints.notificationMarkRead(const NotificationId('notif-1')),
         respond: (_) => t.adapter.noContent(),
       );
       await notifications.markNotificationRead('notif-1');

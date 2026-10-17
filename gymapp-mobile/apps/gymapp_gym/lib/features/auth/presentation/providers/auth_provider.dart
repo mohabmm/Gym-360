@@ -23,7 +23,7 @@ final staffInfoProvider =
     final apiClient = ref.read(apiClientProvider);
     try {
       final staffList = await apiClient.get<List<StaffModel>>(
-        ApiEndpoints.gymStaff(gymId),
+        ApiEndpoints.gymStaff(GymId(gymId)),
         parser: (data) => (data as List)
             .map((e) => StaffModel.fromJson(e as Map<String, dynamic>))
             .toList(),

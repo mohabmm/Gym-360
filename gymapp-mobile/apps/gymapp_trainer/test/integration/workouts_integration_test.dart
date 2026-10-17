@@ -65,12 +65,12 @@ void main() {
 
     test('GET /training/workouts/{id} returns single workout', () async {
       t.adapter.onGet(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         respond: (_) => t.adapter.ok(Samples.workout()),
       );
 
       final w = await t.apiClient.get<WorkoutModel>(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         parser: (d) => WorkoutModel.fromJson(d as Map<String, dynamic>),
       );
 
@@ -123,12 +123,12 @@ void main() {
     test('PUT /training/workouts/{id} updates workout without trainer/gym',
         () async {
       t.adapter.onPut(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         respond: (_) => t.adapter.noContent(),
       );
 
       await t.apiClient.putVoid(
-        ApiEndpoints.workoutById('workout-1'),
+        ApiEndpoints.workoutById(const WorkoutId('workout-1')),
         data: {
           'name': 'Push Day A v2',
           'description': 'Updated',

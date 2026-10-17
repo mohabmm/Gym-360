@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../constants/api_endpoints.dart';
 import '../../services/secure_storage_service.dart';
+import '../../types/auth_tokens.dart';
 
 /// Injects JWT access token into every request.
 /// Handles 401 responses by attempting token refresh.
@@ -92,8 +93,8 @@ class AuthInterceptor extends Interceptor {
             response.data['data']['refreshToken'] as String;
 
         await _storage.saveTokens(
-          accessToken: newAccessToken,
-          refreshToken: newRefreshToken,
+          accessToken: AccessToken(newAccessToken),
+          refreshToken: RefreshToken(newRefreshToken),
         );
 
         // Retry the original request with new token

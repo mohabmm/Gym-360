@@ -10,6 +10,12 @@ export 'src/constants/app_constants.dart';
 export 'src/constants/storage_keys.dart';
 export 'src/constants/feature_codes.dart';
 
+// Types (zero-cost value types / ids)
+export 'src/types/app_language.dart';
+export 'src/types/auth_tokens.dart';
+export 'src/types/entity_ids.dart';
+export 'src/types/measurements.dart';
+
 // Errors
 export 'src/errors/failure.dart';
 export 'src/errors/either_extensions.dart';
@@ -60,6 +66,7 @@ export 'src/network/api_exceptions.dart';
 export 'src/services/fcm_service.dart';
 export 'src/services/consent_service.dart';
 export 'src/services/offline_queue_service.dart';
+export 'src/services/secure_storage_key.dart';
 export 'src/services/secure_storage_service.dart';
 export 'src/services/connectivity_service.dart';
 export 'src/services/chat_service.dart';

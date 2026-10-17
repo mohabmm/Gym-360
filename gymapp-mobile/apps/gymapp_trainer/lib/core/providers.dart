@@ -157,10 +157,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     AuthResponse authResponse,
   ) async {
     await storage.saveTokens(
-      accessToken: authResponse.accessToken,
-      refreshToken: authResponse.refreshToken,
+      accessToken: AccessToken(authResponse.accessToken),
+      refreshToken: RefreshToken(authResponse.refreshToken),
     );
-    await storage.saveUserId(authResponse.user.id);
+    await storage.saveUserId(UserId(authResponse.user.id));
   }
 
   /// This app is for trainers only: wipe the just-saved session and fail.
@@ -294,7 +294,7 @@ class ActiveGymNotifier extends StateNotifier<String?> {
     if (gymId.isEmpty) return;
     final storage = _ref.read(secureStorageProvider);
     state = gymId;
-    await storage.saveCurrentGymId(gymId);
+    await storage.saveCurrentGymId(GymId(gymId));
   }
 
 }
@@ -430,7 +430,7 @@ final serverTestingModeProvider = FutureProvider<bool>((ref) async {
   }
   try {
     final enabled = await apiClient.get<bool>(
-      ApiEndpoints.gymTestingMode(gymId),
+      ApiEndpoints.gymTestingMode(GymId(gymId)),
       parser: (data) {
         if (data is Map<String, dynamic>) {
           return data['enabled'] == true;
@@ -469,7 +469,7 @@ final trainerGymsProvider = FutureProvider<List<GymModel>>((ref) async {
   for (final membership in memberships) {
     try {
       final gym = await apiClient.get<GymModel>(
-        ApiEndpoints.gymById(membership.gymId),
+        ApiEndpoints.gymById(GymId(membership.gymId)),
         parser: (data) => GymModel.fromJson(data as Map<String, dynamic>),
       );
       gyms.add(gym);

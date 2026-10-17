@@ -175,7 +175,7 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async 
   }
 
   final analyticsFuture = apiClient.get<Map<String, dynamic>>(
-    ApiEndpoints.gymAnalyticsByGym(gymId),
+    ApiEndpoints.gymAnalyticsByGym(GymId(gymId)),
     parser: (data) => data as Map<String, dynamic>,
   );
 
@@ -183,7 +183,7 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async 
   // 403 so the rest of the dashboard still renders — the FeatureGate wrapper
   // around _PeakHoursHeatmap will show the upgrade CTA.
   final peakHoursFuture = apiClient.get<List<PeakHourEntry>>(
-    ApiEndpoints.gymPeakHoursByGym(gymId),
+    ApiEndpoints.gymPeakHoursByGym(GymId(gymId)),
     queryParameters: {
       'tzOffsetMinutes': DateTime.now().timeZoneOffset.inMinutes,
     },

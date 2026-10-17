@@ -56,12 +56,11 @@ class _WorkoutBuilderScreenState extends ConsumerState<WorkoutBuilderScreen> {
           ..clear()
           ..addAll(workout.exercises.map((e) {
             final ex = byId[e.exerciseId];
-            final isArabic =
-                Localizations.localeOf(context).languageCode == 'ar';
-            final fallback = isArabic ? 'تمرين' : 'Exercise';
+            final language = AppLanguage.of(context);
+            final fallback = language.isArabic ? 'تمرين' : 'Exercise';
             final name = ex == null
                 ? fallback
-                : ExerciseLabels.name(ex, isArabic: isArabic);
+                : ExerciseLabels.name(ex, language: language);
             return _ExerciseEntry(
               exerciseId: e.exerciseId,
               exerciseName: name,
@@ -133,7 +132,7 @@ class _WorkoutBuilderScreenState extends ConsumerState<WorkoutBuilderScreen> {
 
       if (_isEditing) {
         await apiClient.putVoid(
-          ApiEndpoints.workoutById(widget.workoutId!),
+          ApiEndpoints.workoutById(WorkoutId(widget.workoutId!)),
           data: {
             'name': _nameController.text.trim(),
             if (_nameArController.text.trim().isNotEmpty)
@@ -184,7 +183,7 @@ class _WorkoutBuilderScreenState extends ConsumerState<WorkoutBuilderScreen> {
         exerciseId: exercise.id,
         exerciseName: ExerciseLabels.name(
           exercise,
-          isArabic: Localizations.localeOf(context).languageCode == 'ar',
+          language: AppLanguage.of(context),
         ),
         sets: 3,
         reps: 12,
@@ -631,11 +630,11 @@ class _ExercisePickerSheetState
                     return ListTile(
                       title: Text(ExerciseLabels.name(
                         exercise,
-                        isArabic: widget.isArabic,
+                        language: AppLanguage.of(context),
                       )),
                       subtitle: Text(ExerciseLabels.muscleGroups(
                         exercise.muscleGroups,
-                        isArabic: widget.isArabic,
+                        language: AppLanguage.of(context),
                       )),
                       onTap: () => widget.onSelected(exercise),
                     );

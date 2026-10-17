@@ -26,7 +26,7 @@ final trainerEarningsProvider =
 
   try {
     return await apiClient.get<TrainerEarningsSummary>(
-      ApiEndpoints.trainerEarnings(trainerId),
+      ApiEndpoints.trainerEarnings(TrainerId(trainerId)),
       queryParameters: {
         'gymId': gymId,
         'from': fromStr,

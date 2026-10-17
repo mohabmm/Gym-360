@@ -64,7 +64,7 @@ class PackageTemplatesScreen extends ConsumerWidget {
                       '${pkg.sessionCount} ${isArabic ? 'حصة' : 'sessions'}',
                     ),
                     trailing: Text(
-                      NumberFormatter.formatCurrency(pkg.totalPrice),
+                      NumberFormatter.formatCurrency(Egp(pkg.totalPrice)),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppColors.success,

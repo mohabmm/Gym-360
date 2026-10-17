@@ -49,7 +49,7 @@ class RevenueDashboardScreen extends ConsumerWidget {
                     Expanded(
                       child: StatCard(
                         label: isArabic ? 'اجمالي المدفوعات' : 'Total Revenue',
-                        value: NumberFormatter.formatCurrency(completedTotal),
+                        value: NumberFormatter.formatCurrency(Egp(completedTotal)),
                         icon: Icons.attach_money,
                         iconColor: AppColors.success,
                       ),
@@ -92,14 +92,14 @@ class RevenueDashboardScreen extends ConsumerWidget {
                         title: Text(
                           (p.memberName != null && p.memberName!.isNotEmpty)
                               ? p.memberName!
-                              : NumberFormatter.formatCurrency(p.amount),
+                              : NumberFormatter.formatCurrency(Egp(p.amount)),
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         subtitle: Text(
                           [
-                            NumberFormatter.formatCurrency(p.amount),
+                            NumberFormatter.formatCurrency(Egp(p.amount)),
                             if (p.purpose.isNotEmpty)
                               _purposeLabel(p.purpose, isArabic),
                             if (p.createdAt != null)

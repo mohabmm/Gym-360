@@ -119,12 +119,12 @@ void main() {
   group('GymSwitcherScreen / shell', () {
     test('GET /gyms/{gymId} fetches gym details for membership', () async {
       t.adapter.onGet(
-        ApiEndpoints.gymById(kGymId),
+        ApiEndpoints.gymById(kGym),
         respond: (_) => t.adapter.ok(Samples.gym()),
       );
 
       final gym = await t.apiClient.get<GymModel>(
-        ApiEndpoints.gymById(kGymId),
+        ApiEndpoints.gymById(kGym),
         parser: (d) => GymModel.fromJson(d as Map<String, dynamic>),
       );
 

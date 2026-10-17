@@ -40,7 +40,7 @@ class _ClientNotesScreenState extends ConsumerState<ClientNotesScreen> {
         );
       }
       await apiClient.postVoid(
-        ApiEndpoints.gymMemberNotes(gymId, widget.clientId),
+        ApiEndpoints.gymMemberNotes(GymId(gymId), MemberId(widget.clientId)),
         data: {'content': content},
       );
       _noteController.clear();

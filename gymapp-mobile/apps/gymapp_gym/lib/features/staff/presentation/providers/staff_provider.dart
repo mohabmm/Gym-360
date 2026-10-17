@@ -44,7 +44,7 @@ final staffListProvider =
   final gymId = ref.watch(currentGymIdProvider);
 
   return apiClient.get<List<StaffModel>>(
-    ApiEndpoints.gymStaff(gymId),
+    ApiEndpoints.gymStaff(GymId(gymId)),
     parser: (data) => (data as List)
         .map((e) => StaffModel.fromJson(_normalizeStaffJson(e as Map<String, dynamic>)))
         .toList(),

@@ -47,12 +47,12 @@ void main() {
   group('ChatScreen', () {
     test('GET /conversations/{id}/messages with userId+pagination', () async {
       t.adapter.onGet(
-        ApiEndpoints.messages('conv-1'),
+        ApiEndpoints.messages(const ConversationId('conv-1')),
         respond: (_) => t.adapter.ok([Samples.message()]),
       );
 
       final msgs = await t.apiClient.get<List<MessageModel>>(
-        ApiEndpoints.messages('conv-1'),
+        ApiEndpoints.messages(const ConversationId('conv-1')),
         queryParameters: {
           'userId': kTrainerId,
           'page': 1,
@@ -74,12 +74,12 @@ void main() {
     test('POST /conversations/{id}/messages sends { senderId, content }',
         () async {
       t.adapter.onPost(
-        ApiEndpoints.messages('conv-1'),
+        ApiEndpoints.messages(const ConversationId('conv-1')),
         respond: (_) => t.adapter.created(Samples.message()),
       );
 
       await t.apiClient.postVoid(
-        ApiEndpoints.messages('conv-1'),
+        ApiEndpoints.messages(const ConversationId('conv-1')),
         data: {
           'senderId': kTrainerId,
           'content': 'Great session today',

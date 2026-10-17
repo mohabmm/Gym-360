@@ -22,7 +22,7 @@ class KioskPinInfo {
 final kioskPinInfoProvider =
     FutureProvider.autoDispose<KioskPinInfo>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
-  final gymId = ref.watch(currentGymIdProvider);
+  final gymId = GymId(ref.watch(currentGymIdProvider));
   final storage = ref.watch(secureStorageProvider);
 
   final info = await apiClient.get<KioskPinInfo>(
@@ -32,7 +32,7 @@ final kioskPinInfoProvider =
 
   // Cache hash for offline exit. Delete the key when no PIN is set so a stale
   // hash never survives a "remove PIN" action on another device.
-  final cacheKey = StorageKeys.kioskPinHashFor(gymId);
+  final cacheKey = SecureStorageKey.kioskPinHash(gymId);
   if (info.isSet && info.hash != null) {
     await storage.write(cacheKey, info.hash!);
   } else {
@@ -47,7 +47,7 @@ final gymSettingsProvider =
   final apiClient = ref.watch(apiClientProvider);
   final gymId = ref.watch(currentGymIdProvider);
   return apiClient.get<Map<String, dynamic>>(
-    ApiEndpoints.gymById(gymId),
+    ApiEndpoints.gymById(GymId(gymId)),
     parser: (data) => data as Map<String, dynamic>,
   );
 });
@@ -60,7 +60,7 @@ final gymSectionsProvider =
   final gymId = ref.watch(currentGymIdProvider);
   if (gymId.isEmpty) return const <String>{};
   return apiClient.get<Set<String>>(
-    ApiEndpoints.gymSections(gymId),
+    ApiEndpoints.gymSections(GymId(gymId)),
     parser: (data) => (data as List)
         .whereType<Map>()
         .where((s) => s['isActive'] != false)
@@ -80,7 +80,7 @@ final gymSessionPoliciesProvider =
   final apiClient = ref.watch(apiClientProvider);
   final gymId = ref.watch(currentGymIdProvider);
   return apiClient.get<Map<String, dynamic>>(
-    ApiEndpoints.gymSessionPolicy(gymId),
+    ApiEndpoints.gymSessionPolicy(GymId(gymId)),
     parser: (data) => data as Map<String, dynamic>,
   );
 });
@@ -91,7 +91,7 @@ final gymAmenitiesProvider =
   final apiClient = ref.watch(apiClientProvider);
   final gymId = ref.watch(currentGymIdProvider);
   return apiClient.get<List<String>>(
-    ApiEndpoints.gymById(gymId),
+    ApiEndpoints.gymById(GymId(gymId)),
     parser: (data) {
       final map = data as Map<String, dynamic>;
       final amenities = map['amenities'];
@@ -113,7 +113,7 @@ final testingModeProvider =
   final apiClient = ref.watch(apiClientProvider);
   final gymId = ref.watch(currentGymIdProvider);
   return apiClient.get<bool>(
-    ApiEndpoints.gymTestingMode(gymId),
+    ApiEndpoints.gymTestingMode(GymId(gymId)),
     parser: (data) {
       if (data is Map<String, dynamic>) {
         return data['enabled'] == true;
@@ -130,7 +130,7 @@ final setTestingModeProvider = Provider((ref) {
   final apiClient = ref.watch(apiClientProvider);
   return (String gymId, bool enabled) async {
     await apiClient.postVoid(
-      ApiEndpoints.gymTestingMode(gymId),
+      ApiEndpoints.gymTestingMode(GymId(gymId)),
       data: {'enabled': enabled},
     );
     ref.invalidate(testingModeProvider);

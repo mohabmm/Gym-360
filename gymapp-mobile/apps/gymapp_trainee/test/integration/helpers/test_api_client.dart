@@ -56,12 +56,12 @@ TestApiClient buildTestApiClient({
   TestSession session = const TestSession(),
   String baseUrl = 'https://test.api.gymapp.local',
 }) {
-  final storage = FakeSecureStorage(
-    accessToken: session.accessToken,
-    refreshToken: session.refreshToken,
-    userId: session.userId,
-    currentGymId: session.gymId,
-  );
+  final storage = FakeSecureStorage({
+    SecureStorageKey.accessToken: session.accessToken,
+    SecureStorageKey.refreshToken: session.refreshToken,
+    SecureStorageKey.userId: session.userId,
+    SecureStorageKey.currentGymId: session.gymId,
+  });
   final client = ApiClient(
     baseUrl: baseUrl,
     storage: storage,

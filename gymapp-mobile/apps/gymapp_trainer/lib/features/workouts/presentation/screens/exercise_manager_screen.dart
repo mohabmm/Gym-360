@@ -240,7 +240,7 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
               children: _muscleGroups.map((m) {
                 final selected = _selectedMuscles.contains(m);
                 return FilterChip(
-                  label: Text(ExerciseLabels.muscleGroup(m, isArabic: isArabic)),
+                  label: Text(ExerciseLabels.muscleGroup(m, language: AppLanguage.of(context))),
                   selected: selected,
                   onSelected: (on) => setState(() {
                     if (on) {
@@ -276,7 +276,7 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
                   .map((e) => DropdownMenuItem(
                         value: e,
                         child: Text(
-                            ExerciseLabels.equipment(e, isArabic: isArabic)),
+                            ExerciseLabels.equipment(e, language: AppLanguage.of(context))),
                       ))
                   .toList(),
               onChanged: (v) => setState(() => _equipment = v ?? 'None'),
@@ -291,7 +291,7 @@ class _CreateExerciseDialogState extends ConsumerState<_CreateExerciseDialog> {
                   .map((c) => DropdownMenuItem(
                         value: c,
                         child: Text(
-                            ExerciseLabels.category(c, isArabic: isArabic)),
+                            ExerciseLabels.category(c, language: AppLanguage.of(context))),
                       ))
                   .toList(),
               onChanged: (v) => setState(() => _category = v ?? 'Strength'),
@@ -506,10 +506,10 @@ class _ExerciseTile extends StatelessWidget {
             size: 18,
           ),
         ),
-        title: Text(ExerciseLabels.name(exercise, isArabic: isArabic)),
+        title: Text(ExerciseLabels.name(exercise, language: AppLanguage.of(context))),
         subtitle: Text(ExerciseLabels.muscleGroups(
           exercise.muscleGroups,
-          isArabic: isArabic,
+          language: AppLanguage.of(context),
         )),
       ),
     );

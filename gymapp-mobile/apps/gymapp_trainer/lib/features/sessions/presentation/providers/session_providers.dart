@@ -8,7 +8,7 @@ final sessionDetailProvider =
     FutureProvider.autoDispose.family<SessionModel, String>((ref, id) async {
   final apiClient = ref.watch(apiClientProvider);
   return apiClient.get<SessionModel>(
-    ApiEndpoints.sessionById(id),
+    ApiEndpoints.sessionById(SessionId(id)),
     parser: (data) => SessionModel.fromJson(data as Map<String, dynamic>),
   );
 });

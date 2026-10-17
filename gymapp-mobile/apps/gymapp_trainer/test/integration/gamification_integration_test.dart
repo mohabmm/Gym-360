@@ -17,12 +17,12 @@ void main() {
   test('GET /gamification/trainers/{id}/public-profile returns summary',
       () async {
     t.adapter.onGet(
-      ApiEndpoints.trainerPublicProfile(kTrainerId),
+      ApiEndpoints.trainerPublicProfile(kTrainer),
       respond: (_) => t.adapter.ok(Samples.trainerPublicProfile()),
     );
 
     final profile = await t.apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.trainerPublicProfile(kTrainerId),
+      ApiEndpoints.trainerPublicProfile(kTrainer),
       queryParameters: {'gymId': kGymId},
       parser: (d) => d as Map<String, dynamic>,
     );
@@ -37,7 +37,7 @@ void main() {
 
   test('testimonials payload is a list of anonymized entries', () async {
     t.adapter.onGet(
-      ApiEndpoints.trainerPublicProfile(kTrainerId),
+      ApiEndpoints.trainerPublicProfile(kTrainer),
       respond: (_) => t.adapter.ok({
         ...Samples.trainerPublicProfile(),
         'testimonials': [
@@ -48,7 +48,7 @@ void main() {
     );
 
     final profile = await t.apiClient.get<Map<String, dynamic>>(
-      ApiEndpoints.trainerPublicProfile(kTrainerId),
+      ApiEndpoints.trainerPublicProfile(kTrainer),
       queryParameters: {'gymId': kGymId},
       parser: (d) => d as Map<String, dynamic>,
     );
@@ -65,13 +65,13 @@ void main() {
 
   test('404 on public profile falls back gracefully', () async {
     t.adapter.onGet(
-      ApiEndpoints.trainerPublicProfile(kTrainerId),
+      ApiEndpoints.trainerPublicProfile(kTrainer),
       respond: (_) => t.adapter.error(404, code: 'NOT_FOUND'),
     );
 
     await expectLater(
       t.apiClient.get<Map<String, dynamic>>(
-        ApiEndpoints.trainerPublicProfile(kTrainerId),
+        ApiEndpoints.trainerPublicProfile(kTrainer),
         queryParameters: {'gymId': kGymId},
         parser: (d) => d as Map<String, dynamic>,
       ),

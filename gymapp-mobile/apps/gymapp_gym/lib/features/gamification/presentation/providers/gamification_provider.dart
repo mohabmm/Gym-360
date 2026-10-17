@@ -50,7 +50,7 @@ final memberLeaderboardProvider =
   if (gymId.isEmpty) return const [];
   final type = ref.watch(selectedMemberLeaderboardTypeProvider);
   final leaderboard = await apiClient.get<LeaderboardModel>(
-    ApiEndpoints.leaderboardByType(type),
+    ApiEndpoints.leaderboardByType(LeaderboardType(type)),
     queryParameters: {'gymId': gymId},
     parser: (data) => LeaderboardModel.fromJson(data as Map<String, dynamic>),
   );
@@ -62,7 +62,7 @@ final trainerRatingsDetailProvider =
   (ref, trainerId) async {
     final apiClient = ref.watch(apiClientProvider);
     return apiClient.get<List<TrainerRatingModel>>(
-      ApiEndpoints.trainerDetailedRatings(trainerId),
+      ApiEndpoints.trainerDetailedRatings(TrainerId(trainerId)),
       parser: (data) => (data as List)
           .map((e) => TrainerRatingModel.fromJson(e as Map<String, dynamic>))
           .toList(),

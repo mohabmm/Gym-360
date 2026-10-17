@@ -46,7 +46,7 @@ class CommunicationRemoteDataSource {
     int pageSize = 50,
   }) async {
     return _apiClient.get<List<MessageModel>>(
-      ApiEndpoints.messages(conversationId),
+      ApiEndpoints.messages(ConversationId(conversationId)),
       queryParameters: {
         'page': page,
         'pageSize': pageSize,
@@ -69,7 +69,7 @@ class CommunicationRemoteDataSource {
     required MessageDraft draft,
   }) async {
     return _apiClient.post<String>(
-      ApiEndpoints.messages(conversationId),
+      ApiEndpoints.messages(ConversationId(conversationId)),
       data: draft.toJson(),
       parser: (data) => data.toString(),
     );
@@ -80,7 +80,7 @@ class CommunicationRemoteDataSource {
     required String conversationId,
   }) async {
     await _apiClient.putVoid(
-      '${ApiEndpoints.conversationById(conversationId)}/read',
+      '${ApiEndpoints.conversationById(ConversationId(conversationId))}/read',
     );
   }
 

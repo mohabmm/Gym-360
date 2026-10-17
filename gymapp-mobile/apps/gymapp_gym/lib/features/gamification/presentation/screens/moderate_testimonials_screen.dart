@@ -137,7 +137,7 @@ class ModerateTestimonialsScreen extends ConsumerWidget {
             : 'Current user unavailable');
       }
       await apiClient.post<void>(
-        ApiEndpoints.trainerTestimonials(t.trainerId),
+        ApiEndpoints.trainerTestimonials(TrainerId(t.trainerId)),
         data: {
           'testimonialId': t.id,
           'gymId': t.gymId,

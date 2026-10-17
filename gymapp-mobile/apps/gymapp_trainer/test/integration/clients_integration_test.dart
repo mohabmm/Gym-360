@@ -26,7 +26,7 @@ void main() {
     test('GET /gyms/{gymId}/members with page+pageSize parses UserModel list',
         () async {
       t.adapter.onGet(
-        ApiEndpoints.gymMembers(kGymId),
+        ApiEndpoints.gymMembers(kGym),
         respond: (_) => t.adapter.ok({
           'items': [Samples.clientUser(), Samples.clientUser(id: 'client-2')],
           'totalCount': 2,
@@ -34,7 +34,7 @@ void main() {
       );
 
       final users = await t.apiClient.get<List<UserModel>>(
-        ApiEndpoints.gymMembers(kGymId),
+        ApiEndpoints.gymMembers(kGym),
         queryParameters: {'page': 1, 'pageSize': 100},
         parser: (data) {
           final list = (data as Map<String, dynamic>)['items'] as List<dynamic>;
@@ -57,12 +57,12 @@ void main() {
     test('GET /gyms/{gymId}/members/{memberId} returns full profile',
         () async {
       t.adapter.onGet(
-        ApiEndpoints.gymMemberById(kGymId, kClientId),
+        ApiEndpoints.gymMemberById(kGym, kClientMember),
         respond: (_) => t.adapter.ok(Samples.clientUser()),
       );
 
       final user = await t.apiClient.get<UserModel>(
-        ApiEndpoints.gymMemberById(kGymId, kClientId),
+        ApiEndpoints.gymMemberById(kGym, kClientMember),
         parser: (d) => UserModel.fromJson(d as Map<String, dynamic>),
       );
 
@@ -97,12 +97,12 @@ void main() {
 
     test('GET /progress/clients/{clientId} returns body metrics', () async {
       t.adapter.onGet(
-        ApiEndpoints.clientProgress(kClientId),
+        ApiEndpoints.clientProgress(kClient),
         respond: (_) => t.adapter.ok([Samples.bodyMetric()]),
       );
 
       final metrics = await t.apiClient.get<List<BodyMetricEntryModel>>(
-        ApiEndpoints.clientProgress(kClientId),
+        ApiEndpoints.clientProgress(kClient),
         parser: (data) => (data as List<dynamic>)
             .map((e) => BodyMetricEntryModel.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -208,12 +208,12 @@ void main() {
     test('GET /gyms/{gymId}/members/{clientId}/notes returns notes list',
         () async {
       t.adapter.onGet(
-        ApiEndpoints.gymMemberNotes(kGymId, kClientId),
+        ApiEndpoints.gymMemberNotes(kGym, kClientMember),
         respond: (_) => t.adapter.ok([Samples.clientNote()]),
       );
 
       final raw = await t.apiClient.get<List<dynamic>>(
-        ApiEndpoints.gymMemberNotes(kGymId, kClientId),
+        ApiEndpoints.gymMemberNotes(kGym, kClientMember),
         parser: (d) => d as List<dynamic>,
       );
 
@@ -225,12 +225,12 @@ void main() {
     test('POST /gyms/{gymId}/members/{clientId}/notes sends { content }',
         () async {
       t.adapter.onPost(
-        ApiEndpoints.gymMemberNotes(kGymId, kClientId),
+        ApiEndpoints.gymMemberNotes(kGym, kClientMember),
         respond: (_) => t.adapter.noContent(),
       );
 
       await t.apiClient.postVoid(
-        ApiEndpoints.gymMemberNotes(kGymId, kClientId),
+        ApiEndpoints.gymMemberNotes(kGym, kClientMember),
         data: {'content': 'Shoulder feels better today'},
       );
 
@@ -248,7 +248,7 @@ void main() {
     test('GET /gyms/{gymId}/members/{clientId}/onboarding returns saved form',
         () async {
       t.adapter.onGet(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        ApiEndpoints.gymMemberOnboarding(kGym, kClientMember),
         respond: (_) => t.adapter.ok({
           'id': 'onb-1',
           'gymId': kGymId,
@@ -262,7 +262,7 @@ void main() {
       );
 
       final saved = await t.apiClient.get<Map<String, dynamic>?>(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        ApiEndpoints.gymMemberOnboarding(kGym, kClientMember),
         parser: parseSaved,
       );
 
@@ -279,12 +279,12 @@ void main() {
 
     test('GET onboarding with null data means nothing saved yet', () async {
       t.adapter.onGet(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        ApiEndpoints.gymMemberOnboarding(kGym, kClientMember),
         respond: (_) => t.adapter.ok(null),
       );
 
       final saved = await t.apiClient.get<Map<String, dynamic>?>(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        ApiEndpoints.gymMemberOnboarding(kGym, kClientMember),
         parser: parseSaved,
       );
 
@@ -294,12 +294,12 @@ void main() {
     test('POST /gyms/{gymId}/members/{clientId}/onboarding sends form fields',
         () async {
       t.adapter.onPost(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        ApiEndpoints.gymMemberOnboarding(kGym, kClientMember),
         respond: (_) => t.adapter.noContent(),
       );
 
       await t.apiClient.postVoid(
-        ApiEndpoints.gymMemberOnboarding(kGymId, kClientId),
+        ApiEndpoints.gymMemberOnboarding(kGym, kClientMember),
         data: {
           'medicalHistory': 'none',
           'fitnessGoals': 'lose 5kg',

@@ -12,7 +12,7 @@ class GamificationRemoteDataSource {
     required String gymId,
   }) async {
     return _apiClient.get<LeaderboardModel>(
-      ApiEndpoints.leaderboardByType(type),
+      ApiEndpoints.leaderboardByType(LeaderboardType(type)),
       queryParameters: {'gymId': gymId},
       parser: (data) => LeaderboardModel.fromJson(data as Map<String, dynamic>),
     );
@@ -24,7 +24,7 @@ class GamificationRemoteDataSource {
     required String gymId,
   }) async {
     return _apiClient.get<TrainerPublicProfileModel>(
-      ApiEndpoints.trainerPublicProfile(trainerId),
+      ApiEndpoints.trainerPublicProfile(TrainerId(trainerId)),
       queryParameters: {'gymId': gymId},
       parser: (data) =>
           TrainerPublicProfileModel.fromJson(data as Map<String, dynamic>),

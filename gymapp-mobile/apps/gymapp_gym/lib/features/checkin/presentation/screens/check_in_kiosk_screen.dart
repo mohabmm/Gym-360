@@ -164,7 +164,7 @@ class _CheckInKioskScreenState extends ConsumerState<CheckInKioskScreen>
       final apiClient = ref.read(apiClientProvider);
       final staffId = ref.read(authProvider).valueOrNull?.user?.id;
       final result = await apiClient.post<CheckInResultModel>(
-        ApiEndpoints.checkIn(gymId),
+        ApiEndpoints.checkIn(GymId(gymId)),
         data: {
           'method': 'QR',
           'qrToken': qrData,
@@ -204,7 +204,7 @@ class _CheckInKioskScreenState extends ConsumerState<CheckInKioskScreen>
       final apiClient = ref.read(apiClientProvider);
       final staffId = ref.read(authProvider).valueOrNull?.user?.id;
       final result = await apiClient.post<CheckInResultModel>(
-        ApiEndpoints.checkIn(gymId),
+        ApiEndpoints.checkIn(GymId(gymId)),
         data: {
           'method': 'MemberNumber',
           'memberNumber': number,
@@ -240,7 +240,7 @@ class _CheckInKioskScreenState extends ConsumerState<CheckInKioskScreen>
     final op = OfflineOperation(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       method: 'POST',
-      path: ApiEndpoints.checkIn(gymId),
+      path: ApiEndpoints.checkIn(GymId(gymId)),
       body: {
         'method': identifierType == 'qr' ? 'QR' : 'MemberNumber',
         if (identifierType == 'qr') 'qrToken': identifier,
@@ -335,9 +335,9 @@ class _CheckInKioskScreenState extends ConsumerState<CheckInKioskScreen>
   /// hash in secure storage; on network failure falls back to the last cached
   /// hash so the kiosk can still be exited offline.
   Future<void> _loadKioskPinState() async {
-    final gymId = ref.read(currentGymIdProvider);
+    final gymId = GymId(ref.read(currentGymIdProvider));
     final storage = ref.read(secureStorageProvider);
-    final cacheKey = StorageKeys.kioskPinHashFor(gymId);
+    final cacheKey = SecureStorageKey.kioskPinHash(gymId);
 
     try {
       final apiClient = ref.read(apiClientProvider);
@@ -379,7 +379,7 @@ class _CheckInKioskScreenState extends ConsumerState<CheckInKioskScreen>
     try {
       final apiClient = ref.read(apiClientProvider);
       final response = await apiClient.dio.post(
-        ApiEndpoints.kioskPinVerify(gymId),
+        ApiEndpoints.kioskPinVerify(GymId(gymId)),
         data: {'pin': pin},
         options: Options(
           receiveTimeout: const Duration(seconds: 3),

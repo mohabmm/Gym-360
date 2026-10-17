@@ -49,7 +49,7 @@ final workoutDetailProvider =
     FutureProvider.autoDispose.family<WorkoutModel, String>((ref, id) async {
   final apiClient = ref.watch(apiClientProvider);
   return apiClient.get<WorkoutModel>(
-    ApiEndpoints.workoutById(id),
+    ApiEndpoints.workoutById(WorkoutId(id)),
     parser: (data) => WorkoutModel.fromJson(data as Map<String, dynamic>),
   );
 });

@@ -83,7 +83,7 @@ class BookingRequestsScreen extends ConsumerWidget {
       final apiClient = ref.read(apiClientProvider);
       if (action == 'accepted' || action == 'confirm') {
         await apiClient.postVoid(
-          '${ApiEndpoints.sessionById(sessionId)}/confirm',
+          '${ApiEndpoints.sessionById(SessionId(sessionId))}/confirm',
         );
       } else {
         final trainerId = ref.read(authProvider).user?.id;
@@ -91,7 +91,7 @@ class BookingRequestsScreen extends ConsumerWidget {
           throw Exception('No authenticated trainer');
         }
         await apiClient.postVoid(
-          '${ApiEndpoints.sessionById(sessionId)}/cancel',
+          '${ApiEndpoints.sessionById(SessionId(sessionId))}/cancel',
           data: {'cancelledBy': trainerId, 'reason': 'declined by trainer'},
         );
       }

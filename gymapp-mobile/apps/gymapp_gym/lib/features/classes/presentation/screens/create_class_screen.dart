@@ -109,7 +109,7 @@ class _CreateClassScreenState extends ConsumerState<CreateClassScreen> {
 
       final apiClient = ref.read(apiClientProvider);
       await apiClient.post<void>(
-        ApiEndpoints.gymClasses(gymId),
+        ApiEndpoints.gymClasses(GymId(gymId)),
         data: {
           'name': _nameController.text.trim(),
           'description': _descController.text.trim(),
