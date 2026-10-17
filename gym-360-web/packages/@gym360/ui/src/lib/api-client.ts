@@ -81,6 +81,10 @@ export async function apiDelete<T>(url: string): Promise<ApiResponse<T>> {
   return response.data;
 }
 
+function hasApiErrors(body: ApiResponse<unknown> | undefined): body is ApiResponse<unknown> & { errors: unknown[] } {
+  return Array.isArray(body?.errors) && body.errors.length > 0;
+}
+
 /**
  * Extracts the typed ApiError[] from a failed axios request. Any axios/network failure is
  * collapsed into a single synthetic error so callers can always rely on the same shape.
@@ -88,9 +92,7 @@ export async function apiDelete<T>(url: string): Promise<ApiResponse<T>> {
 export function extractApiErrors(error: unknown): ApiError[] {
   if (axios.isAxiosError(error)) {
     const body = (error as AxiosError<ApiResponse<unknown>>).response?.data;
-    if (body && Array.isArray(body.errors) && body.errors.length > 0) {
-      return body.errors as ApiError[];
-    }
+    if (hasApiErrors(body)) return body.errors as ApiError[];
     return [{ code: 'NETWORK_ERROR', message: error.message || 'Network request failed.' }];
   }
   return [{ code: 'UNKNOWN', message: 'An unexpected error occurred.' }];

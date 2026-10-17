@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useSignalR } from '@gym360/ui';
 
 interface MessagePayload {
@@ -30,6 +30,51 @@ interface ConversationCreatedPayload {
 
 const HUB_URL = `${(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1').replace(/\/api\/v\d+$/, '')}/hubs/chat`;
 
+type HubHandler = (...args: unknown[]) => void;
+type HubSubscribe = (event: string, handler: HubHandler) => void;
+
+// Build the event -> handler map; each handler invalidates the caches the event affects.
+function chatEventHandlers(qc: QueryClient): Record<string, HubHandler> {
+  const onMessage: HubHandler = (...args) => {
+    const msg = args[0] as MessagePayload | undefined;
+    if (!msg) return;
+    qc.invalidateQueries({ queryKey: ['conversation-messages', msg.conversationId] });
+    qc.invalidateQueries({ queryKey: ['conversations'] });
+  };
+
+  const onRead: HubHandler = (...args) => {
+    const r = args[0] as MessagesReadPayload | undefined;
+    if (!r) return;
+    qc.invalidateQueries({ queryKey: ['conversation-messages', r.conversationId] });
+    qc.invalidateQueries({ queryKey: ['conversations'] });
+  };
+
+  const onConvCreated: HubHandler = (...args) => {
+    const c = args[0] as ConversationCreatedPayload | undefined;
+    if (!c) return;
+    qc.invalidateQueries({ queryKey: ['conversations'] });
+  };
+
+  return {
+    message_received: onMessage,
+    messages_read: onRead,
+    conversation_created: onConvCreated,
+  };
+}
+
+function subscribeChatEvents(qc: QueryClient, on: HubSubscribe, off: HubSubscribe) {
+  const handlers = Object.entries(chatEventHandlers(qc));
+  handlers.forEach(([event, handler]) => on(event, handler));
+  return () => handlers.forEach(([event, handler]) => off(event, handler));
+}
+
+type HubInvoke = (method: string, ...args: unknown[]) => Promise<unknown>;
+
+async function switchConversation(invoke: HubInvoke, prev: string | null, next: string | null) {
+  if (prev) await invoke('LeaveConversation', prev);
+  if (next) await invoke('JoinConversation', next);
+}
+
 /**
  * Real-time chat client. Subscribes to /hubs/chat once per session, then JoinConversation
  * is invoked whenever the user opens a thread (caller passes the focused conversationId).
@@ -52,36 +97,7 @@ export function useChatHub(focusedConversationId?: string | null) {
   // Wire event handlers once per connection (re-runs when connection swaps).
   useEffect(() => {
     if (!connection) return;
-
-    const onMessage = (...args: unknown[]) => {
-      const msg = args[0] as MessagePayload | undefined;
-      if (!msg) return;
-      qc.invalidateQueries({ queryKey: ['conversation-messages', msg.conversationId] });
-      qc.invalidateQueries({ queryKey: ['conversations'] });
-    };
-
-    const onRead = (...args: unknown[]) => {
-      const r = args[0] as MessagesReadPayload | undefined;
-      if (!r) return;
-      qc.invalidateQueries({ queryKey: ['conversation-messages', r.conversationId] });
-      qc.invalidateQueries({ queryKey: ['conversations'] });
-    };
-
-    const onConvCreated = (...args: unknown[]) => {
-      const c = args[0] as ConversationCreatedPayload | undefined;
-      if (!c) return;
-      qc.invalidateQueries({ queryKey: ['conversations'] });
-    };
-
-    on('message_received', onMessage);
-    on('messages_read', onRead);
-    on('conversation_created', onConvCreated);
-
-    return () => {
-      off('message_received', onMessage);
-      off('messages_read', onRead);
-      off('conversation_created', onConvCreated);
-    };
+    return subscribeChatEvents(qc, on, off);
   }, [connection, qc, on, off]);
 
   // Join/leave conversation groups as the focused thread changes.
@@ -93,8 +109,7 @@ export function useChatHub(focusedConversationId?: string | null) {
 
     (async () => {
       try {
-        if (prev) await invoke('LeaveConversation', prev);
-        if (next) await invoke('JoinConversation', next);
+        await switchConversation(invoke, prev, next);
         joinedRef.current = next;
       } catch {
         // best-effort; reconnect logic will re-invoke when state re-stabilizes

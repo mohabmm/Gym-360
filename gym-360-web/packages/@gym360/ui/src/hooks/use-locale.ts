@@ -10,6 +10,7 @@ import {
   type Direction,
   type Locale,
 } from '../lib/locale';
+import { readChangedCookie } from '../lib/client-cookie';
 
 /**
  * Client hook for reading and updating the app locale.
@@ -28,16 +29,10 @@ export function useLocale(initial: Locale = DEFAULT_LOCALE): {
   const [locale, setLocaleState] = useState<Locale>(initial);
 
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const raw = document.cookie
-      .split(';')
-      .map((c) => c.trim())
-      .find((c) => c.startsWith(`${LOCALE_COOKIE}=`));
-    const value = raw ? decodeURIComponent(raw.split('=')[1] ?? '') : null;
-    if (value && isLocale(value) && value !== locale) {
-      setLocaleState(value);
-      applyDocumentDirection(value);
-    }
+    const value = readChangedCookie(LOCALE_COOKIE, isLocale, locale);
+    if (!value) return;
+    setLocaleState(value);
+    applyDocumentDirection(value);
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

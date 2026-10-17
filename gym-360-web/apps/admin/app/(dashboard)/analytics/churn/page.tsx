@@ -5,7 +5,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { TrendingDown, AlertTriangle, DollarSign, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useChurnAnalytics } from '@/lib/hooks';
-import type { AtRiskGym } from '@gym360/ui';
+import type { AtRiskGym, ChurnMetrics } from '@gym360/ui';
 
 const FALLBACK_CHURN_BY_PLAN = [
   { plan: 'Free', churnRate: 18, color: '#94A3B8' },
@@ -13,6 +13,12 @@ const FALLBACK_CHURN_BY_PLAN = [
   { plan: 'Pro', churnRate: 3, color: '#8B5CF6' },
   { plan: 'Business', churnRate: 1, color: '#F59E0B' },
 ];
+
+function riskBarClass(riskScore: number): string {
+  if (riskScore >= 70) return 'bg-red-500';
+  if (riskScore >= 50) return 'bg-amber-500';
+  return 'bg-emerald-500';
+}
 
 const atRiskColumns: ColumnDef<AtRiskGym, unknown>[] = [
   {
@@ -32,7 +38,7 @@ const atRiskColumns: ColumnDef<AtRiskGym, unknown>[] = [
       <div className="flex items-center gap-2">
         <div className="w-12 h-2 rounded-full bg-muted overflow-hidden">
           <div
-            className={`h-full rounded-full ${row.original.riskScore >= 70 ? 'bg-red-500' : row.original.riskScore >= 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+            className={`h-full rounded-full ${riskBarClass(row.original.riskScore)}`}
             style={{ width: `${row.original.riskScore}%` }}
           />
         </div>
@@ -66,15 +72,68 @@ const atRiskColumns: ColumnDef<AtRiskGym, unknown>[] = [
   },
 ];
 
+type ChurnAnalytics = NonNullable<ReturnType<typeof useChurnAnalytics>['data']>['data'];
+
+/** Live churn-by-plan bars coloured by position; sample data when analytics are unavailable. */
+function churnByPlanSeries(analytics: ChurnAnalytics | undefined) {
+  return analytics?.churnByPlan?.map((c, i) => ({
+    ...c,
+    color: FALLBACK_CHURN_BY_PLAN[i]?.color ?? '#94A3B8',
+  })) ?? FALLBACK_CHURN_BY_PLAN;
+}
+
+function ChurnDataNotice({ isError, usingFallback }: { isError: boolean; usingFallback: boolean }) {
+  if (isError) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 dark:border-red-800 dark:bg-red-950/20">
+        <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+        <p className="text-sm text-red-700 dark:text-red-400">Failed to load churn analytics. Check API connectivity.</p>
+      </div>
+    );
+  }
+  if (!usingFallback) return null;
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
+      <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+      <p className="text-sm text-amber-800 dark:text-amber-300">Showing sample data — live churn metrics unavailable.</p>
+    </div>
+  );
+}
+
+function ChurnKpis({ metrics }: { metrics: ChurnMetrics | undefined }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <KpiCard
+        value={metrics ? `${metrics.churnRate}%` : '—'}
+        label="Monthly Churn Rate"
+        change={metrics?.churnRateChange}
+        icon={<TrendingDown className="h-5 w-5" />}
+        variant="danger"
+      />
+      <KpiCard
+        value={metrics?.atRiskCount.toString() ?? '—'}
+        label="At-Risk Gyms"
+        change={metrics?.atRiskChange}
+        icon={<AlertTriangle className="h-5 w-5" />}
+        variant="warning"
+      />
+      <KpiCard
+        value={metrics ? formatCurrency(metrics.avgLifetimeValue) : '—'}
+        label="Avg. Lifetime Value"
+        change={metrics?.lifetimeValueChange}
+        icon={<DollarSign className="h-5 w-5" />}
+        variant="success"
+      />
+    </div>
+  );
+}
+
 export default function ChurnAnalyticsPage() {
   const { data: churnData, isLoading, isError } = useChurnAnalytics();
   const analytics = churnData?.data;
   const usingFallback = !analytics;
   const atRiskGyms = analytics?.atRiskGyms ?? [];
-  const churnByPlan = analytics?.churnByPlan?.map((c, i) => ({
-    ...c,
-    color: FALLBACK_CHURN_BY_PLAN[i]?.color ?? '#94A3B8',
-  })) ?? FALLBACK_CHURN_BY_PLAN;
+  const churnByPlan = churnByPlanSeries(analytics);
   const metrics = analytics?.metrics;
 
   if (isLoading) return <PageSkeleton />;
@@ -87,43 +146,10 @@ export default function ChurnAnalyticsPage() {
         breadcrumbs={[{ label: 'Analytics', href: '/analytics' }, { label: 'Churn' }]}
       />
 
-      {isError && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 dark:border-red-800 dark:bg-red-950/20">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-700 dark:text-red-400">Failed to load churn analytics. Check API connectivity.</p>
-        </div>
-      )}
-      {!isError && usingFallback && (
-        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
-          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800 dark:text-amber-300">Showing sample data — live churn metrics unavailable.</p>
-        </div>
-      )}
+      <ChurnDataNotice isError={isError} usingFallback={usingFallback} />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KpiCard
-          value={metrics ? `${metrics.churnRate}%` : '—'}
-          label="Monthly Churn Rate"
-          change={metrics?.churnRateChange}
-          icon={<TrendingDown className="h-5 w-5" />}
-          variant="danger"
-        />
-        <KpiCard
-          value={metrics?.atRiskCount.toString() ?? '—'}
-          label="At-Risk Gyms"
-          change={metrics?.atRiskChange}
-          icon={<AlertTriangle className="h-5 w-5" />}
-          variant="warning"
-        />
-        <KpiCard
-          value={metrics ? formatCurrency(metrics.avgLifetimeValue) : '—'}
-          label="Avg. Lifetime Value"
-          change={metrics?.lifetimeValueChange}
-          icon={<DollarSign className="h-5 w-5" />}
-          variant="success"
-        />
-      </div>
+      <ChurnKpis metrics={metrics} />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">

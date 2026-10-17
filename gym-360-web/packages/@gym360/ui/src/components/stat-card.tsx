@@ -14,6 +14,34 @@ interface StatCardProps {
   iconClassName?: string;
 }
 
+type TrendDirection = 'up' | 'down' | 'neutral';
+
+const TREND_STYLES: Record<TrendDirection, { Icon: typeof Minus; iconClass: string; textClass: string }> = {
+  up: { Icon: TrendingUp, iconClass: 'h-4 w-4 text-emerald-500', textClass: 'text-emerald-500' },
+  down: { Icon: TrendingDown, iconClass: 'h-4 w-4 text-red-500', textClass: 'text-red-500' },
+  neutral: { Icon: Minus, iconClass: 'h-4 w-4 text-muted-foreground', textClass: 'text-muted-foreground' },
+};
+
+function trendDirectionOf(trend: number): TrendDirection {
+  if (trend > 0) return 'up';
+  if (trend < 0) return 'down';
+  return 'neutral';
+}
+
+function TrendRow({ trend, trendLabel }: { trend: number; trendLabel?: string }) {
+  const { Icon, iconClass, textClass } = TREND_STYLES[trendDirectionOf(trend)];
+  return (
+    <div className="mt-3 flex items-center gap-1.5 text-sm">
+      <Icon className={iconClass} />
+      <span className={cn('font-medium', textClass)}>
+        {trend > 0 ? '+' : ''}
+        {trend}%
+      </span>
+      {trendLabel && <span className="text-muted-foreground">{trendLabel}</span>}
+    </div>
+  );
+}
+
 export function StatCard({
   icon,
   label,
@@ -23,8 +51,6 @@ export function StatCard({
   className,
   iconClassName,
 }: StatCardProps) {
-  const trendDirection = trend === undefined ? null : trend > 0 ? 'up' : trend < 0 ? 'down' : 'neutral';
-
   return (
     <div
       className={cn(
@@ -46,25 +72,7 @@ export function StatCard({
           {icon}
         </div>
       </div>
-      {trend !== undefined && (
-        <div className="mt-3 flex items-center gap-1.5 text-sm">
-          {trendDirection === 'up' && <TrendingUp className="h-4 w-4 text-emerald-500" />}
-          {trendDirection === 'down' && <TrendingDown className="h-4 w-4 text-red-500" />}
-          {trendDirection === 'neutral' && <Minus className="h-4 w-4 text-muted-foreground" />}
-          <span
-            className={cn(
-              'font-medium',
-              trendDirection === 'up' && 'text-emerald-500',
-              trendDirection === 'down' && 'text-red-500',
-              trendDirection === 'neutral' && 'text-muted-foreground'
-            )}
-          >
-            {trend > 0 ? '+' : ''}
-            {trend}%
-          </span>
-          {trendLabel && <span className="text-muted-foreground">{trendLabel}</span>}
-        </div>
-      )}
+      {trend !== undefined && <TrendRow trend={trend} trendLabel={trendLabel} />}
     </div>
   );
 }

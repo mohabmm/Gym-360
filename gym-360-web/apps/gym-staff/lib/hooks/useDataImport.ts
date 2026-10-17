@@ -26,18 +26,20 @@ function gymScopedPath(gymId: string, suffix = '') {
   return `/gyms/${gymId}/imports${suffix}`;
 }
 
+const isJobActive = (job: DataImportJob | undefined) =>
+  job?.status === 'Pending' || job?.status === 'Processing';
+
+async function fetchImports<T>(gymId: string | undefined, suffix = ''): Promise<T> {
+  const res = await apiClient.get(gymScopedPath(gymId!, suffix));
+  return res.data.data;
+}
+
 export function useDataImportJobs(gymId: string | undefined) {
   return useQuery<DataImportJob[]>({
     queryKey: ['data-imports', gymId],
     enabled: !!gymId,
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      return data?.some((j) => j.status === 'Pending' || j.status === 'Processing') ? 3000 : false;
-    },
-    queryFn: async () => {
-      const res = await apiClient.get(gymScopedPath(gymId!));
-      return res.data.data ?? [];
-    },
+    refetchInterval: (query) => (query.state.data?.some(isJobActive) ? 3000 : false),
+    queryFn: async () => (await fetchImports<DataImportJob[] | undefined>(gymId)) ?? [],
   });
 }
 
@@ -45,14 +47,8 @@ export function useDataImportJob(gymId: string | undefined, jobId: string | unde
   return useQuery<DataImportJob>({
     queryKey: ['data-imports', gymId, jobId],
     enabled: !!gymId && !!jobId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'Pending' || status === 'Processing' ? 2000 : false;
-    },
-    queryFn: async () => {
-      const res = await apiClient.get(gymScopedPath(gymId!, `/${jobId}`));
-      return res.data.data;
-    },
+    refetchInterval: (query) => (isJobActive(query.state.data) ? 2000 : false),
+    queryFn: () => fetchImports<DataImportJob>(gymId, `/${jobId}`),
   });
 }
 

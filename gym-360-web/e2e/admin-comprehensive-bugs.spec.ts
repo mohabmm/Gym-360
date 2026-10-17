@@ -322,15 +322,16 @@ test.describe('Admin Bug Hunt — Gym Detail', () => {
     const has127 = pageContent.includes('>127<');
     const has8Classes = pageContent.includes('>8<');
     const has45 = pageContent.includes('>45<');
+    const showsHardcodedPair = has127 && has8Classes;
 
-    if (has127 && has8Classes && has45) {
+    if (showsHardcodedPair && has45) {
       console.warn('BUG-7 CONFIRMED: Quick Stats show hardcoded values (127 check-ins, 8 classes, 45 packages)');
     }
 
     // At minimum check that check-ins is not ALWAYS 127 — would need multiple gyms
     // For a single gym, this assertion documents the hardcoded value as a bug
     expect(
-      has127 && has8Classes,
+      showsHardcodedPair,
       'Quick Stats appear hardcoded: found 127 and 8 simultaneously. These should be real API values.',
     ).toBe(false);
   });

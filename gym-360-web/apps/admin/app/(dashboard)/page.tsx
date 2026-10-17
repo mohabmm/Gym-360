@@ -26,32 +26,29 @@ function bulkSuspendMessage(successCount: number, failCount: number) {
   return `Suspended ${successCount} overdue gym${successCount === 1 ? '' : 's'}.`;
 }
 
-export default function DashboardPage() {
-  const { data: gymsData } = useGyms();
-  const { data: analyticsData } = usePlatformAnalytics();
+// Lists derived from the gym registry for the dashboard panels + payment alerts.
+function dashboardLists(gyms: GymListItem[]) {
+  const overdueGyms = gyms.filter((g) => g.paymentStatus === 'overdue');
+  return {
+    recentRegistrations: gyms
+      .filter((g) => g.status !== 'terminated')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5),
+    topGyms: [...gyms]
+      .filter((g) => g.status === 'active')
+      .sort((a, b) => b.monthlyRevenue - a.monthlyRevenue)
+      .slice(0, 5),
+    overdueCount: overdueGyms.length,
+    warningCount: gyms.filter((g) => g.paymentStatus === 'warning').length,
+    suspendableIds: overdueGyms.filter((g) => g.status === 'active').map((g) => g.id),
+  };
+}
+
+function useBulkSuspendOverdue(suspendableIds: string[]) {
   const bulkSuspend = useBulkSuspendGyms();
   const [showBulkSuspend, setShowBulkSuspend] = useState(false);
   const [bulkResult, setBulkResult] = useState<string | null>(null);
   const [bulkSuspending, setBulkSuspending] = useState(false);
-
-  const gyms = gymsData?.data ?? [];
-  const analytics = analyticsData?.data;
-  const kpis = analytics?.kpis;
-
-  const recentRegistrations = gyms
-    .filter((g) => g.status !== 'terminated')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
-
-  const topGyms = [...gyms]
-    .filter((g) => g.status === 'active')
-    .sort((a, b) => b.monthlyRevenue - a.monthlyRevenue)
-    .slice(0, 5);
-
-  const { totalGyms, totalMembers, totalTrainers, mrr } = platformTotals(gyms, kpis);
-  const overdueGyms = gyms.filter((g) => g.paymentStatus === 'overdue');
-  const warningGyms = gyms.filter((g) => g.paymentStatus === 'warning');
-  const suspendableIds = overdueGyms.filter((g) => g.status === 'active').map((g) => g.id);
 
   const bulkSuspendOverdue = async () => {
     setShowBulkSuspend(false);
@@ -69,6 +66,62 @@ export default function DashboardPage() {
     }
   };
 
+  return {
+    showBulkSuspend,
+    openBulkSuspend: () => setShowBulkSuspend(true),
+    closeBulkSuspend: () => setShowBulkSuspend(false),
+    bulkResult,
+    bulkSuspending,
+    bulkSuspendOverdue,
+  };
+}
+
+function DashboardKpis({ gyms, kpis }: { gyms: GymListItem[]; kpis?: PlatformKpis }) {
+  const { totalGyms, totalMembers, totalTrainers, mrr } = platformTotals(gyms, kpis);
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <KpiCard
+        value={totalGyms.toString()}
+        label="Total Gyms"
+        change={kpis?.activeGymsChange}
+        icon={<Building2 className="h-5 w-5" />}
+        variant="info"
+      />
+      <KpiCard
+        value={formatNumber(totalMembers)}
+        label="Total Members"
+        change={kpis?.memberGrowthRate}
+        icon={<Users className="h-5 w-5" />}
+        variant="success"
+      />
+      <KpiCard
+        value={formatCurrency(mrr)}
+        label="Monthly Revenue"
+        change={kpis?.mrrChange}
+        icon={<DollarSign className="h-5 w-5" />}
+        variant="default"
+      />
+      <KpiCard
+        value={totalTrainers.toString()}
+        label="Total Trainers"
+        change={kpis?.trainerGrowthRate}
+        icon={<Dumbbell className="h-5 w-5" />}
+        variant="default"
+      />
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  const { data: gymsData } = useGyms();
+  const { data: analyticsData } = usePlatformAnalytics();
+
+  const gyms = gymsData?.data ?? [];
+  const analytics = analyticsData?.data;
+  const kpis = analytics?.kpis;
+  const { recentRegistrations, topGyms, overdueCount, warningCount, suspendableIds } = dashboardLists(gyms);
+  const bulk = useBulkSuspendOverdue(suspendableIds);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -77,60 +130,31 @@ export default function DashboardPage() {
       />
 
       <PaymentAlertsBar
-        overdueCount={overdueGyms.length}
-        warningCount={warningGyms.length}
+        overdueCount={overdueCount}
+        warningCount={warningCount}
         suspendableCount={suspendableIds.length}
-        onBulkSuspend={() => setShowBulkSuspend(true)}
+        onBulkSuspend={bulk.openBulkSuspend}
       />
 
-      {bulkResult && (
+      {bulk.bulkResult && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800">
-          {bulkResult}
+          {bulk.bulkResult}
         </div>
       )}
 
       <ConfirmModal
-        open={showBulkSuspend}
-        onClose={() => setShowBulkSuspend(false)}
-        onConfirm={bulkSuspendOverdue}
+        open={bulk.showBulkSuspend}
+        onClose={bulk.closeBulkSuspend}
+        onConfirm={bulk.bulkSuspendOverdue}
         title="Bulk Suspend Overdue Gyms"
         description={`Suspend all ${suspendableIds.length} active gyms whose payment is overdue? They will lose access immediately and receive a suspension notice.`}
         confirmLabel="Suspend all overdue"
         variant="warning"
-        isLoading={bulkSuspending}
+        isLoading={bulk.bulkSuspending}
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          value={totalGyms.toString()}
-          label="Total Gyms"
-          change={kpis?.activeGymsChange}
-          icon={<Building2 className="h-5 w-5" />}
-          variant="info"
-        />
-        <KpiCard
-          value={formatNumber(totalMembers)}
-          label="Total Members"
-          change={kpis?.memberGrowthRate}
-          icon={<Users className="h-5 w-5" />}
-          variant="success"
-        />
-        <KpiCard
-          value={formatCurrency(mrr)}
-          label="Monthly Revenue"
-          change={kpis?.mrrChange}
-          icon={<DollarSign className="h-5 w-5" />}
-          variant="default"
-        />
-        <KpiCard
-          value={totalTrainers.toString()}
-          label="Total Trainers"
-          change={kpis?.trainerGrowthRate}
-          icon={<Dumbbell className="h-5 w-5" />}
-          variant="default"
-        />
-      </div>
+      <DashboardKpis gyms={gyms} kpis={kpis} />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

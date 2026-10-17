@@ -7,7 +7,7 @@
  * Run: cd gymapp-web && npx playwright test e2e/phase5-owner-smoke.spec.ts --project=gym-staff
  */
 
-import { test, expect } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 
@@ -56,12 +56,9 @@ const PAGES = [
 test.describe.configure({ mode: 'serial' });
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test('Phase 5: owner staff web smoke', async ({ page }) => {
-  test.setTimeout(180_000);
-  const errors: any[] = [];
-  const consoleErrors: string[] = [];
-  const apiResponses: { url: string; status: number; page: string }[] = [];
+type ApiFailure = { url: string; status: number; page: string };
 
+function recordDiagnostics(page: Page, consoleErrors: string[], apiResponses: ApiFailure[]) {
   page.on('console', (msg) => {
     if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
@@ -71,8 +68,9 @@ test('Phase 5: owner staff web smoke', async ({ page }) => {
       apiResponses.push({ url, status: resp.status(), page: page.url() });
     }
   });
+}
 
-  // Login
+async function loginAsOwner(page: Page, errors: any[]) {
   await page.goto(`${STAFF_BASE}/login`, { waitUntil: 'domcontentloaded' });
   await page.fill('input[type="email"]', creds.owner.email);
   await page.fill('input[type="password"]', creds.owner.password);
@@ -86,19 +84,35 @@ test('Phase 5: owner staff web smoke', async ({ page }) => {
     await page.locator('button, a').filter({ hasText: creds.gymName }).first().click().catch(() => {});
     await page.waitForURL((u) => !u.pathname.startsWith('/select-gym'), { timeout: 15000 }).catch(() => {});
   }
+}
+
+async function visitRoute(page: Page, route: string, errors: any[]) {
+  try {
+    await page.goto(`${STAFF_BASE}${route}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.waitForTimeout(800);
+    // assert page didn't redirect back to /login
+    if (page.url().includes('/login')) {
+      errors.push({ route, problem: 'redirected_to_login' });
+    }
+  } catch (e: any) {
+    errors.push({ route, problem: 'navigation_error', message: e.message });
+  }
+}
+
+test('Phase 5: owner staff web smoke', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors: any[] = [];
+  const consoleErrors: string[] = [];
+  const apiResponses: ApiFailure[] = [];
+
+  recordDiagnostics(page, consoleErrors, apiResponses);
+
+  // Login
+  await loginAsOwner(page, errors);
 
   // Walk pages
   for (const route of PAGES) {
-    try {
-      await page.goto(`${STAFF_BASE}${route}`, { waitUntil: 'domcontentloaded', timeout: 20000 });
-      await page.waitForTimeout(800);
-      // assert page didn't redirect back to /login
-      if (page.url().includes('/login')) {
-        errors.push({ route, problem: 'redirected_to_login' });
-      }
-    } catch (e: any) {
-      errors.push({ route, problem: 'navigation_error', message: e.message });
-    }
+    await visitRoute(page, route, errors);
   }
 
   const report = {
