@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.UpdateWorkout;
 
@@ -28,12 +29,14 @@ internal sealed class UpdateWorkoutCommandHandler : ICommandHandler<UpdateWorkou
             return Result.Failure(TrainingErrors.WorkoutNotFound);
         }
 
-        workout.Update(
-            request.Name ?? workout.Name,
-            request.NameAr ?? workout.NameAr,
-            request.Description,
-            request.EstimatedDuration,
-            targetMuscleGroups: null);
+        workout.Update(new WorkoutDetails
+        {
+            Name = request.Name ?? workout.Name,
+            NameAr = request.NameAr ?? workout.NameAr,
+            Description = request.Description,
+            EstimatedDurationMinutes = request.EstimatedDuration,
+            TargetMuscleGroups = null
+        });
 
         if (request.Exercises is not null)
         {
@@ -46,15 +49,17 @@ internal sealed class UpdateWorkoutCommandHandler : ICommandHandler<UpdateWorkou
 
             foreach (var exercise in request.Exercises)
             {
-                workout.AddExercise(
-                    exercise.ExerciseId,
-                    exercise.Sets,
-                    exercise.Reps,
-                    exercise.Weight,
-                    exercise.DurationSeconds,
-                    exercise.RestSeconds,
-                    exercise.Notes,
-                    exercise.SupersetGroupId);
+                workout.AddExercise(new WorkoutExerciseDetails
+                {
+                    ExerciseId = exercise.ExerciseId,
+                    Sets = exercise.Sets,
+                    Reps = exercise.Reps,
+                    Weight = exercise.Weight,
+                    DurationSeconds = exercise.DurationSeconds,
+                    RestSeconds = exercise.RestSeconds,
+                    Notes = exercise.Notes,
+                    SupersetGroupId = exercise.SupersetGroupId
+                });
             }
         }
 

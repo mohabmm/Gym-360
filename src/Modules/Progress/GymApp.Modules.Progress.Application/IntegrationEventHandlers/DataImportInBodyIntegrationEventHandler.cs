@@ -6,6 +6,7 @@ using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Application.IntegrationEventHandlers;
 
@@ -41,17 +42,22 @@ internal sealed class DataImportInBodyIntegrationEventHandler : INotificationHan
 
         var notes = BuildNotes(n);
 
-        var result = BodyMetricEntry.Create(
-            userId: memberId.Value,
-            gymId: n.GymId,
-            date: DateOnly.FromDateTime(n.MeasuredAt),
-            weight: n.WeightKg,
-            weightUnit: WeightUnit.Kg,
-            bodyFatPercentage: n.BodyFatPercentage,
-            measurements: null,
-            source: MetricSource.InBodyScan,
-            loggedBy: memberId.Value,
-            notes: notes);
+        var result = BodyMetricEntry.Create(new BodyMetricEntryDetails
+        {
+            UserId = memberId.Value,
+            GymId = n.GymId,
+            Date = DateOnly.FromDateTime(n.MeasuredAt),
+            Source = MetricSource.InBodyScan,
+            LoggedBy = memberId.Value,
+            Reading = new BodyMetricReading
+            {
+                Weight = n.WeightKg,
+                WeightUnit = WeightUnit.Kg,
+                BodyFatPercentage = n.BodyFatPercentage,
+                Measurements = null,
+                Notes = notes
+            }
+        });
 
         if (result.IsFailure)
         {

@@ -3,6 +3,7 @@ using GymApp.Modules.Training.Application.Commands.AssignWorkout;
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
+using GymApp.Modules.Training.Domain.ValueObjects;
 using GymApp.Modules.Training.Application.Abstractions;
 
 namespace GymApp.Tests.Application.Training;
@@ -24,7 +25,7 @@ public class AssignWorkoutCommandHandlerTests
     {
         // Arrange
         var workoutId = Guid.NewGuid();
-        var workout = Workout.Create(Guid.NewGuid(), Guid.NewGuid(), "Test Workout");
+        var workout = Workout.Create(Guid.NewGuid(), Guid.NewGuid(), new WorkoutDetails { Name = "Test Workout" });
         _workoutRepository.GetByIdAsync(workoutId, Arg.Any<CancellationToken>()).Returns(workout);
 
         var command = new AssignWorkoutCommand(

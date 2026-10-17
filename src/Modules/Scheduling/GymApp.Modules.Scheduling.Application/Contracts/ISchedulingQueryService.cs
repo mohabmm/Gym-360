@@ -21,11 +21,11 @@ public interface ISchedulingQueryService
         Guid gymId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Completed sessions for the trainer in the calendar month containing <paramref name="month"/>.</summary>
     Task<int> GetTrainerSessionsForMonthAsync(
         Guid trainerId,
         Guid gymId,
-        int year,
-        int month,
+        DateOnly month,
         CancellationToken cancellationToken = default);
 }
 

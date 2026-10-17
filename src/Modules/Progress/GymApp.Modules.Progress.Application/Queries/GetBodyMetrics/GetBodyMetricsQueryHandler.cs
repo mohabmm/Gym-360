@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Progress.Application.DTOs;
 using GymApp.Modules.Progress.Application.Mappers;
 using GymApp.Modules.Progress.Domain.Repositories;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Application.Queries.GetBodyMetrics;
 
@@ -21,7 +22,7 @@ internal sealed class GetBodyMetricsQueryHandler : IQueryHandler<GetBodyMetricsQ
         var to = request.To ?? DateOnly.FromDateTime(DateTime.UtcNow);
 
         var entries = await _repository.GetByUserAsync(
-            request.UserId, request.GymId, from, to, cancellationToken);
+            request.UserId, request.GymId, new DateRange(from, to), cancellationToken);
 
         var dtos = entries.Select(ProgressMapper.ToDto).ToList();
 

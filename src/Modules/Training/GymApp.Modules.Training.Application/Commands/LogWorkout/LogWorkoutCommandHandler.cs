@@ -8,6 +8,7 @@ using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
 using GymApp.Modules.Training.IntegrationEvents;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.LogWorkout;
 
@@ -56,11 +57,14 @@ internal sealed class LogWorkoutCommandHandler : ICommandHandler<LogWorkoutComma
         var workoutLog = WorkoutLog.Create(
             request.UserId,
             request.GymId,
-            request.Date,
-            request.StartedAt,
-            request.WorkoutId,
-            request.Notes,
-            perceivedExertion: request.PerceivedExertion);
+            new WorkoutLogDetails
+            {
+                Date = request.Date,
+                StartedAt = request.StartedAt,
+                WorkoutId = request.WorkoutId,
+                Notes = request.Notes,
+                PerceivedExertion = request.PerceivedExertion
+            });
 
         foreach (var setDto in request.Sets)
         {
@@ -68,15 +72,17 @@ internal sealed class LogWorkoutCommandHandler : ICommandHandler<LogWorkoutComma
                 ? unit
                 : WeightUnit.Kg;
 
-            workoutLog.AddSet(
-                setDto.ExerciseId,
-                setDto.SetNumber,
-                setDto.Reps,
-                setDto.Weight,
-                weightUnit,
-                setDto.DurationSeconds,
-                setDto.IsCompleted,
-                setDto.Notes);
+            workoutLog.AddSet(new LogSetDetails
+            {
+                ExerciseId = setDto.ExerciseId,
+                SetNumber = setDto.SetNumber,
+                Reps = setDto.Reps,
+                Weight = setDto.Weight,
+                WeightUnit = weightUnit,
+                DurationSeconds = setDto.DurationSeconds,
+                IsCompleted = setDto.IsCompleted,
+                Notes = setDto.Notes
+            });
         }
 
         if (request.CompletedAt.HasValue)

@@ -63,10 +63,13 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         var plan = MealPlan.Create(
             trainerId: trainerId,
             gymId: gymId,
-            name: name,
-            description: null,
-            dailyCalorieTarget: 2200,
-            macroTargets: new MacroTargets(165, 220, 75),
+            details: new MealPlanDetails
+            {
+                Name = name,
+                Description = null,
+                DailyCalorieTarget = 2200,
+                MacroTargets = new MacroTargets(165, 220, 75)
+            },
             isTemplate: false);
 
         plan.AssignToClient(clientId);

@@ -2,6 +2,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Nutrition.Application.DTOs;
 using GymApp.Modules.Nutrition.Domain.Repositories;
+using GymApp.Modules.Nutrition.Domain.ValueObjects;
 
 namespace GymApp.Modules.Nutrition.Application.Queries.GetFoodLogSummary;
 
@@ -19,7 +20,7 @@ internal sealed class GetFoodLogSummaryQueryHandler : IQueryHandler<GetFoodLogSu
         CancellationToken cancellationToken)
     {
         var logs = await _foodLogRepository.GetByUserAsync(
-            request.UserId, request.GymId, request.From, request.To, cancellationToken);
+            request.UserId, request.GymId, new DateRange(request.From, request.To), cancellationToken);
 
         var dailyLogs = logs.Select(log => new DailyNutritionDto(
             log.Date,

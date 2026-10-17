@@ -1,14 +1,14 @@
 namespace GymApp.Modules.Nutrition.Domain.ValueObjects;
 
-public sealed record FoodItem(
-    string Name,
-    decimal Quantity,
-    string Unit,
-    decimal Calories,
-    decimal Protein,
-    decimal Carbs,
-    decimal Fat)
+public sealed record FoodItem
 {
-    // Private parameterless constructor required for EF Core JSON deserialization.
-    private FoodItem() : this(string.Empty, 0, string.Empty, 0, 0, 0, 0) { }
+    // Public parameterless constructor (via init-only properties) is also used by
+    // EF Core JSON deserialization.
+    public string Name { get; init; } = string.Empty;
+    public decimal Quantity { get; init; }
+    public string Unit { get; init; } = string.Empty;
+    public decimal Calories { get; init; }
+    public decimal Protein { get; init; }
+    public decimal Carbs { get; init; }
+    public decimal Fat { get; init; }
 }

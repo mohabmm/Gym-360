@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Enums;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Domain.Entities;
 
@@ -18,28 +19,19 @@ public sealed class LogSet : Entity
     public bool IsCompleted { get; private set; }
     public string? Notes { get; private set; }
 
-    internal static LogSet Create(
-        Guid workoutLogId,
-        Guid exerciseId,
-        int setNumber,
-        int reps,
-        decimal? weight = null,
-        WeightUnit weightUnit = WeightUnit.Kg,
-        int? durationSeconds = null,
-        bool isCompleted = true,
-        string? notes = null)
+    internal static LogSet Create(Guid workoutLogId, LogSetDetails details)
     {
         return new LogSet(Guid.NewGuid())
         {
             WorkoutLogId = workoutLogId,
-            ExerciseId = exerciseId,
-            SetNumber = setNumber,
-            Reps = reps,
-            Weight = weight,
-            WeightUnit = weightUnit,
-            DurationSeconds = durationSeconds,
-            IsCompleted = isCompleted,
-            Notes = notes
+            ExerciseId = details.ExerciseId,
+            SetNumber = details.SetNumber,
+            Reps = details.Reps,
+            Weight = details.Weight,
+            WeightUnit = details.WeightUnit,
+            DurationSeconds = details.DurationSeconds,
+            IsCompleted = details.IsCompleted,
+            Notes = details.Notes
         };
     }
 }

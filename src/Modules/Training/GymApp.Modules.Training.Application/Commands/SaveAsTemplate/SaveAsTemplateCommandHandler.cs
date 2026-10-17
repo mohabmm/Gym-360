@@ -4,6 +4,7 @@ using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.SaveAsTemplate;
 
@@ -33,24 +34,29 @@ internal sealed class SaveAsTemplateCommandHandler : ICommandHandler<SaveAsTempl
         var template = Workout.Create(
             workout.TrainerId,
             workout.GymId,
-            workout.Name,
-            workout.NameAr,
-            workout.Description,
-            workout.EstimatedDurationMinutes,
-            workout.TargetMuscleGroups.ToList(),
+            new WorkoutDetails
+            {
+                Name = workout.Name,
+                NameAr = workout.NameAr,
+                Description = workout.Description,
+                EstimatedDurationMinutes = workout.EstimatedDurationMinutes,
+                TargetMuscleGroups = workout.TargetMuscleGroups.ToList()
+            },
             isTemplate: true);
 
         foreach (var exercise in workout.WorkoutExercises)
         {
-            template.AddExercise(
-                exercise.ExerciseId,
-                exercise.Sets,
-                exercise.Reps,
-                exercise.Weight,
-                exercise.DurationSeconds,
-                exercise.RestSeconds,
-                exercise.Notes,
-                exercise.SupersetGroupId);
+            template.AddExercise(new WorkoutExerciseDetails
+            {
+                ExerciseId = exercise.ExerciseId,
+                Sets = exercise.Sets,
+                Reps = exercise.Reps,
+                Weight = exercise.Weight,
+                DurationSeconds = exercise.DurationSeconds,
+                RestSeconds = exercise.RestSeconds,
+                Notes = exercise.Notes,
+                SupersetGroupId = exercise.SupersetGroupId
+            });
         }
 
         await _workoutRepository.AddAsync(template, cancellationToken);

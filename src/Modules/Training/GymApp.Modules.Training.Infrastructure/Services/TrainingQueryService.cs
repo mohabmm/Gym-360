@@ -1,5 +1,7 @@
 using GymApp.Modules.Training.Application.Contracts;
 using GymApp.Modules.Training.Application.DTOs;
+using System.Linq.Expressions;
+using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -71,36 +73,19 @@ internal sealed class TrainingQueryService : ITrainingQueryService
 
         var assignment = await _dbContext.WorkoutAssignments
             .AsNoTracking()
-            .Where(wa =>
-                wa.ClientId == userId &&
-                wa.GymId == gymId &&
-                wa.Status == AssignmentStatus.Active &&
-                wa.StartDate <= today &&
-                (wa.EndDate == null || wa.EndDate >= today) &&
-                wa.WorkoutId != null)
+            .Where(wa => wa.ClientId == userId && wa.GymId == gymId)
+            .Where(IsActiveWorkoutAssignmentOn(today))
             .OrderByDescending(wa => wa.StartDate)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (assignment?.WorkoutId is null)
+        if (assignment?.WorkoutId is not { } workoutId)
             return null;
 
         var workout = await _dbContext.Workouts
             .AsNoTracking()
-            .FirstOrDefaultAsync(w => w.Id == assignment.WorkoutId.Value, cancellationToken);
+            .FirstOrDefaultAsync(w => w.Id == workoutId, cancellationToken);
 
-        if (workout is null)
-            return null;
-
-        return new TodaysWorkoutResponse(
-            assignment.Id,
-            workout.Id,
-            workout.Name,
-            workout.Description,
-            workout.EstimatedDurationMinutes,
-            workout.TargetMuscleGroups.Select(mg => mg.ToString()).ToList(),
-            assignment.IsRemoteMode,
-            assignment.StartDate,
-            assignment.EndDate);
+        return workout is null ? null : ToTodaysWorkoutResponse(assignment, workout);
     }
 
     public async Task<bool> IsRemoteWorkoutActiveAsync(
@@ -115,5 +100,25 @@ internal sealed class TrainingQueryService : ITrainingQueryService
                 rwc.GymId == gymId &&
                 rwc.IsActive,
                 cancellationToken);
+    }
+
+    private static Expression<Func<WorkoutAssignment, bool>> IsActiveWorkoutAssignmentOn(DateOnly today) =>
+        wa => wa.Status == AssignmentStatus.Active &&
+              wa.StartDate <= today &&
+              (wa.EndDate == null || wa.EndDate >= today) &&
+              wa.WorkoutId != null;
+
+    private static TodaysWorkoutResponse ToTodaysWorkoutResponse(WorkoutAssignment assignment, Workout workout)
+    {
+        return new TodaysWorkoutResponse(
+            assignment.Id,
+            workout.Id,
+            workout.Name,
+            workout.Description,
+            workout.EstimatedDurationMinutes,
+            workout.TargetMuscleGroups.Select(mg => mg.ToString()).ToList(),
+            assignment.IsRemoteMode,
+            assignment.StartDate,
+            assignment.EndDate);
     }
 }

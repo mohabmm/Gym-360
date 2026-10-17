@@ -23,31 +23,21 @@ internal sealed class ExerciseRepository : IExerciseRepository
 
     public async Task<IReadOnlyList<Exercise>> GetAllAsync(
         Guid? gymId,
-        ExerciseCategory? category = null,
-        MuscleGroup? muscleGroup = null,
-        Equipment? equipment = null,
-        string? searchTerm = null,
+        ExerciseFilter? filter = null,
         CancellationToken cancellationToken = default)
     {
+        filter ??= ExerciseFilter.None;
+
         var query = _dbContext.Exercises
             .AsNoTracking()
             .Where(e => e.IsActive)
             .Where(e => e.Scope == ExerciseScope.Global || e.GymId == gymId);
 
-        if (category.HasValue)
-            query = query.Where(e => e.Category == category.Value);
-
-        if (equipment.HasValue)
-            query = query.Where(e => e.Equipment == equipment.Value);
-
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-            // Match either language: Arabic-UI users search by the Arabic name.
-            query = query.Where(e =>
-                e.Name.Contains(searchTerm) || (e.NameAr != null && e.NameAr.Contains(searchTerm)));
-
-        var exercises = await query
+        var exercises = await ApplyServerSideFilters(query, filter)
             .OrderBy(e => e.Name)
             .ToListAsync(cancellationToken);
+
+        var muscleGroup = filter.MuscleGroup;
 
         // MuscleGroups is persisted as a comma-joined string via a value
         // converter, so EF cannot translate a server-side filter on it — the
@@ -62,6 +52,24 @@ internal sealed class ExerciseRepository : IExerciseRepository
 
         return exercises;
     }
+
+    private static IQueryable<Exercise> ApplyServerSideFilters(IQueryable<Exercise> query, ExerciseFilter filter)
+    {
+        if (filter.Category is { } category)
+            query = query.Where(e => e.Category == category);
+
+        if (filter.Equipment is { } equipment)
+            query = query.Where(e => e.Equipment == equipment);
+
+        if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            query = WhereNameMatches(query, filter.SearchTerm);
+
+        return query;
+    }
+
+    // Match either language: Arabic-UI users search by the Arabic name.
+    private static IQueryable<Exercise> WhereNameMatches(IQueryable<Exercise> query, string searchTerm) =>
+        query.Where(e => e.Name.Contains(searchTerm) || (e.NameAr != null && e.NameAr.Contains(searchTerm)));
 
     public async Task AddAsync(Exercise exercise, CancellationToken cancellationToken = default)
     {

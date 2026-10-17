@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Events;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Domain.Entities;
 
@@ -27,48 +28,34 @@ public sealed class Workout : Entity
     public static Workout Create(
         Guid trainerId,
         Guid gymId,
-        string name,
-        string? nameAr = null,
-        string? description = null,
-        int? estimatedDurationMinutes = null,
-        List<MuscleGroup>? targetMuscleGroups = null,
+        WorkoutDetails details,
         bool isTemplate = false)
     {
         var workout = new Workout(Guid.NewGuid())
         {
             TrainerId = trainerId,
             GymId = gymId,
-            Name = name,
-            NameAr = nameAr,
-            Description = description,
-            EstimatedDurationMinutes = estimatedDurationMinutes,
+            Name = details.Name,
+            NameAr = details.NameAr,
+            Description = details.Description,
+            EstimatedDurationMinutes = details.EstimatedDurationMinutes,
             IsTemplate = isTemplate,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        if (targetMuscleGroups is not null)
-            workout._targetMuscleGroups.AddRange(targetMuscleGroups);
+        if (details.TargetMuscleGroups is not null)
+            workout._targetMuscleGroups.AddRange(details.TargetMuscleGroups);
 
         workout.RaiseDomainEvent(new WorkoutCreatedDomainEvent(workout.Id, trainerId));
 
         return workout;
     }
 
-    public WorkoutExercise AddExercise(
-        Guid exerciseId,
-        int sets,
-        string reps,
-        decimal? weight = null,
-        int? durationSeconds = null,
-        int? restSeconds = null,
-        string? notes = null,
-        Guid? supersetGroupId = null)
+    public WorkoutExercise AddExercise(WorkoutExerciseDetails details)
     {
         var order = _workoutExercises.Count + 1;
-        var workoutExercise = WorkoutExercise.Create(
-            Id, exerciseId, order, sets, reps,
-            weight, durationSeconds, restSeconds, notes, supersetGroupId);
+        var workoutExercise = WorkoutExercise.Create(Id, order, details);
 
         _workoutExercises.Add(workoutExercise);
         UpdatedAt = DateTime.UtcNow;
@@ -87,15 +74,15 @@ public sealed class Workout : Entity
         }
     }
 
-    public void Update(string name, string? nameAr, string? description, int? estimatedDurationMinutes, List<MuscleGroup>? targetMuscleGroups)
+    public void Update(WorkoutDetails details)
     {
-        Name = name;
-        NameAr = nameAr;
-        Description = description;
-        EstimatedDurationMinutes = estimatedDurationMinutes;
+        Name = details.Name;
+        NameAr = details.NameAr;
+        Description = details.Description;
+        EstimatedDurationMinutes = details.EstimatedDurationMinutes;
         _targetMuscleGroups.Clear();
-        if (targetMuscleGroups is not null)
-            _targetMuscleGroups.AddRange(targetMuscleGroups);
+        if (details.TargetMuscleGroups is not null)
+            _targetMuscleGroups.AddRange(details.TargetMuscleGroups);
         UpdatedAt = DateTime.UtcNow;
     }
 

@@ -45,7 +45,7 @@ public class GetWeeklyAvailabilityQueryHandlerTests
             .GetByTrainerAndGymAsync(_trainerId, _gymId, Arg.Any<CancellationToken>())
             .Returns(availability);
         _sessionRepository
-            .GetByTrainerAsync(_trainerId, _gymId, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .GetByTrainerAsync(_trainerId, Arg.Is<GymDateRange>(r => r.GymId == _gymId), Arg.Any<CancellationToken>())
             .Returns(sessions);
     }
 
@@ -159,7 +159,7 @@ public class GetWeeklyAvailabilityQueryHandlerTests
     public async Task Handle_CancelledSessionIgnored_SlotAvailable()
     {
         var session = MondaySessionAtNine(_memberId);
-        session.Cancel("Changed mind", _memberId, isLateCancellation: false);
+        session.Cancel(new SessionCancellation("Changed mind", _memberId, IsLateCancellation: false));
         Given(MondayWindow(new TimeOnly(9, 0), new TimeOnly(11, 0)), session);
 
         var day = await HandleDay(Monday);

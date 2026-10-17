@@ -1,4 +1,5 @@
 using GymApp.Modules.Progress.Domain.Entities;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Domain.Repositories;
 
@@ -9,8 +10,7 @@ public interface IBodyMetricEntryRepository
     Task<IReadOnlyList<BodyMetricEntry>> GetByUserAsync(
         Guid userId,
         Guid gymId,
-        DateOnly fromDate,
-        DateOnly toDate,
+        DateRange dates,
         CancellationToken cancellationToken = default);
 
     Task<BodyMetricEntry?> GetByUserAndDateAsync(
