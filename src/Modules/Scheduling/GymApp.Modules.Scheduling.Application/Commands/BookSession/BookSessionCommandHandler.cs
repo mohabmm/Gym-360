@@ -34,18 +34,9 @@ internal sealed class BookSessionCommandHandler : ICommandHandler<BookSessionCom
         if (!Enum.TryParse<SessionType>(request.SessionType, true, out var sessionType))
             return Result.Failure<Guid>(new Error("Scheduling.InvalidSessionType", "The provided session type is not valid."));
 
-        // Guard: if a session package is provided, ensure it has not expired
-        if (request.SessionPackageId.HasValue)
-        {
-            var packageStatus = await _sessionPackageService.GetPackageStatusAsync(
-                request.SessionPackageId.Value, cancellationToken);
-
-            if (packageStatus is null)
-                return Result.Failure<Guid>(new Error("SESSION_PACKAGE.NOT_FOUND", "Session package not found."));
-
-            if (packageStatus.IsExpired)
-                return Result.Failure<Guid>(new Error("SESSION_PACKAGE.EXPIRED", "Session package has expired."));
-        }
+        var packageCheck = await EnsurePackageNotExpiredAsync(request.SessionPackageId, cancellationToken);
+        if (packageCheck.IsFailure)
+            return Result.Failure<Guid>(packageCheck.Error);
 
         // Capacity guard: reject when sum(active package remaining) <= count of
         // the member's already-pending sessions at this gym. This catches the
@@ -64,36 +55,16 @@ internal sealed class BookSessionCommandHandler : ICommandHandler<BookSessionCom
         if (availability is null)
             return Result.Failure<Guid>(SchedulingErrors.AvailabilityNotFoundForTrainer(request.TrainerId));
 
-        if (availability.IsDateBlocked(request.Date))
-            return Result.Failure<Guid>(SchedulingErrors.SlotNotAvailable);
-
-        if (!availability.HasAvailableSlot(request.Date.DayOfWeek, request.Time))
+        if (!IsBookable(availability, request))
             return Result.Failure<Guid>(SchedulingErrors.SlotNotAvailable);
 
         // Check for existing bookings at this time
         var existingSessions = await _sessionRepository.GetByDateAndTrainerAsync(
             request.TrainerId, request.Date, cancellationToken);
 
-        var requestEnd = request.Time.AddMinutes(request.DurationMinutes);
-        var bufferMinutes = availability.BufferMinutes;
-
-        foreach (var existing in existingSessions)
-        {
-            if (existing.Status is SessionStatus.CancelledByTrainer
-                or SessionStatus.CancelledByMember
-                or SessionStatus.LateCancelled
-                or SessionStatus.NoShow)
-                continue;
-
-            var existingStart = existing.ScheduledTime;
-            var existingEnd = existing.ScheduledTime.AddMinutes(existing.DurationMinutes + bufferMinutes);
-
-            var newStart = request.Time;
-            var newEnd = requestEnd.AddMinutes(bufferMinutes);
-
-            if (newStart < existingEnd && existingStart < newEnd)
-                return Result.Failure<Guid>(SchedulingErrors.SessionAlreadyBooked);
-        }
+        var window = new BookingWindow(request.Time, request.DurationMinutes, availability.BufferMinutes);
+        if (window.ConflictsWithAny(existingSessions))
+            return Result.Failure<Guid>(SchedulingErrors.SessionAlreadyBooked);
 
         var session = Session.Create(
             new SessionParticipants(request.GymId, request.TrainerId, request.MemberId),
@@ -106,4 +77,26 @@ internal sealed class BookSessionCommandHandler : ICommandHandler<BookSessionCom
 
         return Result.Success(session.Id);
     }
+
+    // Guard: if a session package is provided, ensure it has not expired
+    private async Task<Result> EnsurePackageNotExpiredAsync(Guid? sessionPackageId, CancellationToken cancellationToken)
+    {
+        if (!sessionPackageId.HasValue)
+            return Result.Success();
+
+        var packageStatus = await _sessionPackageService.GetPackageStatusAsync(
+            sessionPackageId.Value, cancellationToken);
+
+        if (packageStatus is null)
+            return Result.Failure(new Error("SESSION_PACKAGE.NOT_FOUND", "Session package not found."));
+
+        if (packageStatus.IsExpired)
+            return Result.Failure(new Error("SESSION_PACKAGE.EXPIRED", "Session package has expired."));
+
+        return Result.Success();
+    }
+
+    private static bool IsBookable(TrainerAvailability availability, BookSessionCommand request) =>
+        !availability.IsDateBlocked(request.Date)
+        && availability.HasAvailableSlot(request.Date.DayOfWeek, request.Time);
 }

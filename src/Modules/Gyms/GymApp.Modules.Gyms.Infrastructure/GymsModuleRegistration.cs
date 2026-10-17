@@ -49,6 +49,7 @@ public static class GymsModuleRegistration
         services.AddScoped<IGymMemberRepository, GymMemberRepository>();
         services.AddSingleton<IImportFileStorage, LocalImportFileStorage>();
         services.AddScoped<IImportParser, ExcelImportParser>();
+        services.AddScoped<DataImportFileProcessor>();
         services.AddScoped<IImportJobScheduler, QuartzImportJobScheduler>();
         services.AddScoped<IImportTemplateProvider, ExcelImportTemplateProvider>();
 
@@ -58,6 +59,12 @@ public static class GymsModuleRegistration
         services.AddScoped<IGymMemberDirectory, GymMemberDirectory>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Gyms.Application.Services.UserDataProvider>();
         services.AddScoped<IStaffSubRoleResolver, StaffSubRoleResolver>();
+
+        // Module-internal Application collaborators extracted from command handlers.
+        services.AddScoped<GymApp.Modules.Gyms.Application.Services.GymSeatLimitChecker>();
+        services.AddScoped<GymApp.Modules.Gyms.Application.Commands.RecordCheckIn.CheckInEligibilityChecker>();
+        services.AddScoped<GymApp.Modules.Gyms.Application.Commands.RegisterGym.TenantGymProvisioningWriter>();
+        services.AddScoped<GymApp.Modules.Gyms.Application.Commands.StartDataImport.DataImportJobLauncher>();
         services.AddSingleton<IKioskPinHasher, KioskPinHasher>();
 
         services.AddMediatR(cfg =>

@@ -1,6 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text.RegularExpressions;
+using static GymApp.Api.Orchestration.ClientLogScrubber;
 using GymApp.Common.Presentation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -30,10 +30,7 @@ namespace GymApp.Api.Orchestration;
 internal sealed class ClientLogsEndpoint : IEndpoint
 {
     private const int MaxRecordsPerRequest = 100;
-    private const int MaxMessageLength = 4000;
-    private const int MaxStackLength = 16000;
     private const int MaxAttributes = 25;
-    private const int MaxAttrValueLength = 1000;
 
     internal sealed record ClientLogRecord(
         string? Level,
@@ -51,32 +48,6 @@ internal sealed class ClientLogsEndpoint : IEndpoint
 
     internal sealed record ClientLogBatch(List<ClientLogRecord>? Records);
 
-    // Attribute keys we refuse to forward even if the client sends them.
-    private static readonly HashSet<string> BlockedAttrKeys = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "authorization", "password", "token", "accesstoken", "refreshtoken",
-        "access_token", "refresh_token", "email", "phone", "secret",
-        "body", "requestbody", "responsebody", "data",
-    };
-
-    // Free-text fields (message, stack, attribute values) can embed PII even
-    // though the client scrubs structured fields. Redact emails, long digit runs
-    // (phone numbers), and bearer/JWT tokens server-side too (PDPL / Rule #9).
-    private static readonly Regex EmailRx =
-        new(@"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}", RegexOptions.Compiled);
-    private static readonly Regex PhoneRx =
-        new(@"\+?\d[\d\s\-]{8,}\d", RegexOptions.Compiled);
-    private static readonly Regex TokenRx =
-        new(@"(?i)bearer\s+[A-Za-z0-9._\-]+|eyJ[A-Za-z0-9._\-]{10,}", RegexOptions.Compiled);
-
-    private static string Redact(string s)
-    {
-        s = EmailRx.Replace(s, "[email]");
-        s = TokenRx.Replace(s, "[token]");
-        s = PhoneRx.Replace(s, "[phone]");
-        return s;
-    }
-
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("api/v1/observability/client-logs", (
@@ -92,14 +63,15 @@ internal sealed class ClientLogsEndpoint : IEndpoint
             var logger = loggerFactory.CreateLogger("GymApp.ClientTelemetry");
 
             // Authenticated context overrides anything the client claims.
-            var userId = http.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-                         ?? http.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var gymId = http.User.FindFirstValue("gymId");
+            var identity = new ClientIdentity(
+                UserId: http.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                        ?? http.User.FindFirstValue(ClaimTypes.NameIdentifier),
+                GymId: http.User.FindFirstValue("gymId"));
 
             var take = Math.Min(records.Count, MaxRecordsPerRequest);
             for (var i = 0; i < take; i++)
             {
-                EmitRecord(logger, records[i], userId, gymId);
+                EmitRecord(logger, records[i], identity);
             }
 
             if (records.Count > MaxRecordsPerRequest)
@@ -123,48 +95,15 @@ internal sealed class ClientLogsEndpoint : IEndpoint
         .RequireRateLimiting("client-logs");
     }
 
-    private static void EmitRecord(ILogger logger, ClientLogRecord r, string? userId, string? gymId)
+    /// <summary>Authenticated user/gym taken from the JWT (null when anonymous).</summary>
+    private sealed record ClientIdentity(string? UserId, string? GymId);
+
+    private static void EmitRecord(ILogger logger, ClientLogRecord r, ClientIdentity identity)
     {
         var level = MapLevel(r.Level);
         if (!logger.IsEnabled(level)) return;
 
-        var scope = new Dictionary<string, object>
-        {
-            ["client.app"] = Sanitize(r.App) ?? "unknown",
-            ["client.version"] = Sanitize(r.AppVersion) ?? "unknown",
-            ["client.os"] = Sanitize(r.Os) ?? "unknown",
-            ["client.os_version"] = Sanitize(r.OsVersion) ?? "unknown",
-            ["client.device"] = Sanitize(r.Device) ?? "unknown",
-            ["client.route"] = Sanitize(r.Route) ?? "unknown",
-            ["client.ts"] = Sanitize(r.ClientTs) ?? "",
-        };
-        if (!string.IsNullOrEmpty(r.ErrorType))
-            scope["client.error_type"] = Truncate(r.ErrorType, 200);
-        if (!string.IsNullOrEmpty(r.StackTrace))
-            scope["client.stack"] = Truncate(Redact(r.StackTrace), MaxStackLength);
-        if (!string.IsNullOrEmpty(userId))
-            scope["user.id"] = userId;
-        if (!string.IsNullOrEmpty(gymId))
-            scope["gym.id"] = gymId;
-
-        // Merge scrubbed client attributes (http.method/path/status, error.code, …).
-        if (r.Attributes is { Count: > 0 })
-        {
-            var added = 0;
-            foreach (var (k, v) in r.Attributes)
-            {
-                if (added >= MaxAttributes) break;
-                if (string.IsNullOrEmpty(k) || BlockedAttrKeys.Contains(k)) continue;
-                scope[$"client.{k}"] = v switch
-                {
-                    string s => Truncate(Redact(s), MaxAttrValueLength),
-                    null => "",
-                    _ => Truncate(Redact(v.ToString() ?? ""), MaxAttrValueLength),
-                };
-                added++;
-            }
-        }
-
+        var scope = BuildScope(r, identity);
         var message = Truncate(Redact(r.Message ?? "(no message)"), MaxMessageLength);
 
         using (logger.BeginScope(scope))
@@ -176,19 +115,76 @@ internal sealed class ClientLogsEndpoint : IEndpoint
         }
     }
 
-    private static LogLevel MapLevel(string? level) => level?.ToLowerInvariant() switch
+    // Optional record fields, forwarded (scrubbed) only when the client sent a value.
+    private static readonly (string Key, Func<ClientLogRecord, string?> Read, Func<string, string> Scrub)[] OptionalRecordFields =
     {
-        "fatal" => LogLevel.Critical,
-        "error" => LogLevel.Error,
-        "warning" or "warn" => LogLevel.Warning,
-        "info" => LogLevel.Information,
-        "debug" => LogLevel.Debug,
-        _ => LogLevel.Information,
+        ("client.error_type", r => r.ErrorType, v => Truncate(v, MaxErrorTypeLength)),
+        ("client.stack", r => r.StackTrace, v => Truncate(Redact(v), MaxStackLength)),
     };
 
-    private static string? Sanitize(string? s) =>
-        string.IsNullOrWhiteSpace(s) ? null : Truncate(s.Trim(), MaxAttrValueLength);
+    private static Dictionary<string, object> BuildScope(ClientLogRecord r, ClientIdentity identity)
+    {
+        var scope = new Dictionary<string, object>
+        {
+            ["client.app"] = OrUnknown(r.App),
+            ["client.version"] = OrUnknown(r.AppVersion),
+            ["client.os"] = OrUnknown(r.Os),
+            ["client.os_version"] = OrUnknown(r.OsVersion),
+            ["client.device"] = OrUnknown(r.Device),
+            ["client.route"] = OrUnknown(r.Route),
+            ["client.ts"] = Sanitize(r.ClientTs) ?? "",
+        };
 
-    private static string Truncate(string s, int max) =>
-        s.Length <= max ? s : s[..max];
+        foreach (var (key, read, scrub) in OptionalRecordFields)
+        {
+            var value = read(r);
+            if (!string.IsNullOrEmpty(value))
+                scope[key] = scrub(value);
+        }
+
+        AddIdentity(scope, identity);
+
+        // Merge scrubbed client attributes (http.method/path/status, error.code, …).
+        if (r.Attributes is { Count: > 0 })
+            MergeClientAttributes(scope, r.Attributes);
+
+        return scope;
+    }
+
+    private static void AddIdentity(Dictionary<string, object> scope, ClientIdentity identity)
+    {
+        if (!string.IsNullOrEmpty(identity.UserId))
+            scope["user.id"] = identity.UserId;
+        if (!string.IsNullOrEmpty(identity.GymId))
+            scope["gym.id"] = identity.GymId;
+    }
+
+    private static void MergeClientAttributes(
+        Dictionary<string, object> scope,
+        Dictionary<string, object> attributes)
+    {
+        var added = 0;
+        foreach (var (k, v) in attributes)
+        {
+            if (added >= MaxAttributes) break;
+            if (IsBlockedAttribute(k)) continue;
+            scope[$"client.{k}"] = ScrubAttributeValue(v);
+            added++;
+        }
+    }
+
+    private static readonly Dictionary<string, LogLevel> LevelsByName = new()
+    {
+        ["fatal"] = LogLevel.Critical,
+        ["error"] = LogLevel.Error,
+        ["warning"] = LogLevel.Warning,
+        ["warn"] = LogLevel.Warning,
+        ["info"] = LogLevel.Information,
+        ["debug"] = LogLevel.Debug,
+    };
+
+    private static LogLevel MapLevel(string? level) =>
+        LevelsByName.GetValueOrDefault(level?.ToLowerInvariant() ?? string.Empty, LogLevel.Information);
+
+    private static string OrUnknown(string? value) => Sanitize(value) ?? "unknown";
 }

@@ -9,11 +9,7 @@ namespace GymApp.Common.Application.Tenancy;
 public interface IGymProvisioner
 {
     Task<GymRegistration> ProvisionAsync(
-        Guid gymId,
-        Guid ownerId,
-        string name,
-        string slug,
-        string? gymCode = null,
+        GymProvisioningRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>

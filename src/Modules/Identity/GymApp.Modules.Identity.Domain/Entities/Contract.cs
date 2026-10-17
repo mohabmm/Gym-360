@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Identity.Domain.Enums;
+using GymApp.Modules.Identity.Domain.ValueObjects;
 
 namespace GymApp.Modules.Identity.Domain.Entities;
 
@@ -7,20 +8,7 @@ public sealed class Contract : Entity
 {
     private Contract() { }
 
-    private Contract(
-        Guid id,
-        Guid ownerId,
-        DashboardMode dashboardMode,
-        string planTier,
-        DateTime effectiveFrom,
-        DateTime? effectiveTo) : base(id)
-    {
-        OwnerId = ownerId;
-        DashboardMode = dashboardMode;
-        PlanTier = planTier;
-        EffectiveFrom = effectiveFrom;
-        EffectiveTo = effectiveTo;
-    }
+    private Contract(Guid id) : base(id) { }
 
     public Guid OwnerId { get; private set; }
     public DashboardMode DashboardMode { get; private set; }
@@ -28,14 +16,16 @@ public sealed class Contract : Entity
     public DateTime EffectiveFrom { get; private set; }
     public DateTime? EffectiveTo { get; private set; }
 
-    public static Contract Create(
-        Guid ownerId,
-        DashboardMode dashboardMode,
-        string planTier,
-        DateTime effectiveFrom,
-        DateTime? effectiveTo = null)
+    public static Contract Create(Guid ownerId, ContractDetails details)
     {
-        return new Contract(Guid.NewGuid(), ownerId, dashboardMode, planTier, effectiveFrom, effectiveTo);
+        return new Contract(Guid.NewGuid())
+        {
+            OwnerId = ownerId,
+            DashboardMode = details.DashboardMode,
+            PlanTier = details.PlanTier,
+            EffectiveFrom = details.EffectiveFrom,
+            EffectiveTo = details.EffectiveTo
+        };
     }
 
     public void ChangeDashboardMode(DashboardMode mode) => DashboardMode = mode;

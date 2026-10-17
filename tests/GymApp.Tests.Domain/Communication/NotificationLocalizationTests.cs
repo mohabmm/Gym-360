@@ -7,13 +7,16 @@ namespace GymApp.Tests.Domain.Communication;
 public sealed class NotificationLocalizationTests
 {
     private static Notification Localized() => Notification.CreateLocalized(
+        new NotificationDetails
+        {
+            UserId = Guid.NewGuid(),
+            Type = NotificationType.SessionReminder,
+            GymId = Guid.NewGuid(),
+            Data = new Dictionary<string, string> { ["sessionId"] = "abc" }
+        },
         new NotificationText(
             "اكتملت الجلسة", "اكتملت جلستك التدريبية.",
-            "Session Completed", "Your training session has been completed."),
-        Guid.NewGuid(),
-        NotificationType.SessionReminder,
-        Guid.NewGuid(),
-        new Dictionary<string, string> { ["sessionId"] = "abc" });
+            "Session Completed", "Your training session has been completed."));
 
     [Fact]
     public void CreateLocalized_StoresArabicAsPrimaryText()
@@ -48,7 +51,10 @@ public sealed class NotificationLocalizationTests
     [Fact]
     public void TextFor_English_OnNotificationWithoutTranslation_FallsBackToStoredText()
     {
-        var n = Notification.Create(Guid.NewGuid(), "Custom title", "Custom body", NotificationType.Announcement);
+        var n = Notification.Create(
+            new NotificationDetails { UserId = Guid.NewGuid(), Type = NotificationType.Announcement },
+            "Custom title",
+            "Custom body");
 
         n.TextFor("en").Should().Be(("Custom title", "Custom body"));
     }

@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Domain.Entities;
 
@@ -18,30 +19,20 @@ public sealed class WorkoutExercise : Entity
     public string? Notes { get; private set; }
     public Guid? SupersetGroupId { get; private set; }
 
-    internal static WorkoutExercise Create(
-        Guid workoutId,
-        Guid exerciseId,
-        int order,
-        int sets,
-        string reps,
-        decimal? weight = null,
-        int? durationSeconds = null,
-        int? restSeconds = null,
-        string? notes = null,
-        Guid? supersetGroupId = null)
+    internal static WorkoutExercise Create(Guid workoutId, int order, WorkoutExerciseDetails details)
     {
         return new WorkoutExercise(Guid.NewGuid())
         {
             WorkoutId = workoutId,
-            ExerciseId = exerciseId,
+            ExerciseId = details.ExerciseId,
             Order = order,
-            Sets = sets,
-            Reps = reps,
-            Weight = weight,
-            DurationSeconds = durationSeconds,
-            RestSeconds = restSeconds,
-            Notes = notes,
-            SupersetGroupId = supersetGroupId
+            Sets = details.Sets,
+            Reps = details.Reps,
+            Weight = details.Weight,
+            DurationSeconds = details.DurationSeconds,
+            RestSeconds = details.RestSeconds,
+            Notes = details.Notes,
+            SupersetGroupId = details.SupersetGroupId
         };
     }
 

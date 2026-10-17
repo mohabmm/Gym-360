@@ -32,40 +32,50 @@ internal sealed class GymRegistryService : IGymRegistry
             .FirstOrDefaultAsync(g => g.GymCode == trimmed && g.Status == "Active", cancellationToken);
         if (fast is not null) return fast;
 
+        return await FindByCodeInTenantSchemasAsync(trimmed, cancellationToken);
+    }
+
+    // Fallback walker for rows missing the denormalized GymCode column. SchemaPrefix
+    // is regex-validated before splicing into SQL.
+    private async Task<GymRegistration?> FindByCodeInTenantSchemasAsync(string code, CancellationToken cancellationToken)
+    {
         var actives = await _db.Gyms.AsNoTracking()
             .Where(g => g.Status == "Active" && g.GymCode == null)
             .OrderBy(g => g.SequentialNumber)
             .ToListAsync(cancellationToken);
 
-        // Fallback walker for rows missing the denormalized GymCode column. SchemaPrefix
-        // is regex-validated before splicing into SQL.
         var conn = _db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open)
             await conn.OpenAsync(cancellationToken);
 
-        foreach (var gym in actives)
+        foreach (var gym in actives.Where(g => SafePrefix.IsMatch(g.SchemaPrefix)))
         {
-            if (!SafePrefix.IsMatch(gym.SchemaPrefix)) continue;
-
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = $"SELECT TOP 1 1 FROM [{gym.SchemaPrefix}_gyms].gyms WHERE UPPER(GymCode) = @code";
-            var p = cmd.CreateParameter();
-            p.ParameterName = "@code";
-            p.Value = trimmed;
-            cmd.Parameters.Add(p);
-
-            try
-            {
-                var hit = await cmd.ExecuteScalarAsync(cancellationToken);
-                if (hit is not null) return gym;
-            }
-            catch (SqlException)
-            {
-                // Newly provisioned gyms may not have the table yet; skip.
-            }
+            if (await TenantSchemaHasCodeAsync(conn, gym.SchemaPrefix, code, cancellationToken))
+                return gym;
         }
 
         return null;
+    }
+
+    private static async Task<bool> TenantSchemaHasCodeAsync(
+        System.Data.Common.DbConnection conn, string schemaPrefix, string code, CancellationToken cancellationToken)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT TOP 1 1 FROM [{schemaPrefix}_gyms].gyms WHERE UPPER(GymCode) = @code";
+        var p = cmd.CreateParameter();
+        p.ParameterName = "@code";
+        p.Value = code;
+        cmd.Parameters.Add(p);
+
+        try
+        {
+            return await cmd.ExecuteScalarAsync(cancellationToken) is not null;
+        }
+        catch (SqlException)
+        {
+            // Newly provisioned gyms may not have the table yet; skip.
+            return false;
+        }
     }
 
     public async Task<IReadOnlyList<GymRegistration>> GetByOwnerAsync(Guid ownerId, CancellationToken cancellationToken = default)

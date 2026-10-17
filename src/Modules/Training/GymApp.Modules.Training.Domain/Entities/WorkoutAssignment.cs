@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Events;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Domain.Entities;
 
@@ -21,36 +22,26 @@ public sealed class WorkoutAssignment : Entity
     public string? Notes { get; private set; }
     public bool IsRemoteMode { get; private set; }
 
-    public static WorkoutAssignment Create(
-        Guid trainerId,
-        Guid clientId,
-        Guid gymId,
-        AssignmentType assignmentType,
-        DateOnly startDate,
-        Guid? workoutId = null,
-        Guid? programId = null,
-        DateOnly? endDate = null,
-        string? notes = null,
-        bool isRemoteMode = false)
+    public static WorkoutAssignment Create(WorkoutAssignmentDetails details)
     {
         var assignment = new WorkoutAssignment(Guid.NewGuid())
         {
-            TrainerId = trainerId,
-            ClientId = clientId,
-            GymId = gymId,
-            WorkoutId = workoutId,
-            ProgramId = programId,
-            AssignmentType = assignmentType,
-            StartDate = startDate,
-            EndDate = endDate,
+            TrainerId = details.TrainerId,
+            ClientId = details.ClientId,
+            GymId = details.GymId,
+            WorkoutId = details.WorkoutId,
+            ProgramId = details.ProgramId,
+            AssignmentType = details.AssignmentType,
+            StartDate = details.StartDate,
+            EndDate = details.EndDate,
             Status = AssignmentStatus.Active,
-            Notes = notes,
-            IsRemoteMode = isRemoteMode
+            Notes = details.Notes,
+            IsRemoteMode = details.IsRemoteMode
         };
 
-        var domainEvent = assignmentType == AssignmentType.Program
-            ? (IDomainEvent)new ProgramAssignedDomainEvent(assignment.Id, trainerId, clientId)
-            : new WorkoutAssignedDomainEvent(assignment.Id, trainerId, clientId);
+        var domainEvent = details.AssignmentType == AssignmentType.Program
+            ? (IDomainEvent)new ProgramAssignedDomainEvent(assignment.Id, details.TrainerId, details.ClientId)
+            : new WorkoutAssignedDomainEvent(assignment.Id, details.TrainerId, details.ClientId);
 
         assignment.RaiseDomainEvent(domainEvent);
 

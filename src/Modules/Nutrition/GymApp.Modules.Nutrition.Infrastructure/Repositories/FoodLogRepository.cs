@@ -1,5 +1,6 @@
 using GymApp.Modules.Nutrition.Domain.Entities;
 using GymApp.Modules.Nutrition.Domain.Repositories;
+using GymApp.Modules.Nutrition.Domain.ValueObjects;
 using GymApp.Modules.Nutrition.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,14 +45,16 @@ internal sealed class FoodLogRepository : IFoodLogRepository
     public async Task<List<FoodLog>> GetByUserAsync(
         Guid userId,
         Guid gymId,
-        DateOnly fromDate,
-        DateOnly toDate,
+        DateRange dates,
         CancellationToken cancellationToken = default)
     {
+        var (fromDate, toDate) = dates;
+
         return await _dbContext.FoodLogs
             .AsNoTracking()
             .Include(f => f.Meals)
-            .Where(f => f.UserId == userId && f.GymId == gymId && f.Date >= fromDate && f.Date <= toDate)
+            .Where(f => f.UserId == userId && f.GymId == gymId)
+            .Where(f => f.Date >= fromDate && f.Date <= toDate)
             .OrderByDescending(f => f.Date)
             .ToListAsync(cancellationToken);
     }

@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Application.DTOs;
+using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Repositories;
 
@@ -34,19 +35,14 @@ internal sealed class GetTodaysWorkoutQueryHandler : IQueryHandler<GetTodaysWork
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        var activeAssignment = assignments.FirstOrDefault(a =>
-            a.Status == AssignmentStatus.Active &&
-            a.StartDate <= today &&
-            (a.EndDate is null || a.EndDate >= today) &&
-            a.WorkoutId.HasValue);
+        var activeAssignment = assignments.FirstOrDefault(a => IsActiveWorkoutAssignment(a, today));
 
-        if (activeAssignment is null || !activeAssignment.WorkoutId.HasValue)
+        if (activeAssignment?.WorkoutId is not { } workoutId)
         {
             return Result.Success<TodaysWorkoutResponse?>(null);
         }
 
-        var workout = await _workoutRepository.GetByIdAsync(
-            activeAssignment.WorkoutId.Value, cancellationToken);
+        var workout = await _workoutRepository.GetByIdAsync(workoutId, cancellationToken);
 
         if (workout is null)
         {
@@ -55,17 +51,27 @@ internal sealed class GetTodaysWorkoutQueryHandler : IQueryHandler<GetTodaysWork
 
         var isRemoteMode = remoteConfig?.IsActive == true || activeAssignment.IsRemoteMode;
 
-        var response = new TodaysWorkoutResponse(
-            activeAssignment.Id,
+        return Result.Success<TodaysWorkoutResponse?>(ToResponse(activeAssignment, workout, isRemoteMode));
+    }
+
+    private static bool IsActiveWorkoutAssignment(WorkoutAssignment assignment, DateOnly today) =>
+        assignment.Status == AssignmentStatus.Active
+        && CoversDate(assignment, today)
+        && assignment.WorkoutId.HasValue;
+
+    private static bool CoversDate(WorkoutAssignment assignment, DateOnly date) =>
+        assignment.StartDate <= date && (assignment.EndDate is null || assignment.EndDate >= date);
+
+    private static TodaysWorkoutResponse ToResponse(
+        WorkoutAssignment assignment, Workout workout, bool isRemoteMode) =>
+        new(
+            assignment.Id,
             workout.Id,
             workout.Name,
             workout.Description,
             workout.EstimatedDurationMinutes,
             workout.TargetMuscleGroups.Select(mg => mg.ToString()).ToList(),
             isRemoteMode,
-            activeAssignment.StartDate,
-            activeAssignment.EndDate);
-
-        return Result.Success<TodaysWorkoutResponse?>(response);
-    }
+            assignment.StartDate,
+            assignment.EndDate);
 }

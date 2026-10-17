@@ -12,11 +12,14 @@ public sealed class GymTests
     {
         return Gym.Create(
             Guid.NewGuid(),
-            "Test Gym",
-            "A test gym",
-            new Address("123 St", "Cairo", "Cairo", "Egypt", "12345"),
-            new ContactInfo("gym@test.com", "+201234567890"),
-            GymCode.Create("ABC123"));
+            new GymDetails
+            {
+                Name = "Test Gym",
+                Description = "A test gym",
+                Address = new Address("123 St", "Cairo", "Cairo", "Egypt", "12345"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Create("ABC123")
+            });
     }
 
     private static Gym CreateActiveGym()
@@ -36,11 +39,14 @@ public sealed class GymTests
 
         var gym = Gym.Create(
             ownerId,
-            "My Gym",
-            "Description",
-            new Address("St", "City", "State", "Country", "00000"),
-            new ContactInfo("e@e.com", "+201111111111"),
-            GymCode.Create("XYZ789"));
+            new GymDetails
+            {
+                Name = "My Gym",
+                Description = "Description",
+                Address = new Address("St", "City", "State", "Country", "00000"),
+                ContactInfo = new ContactInfo("e@e.com", "+201111111111"),
+                GymCode = GymCode.Create("XYZ789")
+            });
 
         gym.Id.Should().NotBeEmpty();
         gym.OwnerId.Should().Be(ownerId);

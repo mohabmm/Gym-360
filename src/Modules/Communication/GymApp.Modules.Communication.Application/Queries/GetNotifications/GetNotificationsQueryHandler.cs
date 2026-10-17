@@ -2,6 +2,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Communication.Application.DTOs;
 using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.Queries.GetNotifications;
 
@@ -19,7 +20,7 @@ internal sealed class GetNotificationsQueryHandler : IQueryHandler<GetNotificati
         CancellationToken cancellationToken)
     {
         var notifications = await _notificationRepository.GetByUserAsync(
-            request.UserId, request.GymId, request.Page, request.PageSize, cancellationToken);
+            request.UserId, request.GymId, new PageRequest(request.Page, request.PageSize), cancellationToken);
 
         var dtos = notifications.Select(n =>
         {

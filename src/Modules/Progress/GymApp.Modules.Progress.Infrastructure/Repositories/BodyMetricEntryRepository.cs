@@ -2,6 +2,7 @@ using GymApp.Modules.Progress.Domain.Entities;
 using GymApp.Modules.Progress.Domain.Repositories;
 using GymApp.Modules.Progress.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Infrastructure.Repositories;
 
@@ -23,13 +24,15 @@ internal sealed class BodyMetricEntryRepository : IBodyMetricEntryRepository
     public async Task<IReadOnlyList<BodyMetricEntry>> GetByUserAsync(
         Guid userId,
         Guid gymId,
-        DateOnly fromDate,
-        DateOnly toDate,
+        DateRange dates,
         CancellationToken cancellationToken = default)
     {
+        var (fromDate, toDate) = dates;
+
         return await _dbContext.BodyMetricEntries
             .AsNoTracking()
-            .Where(e => e.UserId == userId && e.GymId == gymId && e.Date >= fromDate && e.Date <= toDate)
+            .Where(e => e.UserId == userId && e.GymId == gymId)
+            .Where(e => e.Date >= fromDate && e.Date <= toDate)
             .OrderByDescending(e => e.Date)
             .ToListAsync(cancellationToken);
     }

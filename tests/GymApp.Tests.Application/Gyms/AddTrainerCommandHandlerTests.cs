@@ -7,6 +7,7 @@ using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Common.Application.Messaging;
+using GymApp.Modules.Gyms.Application.Services;
 
 namespace GymApp.Tests.Application.Gyms;
 
@@ -27,14 +28,23 @@ public class AddTrainerCommandHandlerTests
         _trainerRequestRepository.GetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((GymTrainerRequest?)null);
         _sut = new AddTrainerCommandHandler(
-            _gymRepository, _planService, _queryService, _trainerRequestRepository, _unitOfWork, _integrationEvents);
+            _gymRepository, new GymSeatLimitChecker(_planService, _queryService), _trainerRequestRepository, _unitOfWork, _integrationEvents);
     }
 
     private static Gym CreateActiveGym(Guid gymId)
     {
         var address = new Address("123 Main St", "Cairo", "Cairo", "Egypt", "12345", null, null);
         var contact = new ContactInfo("gym@example.com", "+201234567890", null);
-        var gym = Gym.Create(gymId, "Test Gym", "Description", address, contact, GymCode.Generate());
+        var gym = Gym.Create(
+            gymId,
+            new GymDetails
+            {
+                Name = "Test Gym",
+                Description = "Description",
+                Address = address,
+                ContactInfo = contact,
+                GymCode = GymCode.Generate()
+            });
         gym.Approve();
         return gym;
     }

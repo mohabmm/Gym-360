@@ -24,7 +24,16 @@ public class SuspendGymCommandHandlerTests
         var address = new Address("123 Main St", "Cairo", "Cairo", "Egypt", "12345", null, null);
         var contact = new ContactInfo("gym@example.com", "+201234567890", null);
         var gymCode = GymCode.Generate();
-        var gym = Gym.Create(Guid.NewGuid(), "Test Gym", "Description", address, contact, gymCode);
+        var gym = Gym.Create(
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = "Test Gym",
+                Description = "Description",
+                Address = address,
+                ContactInfo = contact,
+                GymCode = gymCode
+            });
         gym.Approve(); // Move to Active state
         return gym;
     }

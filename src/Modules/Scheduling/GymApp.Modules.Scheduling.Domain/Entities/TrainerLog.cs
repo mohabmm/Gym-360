@@ -7,29 +7,7 @@ public sealed class TrainerLog : Entity
 {
     private TrainerLog() : base() { }
 
-    private TrainerLog(
-        Guid id,
-        Guid sessionId,
-        string exercisesPerformed,
-        string? actualVsPlanned,
-        int clientEffortRating,
-        string? feedback,
-        string? techniqueNotes,
-        string? areasToImprove,
-        string? nextSessionFocus,
-        bool attendanceConfirmed) : base(id)
-    {
-        SessionId = sessionId;
-        ExercisesPerformed = exercisesPerformed;
-        ActualVsPlanned = actualVsPlanned;
-        ClientEffortRating = clientEffortRating;
-        Feedback = feedback;
-        TechniqueNotes = techniqueNotes;
-        AreasToImprove = areasToImprove;
-        NextSessionFocus = nextSessionFocus;
-        AttendanceConfirmed = attendanceConfirmed;
-        LoggedAt = DateTime.UtcNow;
-    }
+    private TrainerLog(Guid id) : base(id) { }
 
     public Guid SessionId { get; private set; }
     public string ExercisesPerformed { get; private set; } = default!;
@@ -47,16 +25,18 @@ public sealed class TrainerLog : Entity
         if (details.ClientEffortRating < 1 || details.ClientEffortRating > 5)
             throw new ArgumentOutOfRangeException(nameof(details), "Client effort rating must be between 1 and 5.");
 
-        return new TrainerLog(
-            Guid.NewGuid(),
-            sessionId,
-            details.ExercisesPerformed,
-            details.ActualVsPlanned,
-            details.ClientEffortRating,
-            details.Feedback,
-            details.TechniqueNotes,
-            details.AreasToImprove,
-            details.NextSessionFocus,
-            details.AttendanceConfirmed);
+        return new TrainerLog(Guid.NewGuid())
+        {
+            SessionId = sessionId,
+            ExercisesPerformed = details.ExercisesPerformed,
+            ActualVsPlanned = details.ActualVsPlanned,
+            ClientEffortRating = details.ClientEffortRating,
+            Feedback = details.Feedback,
+            TechniqueNotes = details.TechniqueNotes,
+            AreasToImprove = details.AreasToImprove,
+            NextSessionFocus = details.NextSessionFocus,
+            AttendanceConfirmed = details.AttendanceConfirmed,
+            LoggedAt = DateTime.UtcNow
+        };
     }
 }

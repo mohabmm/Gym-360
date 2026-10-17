@@ -6,20 +6,7 @@ public sealed class AvailabilitySlot : Entity
 {
     private AvailabilitySlot() : base() { }
 
-    private AvailabilitySlot(
-        Guid id,
-        Guid trainerAvailabilityId,
-        DayOfWeek dayOfWeek,
-        TimeOnly startTime,
-        TimeOnly endTime,
-        bool isActive) : base(id)
-    {
-        TrainerAvailabilityId = trainerAvailabilityId;
-        DayOfWeek = dayOfWeek;
-        StartTime = startTime;
-        EndTime = endTime;
-        IsActive = isActive;
-    }
+    private AvailabilitySlot(Guid id) : base(id) { }
 
     public Guid TrainerAvailabilityId { get; private set; }
     public DayOfWeek DayOfWeek { get; private set; }
@@ -31,16 +18,16 @@ public sealed class AvailabilitySlot : Entity
         Guid trainerAvailabilityId,
         DayOfWeek dayOfWeek,
         TimeOnly startTime,
-        TimeOnly endTime,
-        bool isActive = true)
+        TimeOnly endTime)
     {
-        return new AvailabilitySlot(
-            Guid.NewGuid(),
-            trainerAvailabilityId,
-            dayOfWeek,
-            startTime,
-            endTime,
-            isActive);
+        return new AvailabilitySlot(Guid.NewGuid())
+        {
+            TrainerAvailabilityId = trainerAvailabilityId,
+            DayOfWeek = dayOfWeek,
+            StartTime = startTime,
+            EndTime = endTime,
+            IsActive = true
+        };
     }
 
     public void Activate() => IsActive = true;

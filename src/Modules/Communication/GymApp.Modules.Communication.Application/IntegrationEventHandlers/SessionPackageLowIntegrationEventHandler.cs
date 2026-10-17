@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -33,11 +34,14 @@ internal sealed class SessionPackageLowIntegrationEventHandler : INotificationHa
 
         // Notify member
         var memberNotif = Notification.CreateLocalized(
-            NotificationTexts.SessionPackageLow(notification.Remaining),
-            notification.MemberId,
-            NotificationType.PackageLow,
-            notification.GymId,
-            data);
+            new NotificationDetails
+            {
+                UserId = notification.MemberId,
+                Type = NotificationType.PackageLow,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.SessionPackageLow(notification.Remaining));
 
         await _notificationRepository.AddAsync(memberNotif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Repositories;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.SaveMemberOnboarding;
 
@@ -24,14 +25,18 @@ internal sealed class SaveMemberOnboardingCommandHandler : ICommandHandler<SaveM
         var existing = await _onboardingRepository.GetByMemberAsync(
             request.GymId, request.MemberId, cancellationToken);
 
+        var details = new OnboardingDetails
+        {
+            MedicalHistory = request.MedicalHistory,
+            FitnessGoals = request.FitnessGoals,
+            Injuries = request.Injuries,
+            Medications = request.Medications,
+            FitnessLevel = request.FitnessLevel
+        };
+
         if (existing is not null)
         {
-            existing.Update(
-                request.MedicalHistory,
-                request.FitnessGoals,
-                request.Injuries,
-                request.Medications,
-                request.FitnessLevel);
+            existing.Update(details);
 
             _onboardingRepository.Update(existing);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -39,14 +44,7 @@ internal sealed class SaveMemberOnboardingCommandHandler : ICommandHandler<SaveM
             return Result.Success(existing.Id);
         }
 
-        var onboarding = MemberOnboarding.Create(
-            request.GymId,
-            request.MemberId,
-            request.MedicalHistory,
-            request.FitnessGoals,
-            request.Injuries,
-            request.Medications,
-            request.FitnessLevel);
+        var onboarding = MemberOnboarding.Create(request.GymId, request.MemberId, details);
 
         await _onboardingRepository.AddAsync(onboarding, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

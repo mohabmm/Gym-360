@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Enums;
 using GymApp.Modules.Billing.Domain.Repositories;
@@ -22,40 +23,22 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
             .FirstOrDefaultAsync(sp => sp.Id == id, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<SessionPackage>> GetByGymAsync(
+    public Task<IReadOnlyList<SessionPackage>> GetByGymAsync(
         Guid gymId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.SessionPackages
-            .AsNoTracking()
-            .Where(sp => sp.GymId == gymId)
-            .OrderByDescending(sp => sp.CreatedAt)
-            .ToListAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        ListNewestFirstAsync(sp => sp.GymId == gymId, cancellationToken);
 
-    public async Task<IReadOnlyList<SessionPackage>> GetByMemberAsync(
+    public Task<IReadOnlyList<SessionPackage>> GetByMemberAsync(
         Guid gymId,
         Guid memberId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.SessionPackages
-            .AsNoTracking()
-            .Where(sp => sp.GymId == gymId && sp.MemberId == memberId)
-            .OrderByDescending(sp => sp.CreatedAt)
-            .ToListAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        ListNewestFirstAsync(sp => sp.GymId == gymId && sp.MemberId == memberId, cancellationToken);
 
-    public async Task<IReadOnlyList<SessionPackage>> GetByTrainerAsync(
+    public Task<IReadOnlyList<SessionPackage>> GetByTrainerAsync(
         Guid gymId,
         Guid trainerId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.SessionPackages
-            .AsNoTracking()
-            .Where(sp => sp.GymId == gymId && sp.TrainerId == trainerId)
-            .OrderByDescending(sp => sp.CreatedAt)
-            .ToListAsync(cancellationToken);
-    }
+        CancellationToken cancellationToken = default) =>
+        ListNewestFirstAsync(sp => sp.GymId == gymId && sp.TrainerId == trainerId, cancellationToken);
 
     public async Task<SessionPackage?> GetActiveByMemberAndTrainerAsync(
         Guid gymId,
@@ -80,5 +63,16 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
     public void Update(SessionPackage package)
     {
         _dbContext.SessionPackages.Update(package);
+    }
+
+    private async Task<IReadOnlyList<SessionPackage>> ListNewestFirstAsync(
+        Expression<Func<SessionPackage, bool>> predicate,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.SessionPackages
+            .AsNoTracking()
+            .Where(predicate)
+            .OrderByDescending(sp => sp.CreatedAt)
+            .ToListAsync(cancellationToken);
     }
 }

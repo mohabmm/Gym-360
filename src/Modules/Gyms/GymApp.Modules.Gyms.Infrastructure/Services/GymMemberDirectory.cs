@@ -26,8 +26,9 @@ internal sealed class GymMemberDirectory : IGymMemberDirectory
         return row?.MemberId;
     }
 
-    public async Task<string> RegisterAsync(Guid gymId, Guid memberId, string? preferredNumber, string? section, CancellationToken cancellationToken)
+    public async Task<string> RegisterAsync(GymMemberRegistration registration, CancellationToken cancellationToken)
     {
+        var (gymId, memberId, preferredNumber, section) = registration;
         var existing = await _dbContext.GymMembers
             .FirstOrDefaultAsync(m => m.GymId == gymId && m.MemberId == memberId, cancellationToken);
 

@@ -39,12 +39,14 @@ internal sealed class CreatePackageTemplateCommandHandler : ICommandHandler<Crea
         var pricePerSession = Money.Create(request.PricePerSession);
         var totalPrice = Money.Create(request.PricePerSession * request.SessionCount);
 
-        var template = SessionPackageTemplate.Create(
-            request.GymId,
-            request.Name,
-            request.SessionCount,
-            pricePerSession,
-            totalPrice);
+        var template = SessionPackageTemplate.Create(new SessionPackageTemplateDetails
+        {
+            GymId = request.GymId,
+            Name = request.Name,
+            SessionCount = request.SessionCount,
+            PricePerSession = pricePerSession,
+            TotalPrice = totalPrice
+        });
 
         await _templateRepository.AddAsync(template, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

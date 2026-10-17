@@ -9,33 +9,7 @@ public sealed class BodyMetricEntry : Entity
 {
     private BodyMetricEntry() { }
 
-    private BodyMetricEntry(
-        Guid id,
-        Guid userId,
-        Guid gymId,
-        DateOnly date,
-        decimal? weight,
-        WeightUnit weightUnit,
-        decimal? bodyFatPercentage,
-        BodyMeasurements? measurements,
-        MetricSource source,
-        Guid loggedBy,
-        string? notes)
-        : base(id)
-    {
-        UserId = userId;
-        GymId = gymId;
-        Date = date;
-        Weight = weight;
-        WeightUnit = weightUnit;
-        BodyFatPercentage = bodyFatPercentage;
-        Measurements = measurements;
-        Source = source;
-        LoggedBy = loggedBy;
-        Notes = notes;
-        CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-    }
+    private BodyMetricEntry(Guid id) : base(id) { }
 
     public Guid UserId { get; private set; }
     public Guid GymId { get; private set; }
@@ -50,58 +24,48 @@ public sealed class BodyMetricEntry : Entity
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
-    public static Result<BodyMetricEntry> Create(
-        Guid userId,
-        Guid gymId,
-        DateOnly date,
-        decimal? weight,
-        WeightUnit weightUnit,
-        decimal? bodyFatPercentage,
-        BodyMeasurements? measurements,
-        MetricSource source,
-        Guid loggedBy,
-        string? notes = null)
+    public static Result<BodyMetricEntry> Create(BodyMetricEntryDetails details)
     {
-        if (weight.HasValue && weight.Value <= 0)
+        var reading = details.Reading;
+
+        if (reading.Weight is <= 0)
         {
             return Result.Failure<BodyMetricEntry>(ProgressErrors.InvalidWeight);
         }
 
-        if (bodyFatPercentage.HasValue && (bodyFatPercentage.Value < 0 || bodyFatPercentage.Value > 100))
+        if (reading.BodyFatPercentage is < 0 or > 100)
         {
             return Result.Failure<BodyMetricEntry>(ProgressErrors.InvalidBodyFatPercentage);
         }
 
-        var entry = new BodyMetricEntry(
-            Guid.NewGuid(),
-            userId,
-            gymId,
-            date,
-            weight,
-            weightUnit,
-            bodyFatPercentage,
-            measurements,
-            source,
-            loggedBy,
-            notes);
+        var entry = new BodyMetricEntry(Guid.NewGuid())
+        {
+            UserId = details.UserId,
+            GymId = details.GymId,
+            Date = details.Date,
+            Source = details.Source,
+            LoggedBy = details.LoggedBy,
+            CreatedAt = DateTime.UtcNow
+        };
+        entry.ApplyReading(reading);
 
-        entry.RaiseDomainEvent(new BodyMetricLoggedDomainEvent(entry.Id, userId));
+        entry.RaiseDomainEvent(new BodyMetricLoggedDomainEvent(entry.Id, details.UserId));
 
         return Result.Success(entry);
     }
 
-    public void Update(
-        decimal? weight,
-        WeightUnit weightUnit,
-        decimal? bodyFatPercentage,
-        BodyMeasurements? measurements,
-        string? notes)
+    public void Update(BodyMetricReading reading)
     {
-        Weight = weight;
-        WeightUnit = weightUnit;
-        BodyFatPercentage = bodyFatPercentage;
-        Measurements = measurements;
-        Notes = notes;
+        ApplyReading(reading);
+    }
+
+    private void ApplyReading(BodyMetricReading reading)
+    {
+        Weight = reading.Weight;
+        WeightUnit = reading.WeightUnit;
+        BodyFatPercentage = reading.BodyFatPercentage;
+        Measurements = reading.Measurements;
+        Notes = reading.Notes;
         UpdatedAt = DateTime.UtcNow;
     }
 }

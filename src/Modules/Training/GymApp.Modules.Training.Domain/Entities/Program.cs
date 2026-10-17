@@ -1,5 +1,6 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Events;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Domain.Entities;
 
@@ -24,23 +25,20 @@ public sealed class Program : Entity
     public static Program Create(
         Guid trainerId,
         Guid gymId,
-        string name,
-        int durationWeeks,
-        string? nameAr = null,
-        string? description = null,
+        ProgramDetails details,
         bool isTemplate = false)
     {
-        if (durationWeeks < 1 || durationWeeks > 52)
-            throw new ArgumentOutOfRangeException(nameof(durationWeeks), "Duration must be between 1 and 52 weeks.");
+        if (details.DurationWeeks < 1 || details.DurationWeeks > 52)
+            throw new ArgumentOutOfRangeException("durationWeeks", "Duration must be between 1 and 52 weeks.");
 
         var program = new Program(Guid.NewGuid())
         {
             TrainerId = trainerId,
             GymId = gymId,
-            Name = name,
-            NameAr = nameAr,
-            DurationWeeks = durationWeeks,
-            Description = description,
+            Name = details.Name,
+            NameAr = details.NameAr,
+            DurationWeeks = details.DurationWeeks,
+            Description = details.Description,
             IsTemplate = isTemplate,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

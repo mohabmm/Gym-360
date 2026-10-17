@@ -51,17 +51,62 @@ internal sealed class OwnerDashboardService : IOwnerDashboardService
         if (gyms.Count == 0)
             return new OwnerDashboard(ownerId, 0, 0, 0, 0, 0, Array.Empty<OwnerDashboardGymRow>());
 
-        // Defensive: every prefix must match `^g\d+$`.
+        EnsureSafePrefixes(gyms);
+
+        var rows = await LoadRowsOrEmptiesAsync(gyms, cancellationToken);
+
+        var dashboard = new OwnerDashboard(
+            OwnerId: ownerId,
+            TotalGyms: rows.Count,
+            TotalActiveMembers: rows.Sum(r => r.ActiveMembers),
+            TotalTrainers: rows.Sum(r => r.Trainers),
+            TotalRevenueLast30Days: rows.Sum(r => r.RevenueLast30Days),
+            TotalSessionsLast30Days: rows.Sum(r => r.SessionsLast30Days),
+            ByGym: rows);
+
+        _cache.Set(cacheKey, dashboard, TimeSpan.FromSeconds(CacheTtlSeconds));
+        return dashboard;
+    }
+
+    // Defensive: every prefix must match `^g\d+$`.
+    private static void EnsureSafePrefixes(IEnumerable<GymRegistration> gyms)
+    {
         foreach (var gym in gyms)
         {
             if (!SafePrefix.IsMatch(gym.SchemaPrefix))
                 throw new InvalidOperationException($"Refusing to query gym with unsafe prefix '{gym.SchemaPrefix}'.");
         }
+    }
 
+    private async Task<List<OwnerDashboardGymRow>> LoadRowsOrEmptiesAsync(
+        List<GymRegistration> gyms, CancellationToken cancellationToken)
+    {
         var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+        var sql = BuildRollupSql(gyms);
 
-        // Build a single batch with one row per gym; tolerate missing tables
-        // (a freshly-provisioned gym may have no payments yet).
+        var connection = _registry.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+            await connection.OpenAsync(cancellationToken);
+
+        try
+        {
+            return await ReadRowsAsync(connection, sql, thirtyDaysAgo, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // A single missing table (e.g. fresh gym before any tables created) shouldn't
+            // tank the whole dashboard. Fall back to per-gym defaults.
+            _logger.LogError(ex, "OwnerDashboardService: cross-gym rollup failed; returning per-gym empties");
+            return gyms
+                .Select(gym => new OwnerDashboardGymRow(gym.GymId, gym.Name, gym.SchemaPrefix, 0, 0, 0, 0))
+                .ToList();
+        }
+    }
+
+    // Build a single batch with one row per gym; tolerate missing tables
+    // (a freshly-provisioned gym may have no payments yet).
+    private static string BuildRollupSql(List<GymRegistration> gyms)
+    {
         var sql = new StringBuilder();
         for (int i = 0; i < gyms.Count; i++)
         {
@@ -80,53 +125,34 @@ internal sealed class OwnerDashboardService : IOwnerDashboardService
             ");
         }
 
-        var rows = new List<OwnerDashboardGymRow>(gyms.Count);
-        var connection = _registry.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-            await connection.OpenAsync(cancellationToken);
+        return sql.ToString();
+    }
 
-        try
-        {
-            using var cmd = connection.CreateCommand();
-            cmd.CommandText = sql.ToString();
-            var p = cmd.CreateParameter();
-            p.ParameterName = "@cutoff";
-            p.Value = thirtyDaysAgo;
-            cmd.Parameters.Add(p);
+    private static async Task<List<OwnerDashboardGymRow>> ReadRowsAsync(
+        System.Data.Common.DbConnection connection, string sql, DateTime cutoff, CancellationToken cancellationToken)
+    {
+        var rows = new List<OwnerDashboardGymRow>();
 
-            using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                rows.Add(new OwnerDashboardGymRow(
-                    reader.GetGuid(0),
-                    reader.GetString(1),
-                    reader.GetString(2),
-                    reader.GetInt32(3),
-                    reader.GetInt32(4),
-                    reader.GetDecimal(5),
-                    reader.GetInt32(6)));
-            }
-        }
-        catch (Exception ex)
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+        var p = cmd.CreateParameter();
+        p.ParameterName = "@cutoff";
+        p.Value = cutoff;
+        cmd.Parameters.Add(p);
+
+        using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            // A single missing table (e.g. fresh gym before any tables created) shouldn't
-            // tank the whole dashboard. Fall back to per-gym defaults.
-            _logger.LogError(ex, "OwnerDashboardService: cross-gym rollup failed; returning per-gym empties");
-            rows.Clear();
-            foreach (var gym in gyms)
-                rows.Add(new OwnerDashboardGymRow(gym.GymId, gym.Name, gym.SchemaPrefix, 0, 0, 0, 0));
+            rows.Add(new OwnerDashboardGymRow(
+                reader.GetGuid(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetInt32(3),
+                reader.GetInt32(4),
+                reader.GetDecimal(5),
+                reader.GetInt32(6)));
         }
 
-        var dashboard = new OwnerDashboard(
-            OwnerId: ownerId,
-            TotalGyms: rows.Count,
-            TotalActiveMembers: rows.Sum(r => r.ActiveMembers),
-            TotalTrainers: rows.Sum(r => r.Trainers),
-            TotalRevenueLast30Days: rows.Sum(r => r.RevenueLast30Days),
-            TotalSessionsLast30Days: rows.Sum(r => r.SessionsLast30Days),
-            ByGym: rows);
-
-        _cache.Set(cacheKey, dashboard, TimeSpan.FromSeconds(CacheTtlSeconds));
-        return dashboard;
+        return rows;
     }
 }

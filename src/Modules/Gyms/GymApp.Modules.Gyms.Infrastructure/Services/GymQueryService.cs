@@ -134,9 +134,10 @@ internal sealed class GymQueryService : IGymQueryService
         if (!filter.NeedsDirectory && pagedIds.Count > 0)
             directory = await LoadMemberDirectoryAsync(gymId, pagedIds, cancellationToken);
 
+        var roster = new MemberRosterContext(gymId, gym.CreatedAt, request.Section);
         var pagedMembers = pagedIds
             .Select(id => GymQueryMappings.ToMemberDto(
-                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), gym.CreatedAt, request.Section))
+                id, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), roster))
             .ToList();
 
         return new PagedResponse<MemberDto>(
@@ -213,7 +214,7 @@ internal sealed class GymQueryService : IGymQueryService
         var directory = await LoadMemberDirectoryAsync(gymId, new[] { memberId }, cancellationToken);
 
         return GymQueryMappings.ToMemberDto(
-            memberId, gymId, profile, directory.GetValueOrDefault(memberId), gym.CreatedAt);
+            memberId, profile, directory.GetValueOrDefault(memberId), new MemberRosterContext(gymId, gym.CreatedAt));
     }
 
     public async Task<List<TrainerDto>> GetTrainersAsync(Guid gymId, string? status = null, CancellationToken cancellationToken = default)
@@ -247,9 +248,10 @@ internal sealed class GymQueryService : IGymQueryService
                 id,
                 gymId,
                 profiles.GetValueOrDefault(id),
-                requestMap.GetValueOrDefault(id),
-                clientCounts.GetValueOrDefault(id),
-                statsMap.GetValueOrDefault(id) ?? new TrainerStats(0m, 0m)))
+                new TrainerActivity(
+                    requestMap.GetValueOrDefault(id),
+                    clientCounts.GetValueOrDefault(id),
+                    statsMap.GetValueOrDefault(id) ?? new TrainerStats(0m, 0m))))
             .ToList();
 
         return string.IsNullOrWhiteSpace(status)
@@ -307,7 +309,8 @@ internal sealed class GymQueryService : IGymQueryService
         var clients = await _trainerAssignmentLookup.GetClientsForTrainerAsync(trainerId, gymId, cancellationToken);
         var stats = await _trainerStatsLookup.GetAsync(trainerId, gymId, cancellationToken);
 
-        return GymQueryMappings.ToTrainerDto(trainerId, gymId, profile, request, clients.Count, stats);
+        return GymQueryMappings.ToTrainerDto(
+            trainerId, gymId, profile, new TrainerActivity(request, clients.Count, stats));
     }
 
     public async Task<List<MemberDto>?> GetTrainerClientsAsync(Guid gymId, Guid trainerId, CancellationToken cancellationToken = default)
@@ -331,7 +334,7 @@ internal sealed class GymQueryService : IGymQueryService
 
         return memberIds
             .Select(id => GymQueryMappings.ToMemberDto(
-                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), DateTime.UtcNow))
+                id, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), new MemberRosterContext(gymId, DateTime.UtcNow)))
             .ToList();
     }
 
@@ -384,7 +387,7 @@ internal sealed class GymQueryService : IGymQueryService
         // Class rosters do not report the frozen flag.
         return memberIds
             .Select(id => GymQueryMappings.ToMemberDto(
-                id, gymId, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), DateTime.UtcNow)
+                id, profiles.GetValueOrDefault(id), directory.GetValueOrDefault(id), new MemberRosterContext(gymId, DateTime.UtcNow))
                 with { IsFrozen = false })
             .ToList();
     }

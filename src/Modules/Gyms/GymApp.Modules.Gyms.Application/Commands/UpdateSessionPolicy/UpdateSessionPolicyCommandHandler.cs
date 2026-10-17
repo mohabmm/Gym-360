@@ -4,6 +4,7 @@ using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Modules.Gyms.Application.Abstractions;
 
 namespace GymApp.Modules.Gyms.Application.Commands.UpdateSessionPolicy;
@@ -33,28 +34,26 @@ internal sealed class UpdateSessionPolicyCommandHandler : ICommandHandler<Update
         if (!Enum.TryParse<NoshowAction>(request.NoshowAction, ignoreCase: true, out var noshowAction))
             return Result.Failure(new Error("Gyms.InvalidNoshowAction", "The specified no-show action is invalid."));
 
+        var rules = new SessionPolicyRules
+        {
+            CancellationWindowHours = request.CancellationWindowHours,
+            NoshowThreshold = request.NoshowThreshold,
+            NoshowWindowDays = request.NoshowWindowDays,
+            NoshowAction = noshowAction
+        };
+
         var policy = await _policyRepository.GetByGymIdAsync(request.GymId, cancellationToken);
 
         if (policy is null)
         {
             policy = GymSessionPolicy.Create(request.GymId);
-            policy.Update(
-                request.CancellationWindowHours,
-                request.NoshowThreshold,
-                request.NoshowWindowDays,
-                noshowAction,
-                Guid.Empty); // Updated by will be set from auth context in presentation layer
+            policy.Update(rules, Guid.Empty); // Updated by will be set from auth context in presentation layer
 
             await _policyRepository.AddAsync(policy, cancellationToken);
         }
         else
         {
-            policy.Update(
-                request.CancellationWindowHours,
-                request.NoshowThreshold,
-                request.NoshowWindowDays,
-                noshowAction,
-                Guid.Empty);
+            policy.Update(rules, Guid.Empty);
 
             _policyRepository.Update(policy);
         }

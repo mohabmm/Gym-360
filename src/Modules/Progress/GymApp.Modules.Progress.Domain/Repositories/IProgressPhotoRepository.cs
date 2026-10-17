@@ -9,8 +9,7 @@ public interface IProgressPhotoRepository
     Task<IReadOnlyList<ProgressPhoto>> GetByUserAsync(
         Guid userId,
         Guid gymId,
-        int page,
-        int pageSize,
+        PageRequest page,
         CancellationToken cancellationToken = default);
 
     Task<int> GetCountAsync(

@@ -4,6 +4,7 @@ using GymApp.Modules.Communication.Application.Contracts;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 using GymApp.Modules.Communication.Application.Abstractions;
 
 namespace GymApp.Modules.Communication.Application.Commands.CreateNotification;
@@ -38,13 +39,14 @@ internal sealed class CreateNotificationCommandHandler : ICommandHandler<CreateN
         if (preferences is not null && !preferences.IsEnabled(notificationType))
             return Result.Success(Guid.Empty);
 
-        var notification = Notification.Create(
-            request.UserId,
-            request.Title,
-            request.Body,
-            notificationType,
-            request.GymId,
-            request.Data);
+        var details = new NotificationDetails
+        {
+            UserId = request.UserId,
+            Type = notificationType,
+            GymId = request.GymId,
+            Data = request.Data
+        };
+        var notification = Notification.Create(details, request.Title, request.Body);
 
         await _notificationRepository.AddAsync(notification, cancellationToken);
 
@@ -57,9 +59,7 @@ internal sealed class CreateNotificationCommandHandler : ICommandHandler<CreateN
             {
                 await _pushNotificationService.SendAsync(
                     request.UserId,
-                    request.Title,
-                    request.Body,
-                    request.Data,
+                    new PushContent(request.Title, request.Body, request.Data),
                     cancellationToken);
 
                 notification.MarkPushSent();

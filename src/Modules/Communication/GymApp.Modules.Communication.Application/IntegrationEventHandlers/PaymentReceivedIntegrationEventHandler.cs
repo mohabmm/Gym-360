@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -32,11 +33,14 @@ internal sealed class PaymentReceivedIntegrationEventHandler : INotificationHand
         };
 
         var notif = Notification.CreateLocalized(
-            NotificationTexts.PaymentReceived(notification.Amount),
-            notification.MemberId,
-            NotificationType.PaymentReceived,
-            notification.GymId,
-            data);
+            new NotificationDetails
+            {
+                UserId = notification.MemberId,
+                Type = NotificationType.PaymentReceived,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.PaymentReceived(notification.Amount));
 
         await _notificationRepository.AddAsync(notif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

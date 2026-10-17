@@ -2,23 +2,16 @@ using GymApp.Modules.Nutrition.Domain.Enums;
 
 namespace GymApp.Modules.Nutrition.Domain.ValueObjects;
 
-public sealed record PlannedMeal(
-    MealType MealType,
-    string Name,
-    string? Description,
-    IReadOnlyList<FoodItem> FoodItems,
-    decimal TotalCalories,
-    decimal TotalProtein,
-    decimal TotalCarbs,
-    decimal TotalFat)
+public sealed record PlannedMeal
 {
-    // Private parameterless constructor required for EF Core JSON deserialization.
-    // EF Core's copy-constructor detection (PlannedMeal original) is bypassed
-    // when a parameterless constructor is present.
-    private PlannedMeal() : this(
-        default,
-        string.Empty,
-        null,
-        Array.Empty<FoodItem>(),
-        0, 0, 0, 0) { }
+    // Public parameterless constructor (via init-only properties) is also used by
+    // EF Core JSON deserialization, so copy-constructor detection never kicks in.
+    public MealType MealType { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+    public IReadOnlyList<FoodItem> FoodItems { get; init; } = Array.Empty<FoodItem>();
+    public decimal TotalCalories { get; init; }
+    public decimal TotalProtein { get; init; }
+    public decimal TotalCarbs { get; init; }
+    public decimal TotalFat { get; init; }
 }

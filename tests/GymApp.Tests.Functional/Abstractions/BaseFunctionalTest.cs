@@ -33,7 +33,12 @@ public abstract class BaseFunctionalTest : IAsyncLifetime
         string? adminRole = null)
     {
         var jwtService = _scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
-        return jwtService.GenerateAccessToken(userId, email, role, gymId, staffRole, adminRole);
+        return jwtService.GenerateAccessToken(new AccessTokenClaims(userId, email, role)
+        {
+            GymId = gymId,
+            StaffRole = staffRole,
+            AdminRole = adminRole
+        });
     }
 
     /// <summary>

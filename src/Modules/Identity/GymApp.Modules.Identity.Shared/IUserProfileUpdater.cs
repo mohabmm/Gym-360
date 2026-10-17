@@ -9,8 +9,6 @@ public interface IUserProfileUpdater
 {
     Task<bool> UpdateAsync(
         Guid userId,
-        string? firstName,
-        string? lastName,
-        string? phone,
+        UserProfileChanges changes,
         CancellationToken cancellationToken = default);
 }

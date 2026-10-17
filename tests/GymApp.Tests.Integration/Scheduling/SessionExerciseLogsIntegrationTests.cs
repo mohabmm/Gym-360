@@ -200,7 +200,7 @@ public sealed class SessionExerciseLogsIntegrationTests : BaseIntegrationTest
             session.Confirm(DateTime.UtcNow);
             if (targetStatus is SessionStatus.InProgress or SessionStatus.Completed)
             {
-                session.StartSession(DateTime.UtcNow, 15, true);
+                session.StartSession(DateTime.UtcNow, new EarlyStartPolicy(15, true));
                 if (targetStatus == SessionStatus.Completed)
                     session.Complete();
             }

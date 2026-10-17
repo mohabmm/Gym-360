@@ -4,6 +4,7 @@ using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 using GymApp.Modules.Gyms.Application.Abstractions;
 
 namespace GymApp.Modules.Gyms.Application.Commands.CreateAnnouncement;
@@ -38,11 +39,14 @@ internal sealed class CreateAnnouncementCommandHandler : ICommandHandler<CreateA
 
         var announcement = Announcement.Create(
             request.GymId,
-            request.Title,
-            request.Content,
-            request.ImageUrl,
-            category,
-            audience,
+            new AnnouncementDetails
+            {
+                Title = request.Title,
+                Content = request.Content,
+                ImageUrl = request.ImageUrl,
+                Category = category,
+                TargetAudience = audience
+            },
             request.ScheduledAt,
             request.CreatedBy);
 

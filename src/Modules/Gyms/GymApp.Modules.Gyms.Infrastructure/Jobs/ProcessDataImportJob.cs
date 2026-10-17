@@ -1,8 +1,6 @@
-using System.Text;
 using GymApp.Common.Application.Messaging;
-using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Abstractions;
-using GymApp.Modules.Gyms.Domain.Enums;
+using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -15,23 +13,20 @@ internal sealed class ProcessDataImportJob : IJob
     public const string JobDataKey = "ImportJobId";
 
     private readonly IDataImportJobRepository _jobRepository;
-    private readonly IImportFileStorage _fileStorage;
-    private readonly IEnumerable<IImportParser> _parsers;
+    private readonly DataImportFileProcessor _fileProcessor;
     private readonly IIntegrationEventPublisher _integrationEvents;
     private readonly IGymsUnitOfWork _unitOfWork;
     private readonly ILogger<ProcessDataImportJob> _logger;
 
     public ProcessDataImportJob(
         IDataImportJobRepository jobRepository,
-        IImportFileStorage fileStorage,
-        IEnumerable<IImportParser> parsers,
+        DataImportFileProcessor fileProcessor,
         IIntegrationEventPublisher integrationEvents,
         IGymsUnitOfWork unitOfWork,
         ILogger<ProcessDataImportJob> logger)
     {
         _jobRepository = jobRepository;
-        _fileStorage = fileStorage;
-        _parsers = parsers;
+        _fileProcessor = fileProcessor;
         _integrationEvents = integrationEvents;
         _unitOfWork = unitOfWork;
         _logger = logger;
@@ -42,11 +37,29 @@ internal sealed class ProcessDataImportJob : IJob
         var ct = context.CancellationToken;
         var jobId = Guid.Parse(context.MergedJobDataMap.GetString(JobDataKey)!);
 
+        var job = await StartProcessingAsync(jobId, ct);
+        if (job is null)
+            return;
+
+        try
+        {
+            await ImportAsync(job, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DataImport job {JobId} failed.", jobId);
+            job.MarkFailed(ex.Message.Length > 900 ? ex.Message[..900] : ex.Message);
+            await SaveAsync(job, ct);
+        }
+    }
+
+    private async Task<DataImportJob?> StartProcessingAsync(Guid jobId, CancellationToken ct)
+    {
         var job = await _jobRepository.GetByIdAsync(jobId, ct);
         if (job is null)
         {
             _logger.LogWarning("DataImport job {JobId} not found — skipping.", jobId);
-            return;
+            return null;
         }
 
         var processingResult = job.MarkProcessing();
@@ -54,74 +67,46 @@ internal sealed class ProcessDataImportJob : IJob
         {
             _logger.LogWarning("DataImport job {JobId} cannot transition to Processing: {Error}",
                 jobId, processingResult.Error);
-            return;
+            return null;
         }
 
+        await SaveAsync(job, ct);
+        return job;
+    }
+
+    private async Task ImportAsync(DataImportJob job, CancellationToken ct)
+    {
+        var parsed = await _fileProcessor.ParseAsync(job, ct);
+
+        // Enqueue onto the outbox; the rows are flushed by the job-completion SaveChanges
+        // below (same intercepted GymsDbContext, same g{N}_outbox) and delivered durably.
+        foreach (var e in parsed.Members) _integrationEvents.Enqueue(e);
+        foreach (var e in parsed.Payments) _integrationEvents.Enqueue(e);
+        foreach (var e in parsed.Packages) _integrationEvents.Enqueue(e);
+        foreach (var e in parsed.InBodyRecords) _integrationEvents.Enqueue(e);
+
+        var errorReportPath = await _fileProcessor.SaveErrorReportAsync(job.Id, parsed.Errors, ct);
+
+        var totalRows = parsed.Members.Count + parsed.Payments.Count
+                      + parsed.Packages.Count + parsed.InBodyRecords.Count
+                      + parsed.Errors.Count;
+
+        job.MarkCompleted(
+            totalRows,
+            successCount: totalRows - parsed.Errors.Count,
+            failureCount: parsed.Errors.Count,
+            errorReportPath);
+
+        await SaveAsync(job, ct);
+
+        _logger.LogInformation(
+            "DataImport job {JobId} completed: {Success} succeeded, {Fail} failed.",
+            job.Id, totalRows - parsed.Errors.Count, parsed.Errors.Count);
+    }
+
+    private async Task SaveAsync(DataImportJob job, CancellationToken ct)
+    {
         _jobRepository.Update(job);
         await _unitOfWork.SaveChangesAsync(ct);
-
-        try
-        {
-            var parser = _parsers.FirstOrDefault(p => p.CanHandle(job.Source))
-                ?? throw new InvalidOperationException($"No parser registered for {job.Source}");
-
-            await using var content = await _fileStorage.OpenAsync(job.StoragePath, ct);
-            var parsed = await parser.ParseAsync(job.Id, job.GymId, content, ct);
-
-            // Enqueue onto the outbox; the rows are flushed by the job-completion SaveChanges
-            // below (same intercepted GymsDbContext, same g{N}_outbox) and delivered durably.
-            foreach (var e in parsed.Members) _integrationEvents.Enqueue(e);
-            foreach (var e in parsed.Payments) _integrationEvents.Enqueue(e);
-            foreach (var e in parsed.Packages) _integrationEvents.Enqueue(e);
-            foreach (var e in parsed.InBodyRecords) _integrationEvents.Enqueue(e);
-
-            string? errorReportPath = null;
-            if (parsed.Errors.Count > 0)
-            {
-                errorReportPath = await SaveErrorReportAsync(job.Id, parsed.Errors, ct);
-            }
-
-            var totalRows = parsed.Members.Count + parsed.Payments.Count
-                          + parsed.Packages.Count + parsed.InBodyRecords.Count
-                          + parsed.Errors.Count;
-
-            job.MarkCompleted(
-                totalRows,
-                successCount: totalRows - parsed.Errors.Count,
-                failureCount: parsed.Errors.Count,
-                errorReportPath);
-
-            _jobRepository.Update(job);
-            await _unitOfWork.SaveChangesAsync(ct);
-
-            _logger.LogInformation(
-                "DataImport job {JobId} completed: {Success} succeeded, {Fail} failed.",
-                jobId, totalRows - parsed.Errors.Count, parsed.Errors.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "DataImport job {JobId} failed.", jobId);
-            job.MarkFailed(ex.Message.Length > 900 ? ex.Message[..900] : ex.Message);
-            _jobRepository.Update(job);
-            await _unitOfWork.SaveChangesAsync(ct);
-        }
     }
-
-    private async Task<string> SaveErrorReportAsync(Guid jobId, IReadOnlyList<ImportRowError> errors, CancellationToken ct)
-    {
-        var sb = new StringBuilder();
-        sb.AppendLine("Sheet,RowNumber,Column,Message");
-        foreach (var e in errors)
-        {
-            sb.Append(Csv(e.Sheet)).Append(',')
-              .Append(e.RowNumber).Append(',')
-              .Append(Csv(e.Column)).Append(',')
-              .AppendLine(Csv(e.Message));
-        }
-
-        using var ms = new MemoryStream(Encoding.UTF8.GetBytes(sb.ToString()));
-        return await _fileStorage.SaveErrorReportAsync(jobId, ms, ct);
-    }
-
-    private static string Csv(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
 }

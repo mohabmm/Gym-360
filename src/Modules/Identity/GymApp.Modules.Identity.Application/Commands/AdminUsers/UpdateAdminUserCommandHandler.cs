@@ -17,7 +17,7 @@ internal sealed class UpdateAdminUserCommandHandler : ICommandHandler<UpdateAdmi
     public async Task<Result> Handle(UpdateAdminUserCommand request, CancellationToken cancellationToken)
     {
         var ok = await _profileUpdater.UpdateAsync(
-            request.UserId, request.FirstName, request.LastName, request.Phone, cancellationToken);
+            request.UserId, new UserProfileChanges(request.FirstName, request.LastName, request.Phone), cancellationToken);
         return ok ? Result.Success() : Result.Failure(UserErrors.NotFound(request.UserId));
     }
 }

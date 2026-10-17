@@ -2,6 +2,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Events;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Domain.Entities;
 
@@ -25,24 +26,18 @@ public sealed class DataImportJob : Entity
     public DateTime? StartedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
 
-    public static DataImportJob Create(
-        Guid gymId,
-        Guid uploadedByUserId,
-        DataImportSource source,
-        string originalFileName,
-        string storagePath,
-        long fileSizeBytes)
+    public static DataImportJob Create(Guid gymId, Guid uploadedByUserId, DataImportFile file)
     {
         var job = new DataImportJob
         {
             Id = Guid.NewGuid(),
             GymId = gymId,
             UploadedByUserId = uploadedByUserId,
-            Source = source,
+            Source = file.Source,
             Status = DataImportStatus.Pending,
-            OriginalFileName = originalFileName,
-            StoragePath = storagePath,
-            FileSizeBytes = fileSizeBytes,
+            OriginalFileName = file.OriginalFileName,
+            StoragePath = file.StoragePath,
+            FileSizeBytes = file.FileSizeBytes,
             CreatedAt = DateTime.UtcNow
         };
 

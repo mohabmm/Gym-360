@@ -1,5 +1,6 @@
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 using GymApp.Modules.Communication.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,8 +43,7 @@ internal sealed class ConversationRepository : IConversationRepository
     public async Task<(List<Conversation> Items, int TotalCount)> GetByUserAsync(
         Guid gymId,
         Guid userId,
-        int page,
-        int pageSize,
+        PageRequest page,
         CancellationToken cancellationToken = default)
     {
         // ParticipantIds is stored as JSON (nvarchar) via a value converter, so .Contains()
@@ -61,8 +61,8 @@ internal sealed class ConversationRepository : IConversationRepository
 
         var totalCount = userConversations.Count;
         var items = userConversations
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
+            .Skip(page.Skip)
+            .Take(page.PageSize)
             .ToList();
 
         return (items, totalCount);

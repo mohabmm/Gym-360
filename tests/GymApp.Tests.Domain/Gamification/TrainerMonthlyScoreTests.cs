@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Gamification.Domain.DomainEvents;
 using GymApp.Modules.Gamification.Domain.Entities;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Tests.Domain.Gamification;
 
@@ -12,15 +13,17 @@ public sealed class TrainerMonthlyScoreTests
         int uniqueClients = 5,
         int sessionCount = 10)
     {
-        return TrainerMonthlyScore.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            6,
-            2025,
-            aggregatedScore,
-            totalRatings,
-            uniqueClients,
-            sessionCount);
+        return TrainerMonthlyScore.Create(new TrainerMonthlyScoreDetails
+        {
+            GymId = Guid.NewGuid(),
+            TrainerId = Guid.NewGuid(),
+            Month = 6,
+            Year = 2025,
+            AggregatedScore = aggregatedScore,
+            TotalRatings = totalRatings,
+            UniqueClients = uniqueClients,
+            SessionCount = sessionCount
+        });
     }
 
     [Fact]
@@ -29,7 +32,17 @@ public sealed class TrainerMonthlyScoreTests
         var gymId = Guid.NewGuid();
         var trainerId = Guid.NewGuid();
 
-        var result = TrainerMonthlyScore.Create(gymId, trainerId, 3, 2025, 22.5m, 5, 4, 12);
+        var result = TrainerMonthlyScore.Create(new TrainerMonthlyScoreDetails
+        {
+            GymId = gymId,
+            TrainerId = trainerId,
+            Month = 3,
+            Year = 2025,
+            AggregatedScore = 22.5m,
+            TotalRatings = 5,
+            UniqueClients = 4,
+            SessionCount = 12
+        });
 
         result.IsSuccess.Should().BeTrue();
         var score = result.Value;

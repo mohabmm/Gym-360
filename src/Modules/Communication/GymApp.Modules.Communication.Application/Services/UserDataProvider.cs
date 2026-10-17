@@ -1,5 +1,6 @@
 using GymApp.Common.Application.Abstractions;
 using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.Services;
 
@@ -23,7 +24,7 @@ internal sealed class UserDataProvider : IUserDataProvider
         // Return notification preferences and notification metadata (not message content for privacy)
         var preferences = await _preferenceRepository.GetByUserAsync(userId, gymId: null, cancellationToken);
         var recentNotifications = await _notificationRepository.GetByUserAsync(
-            userId, gymId: null, page: 1, pageSize: 100, cancellationToken);
+            userId, gymId: null, new PageRequest(Page: 1, PageSize: 100), cancellationToken);
 
         return new
         {

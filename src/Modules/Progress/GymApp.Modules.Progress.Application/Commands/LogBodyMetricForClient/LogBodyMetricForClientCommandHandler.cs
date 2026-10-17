@@ -8,6 +8,7 @@ using GymApp.Modules.Progress.Domain.Entities;
 using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Domain.Repositories;
 using GymApp.Modules.Progress.Application.Abstractions;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Application.Commands.LogBodyMetricForClient;
 
@@ -55,17 +56,22 @@ internal sealed class LogBodyMetricForClientCommandHandler : ICommandHandler<Log
 
         var measurements = ProgressMapper.ToDomain(request.Measurements);
 
-        var result = BodyMetricEntry.Create(
-            request.ClientId,
-            request.GymId,
-            request.Date,
-            request.Weight,
-            weightUnit,
-            request.BodyFatPercentage,
-            measurements,
-            MetricSource.TrainerMeasured,
-            request.TrainerId,
-            request.Notes);
+        var result = BodyMetricEntry.Create(new BodyMetricEntryDetails
+        {
+            UserId = request.ClientId,
+            GymId = request.GymId,
+            Date = request.Date,
+            Source = MetricSource.TrainerMeasured,
+            LoggedBy = request.TrainerId,
+            Reading = new BodyMetricReading
+            {
+                Weight = request.Weight,
+                WeightUnit = weightUnit,
+                BodyFatPercentage = request.BodyFatPercentage,
+                Measurements = measurements,
+                Notes = request.Notes
+            }
+        });
 
         if (result.IsFailure)
         {

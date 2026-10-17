@@ -1,7 +1,5 @@
-using System.Security.Claims;
 using GymApp.Common.Domain;
 using GymApp.Common.Presentation;
-using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Application.Commands.AddMember;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Identity.Application.Commands.LinkMemberToGym;
@@ -30,48 +28,7 @@ internal sealed class StaffLinkExistingMemberEndpoint : IEndpoint
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("api/v1/identity/users/staff-link-existing", async (
-            Request request,
-            HttpContext http,
-            ISender sender,
-            IGymMemberDirectory directory,
-            IGymsUnitOfWork gymsUow,
-            CancellationToken ct) =>
-        {
-            var gymClaim = http.User.FindFirstValue("gymId");
-            if (!Guid.TryParse(gymClaim, out var gymId) || gymId == Guid.Empty)
-                return ApiResults.Problem(new Error("Auth.GymContextMissing", "Staff JWT is missing a gym scope. Re-login or call /identity/select-gym."));
-
-            var lookup = await sender.Send(new LookupTraineeByPhoneQuery(request.Phone), ct);
-            if (lookup.IsFailure)
-                return ApiResults.Problem(lookup.Error);
-
-            var userId = lookup.Value.UserId;
-
-            // One-Gym pre-check: if the trainee is ACTIVE at a different gym, reject here —
-            // before AddMember mutates this gym's MemberIds — so we never leave a half-linked
-            // member (in MemberIds but with no Identity membership) when LinkMemberToGym would
-            // fail the One-Gym rule anyway. (Active at THIS gym is fine — re-link is idempotent.)
-            var activeGymId = lookup.Value.ActiveGymId;
-            if (activeGymId is not null && activeGymId != gymId)
-                return ApiResults.Problem(UserErrors.AlreadyActiveInAnotherGym);
-
-            // Same authoritative tail as StaffCreateMemberEndpoint: AddMemberCommand updates
-            // Gym.MemberIds (read by membership checks), registers a gym_members row + assigns
-            // a MemberNumber, and publishes MemberAddedToGymIntegrationEvent.
-            var addResult = await sender.Send(new AddMemberCommand(gymId, userId, request.Section, MemberNumber: null), ct);
-            if (addResult.IsFailure)
-                return ApiResults.Problem(addResult.Error);
-
-            var memberNumber = await directory.GetMemberNumberAsync(gymId, userId, ct) ?? string.Empty;
-
-            var linkResult = await sender.Send(
-                new LinkMemberToGymCommand(userId, gymId, UserRole.Trainee, request.Section, memberNumber), ct);
-            if (linkResult.IsFailure)
-                return ApiResults.Problem(linkResult.Error);
-
-            return ApiResults.Created(new Response(userId, memberNumber));
-        })
+        app.MapPost("api/v1/identity/users/staff-link-existing", HandleAsync)
         .WithTags("Identity")
         .WithSummary("Link an existing trainee to the staff's gym (returning member)")
         .WithDescription("Re-links an existing trainee (resolved by phone) to the caller's gym without creating a duplicate or resetting their password. Use after staff-lookup confirms identity. Returns 409 if the trainee is already active at another gym (One-Gym rule). Requires staff JWT with a gym claim.")
@@ -81,5 +38,60 @@ internal sealed class StaffLinkExistingMemberEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .RequireAuthorization("gym_staff");
+    }
+
+    private static async Task<IResult> HandleAsync(
+        Request request,
+        HttpContext http,
+        ISender sender,
+        IGymMemberDirectory directory)
+    {
+        var ct = http.RequestAborted;
+        if (!StaffGymScope.TryGetGymId(http.User, out var gymId))
+            return ApiResults.Problem(StaffGymScope.Missing);
+
+        var lookup = await sender.Send(new LookupTraineeByPhoneQuery(request.Phone), ct);
+        if (lookup.IsFailure)
+            return ApiResults.Problem(lookup.Error);
+
+        // One-Gym pre-check: if the trainee is ACTIVE at a different gym, reject here —
+        // before AddMember mutates this gym's MemberIds — so we never leave a half-linked
+        // member (in MemberIds but with no Identity membership) when LinkMemberToGym would
+        // fail the One-Gym rule anyway. (Active at THIS gym is fine — re-link is idempotent.)
+        if (IsActiveElsewhere(lookup.Value.ActiveGymId, gymId))
+            return ApiResults.Problem(UserErrors.AlreadyActiveInAnotherGym);
+
+        var linkResult = await AddAndLinkAsync(new LinkTarget(gymId, lookup.Value.UserId, request.Section), sender, directory, ct);
+        return linkResult.IsFailure
+            ? ApiResults.Problem(linkResult.Error)
+            : ApiResults.Created(linkResult.Value);
+    }
+
+    private static bool IsActiveElsewhere(Guid? activeGymId, Guid gymId) =>
+        activeGymId is not null && activeGymId != gymId;
+
+    private sealed record LinkTarget(Guid GymId, Guid UserId, string? Section);
+
+    private static async Task<Result<Response>> AddAndLinkAsync(
+        LinkTarget target,
+        ISender sender,
+        IGymMemberDirectory directory,
+        CancellationToken ct)
+    {
+        // Same authoritative tail as StaffCreateMemberEndpoint: AddMemberCommand updates
+        // Gym.MemberIds (read by membership checks), registers a gym_members row + assigns
+        // a MemberNumber, and publishes MemberAddedToGymIntegrationEvent.
+        var addResult = await sender.Send(new AddMemberCommand(target.GymId, target.UserId, target.Section, MemberNumber: null), ct);
+        if (addResult.IsFailure)
+            return Result.Failure<Response>(addResult.Error);
+
+        var memberNumber = await directory.GetMemberNumberAsync(target.GymId, target.UserId, ct) ?? string.Empty;
+
+        var linkResult = await sender.Send(
+            new LinkMemberToGymCommand(target.UserId, target.GymId, UserRole.Trainee, target.Section, memberNumber), ct);
+        if (linkResult.IsFailure)
+            return Result.Failure<Response>(linkResult.Error);
+
+        return Result.Success(new Response(target.UserId, memberNumber));
     }
 }

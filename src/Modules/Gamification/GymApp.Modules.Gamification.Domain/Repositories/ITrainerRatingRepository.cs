@@ -1,4 +1,5 @@
 using GymApp.Modules.Gamification.Domain.Entities;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Domain.Repositories;
 
@@ -11,8 +12,7 @@ public interface ITrainerRatingRepository
     Task<IReadOnlyList<TrainerRating>> GetByTrainerAsync(
         Guid gymId,
         Guid trainerId,
-        DateTime fromDate,
-        DateTime toDate,
+        DateTimeRange range,
         CancellationToken cancellationToken = default);
 
     Task<TrainerRating?> GetBySessionAsync(

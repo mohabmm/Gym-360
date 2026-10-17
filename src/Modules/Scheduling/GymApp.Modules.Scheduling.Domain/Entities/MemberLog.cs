@@ -7,23 +7,7 @@ public sealed class MemberLog : Entity
 {
     private MemberLog() : base() { }
 
-    private MemberLog(
-        Guid id,
-        Guid sessionId,
-        int rating,
-        int perceivedExertion,
-        string? personalNotes,
-        string? discomfort,
-        int satisfaction) : base(id)
-    {
-        SessionId = sessionId;
-        Rating = rating;
-        PerceivedExertion = perceivedExertion;
-        PersonalNotes = personalNotes;
-        Discomfort = discomfort;
-        Satisfaction = satisfaction;
-        LoggedAt = DateTime.UtcNow;
-    }
+    private MemberLog(Guid id) : base(id) { }
 
     public Guid SessionId { get; private set; }
     public int Rating { get; private set; }
@@ -44,13 +28,15 @@ public sealed class MemberLog : Entity
         if (details.Satisfaction < 1 || details.Satisfaction > 5)
             throw new ArgumentOutOfRangeException(nameof(details), "Satisfaction must be between 1 and 5.");
 
-        return new MemberLog(
-            Guid.NewGuid(),
-            sessionId,
-            details.Rating,
-            details.PerceivedExertion,
-            details.PersonalNotes,
-            details.Discomfort,
-            details.Satisfaction);
+        return new MemberLog(Guid.NewGuid())
+        {
+            SessionId = sessionId,
+            Rating = details.Rating,
+            PerceivedExertion = details.PerceivedExertion,
+            PersonalNotes = details.PersonalNotes,
+            Discomfort = details.Discomfort,
+            Satisfaction = details.Satisfaction,
+            LoggedAt = DateTime.UtcNow
+        };
     }
 }

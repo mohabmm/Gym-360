@@ -9,14 +9,7 @@ namespace GymApp.Common.Application.Abstractions;
 public interface IChatNotifier
 {
     Task NotifyMessageReceivedAsync(
-        Guid conversationId,
-        Guid senderId,
-        Guid recipientId,
-        Guid messageId,
-        string content,
-        string? mediaUrl,
-        string? mediaType,
-        DateTime sentAt,
+        ChatMessageNotification message,
         CancellationToken cancellationToken = default);
 
     Task NotifyMessagesReadAsync(
@@ -26,9 +19,6 @@ public interface IChatNotifier
         CancellationToken cancellationToken = default);
 
     Task NotifyConversationCreatedAsync(
-        Guid conversationId,
-        Guid initiatorId,
-        Guid otherParticipantId,
-        Guid gymId,
+        ConversationCreatedNotification conversation,
         CancellationToken cancellationToken = default);
 }

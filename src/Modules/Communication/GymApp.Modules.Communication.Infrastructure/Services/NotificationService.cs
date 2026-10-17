@@ -3,6 +3,7 @@ using GymApp.Modules.Communication.Application.Contracts;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Repositories;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace GymApp.Modules.Communication.Infrastructure.Services;
@@ -31,10 +32,8 @@ internal sealed class NotificationService : INotificationService
 
     public async Task SendNotificationAsync(
         Guid userId,
-        string title,
-        string body,
+        PushContent content,
         string type,
-        Dictionary<string, string>? data = null,
         CancellationToken cancellationToken = default)
     {
         if (!Enum.TryParse<NotificationType>(type, true, out var notificationType))
@@ -52,26 +51,33 @@ internal sealed class NotificationService : INotificationService
             return;
         }
 
-        var notification = Notification.Create(userId, title, body, notificationType, data: data);
+        var details = new NotificationDetails
+        {
+            UserId = userId,
+            Type = notificationType,
+            Data = content.Data
+        };
+        var notification = Notification.Create(details, content.Title, content.Body);
         await _notificationRepository.AddAsync(notification, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        if (preference is null || preference.IsPushEnabled(notificationType))
+        if (ShouldPush(preference, notificationType))
         {
-            if (preference is null || !preference.IsInQuietHours(TimeOnly.FromDateTime(DateTime.UtcNow)))
-            {
-                await SendPushNotificationAsync(userId, title, body, data, cancellationToken);
-            }
+            await SendPushNotificationAsync(userId, content, cancellationToken);
         }
     }
 
     public async Task SendPushNotificationAsync(
         Guid userId,
-        string title,
-        string body,
-        Dictionary<string, string>? data = null,
+        PushContent content,
         CancellationToken cancellationToken = default)
     {
-        await _pushNotificationService.SendAsync(userId, title, body, data, cancellationToken);
+        await _pushNotificationService.SendAsync(userId, content, cancellationToken);
     }
+
+    // No preference row means defaults: push on, no quiet hours.
+    private static bool ShouldPush(NotificationPreference? preference, NotificationType notificationType) =>
+        preference is null
+        || (preference.IsPushEnabled(notificationType)
+            && !preference.IsInQuietHours(TimeOnly.FromDateTime(DateTime.UtcNow)));
 }

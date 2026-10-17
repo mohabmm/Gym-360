@@ -25,7 +25,7 @@ internal sealed class LinkMemberToGymCommandHandler : ICommandHandler<LinkMember
         if (user is null)
             return Result.Failure(UserErrors.NotFound(request.UserId));
 
-        if (user.GymMemberships.Any(m => m.GymId == request.GymId && m.Role == request.Role && m.IsActive))
+        if (user.GymMemberships.Any(m => m.IsActiveAs(request.GymId, request.Role)))
             return Result.Success();
 
         var link = user.LinkToGym(request.GymId, request.Role, request.Section, request.MemberNumber);

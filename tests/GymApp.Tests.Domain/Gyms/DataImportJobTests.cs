@@ -2,6 +2,7 @@ using FluentAssertions;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Events;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Tests.Domain.Gyms;
 
@@ -11,10 +12,13 @@ public sealed class DataImportJobTests
         DataImportJob.Create(
             gymId: Guid.NewGuid(),
             uploadedByUserId: Guid.NewGuid(),
-            source: DataImportSource.Excel,
-            originalFileName: "roster.xlsx",
-            storagePath: "/tmp/roster.xlsx",
-            fileSizeBytes: 2048);
+            file: new DataImportFile
+            {
+                Source = DataImportSource.Excel,
+                OriginalFileName = "roster.xlsx",
+                StoragePath = "/tmp/roster.xlsx",
+                FileSizeBytes = 2048
+            });
 
     [Fact]
     public void Create_raises_created_event_and_sets_pending_status()

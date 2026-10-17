@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Modules.Billing.Domain.Entities;
 
@@ -13,21 +14,16 @@ public sealed class GymFeatureOverride : Entity
     public Guid SetBy { get; private set; }
     public DateTime SetAt { get; private set; }
 
-    public static GymFeatureOverride Create(
-        Guid gymId,
-        Guid featureId,
-        bool overrideValue,
-        Guid setBy,
-        string? reason = null)
+    public static GymFeatureOverride Create(GymFeatureOverrideDetails details)
     {
         return new GymFeatureOverride
         {
             Id = Guid.NewGuid(),
-            GymId = gymId,
-            FeatureId = featureId,
-            OverrideValue = overrideValue,
-            Reason = reason,
-            SetBy = setBy,
+            GymId = details.GymId,
+            FeatureId = details.FeatureId,
+            OverrideValue = details.OverrideValue,
+            Reason = details.Reason,
+            SetBy = details.SetBy,
             SetAt = DateTime.UtcNow
         };
     }

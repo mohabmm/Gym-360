@@ -146,7 +146,9 @@ public sealed class User : Entity
         if (role == UserRole.Trainee && string.IsNullOrWhiteSpace(memberNumber))
             return Result.Failure(Errors.UserErrors.TraineeMembershipMissingMemberNumber);
 
-        var membership = GymMembership.Create(gymId, role, DateTime.UtcNow, section, memberNumber);
+        var membership = GymMembership.Create(
+            new GymMembershipDetails { GymId = gymId, Role = role, Section = section, MemberNumber = memberNumber },
+            DateTime.UtcNow);
         _gymMemberships.Add(membership);
         UpdatedAt = DateTime.UtcNow;
 

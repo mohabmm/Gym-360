@@ -28,12 +28,15 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: "Test Gym",
-            description: null,
-            address: new Address("Nasr City St", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Generate());
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = "Test Gym",
+                Description = null,
+                Address = new Address("Nasr City St", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Generate()
+            });
         gym.Approve();
         gym.AddMember(memberId);
 
@@ -60,10 +63,13 @@ public sealed class MyMealPlanIntegrationTests : BaseIntegrationTest
         var plan = MealPlan.Create(
             trainerId: trainerId,
             gymId: gymId,
-            name: name,
-            description: null,
-            dailyCalorieTarget: 2200,
-            macroTargets: new MacroTargets(165, 220, 75),
+            details: new MealPlanDetails
+            {
+                Name = name,
+                Description = null,
+                DailyCalorieTarget = 2200,
+                MacroTargets = new MacroTargets(165, 220, 75)
+            },
             isTemplate: false);
 
         plan.AssignToClient(clientId);

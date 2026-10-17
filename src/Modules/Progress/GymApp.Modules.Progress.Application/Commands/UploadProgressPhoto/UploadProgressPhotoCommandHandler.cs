@@ -7,6 +7,7 @@ using GymApp.Modules.Progress.Domain.Entities;
 using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Domain.Repositories;
 using GymApp.Modules.Progress.Application.Abstractions;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Application.Commands.UploadProgressPhoto;
 
@@ -52,11 +53,14 @@ internal sealed class UploadProgressPhotoCommandHandler : ICommandHandler<Upload
         var result = ProgressPhoto.Create(
             request.UserId,
             request.GymId,
-            request.PhotoUrl,
-            request.ThumbnailUrl,
-            angle,
-            request.Date,
-            notes: request.Notes);
+            new ProgressPhotoDetails
+            {
+                PhotoUrl = request.PhotoUrl,
+                ThumbnailUrl = request.ThumbnailUrl,
+                Angle = angle,
+                Date = request.Date,
+                Notes = request.Notes
+            });
 
         if (result.IsFailure)
         {

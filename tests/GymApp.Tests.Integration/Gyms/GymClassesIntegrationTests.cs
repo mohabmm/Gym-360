@@ -36,12 +36,15 @@ public sealed class GymClassesIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: $"Class Test Gym {Guid.NewGuid():N}",
-            description: null,
-            address: new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Create($"CLS{Guid.NewGuid().ToString("N")[..3]}"));
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = $"Class Test Gym {Guid.NewGuid():N}",
+                Description = null,
+                Address = new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Create($"CLS{Guid.NewGuid().ToString("N")[..3]}")
+            });
         gym.Approve();
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
@@ -52,17 +55,20 @@ public sealed class GymClassesIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gymClass = GymClass.Create(
-            gymId: gymId,
-            name: "Morning Yoga",
-            description: "Gentle flow",
-            trainerId: Guid.NewGuid(),
-            schedule: new ClassSchedule(
-                DayOfWeek.Monday,
-                new TimeOnly(8, 0),
-                60,
-                IsRecurring: true),
-            capacity: capacity,
-            waitlistEnabled: waitlistEnabled);
+            gymId,
+            Guid.NewGuid(),
+            new GymClassDetails
+            {
+                Name = "Morning Yoga",
+                Description = "Gentle flow",
+                Schedule = new ClassSchedule(
+                    DayOfWeek.Monday,
+                    new TimeOnly(8, 0),
+                    60,
+                    IsRecurring: true),
+                Capacity = capacity,
+                WaitlistEnabled = waitlistEnabled
+            });
         gymsDb.GymClasses.Add(gymClass);
         await gymsDb.SaveChangesAsync();
         return gymClass;
