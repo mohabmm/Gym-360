@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Enums;
 using GymApp.Modules.Billing.Domain.Events;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Modules.Billing.Domain.Entities;
 
@@ -21,24 +22,19 @@ public sealed class GymSubscription : Entity
     public DateTime? OverdueSince { get; private set; }
     public DateTime? GracePeriodEndsAt { get; private set; }
 
-    public static GymSubscription Create(
-        Guid gymId,
-        Guid planId,
-        bool isTrial = false,
-        DateTime? trialExpiresAt = null,
-        DateTime? expiresAt = null)
+    public static GymSubscription Create(GymSubscriptionDetails details)
     {
         return new GymSubscription
         {
             Id = Guid.NewGuid(),
-            GymId = gymId,
-            PlanId = planId,
+            GymId = details.GymId,
+            PlanId = details.PlanId,
             StartedAt = DateTime.UtcNow,
-            ExpiresAt = expiresAt,
+            ExpiresAt = details.ExpiresAt,
             IsActive = true,
-            IsTrial = isTrial,
-            TrialExpiresAt = trialExpiresAt,
-            PaymentStatus = isTrial ? SubscriptionPaymentStatus.Paid : SubscriptionPaymentStatus.Paid
+            IsTrial = details.IsTrial,
+            TrialExpiresAt = details.TrialExpiresAt,
+            PaymentStatus = SubscriptionPaymentStatus.Paid
         };
     }
 

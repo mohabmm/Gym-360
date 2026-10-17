@@ -31,21 +31,17 @@ internal sealed class GetMyPaymentsEndpoint : IEndpoint
             if (!UserContext.TryGetUserId(httpContext, out var userId))
                 return Results.Unauthorized();
 
-            if (gymId is null || gymId == Guid.Empty)
+            if (!HasGymContext(gymId))
                 return ApiResults.Problem("GYM_CONTEXT_REQUIRED", "The X-Gym-Id header is required.", 400);
 
             var effectivePurpose = string.IsNullOrWhiteSpace(purpose) ? "All" : purpose;
-            if (!AllowedPurposes.Contains(effectivePurpose))
-                return ApiResults.Problem("VALIDATION_ERROR",
-                    "purpose must be one of Membership, SessionPackage, Product, All.", 400);
-
-            if (from is not null && to is not null && from > to)
-                return ApiResults.Problem("VALIDATION_ERROR",
-                    "'from' must be on or before 'to'.", 400);
+            var validationError = ValidateFilters(effectivePurpose, from, to);
+            if (validationError is not null)
+                return validationError;
 
             var query = new GetMyPaymentsQuery(
                 userId,
-                gymId.Value,
+                gymId.GetValueOrDefault(),
                 from,
                 to,
                 effectivePurpose,
@@ -67,4 +63,22 @@ internal sealed class GetMyPaymentsEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
         .RequireAuthorization("trainee");
     }
+
+    private static bool HasGymContext(Guid? gymId) => gymId is not null && gymId != Guid.Empty;
+
+    private static IResult? ValidateFilters(string purpose, DateOnly? from, DateOnly? to)
+    {
+        if (!AllowedPurposes.Contains(purpose))
+            return ApiResults.Problem("VALIDATION_ERROR",
+                "purpose must be one of Membership, SessionPackage, Product, All.", 400);
+
+        if (IsInvertedRange(from, to))
+            return ApiResults.Problem("VALIDATION_ERROR",
+                "'from' must be on or before 'to'.", 400);
+
+        return null;
+    }
+
+    private static bool IsInvertedRange(DateOnly? from, DateOnly? to) =>
+        from is not null && to is not null && from > to;
 }

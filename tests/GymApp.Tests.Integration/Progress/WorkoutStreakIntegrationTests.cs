@@ -9,6 +9,7 @@ using GymApp.Tests.Integration.Abstractions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Tests.Integration.Progress;
 
@@ -82,7 +83,11 @@ public sealed class WorkoutStreakIntegrationTests : BaseIntegrationTest
             .Where(pf => pf.FeatureId == feature.Id && pf.IsEnabled)
             .Select(pf => pf.PlanId)
             .FirstAsync();
-        billing.GymSubscriptions.Add(GymSubscription.Create(_gymId, planId));
+        billing.GymSubscriptions.Add(GymSubscription.Create(new GymSubscriptionDetails
+        {
+            GymId = _gymId,
+            PlanId = planId
+        }));
         await billing.SaveChangesAsync();
     }
 

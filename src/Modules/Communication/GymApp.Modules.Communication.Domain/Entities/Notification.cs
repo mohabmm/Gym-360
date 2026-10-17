@@ -28,37 +28,25 @@ public sealed class Notification : Entity
     public DateTime? PushSentAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public static Notification Create(
-        Guid userId,
-        string title,
-        string body,
-        NotificationType type,
-        Guid? gymId = null,
-        Dictionary<string, string>? data = null)
+    public static Notification Create(NotificationDetails details, string title, string body)
     {
         var notification = new Notification
         {
             Id = Guid.NewGuid(),
-            UserId = userId,
-            GymId = gymId,
+            UserId = details.UserId,
+            GymId = details.GymId,
             Title = title,
             Body = body,
-            Type = type,
+            Type = details.Type,
             IsRead = false,
             IsPushSent = false,
             CreatedAt = DateTime.UtcNow
         };
 
-        if (data is not null)
-        {
-            foreach (var kvp in data)
-            {
-                notification._data[kvp.Key] = kvp.Value;
-            }
-        }
+        notification.CopyData(details.Data);
 
         notification.RaiseDomainEvent(
-            new NotificationCreatedDomainEvent(notification.Id, userId, type.ToString()));
+            new NotificationCreatedDomainEvent(notification.Id, details.UserId, details.Type.ToString()));
 
         return notification;
     }
@@ -68,14 +56,9 @@ public sealed class Notification : Entity
     /// Title/Body (what push and Arabic clients show), English rides along in
     /// <see cref="Data"/> so English-locale clients can be served via <see cref="TextFor"/>.
     /// </summary>
-    public static Notification CreateLocalized(
-        NotificationText text,
-        Guid userId,
-        NotificationType type,
-        Guid? gymId = null,
-        Dictionary<string, string>? data = null)
+    public static Notification CreateLocalized(NotificationDetails details, NotificationText text)
     {
-        var notification = Create(userId, text.TitleAr, text.BodyAr, type, gymId, data);
+        var notification = Create(details, text.TitleAr, text.BodyAr);
         notification._data[TitleEnKey] = text.TitleEn;
         notification._data[BodyEnKey] = text.BodyEn;
         return notification;
@@ -100,6 +83,17 @@ public sealed class Notification : Entity
     public Dictionary<string, string> PublicData() =>
         _data.Where(kvp => kvp.Key != TitleEnKey && kvp.Key != BodyEnKey)
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+    private void CopyData(Dictionary<string, string>? data)
+    {
+        if (data is null)
+            return;
+
+        foreach (var kvp in data)
+        {
+            _data[kvp.Key] = kvp.Value;
+        }
+    }
 
     public void MarkAsRead()
     {

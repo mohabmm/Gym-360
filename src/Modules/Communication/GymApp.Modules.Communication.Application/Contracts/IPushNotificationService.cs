@@ -4,8 +4,6 @@ public interface IPushNotificationService
 {
     Task SendAsync(
         Guid userId,
-        string title,
-        string body,
-        Dictionary<string, string>? data = null,
+        PushContent content,
         CancellationToken cancellationToken = default);
 }

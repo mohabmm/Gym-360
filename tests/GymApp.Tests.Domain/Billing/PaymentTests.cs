@@ -10,14 +10,16 @@ public sealed class PaymentTests
 {
     private static Payment CreateDefaultPayment()
     {
-        return Payment.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Money.Create(500m, "EGP"),
-            PaymentMethod.Cash,
-            PaymentPurpose.Membership,
-            "REC-001",
-            Guid.NewGuid());
+        return Payment.Create(new PaymentDetails
+        {
+            GymId = Guid.NewGuid(),
+            MemberId = Guid.NewGuid(),
+            Amount = Money.Create(500m, "EGP"),
+            PaymentMethod = PaymentMethod.Cash,
+            Purpose = PaymentPurpose.Membership,
+            ReceiptNumber = "REC-001",
+            RecordedBy = Guid.NewGuid()
+        });
     }
 
     [Fact]
@@ -27,13 +29,16 @@ public sealed class PaymentTests
         var memberId = Guid.NewGuid();
         var recordedBy = Guid.NewGuid();
 
-        var payment = Payment.Create(
-            gymId, memberId,
-            Money.Create(1000m, "EGP"),
-            PaymentMethod.Card,
-            PaymentPurpose.SessionPackage,
-            "REC-100",
-            recordedBy);
+        var payment = Payment.Create(new PaymentDetails
+        {
+            GymId = gymId,
+            MemberId = memberId,
+            Amount = Money.Create(1000m, "EGP"),
+            PaymentMethod = PaymentMethod.Card,
+            Purpose = PaymentPurpose.SessionPackage,
+            ReceiptNumber = "REC-100",
+            RecordedBy = recordedBy
+        });
 
         payment.Id.Should().NotBeEmpty();
         payment.GymId.Should().Be(gymId);
@@ -90,17 +95,19 @@ public sealed class SessionPackageTests
 {
     private static SessionPackage CreateDefaultPackage(int totalSessions = 10, DateTime? expiresAt = null)
     {
-        return SessionPackage.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            "PT Package - 10 Sessions",
-            totalSessions,
-            Money.Create(200m, "EGP"),
-            Money.Create(2000m, "EGP"),
-            Guid.NewGuid(),
-            expiresAt);
+        return SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = Guid.NewGuid(),
+            TrainerId = Guid.NewGuid(),
+            MemberId = Guid.NewGuid(),
+            TemplateId = Guid.NewGuid(),
+            Name = "PT Package - 10 Sessions",
+            TotalSessions = totalSessions,
+            PricePerSession = Money.Create(200m, "EGP"),
+            TotalPrice = Money.Create(2000m, "EGP"),
+            AssignedBy = Guid.NewGuid(),
+            ExpiresAt = expiresAt
+        });
     }
 
     [Fact]

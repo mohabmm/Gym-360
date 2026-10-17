@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Domain.Entities;
 
@@ -6,23 +7,7 @@ public sealed class LeaderboardEntry : Entity
 {
     private LeaderboardEntry() { }
 
-    private LeaderboardEntry(
-        Guid id,
-        Guid leaderboardId,
-        Guid memberId,
-        int rank,
-        decimal score,
-        decimal? delta,
-        bool isOptedIn)
-        : base(id)
-    {
-        LeaderboardId = leaderboardId;
-        MemberId = memberId;
-        Rank = rank;
-        Score = score;
-        Delta = delta;
-        IsOptedIn = isOptedIn;
-    }
+    private LeaderboardEntry(Guid id) : base(id) { }
 
     public Guid LeaderboardId { get; private set; }
     public Guid MemberId { get; private set; }
@@ -31,22 +16,17 @@ public sealed class LeaderboardEntry : Entity
     public decimal? Delta { get; private set; }
     public bool IsOptedIn { get; private set; }
 
-    public static LeaderboardEntry Create(
-        Guid leaderboardId,
-        Guid memberId,
-        int rank,
-        decimal score,
-        decimal? delta,
-        bool isOptedIn)
+    public static LeaderboardEntry Create(Guid leaderboardId, LeaderboardEntryDetails details)
     {
-        return new LeaderboardEntry(
-            Guid.NewGuid(),
-            leaderboardId,
-            memberId,
-            rank,
-            score,
-            delta,
-            isOptedIn);
+        return new LeaderboardEntry(Guid.NewGuid())
+        {
+            LeaderboardId = leaderboardId,
+            MemberId = details.MemberId,
+            Rank = details.Rank,
+            Score = details.Score,
+            Delta = details.Delta,
+            IsOptedIn = details.IsOptedIn
+        };
     }
 
     public void UpdateRank(int newRank, decimal newScore, decimal? newDelta)

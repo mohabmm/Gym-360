@@ -1,6 +1,7 @@
 using GymApp.Modules.Billing.Application.Abstractions;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Gyms.IntegrationEvents;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -63,7 +64,12 @@ internal sealed class GymApprovedIntegrationEventHandler : INotificationHandler<
             return;
         }
 
-        await _subscriptionRepository.AddAsync(GymSubscription.Create(notification.GymId, proPlan.Id), cancellationToken);
+        var subscription = GymSubscription.Create(new GymSubscriptionDetails
+        {
+            GymId = notification.GymId,
+            PlanId = proPlan.Id
+        });
+        await _subscriptionRepository.AddAsync(subscription, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Auto-subscribed gym {GymId} to plan {PlanCode}", notification.GymId, DefaultPlanCode);
     }

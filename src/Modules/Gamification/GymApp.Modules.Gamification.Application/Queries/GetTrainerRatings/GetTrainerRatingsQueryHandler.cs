@@ -2,6 +2,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Gamification.Application.DTOs;
 using GymApp.Modules.Gamification.Domain.Repositories;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Application.Queries.GetTrainerRatings;
 
@@ -22,7 +23,7 @@ internal sealed class GetTrainerRatingsQueryHandler : IQueryHandler<GetTrainerRa
         var toDate = request.To?.ToDateTime(TimeOnly.MaxValue) ?? DateTime.MaxValue;
 
         var ratings = await _ratingRepository.GetByTrainerAsync(
-            request.GymId, request.TrainerId, fromDate, toDate, cancellationToken);
+            request.GymId, request.TrainerId, new DateTimeRange(fromDate, toDate), cancellationToken);
 
         var dtos = ratings
             .Select(r => new TrainerRatingDto(

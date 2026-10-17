@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Errors;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Application.Abstractions;
 
 namespace GymApp.Modules.Billing.Application.Commands.GymSubscriptions;
@@ -51,15 +52,17 @@ internal sealed class ChangeGymPlanCommandHandler : ICommandHandler<ChangeGymPla
         subscription.ChangePlan(request.PlanId);
         _subscriptionRepository.Update(subscription);
 
-        var log = PlanChangeLog.Create(
-            "PlanChanged",
-            request.ChangedBy,
-            request.GymId,
-            "GymSubscription",
-            subscription.Id,
-            oldPlanId.ToString(),
-            request.PlanId.ToString(),
-            request.Reason);
+        var log = PlanChangeLog.Create(new PlanChangeLogDetails
+        {
+            ChangeType = "PlanChanged",
+            ChangedBy = request.ChangedBy,
+            GymId = request.GymId,
+            EntityType = "GymSubscription",
+            EntityId = subscription.Id,
+            OldValue = oldPlanId.ToString(),
+            NewValue = request.PlanId.ToString(),
+            Reason = request.Reason
+        });
 
         await _changeLogRepository.AddAsync(log, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

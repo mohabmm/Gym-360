@@ -1,6 +1,7 @@
 using GymApp.Common.Domain;
 using GymApp.Modules.Gamification.Domain.DomainEvents;
 using GymApp.Modules.Gamification.Domain.Errors;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Domain.Entities;
 
@@ -10,30 +11,7 @@ public sealed class TrainerMonthlyScore : Entity
 
     private TrainerMonthlyScore() { }
 
-    private TrainerMonthlyScore(
-        Guid id,
-        Guid gymId,
-        Guid trainerId,
-        int month,
-        int year,
-        decimal aggregatedScore,
-        int totalRatings,
-        int uniqueClients,
-        int sessionCount)
-        : base(id)
-    {
-        GymId = gymId;
-        TrainerId = trainerId;
-        Month = month;
-        Year = year;
-        AggregatedScore = aggregatedScore;
-        TotalRatings = totalRatings;
-        UniqueClients = uniqueClients;
-        SessionCount = sessionCount;
-        NormalizedScore = 0m;
-        IsCoachOfTheMonth = false;
-        CalculatedAt = DateTime.UtcNow;
-    }
+    private TrainerMonthlyScore(Guid id) : base(id) { }
 
     public Guid GymId { get; private set; }
     public Guid TrainerId { get; private set; }
@@ -47,26 +25,22 @@ public sealed class TrainerMonthlyScore : Entity
     public bool IsCoachOfTheMonth { get; private set; }
     public DateTime CalculatedAt { get; private set; }
 
-    public static Result<TrainerMonthlyScore> Create(
-        Guid gymId,
-        Guid trainerId,
-        int month,
-        int year,
-        decimal aggregatedScore,
-        int totalRatings,
-        int uniqueClients,
-        int sessionCount)
+    public static Result<TrainerMonthlyScore> Create(TrainerMonthlyScoreDetails details)
     {
-        var score = new TrainerMonthlyScore(
-            Guid.NewGuid(),
-            gymId,
-            trainerId,
-            month,
-            year,
-            aggregatedScore,
-            totalRatings,
-            uniqueClients,
-            sessionCount);
+        var score = new TrainerMonthlyScore(Guid.NewGuid())
+        {
+            GymId = details.GymId,
+            TrainerId = details.TrainerId,
+            Month = details.Month,
+            Year = details.Year,
+            AggregatedScore = details.AggregatedScore,
+            TotalRatings = details.TotalRatings,
+            UniqueClients = details.UniqueClients,
+            SessionCount = details.SessionCount,
+            NormalizedScore = 0m,
+            IsCoachOfTheMonth = false,
+            CalculatedAt = DateTime.UtcNow
+        };
 
         score.RecalculateNormalizedScore(0m, 0m);
 

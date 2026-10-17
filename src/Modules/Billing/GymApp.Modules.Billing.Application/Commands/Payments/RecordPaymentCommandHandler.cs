@@ -52,50 +52,64 @@ internal sealed class RecordPaymentCommandHandler : ICommandHandler<RecordPaymen
 
         var amount = Money.Create(request.Amount);
         var receiptNumber = $"RCP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+        var referenceId = await ResolveReferenceIdAsync(request, purpose, amount, cancellationToken);
 
-        // Bidirectional assign-trainer flow: caller records a SessionPackage
-        // payment without a pre-existing package — create the package
-        // atomically, link payment.ReferenceId to it, derive PricePerSession
-        // from Amount/SessionCount so trainer earnings + remaining sessions
-        // are correct downstream.
-        var resolvedReferenceId = request.ReferenceId;
-        if (purpose == PaymentPurpose.SessionPackage
-            && !resolvedReferenceId.HasValue
-            && request.TrainerId.HasValue
-            && request.SessionCount.HasValue
-            && request.SessionCount.Value > 0)
+        var payment = Payment.Create(new PaymentDetails
         {
-            var sessionCount = request.SessionCount.Value;
-            var pricePer = Money.Create(request.Amount / sessionCount);
-            var package = SessionPackage.Create(
-                request.GymId,
-                request.TrainerId.Value,
-                request.MemberId,
-                templateId: Guid.Empty,
-                name: $"Custom: {sessionCount} sessions",
-                totalSessions: sessionCount,
-                pricePerSession: pricePer,
-                totalPrice: amount,
-                assignedBy: request.RecordedBy,
-                expiresAt: null);
-
-            await _sessionPackageRepository.AddAsync(package, cancellationToken);
-            resolvedReferenceId = package.Id;
-        }
-
-        var payment = Payment.Create(
-            request.GymId,
-            request.MemberId,
-            amount,
-            paymentMethod,
-            purpose,
-            receiptNumber,
-            request.RecordedBy,
-            resolvedReferenceId);
+            GymId = request.GymId,
+            MemberId = request.MemberId,
+            Amount = amount,
+            PaymentMethod = paymentMethod,
+            Purpose = purpose,
+            ReceiptNumber = receiptNumber,
+            RecordedBy = request.RecordedBy,
+            ReferenceId = referenceId
+        });
 
         await _paymentRepository.AddAsync(payment, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(payment.Id);
     }
+
+    // Bidirectional assign-trainer flow: caller records a SessionPackage
+    // payment without a pre-existing package — create the package
+    // atomically, link payment.ReferenceId to it, derive PricePerSession
+    // from Amount/SessionCount so trainer earnings + remaining sessions
+    // are correct downstream.
+    private async Task<Guid?> ResolveReferenceIdAsync(
+        RecordPaymentCommand request,
+        PaymentPurpose purpose,
+        Money amount,
+        CancellationToken cancellationToken)
+    {
+        if (!IsCustomSessionPackagePayment(request, purpose))
+            return request.ReferenceId;
+
+        var sessionCount = request.SessionCount!.Value;
+        var package = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = request.GymId,
+            TrainerId = request.TrainerId!.Value,
+            MemberId = request.MemberId,
+            TemplateId = Guid.Empty,
+            Name = $"Custom: {sessionCount} sessions",
+            TotalSessions = sessionCount,
+            PricePerSession = Money.Create(request.Amount / sessionCount),
+            TotalPrice = amount,
+            AssignedBy = request.RecordedBy,
+            ExpiresAt = null
+        });
+
+        await _sessionPackageRepository.AddAsync(package, cancellationToken);
+        return package.Id;
+    }
+
+    private static bool IsCustomSessionPackagePayment(RecordPaymentCommand request, PaymentPurpose purpose) =>
+        purpose == PaymentPurpose.SessionPackage
+        && !request.ReferenceId.HasValue
+        && HasCustomPackageTerms(request);
+
+    private static bool HasCustomPackageTerms(RecordPaymentCommand request) =>
+        request.TrainerId.HasValue && request.SessionCount is > 0;
 }
