@@ -15,35 +15,4 @@ public sealed record BodyMeasurements
     public decimal? RightCalf { get; init; }
     public decimal? Neck { get; init; }
     public MeasurementUnit MeasurementUnit { get; init; }
-
-    private BodyMeasurements() { }
-
-    public static BodyMeasurements Create(
-        MeasurementUnit unit,
-        decimal? chest = null,
-        decimal? waist = null,
-        decimal? hips = null,
-        decimal? leftArm = null,
-        decimal? rightArm = null,
-        decimal? leftThigh = null,
-        decimal? rightThigh = null,
-        decimal? leftCalf = null,
-        decimal? rightCalf = null,
-        decimal? neck = null)
-    {
-        return new BodyMeasurements
-        {
-            MeasurementUnit = unit,
-            Chest = chest,
-            Waist = waist,
-            Hips = hips,
-            LeftArm = leftArm,
-            RightArm = rightArm,
-            LeftThigh = leftThigh,
-            RightThigh = rightThigh,
-            LeftCalf = leftCalf,
-            RightCalf = rightCalf,
-            Neck = neck
-        };
-    }
 }

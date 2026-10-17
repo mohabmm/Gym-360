@@ -27,7 +27,11 @@ public class RecordCheckInCommandHandlerTests
         _userProfileLookup.GetProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((UserProfileInfo?)null);
         _sut = new RecordCheckInCommandHandler(
-            _gymRepository, _checkInRepository, _memberDirectory, _gymMemberRepository, _userProfileLookup, _unitOfWork);
+            _gymRepository,
+            _checkInRepository,
+            new CheckInEligibilityChecker(_memberDirectory, _gymMemberRepository, _checkInRepository),
+            _userProfileLookup,
+            _unitOfWork);
     }
 
     private static Gym CreateActiveGym()
@@ -35,9 +39,29 @@ public class RecordCheckInCommandHandlerTests
         var address = new Address("123 Main St", "Cairo", "Cairo", "Egypt", "12345", null, null);
         var contact = new ContactInfo("gym@example.com", "+201234567890", null);
         var gymCode = GymCode.Generate();
-        var gym = Gym.Create(Guid.NewGuid(), "Test Gym", "Description", address, contact, gymCode);
+        var gym = Gym.Create(
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = "Test Gym",
+                Description = "Description",
+                Address = address,
+                ContactInfo = contact,
+                GymCode = gymCode
+            });
         gym.Approve();
         return gym;
+    }
+
+    private void GivenActiveGym(Guid gymId) =>
+        _gymRepository.GetByIdAsync(gymId, Arg.Any<CancellationToken>()).Returns(CreateActiveGym());
+
+    private async Task AssertHandleFailsWith(RecordCheckInCommand command, GymApp.Common.Domain.Error expected)
+    {
+        var result = await _sut.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(expected.Code);
     }
 
     [Fact]
@@ -46,8 +70,7 @@ public class RecordCheckInCommandHandlerTests
         // Arrange
         var gymId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
-        var gym = CreateActiveGym();
-        _gymRepository.GetByIdAsync(gymId, Arg.Any<CancellationToken>()).Returns(gym);
+        GivenActiveGym(gymId);
         _checkInRepository.GetLatestForMemberAsync(gymId, memberId, Arg.Any<CancellationToken>())
             .Returns((CheckIn?)null);
 
@@ -73,12 +96,8 @@ public class RecordCheckInCommandHandlerTests
 
         var command = new RecordCheckInCommand(gymId, "QR", null, null, Guid.NewGuid(), null);
 
-        // Act
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(GymErrors.NotFound.Code);
+        // Act + Assert
+        await AssertHandleFailsWith(command, GymErrors.NotFound);
     }
 
     [Fact]
@@ -86,17 +105,12 @@ public class RecordCheckInCommandHandlerTests
     {
         // Arrange
         var gymId = Guid.NewGuid();
-        var gym = CreateActiveGym();
-        _gymRepository.GetByIdAsync(gymId, Arg.Any<CancellationToken>()).Returns(gym);
+        GivenActiveGym(gymId);
 
         var command = new RecordCheckInCommand(gymId, "QR", null, null, null, null);
 
-        // Act
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(GymErrors.InvalidCheckIn.Code);
+        // Act + Assert
+        await AssertHandleFailsWith(command, GymErrors.InvalidCheckIn);
     }
 
     [Fact]
@@ -104,8 +118,7 @@ public class RecordCheckInCommandHandlerTests
     {
         var gymId = Guid.NewGuid();
         var resolvedMemberId = Guid.NewGuid();
-        var gym = CreateActiveGym();
-        _gymRepository.GetByIdAsync(gymId, Arg.Any<CancellationToken>()).Returns(gym);
+        GivenActiveGym(gymId);
         _memberDirectory.FindMemberIdByNumberAsync(gymId, "M-42", Arg.Any<CancellationToken>())
             .Returns(resolvedMemberId);
         _checkInRepository.GetLatestForMemberAsync(gymId, resolvedMemberId, Arg.Any<CancellationToken>())
@@ -126,17 +139,13 @@ public class RecordCheckInCommandHandlerTests
     public async Task Handle_QrTokenUnresolvable_ReturnsInvalidCheckIn()
     {
         var gymId = Guid.NewGuid();
-        var gym = CreateActiveGym();
-        _gymRepository.GetByIdAsync(gymId, Arg.Any<CancellationToken>()).Returns(gym);
+        GivenActiveGym(gymId);
         _memberDirectory.FindMemberIdByNumberAsync(gymId, "UNKNOWN", Arg.Any<CancellationToken>())
             .Returns((Guid?)null);
 
         var command = new RecordCheckInCommand(gymId, "QR", "UNKNOWN", null, null, null);
 
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(GymErrors.InvalidCheckIn.Code);
+        await AssertHandleFailsWith(command, GymErrors.InvalidCheckIn);
     }
 
     [Fact]
@@ -145,8 +154,7 @@ public class RecordCheckInCommandHandlerTests
         // Arrange
         var gymId = Guid.NewGuid();
         var memberId = Guid.NewGuid();
-        var gym = CreateActiveGym();
-        _gymRepository.GetByIdAsync(gymId, Arg.Any<CancellationToken>()).Returns(gym);
+        GivenActiveGym(gymId);
 
         var existingCheckIn = CheckIn.Create(gymId, memberId, CheckInMethod.QR);
         _checkInRepository.GetLatestForMemberAsync(gymId, memberId, Arg.Any<CancellationToken>())
@@ -154,11 +162,7 @@ public class RecordCheckInCommandHandlerTests
 
         var command = new RecordCheckInCommand(gymId, "QR", null, null, memberId, null);
 
-        // Act
-        var result = await _sut.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be(GymErrors.DuplicateCheckIn.Code);
+        // Act + Assert
+        await AssertHandleFailsWith(command, GymErrors.DuplicateCheckIn);
     }
 }

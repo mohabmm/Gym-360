@@ -2,6 +2,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Progress.Application.DTOs;
 using GymApp.Modules.Progress.Domain.Repositories;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Application.Queries.GetBodyMetricTrends;
 
@@ -17,7 +18,7 @@ internal sealed class GetBodyMetricTrendsQueryHandler : IQueryHandler<GetBodyMet
     public async Task<Result<MetricTrendsResponse>> Handle(GetBodyMetricTrendsQuery request, CancellationToken cancellationToken)
     {
         var entries = await _repository.GetByUserAsync(
-            request.UserId, request.GymId, request.From, request.To, cancellationToken);
+            request.UserId, request.GymId, new DateRange(request.From, request.To), cancellationToken);
 
         var ordered = entries.OrderBy(e => e.Date).ToList();
 

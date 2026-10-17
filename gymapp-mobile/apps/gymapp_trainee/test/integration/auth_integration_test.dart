@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:gymapp_trainee/features/auth/data/datasources/auth_remote_datasource.dart';
 
+import 'helpers/recorded_request.dart';
 import 'helpers/sample_payloads.dart';
 import 'helpers/test_api_client.dart';
 
@@ -20,6 +21,17 @@ void main() {
     auth = AuthRemoteDataSource(apiClient: t.apiClient);
   });
 
+  /// Registers a 204 for POST [path], runs [call] and asserts the JSON body.
+  Future<void> expectPostBody(
+    String path,
+    Future<void> Function() call,
+    Map<String, dynamic> body,
+  ) async {
+    t.adapter.onPost(path, respond: (_) => t.adapter.noContent());
+    await call();
+    expect(t.onlyRequest.bodyAsMap, body);
+  }
+
   group('Login screen', () {
     test('POST /identity/login sends credentials and parses tokens + user',
         () async {
@@ -32,15 +44,18 @@ void main() {
         const LoginRequest(email: 'member@test.local', password: 'p@ss1234'),
       );
 
-      final req = t.onlyRequest;
-      expect(req.method, 'POST');
-      expect(req.path, '/api/v1/identity/login');
-      expect(req.bodyAsMap, {
-        'email': 'member@test.local',
-        'password': 'p@ss1234',
-      });
-      // Login is a public endpoint — AuthInterceptor must NOT attach the token.
-      expect(req.header('authorization'), isNull);
+      expect(
+        t.onlyRequest,
+        isA<RecordedRequest>()
+            .having((r) => r.method, 'method', 'POST')
+            .having((r) => r.path, 'path', '/api/v1/identity/login')
+            .having((r) => r.bodyAsMap, 'body', {
+              'email': 'member@test.local',
+              'password': 'p@ss1234',
+            })
+            // Login is a public endpoint — AuthInterceptor must NOT attach the token.
+            .having((r) => r.header('authorization'), 'authorization', isNull),
+      );
       expect(result.accessToken, 'new-access-token');
       expect(result.user.id, 'user-1');
     });
@@ -82,11 +97,15 @@ void main() {
         ),
       );
 
-      final body = t.onlyRequest.bodyAsMap!;
-      expect(body['email'], 'new@test.local');
-      expect(body['role'], 'Member');
-      expect(body['dataProcessingConsent'], true);
-      expect(body['marketingConsent'], false);
+      expect(
+        t.onlyRequest.bodyAsMap,
+        allOf(
+          containsPair('email', 'new@test.local'),
+          containsPair('role', 'Member'),
+          containsPair('dataProcessingConsent', true),
+          containsPair('marketingConsent', false),
+        ),
+      );
     });
 
     test('400 validation error maps to ValidationException with field errors',
@@ -133,29 +152,21 @@ void main() {
 
   group('OTP screen', () {
     test('POST /identity/send-otp carries email + purpose', () async {
-      t.adapter.onPost(
+      await expectPostBody(
         ApiEndpoints.sendOtp,
-        respond: (_) => t.adapter.noContent(),
+        () => auth.sendOtp(const OtpRequest(email: 'x@y.z', purpose: 'signup')),
+        {'email': 'x@y.z', 'purpose': 'signup'},
       );
-
-      await auth.sendOtp(
-        const OtpRequest(email: 'x@y.z', purpose: 'signup'),
-      );
-      expect(t.onlyRequest.bodyAsMap, {
-        'email': 'x@y.z',
-        'purpose': 'signup',
-      });
     });
 
     test('POST /identity/verify-otp sends the code', () async {
-      t.adapter.onPost(
+      await expectPostBody(
         ApiEndpoints.verifyOtp,
-        respond: (_) => t.adapter.noContent(),
+        () => auth.verifyOtp(
+          const VerifyOtpRequest(email: 'x@y.z', otp: '123456'),
+        ),
+        {'email': 'x@y.z', 'otp': '123456'},
       );
-      await auth.verifyOtp(
-        const VerifyOtpRequest(email: 'x@y.z', otp: '123456'),
-      );
-      expect(t.onlyRequest.bodyAsMap, {'email': 'x@y.z', 'otp': '123456'});
     });
   });
 
@@ -167,11 +178,20 @@ void main() {
       );
 
       final user = await auth.getProfile();
-      expect(user.id, 'user-1');
-      expect(user.role, 'Member');
+      expect(
+        user,
+        isA<UserModel>()
+            .having((u) => u.id, 'id', 'user-1')
+            .having((u) => u.role, 'role', 'Member'),
+      );
       // Authorization header injected by AuthInterceptor for protected route.
-      expect(t.onlyRequest.header('authorization'), 'Bearer test-jwt');
-      expect(t.onlyRequest.header('x-gym-id'), 'gym-1');
+      expect(
+        t.onlyRequest,
+        isA<RecordedRequest>()
+            .having((r) => r.header('authorization'), 'authorization',
+                'Bearer test-jwt')
+            .having((r) => r.header('x-gym-id'), 'x-gym-id', 'gym-1'),
+      );
     });
 
     test('PUT /identity/profile only serializes non-null fields and refetches',
@@ -197,14 +217,19 @@ void main() {
       expect(updated.firstName, 'Mona');
       expect(t.adapter.recorded.map((r) => r.method).toList(), ['PUT', 'GET']);
       final putBody = t.adapter.recorded.first.bodyAsMap!;
-      // Caller is derived from the JWT — userId must not be sent.
-      expect(putBody.containsKey('userId'), isFalse);
-      expect(putBody['firstName'], 'Mona');
-      expect(putBody['dateOfBirth'], '1998-02-03');
-      expect(putBody['gender'], 'Female');
-      // Fields we did not pass must be absent, not null.
-      expect(putBody.containsKey('lastName'), isFalse);
-      expect(putBody.containsKey('phone'), isFalse);
+      expect(
+        putBody,
+        allOf(
+          // Caller is derived from the JWT — userId must not be sent.
+          isNot(contains('userId')),
+          containsPair('firstName', 'Mona'),
+          containsPair('dateOfBirth', '1998-02-03'),
+          containsPair('gender', 'Female'),
+          // Fields we did not pass must be absent, not null.
+          isNot(contains('lastName')),
+          isNot(contains('phone')),
+        ),
+      );
     });
   });
 
@@ -224,14 +249,13 @@ void main() {
 
   group('Forgot password', () {
     test('POST /identity/forgot-password sends email', () async {
-      t.adapter.onPost(
+      await expectPostBody(
         ApiEndpoints.forgotPassword,
-        respond: (_) => t.adapter.noContent(),
+        () => auth.forgotPassword(
+          const ForgotPasswordRequest(email: 'user@test.local'),
+        ),
+        {'email': 'user@test.local'},
       );
-      await auth.forgotPassword(
-        const ForgotPasswordRequest(email: 'user@test.local'),
-      );
-      expect(t.onlyRequest.bodyAsMap, {'email': 'user@test.local'});
     });
   });
 
@@ -253,20 +277,15 @@ void main() {
   group('PDPL consent', () {
     test('POST /identity/consent serializes consentType, isGranted, text',
         () async {
-      t.adapter.onPost(
+      await expectPostBody(
         ApiEndpoints.consent,
-        respond: (_) => t.adapter.noContent(),
+        () => auth.recordConsent(
+          consentType: 'Marketing',
+          isGranted: true,
+          consentText: 'v1',
+        ),
+        {'consentType': 'Marketing', 'isGranted': true, 'consentText': 'v1'},
       );
-      await auth.recordConsent(
-        consentType: 'Marketing',
-        isGranted: true,
-        consentText: 'v1',
-      );
-      expect(t.onlyRequest.bodyAsMap, {
-        'consentType': 'Marketing',
-        'isGranted': true,
-        'consentText': 'v1',
-      });
     });
   });
 }

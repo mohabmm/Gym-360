@@ -29,19 +29,17 @@ internal sealed class GetMyPackagesEndpoint : IEndpoint
             if (!UserContext.TryGetUserId(httpContext, out var userId))
                 return Results.Unauthorized();
 
-            if (gymId is null || gymId == Guid.Empty)
+            if (!HasGymContext(gymId))
                 return ApiResults.Problem("GYM_CONTEXT_REQUIRED", "The X-Gym-Id header is required.", 400);
 
-            var effectiveStatus = status;
-            if (string.IsNullOrWhiteSpace(effectiveStatus))
-                effectiveStatus = "Active";
-            else if (!AllowedStatus.Contains(effectiveStatus))
+            var effectiveStatus = string.IsNullOrWhiteSpace(status) ? "Active" : status;
+            if (!AllowedStatus.Contains(effectiveStatus))
                 return ApiResults.Problem("VALIDATION_ERROR",
                     "status must be one of Active, Exhausted, Expired, All.", 400);
 
             var query = new GetMyPackagesQuery(
                 userId,
-                gymId.Value,
+                gymId.GetValueOrDefault(),
                 effectiveStatus,
                 page ?? 1,
                 pageSize ?? 20);
@@ -61,4 +59,6 @@ internal sealed class GetMyPackagesEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
         .RequireAuthorization("trainee");
     }
+
+    private static bool HasGymContext(Guid? gymId) => gymId is not null && gymId != Guid.Empty;
 }

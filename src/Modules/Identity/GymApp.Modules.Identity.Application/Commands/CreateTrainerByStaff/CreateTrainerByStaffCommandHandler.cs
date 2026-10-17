@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Identity.Application.Abstractions;
+using GymApp.Modules.Identity.Application.Common;
 using GymApp.Modules.Identity.Application.Contracts;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
@@ -40,7 +41,7 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
 
     public async Task<Result<Guid>> Handle(CreateTrainerByStaffCommand request, CancellationToken cancellationToken)
     {
-        var phoneResult = PhoneNumber.Create(NormalizePhone(request.Phone));
+        var phoneResult = PhoneNumber.Create(MemberPhoneNormalizer.Normalize(request.Phone));
         if (phoneResult.IsFailure)
             return Result.Failure<Guid>(phoneResult.Error);
 
@@ -118,17 +119,6 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
     private static bool IsActiveTrainerAt(DomainEntities.User user, Guid gymId) =>
         user.GymMemberships.Any(m => m.IsActive && m.Role == UserRole.Trainer && m.GymId == gymId);
 
-    private static string NormalizePhone(string raw)
-    {
-        var trimmed = raw.Trim();
-        var digits = new string(trimmed.Where(c => char.IsDigit(c) || c == '+').ToArray());
-
-        if (digits.StartsWith("+")) return digits;
-        if (digits.StartsWith("00")) return "+" + digits[2..];
-        if (digits.Length == 11 && digits.StartsWith("01")) return "+20" + digits[1..];
-        if (digits.Length == 10 && digits.StartsWith("1")) return "+20" + digits;
-        return "+" + digits;
-    }
 
     private static string SynthesizePlaceholderEmail(string e164Phone)
     {

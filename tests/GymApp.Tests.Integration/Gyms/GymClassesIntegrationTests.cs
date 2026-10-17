@@ -36,12 +36,15 @@ public sealed class GymClassesIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: $"Class Test Gym {Guid.NewGuid():N}",
-            description: null,
-            address: new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Create($"CLS{Guid.NewGuid().ToString("N")[..3]}"));
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = $"Class Test Gym {Guid.NewGuid():N}",
+                Description = null,
+                Address = new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Create($"CLS{Guid.NewGuid().ToString("N")[..3]}")
+            });
         gym.Approve();
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
@@ -52,42 +55,58 @@ public sealed class GymClassesIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gymClass = GymClass.Create(
-            gymId: gymId,
-            name: "Morning Yoga",
-            description: "Gentle flow",
-            trainerId: Guid.NewGuid(),
-            schedule: new ClassSchedule(
-                DayOfWeek.Monday,
-                new TimeOnly(8, 0),
-                60,
-                IsRecurring: true),
-            capacity: capacity,
-            waitlistEnabled: waitlistEnabled);
+            gymId,
+            Guid.NewGuid(),
+            new GymClassDetails
+            {
+                Name = "Morning Yoga",
+                Description = "Gentle flow",
+                Schedule = new ClassSchedule(
+                    DayOfWeek.Monday,
+                    new TimeOnly(8, 0),
+                    60,
+                    IsRecurring: true),
+                Capacity = capacity,
+                WaitlistEnabled = waitlistEnabled
+            });
         gymsDb.GymClasses.Add(gymClass);
         await gymsDb.SaveChangesAsync();
         return gymClass;
     }
 
-    private async Task BookMember(Guid classId, Guid memberId)
+    private async Task UpdateClass(Guid classId, Action<GymClass> mutate)
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gymClass = await gymsDb.GymClasses.Include(c => c.Bookings)
             .FirstAsync(c => c.Id == classId);
-        var booking = gymClass.Book(memberId).Value;
+        mutate(gymClass);
         gymsDb.GymClasses.Update(gymClass);
         await gymsDb.SaveChangesAsync();
-        _ = booking;
     }
 
-    private async Task MarkAttended(Guid classId, Guid memberId)
+    private Task BookMember(Guid classId, Guid memberId) =>
+        UpdateClass(classId, gymClass => _ = gymClass.Book(memberId).Value);
+
+    private Task MarkAttended(Guid classId, Guid memberId) =>
+        UpdateClass(classId, gymClass => gymClass.Bookings.First(b => b.MemberId == memberId).MarkAttended());
+
+    private enum ClassMemberList { Waitlist, Attendance }
+
+    /// <summary>
+    /// GETs a class member list (waitlist / attendance) as the gym owner, asserts it
+    /// holds exactly one member and returns that member's id.
+    /// </summary>
+    private async Task<Guid> GetSingleListedMemberId(Guid gymId, Guid classId, ClassMemberList list)
     {
-        var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
-        var gymClass = await gymsDb.GymClasses.Include(c => c.Bookings)
-            .FirstAsync(c => c.Id == classId);
-        var booking = gymClass.Bookings.First(b => b.MemberId == memberId);
-        booking.MarkAttended();
-        gymsDb.GymClasses.Update(gymClass);
-        await gymsDb.SaveChangesAsync();
+        var client = CreateGymOwnerClient(gymId: gymId);
+        var response = await client.GetAsync(
+            $"api/v1/gyms/{gymId}/classes/{classId}/{list.ToString().ToLowerInvariant()}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await response.Content
+            .ReadFromJsonAsync<ApiResponse<List<MemberDto>>>(JsonOptions);
+        payload!.Data!.Should().ContainSingle();
+        return payload.Data![0].MemberId;
     }
 
     // -----------------------------------------------------------------------
@@ -234,15 +253,7 @@ public sealed class GymClassesIntegrationTests : BaseIntegrationTest
         await BookMember(gymClass.Id, confirmed);
         await BookMember(gymClass.Id, waitlisted);
 
-        var client = CreateGymOwnerClient(gymId: gym.Id);
-        var response = await client.GetAsync(
-            $"api/v1/gyms/{gym.Id}/classes/{gymClass.Id}/waitlist");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content
-            .ReadFromJsonAsync<ApiResponse<List<MemberDto>>>(JsonOptions);
-        payload!.Data!.Should().ContainSingle();
-        payload.Data![0].MemberId.Should().Be(waitlisted);
+        (await GetSingleListedMemberId(gym.Id, gymClass.Id, ClassMemberList.Waitlist)).Should().Be(waitlisted);
     }
 
     // -----------------------------------------------------------------------
@@ -280,14 +291,6 @@ public sealed class GymClassesIntegrationTests : BaseIntegrationTest
         await BookMember(gymClass.Id, bookedOnly);
         await MarkAttended(gymClass.Id, attended);
 
-        var client = CreateGymOwnerClient(gymId: gym.Id);
-        var response = await client.GetAsync(
-            $"api/v1/gyms/{gym.Id}/classes/{gymClass.Id}/attendance");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content
-            .ReadFromJsonAsync<ApiResponse<List<MemberDto>>>(JsonOptions);
-        payload!.Data!.Should().ContainSingle();
-        payload.Data![0].MemberId.Should().Be(attended);
+        (await GetSingleListedMemberId(gym.Id, gymClass.Id, ClassMemberList.Attendance)).Should().Be(attended);
     }
 }

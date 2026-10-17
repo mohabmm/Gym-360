@@ -5,6 +5,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.CreateWorkout;
 
@@ -39,23 +40,28 @@ internal sealed class CreateWorkoutCommandHandler : ICommandHandler<CreateWorkou
         var workout = Workout.Create(
             request.TrainerId,
             request.GymId,
-            request.Name,
-            request.NameAr,
-            request.Description,
-            request.EstimatedDuration,
+            new WorkoutDetails
+            {
+                Name = request.Name,
+                NameAr = request.NameAr,
+                Description = request.Description,
+                EstimatedDurationMinutes = request.EstimatedDuration
+            },
             isTemplate: request.IsTemplate);
 
         foreach (var exercise in request.Exercises)
         {
-            workout.AddExercise(
-                exercise.ExerciseId,
-                exercise.Sets,
-                exercise.Reps,
-                exercise.Weight,
-                exercise.DurationSeconds,
-                exercise.RestSeconds,
-                exercise.Notes,
-                exercise.SupersetGroupId);
+            workout.AddExercise(new WorkoutExerciseDetails
+            {
+                ExerciseId = exercise.ExerciseId,
+                Sets = exercise.Sets,
+                Reps = exercise.Reps,
+                Weight = exercise.Weight,
+                DurationSeconds = exercise.DurationSeconds,
+                RestSeconds = exercise.RestSeconds,
+                Notes = exercise.Notes,
+                SupersetGroupId = exercise.SupersetGroupId
+            });
         }
 
         await _workoutRepository.AddAsync(workout, cancellationToken);

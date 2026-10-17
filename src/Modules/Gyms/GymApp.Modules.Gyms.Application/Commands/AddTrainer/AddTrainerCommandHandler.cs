@@ -1,36 +1,33 @@
-using GymApp.Modules.Billing.Shared;
-using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
-using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Domain.Entities;
+using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
+using GymApp.Modules.Gyms.Application.Services;
 using GymApp.Modules.Gyms.IntegrationEvents;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddTrainer;
 
 internal sealed class AddTrainerCommandHandler : ICommandHandler<AddTrainerCommand>
 {
     private readonly IGymRepository _gymRepository;
-    private readonly IGymPlanService _gymPlanService;
-    private readonly IGymQueryService _gymQueryService;
+    private readonly GymSeatLimitChecker _seatLimits;
     private readonly IGymTrainerRequestRepository _trainerRequestRepository;
     private readonly IGymsUnitOfWork _unitOfWork;
     private readonly IIntegrationEventPublisher _integrationEvents;
 
     public AddTrainerCommandHandler(
         IGymRepository gymRepository,
-        IGymPlanService gymPlanService,
-        IGymQueryService gymQueryService,
+        GymSeatLimitChecker seatLimits,
         IGymTrainerRequestRepository trainerRequestRepository,
         IGymsUnitOfWork unitOfWork,
         IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
-        _gymPlanService = gymPlanService;
-        _gymQueryService = gymQueryService;
+        _seatLimits = seatLimits;
         _trainerRequestRepository = trainerRequestRepository;
         _unitOfWork = unitOfWork;
         _integrationEvents = integrationEvents;
@@ -42,40 +39,15 @@ internal sealed class AddTrainerCommandHandler : ICommandHandler<AddTrainerComma
         if (gym is null)
             return Result.Failure(GymErrors.NotFound);
 
-        var trainerLimit = await _gymPlanService.GetTrainerLimitAsync(request.GymId, cancellationToken);
-        var currentCount = await _gymQueryService.GetTrainerCountAsync(request.GymId, cancellationToken);
+        var seat = await _seatLimits.EnsureTrainerSeatAsync(request.GymId, cancellationToken);
+        if (seat.IsFailure)
+            return seat;
 
-        if (trainerLimit > 0 && currentCount >= trainerLimit)
-            return Result.Failure(PlanErrors.LimitExceeded("trainers", currentCount, trainerLimit));
-
-        var result = gym.AddTrainer(request.TrainerId);
+        var result = gym.AddTrainer(new TrainerId(request.TrainerId));
         if (result.IsFailure)
             return result;
 
-        var existingRequest = await _trainerRequestRepository.GetAsync(
-            request.GymId, request.TrainerId, cancellationToken);
-
-        var hasProfileUpdate = request.Bio is not null || request.Specializations is not null;
-
-        if (existingRequest is null)
-        {
-            var approvedRequest = GymTrainerRequest.CreateApproved(request.GymId, request.TrainerId);
-            if (hasProfileUpdate)
-                approvedRequest.UpdateProfile(request.Specializations, request.Bio);
-            await _trainerRequestRepository.AddAsync(approvedRequest, cancellationToken);
-        }
-        else if (existingRequest.Status != Domain.Enums.TrainerRequestStatus.Approved)
-        {
-            existingRequest.Approve();
-            if (hasProfileUpdate)
-                existingRequest.UpdateProfile(request.Specializations, request.Bio);
-            _trainerRequestRepository.Update(existingRequest);
-        }
-        else if (hasProfileUpdate)
-        {
-            existingRequest.UpdateProfile(request.Specializations, request.Bio);
-            _trainerRequestRepository.Update(existingRequest);
-        }
+        await ApproveTrainerRequestAsync(request, cancellationToken);
 
         _gymRepository.Update(gym);
 
@@ -85,5 +57,39 @@ internal sealed class AddTrainerCommandHandler : ICommandHandler<AddTrainerComma
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
+    }
+
+    // Adding a trainer directly also approves (or creates an approved) join request,
+    // carrying over any bio/specializations supplied with the command.
+    private async Task ApproveTrainerRequestAsync(AddTrainerCommand request, CancellationToken cancellationToken)
+    {
+        var existingRequest = await _trainerRequestRepository.GetAsync(
+            request.GymId, request.TrainerId, cancellationToken);
+
+        if (existingRequest is null)
+        {
+            var approvedRequest = GymTrainerRequest.CreateApproved(request.GymId, request.TrainerId);
+            ApplyProfileUpdate(approvedRequest, request);
+            await _trainerRequestRepository.AddAsync(approvedRequest, cancellationToken);
+            return;
+        }
+
+        var wasApproved = existingRequest.Status == TrainerRequestStatus.Approved;
+        if (wasApproved && !HasProfileUpdate(request))
+            return;
+
+        if (!wasApproved)
+            existingRequest.Approve();
+        ApplyProfileUpdate(existingRequest, request);
+        _trainerRequestRepository.Update(existingRequest);
+    }
+
+    private static bool HasProfileUpdate(AddTrainerCommand request) =>
+        request.Bio is not null || request.Specializations is not null;
+
+    private static void ApplyProfileUpdate(GymTrainerRequest trainerRequest, AddTrainerCommand request)
+    {
+        if (HasProfileUpdate(request))
+            trainerRequest.UpdateProfile(request.Specializations, request.Bio);
     }
 }

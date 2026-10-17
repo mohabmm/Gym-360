@@ -1,4 +1,4 @@
-import type { NextAuthOptions } from 'next-auth';
+import type { NextAuthOptions, User } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import type { AdminRole } from '@gym360/ui';
@@ -81,6 +81,44 @@ async function rotateTokens(token: JWT): Promise<boolean> {
   }
 }
 
+// Copy the freshly signed-in user's credentials and role claims onto the JWT.
+function applySignIn(token: JWT, user: User): JWT {
+  token.accessToken = user.accessToken;
+  token.refreshToken = user.refreshToken;
+  token.expiresAt = decodeJwtExpMs(user.accessToken) ?? 0;
+  token.role = user.role;
+  token.adminRole = user.adminRole;
+  return token;
+}
+
+// True once the access token is inside the pre-expiry refresh window.
+function isNearExpiry(expiresAt: number): boolean {
+  return expiresAt > 0 && Date.now() > expiresAt - ACCESS_TOKEN_REFRESH_SKEW_MS;
+}
+
+// True once the access token is past its embedded expiry.
+function isExpired(expiresAt: number): boolean {
+  return expiresAt > 0 && Date.now() >= expiresAt;
+}
+
+// A refresh is attempted when we hold a refresh token and the access token is
+// missing or about to expire.
+function needsRotation(token: JWT): boolean {
+  if (!token.refreshToken) return false;
+  return !token.accessToken || isNearExpiry(token.expiresAt ?? 0);
+}
+
+// The current access token can no longer be used for API calls.
+function isTokenUnusable(token: JWT): boolean {
+  return !token.accessToken || isExpired(token.expiresAt ?? 0);
+}
+
+// Backend emits either "admin" (legacy role claim) or "platform_admin".
+// Accept both so rotation from one to the other doesn't lock admins out.
+function isPlatformAdminRole(role: string): boolean {
+  return role === 'admin' || role === 'platform_admin';
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -110,9 +148,7 @@ export const authOptions: NextAuthOptions = {
           const data = await res.json();
           const { user, accessToken, refreshToken } = data.data;
 
-          // Backend emits either "admin" (legacy role claim) or "platform_admin".
-          // Accept both so rotation from one to the other doesn't lock admins out.
-          if (user.role !== 'admin' && user.role !== 'platform_admin') return null;
+          if (!isPlatformAdminRole(user.role)) return null;
 
           // adminRole lives in the JWT payload, not the user object
           const payload = JSON.parse(
@@ -136,34 +172,20 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.accessToken = user.accessToken;
-        token.refreshToken = user.refreshToken;
-        token.expiresAt = decodeJwtExpMs(user.accessToken) ?? 0;
-        token.role = user.role;
-        token.adminRole = user.adminRole;
-        return token;
-      }
+      if (user) return applySignIn(token, user);
 
       // The NextAuth session cookie lives 24h (maxAge below) but a backend
       // access token lives ~1h. Without rotation the cookie outlives its token:
       // every admin API call 401s and the user is bounced to /login mid-session.
       // Exchange the long-lived refresh token for a fresh pair before expiry;
       // also recovers a token blanked by an older build.
-      const expiresAt = token.expiresAt ?? 0;
-      const nearExpiry = expiresAt > 0 && Date.now() > expiresAt - ACCESS_TOKEN_REFRESH_SKEW_MS;
-      const expired = expiresAt > 0 && Date.now() >= expiresAt;
-      if (token.refreshToken && (!token.accessToken || nearExpiry)) {
-        if (await rotateTokens(token)) return token;
-        // Rotation failed. Only force re-auth if the current token is genuinely
-        // unusable; keep a still-valid token in the pre-expiry skew window so a
-        // later cycle retries instead of a false logout (the backend revokes
-        // the old refresh token on rotation, so concurrent calls can race).
-        if (!token.accessToken || expired) {
-          return { ...token, accessToken: '' };
-        }
-      }
-      return token;
+      if (!needsRotation(token)) return token;
+      if (await rotateTokens(token)) return token;
+      // Rotation failed. Only force re-auth if the current token is genuinely
+      // unusable; keep a still-valid token in the pre-expiry skew window so a
+      // later cycle retries instead of a false logout (the backend revokes
+      // the old refresh token on rotation, so concurrent calls can race).
+      return isTokenUnusable(token) ? { ...token, accessToken: '' } : token;
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken;

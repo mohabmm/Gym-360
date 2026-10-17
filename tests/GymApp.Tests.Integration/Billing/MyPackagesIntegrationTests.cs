@@ -25,14 +25,17 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: "Integration Gym",
-            description: null,
-            address: new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Generate());
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = "Integration Gym",
+                Description = null,
+                Address = new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Generate()
+            });
         gym.Approve();
-        gym.AddMember(memberId);
+        gym.AddMember(new MemberId(memberId));
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
         return gym;
@@ -52,19 +55,28 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
     {
         var repo = Scope.ServiceProvider.GetRequiredService<ISessionPackageRepository>();
         var uow = Scope.ServiceProvider.GetRequiredService<IBillingUnitOfWork>();
-        var pkg = SessionPackage.Create(
-            gymId: gymId,
-            trainerId: Guid.NewGuid(),
-            memberId: memberId,
-            templateId: Guid.NewGuid(),
-            name: name,
-            totalSessions: 10,
-            pricePerSession: Money.Create(500m),
-            totalPrice: Money.Create(5000m),
-            assignedBy: Guid.NewGuid(),
-            expiresAt: DateTime.UtcNow.AddMonths(3));
+        var pkg = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = gymId,
+            TrainerId = Guid.NewGuid(),
+            MemberId = memberId,
+            TemplateId = Guid.NewGuid(),
+            Name = name,
+            TotalSessions = 10,
+            PricePerSession = Money.Create(500m),
+            TotalPrice = Money.Create(5000m),
+            AssignedBy = Guid.NewGuid(),
+            ExpiresAt = DateTime.UtcNow.AddMonths(3)
+        });
         await repo.AddAsync(pkg);
         await uow.SaveChangesAsync();
+    }
+
+    private async Task<HttpResponseMessage> GetMyPackagesAsync(Guid userId, Guid gymId)
+    {
+        var client = CreateTraineeClient(userId);
+        client.DefaultRequestHeaders.Add("X-Gym-Id", gymId.ToString());
+        return await client.GetAsync("api/v1/billing/me/packages");
     }
 
     [Fact]
@@ -74,10 +86,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var gym = await SeedActiveGymWithMember(userId);
         await SeedPackage(gym.Id, userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -88,10 +97,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -102,10 +108,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(Guid.NewGuid());
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -116,10 +119,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedSuspendedGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -135,10 +135,7 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         await SeedPackage(gymA.Id, userId, "Package A");
         await SeedPackage(gymB.Id, userId, "Package B");
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gymB.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gymB.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();
@@ -158,16 +155,13 @@ public sealed class MyPackagesIntegrationTests : BaseIntegrationTest
         // Add the other member so we can create a package for them.
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var freshGym = await gymsDb.Gyms.FindAsync(gym.Id);
-        freshGym!.AddMember(otherMember);
+        freshGym!.AddMember(new MemberId(otherMember));
         await gymsDb.SaveChangesAsync();
 
         await SeedPackage(gym.Id, userId, "My Package");
         await SeedPackage(gym.Id, otherMember, "Other's Package");
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/packages");
+        var response = await GetMyPackagesAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();

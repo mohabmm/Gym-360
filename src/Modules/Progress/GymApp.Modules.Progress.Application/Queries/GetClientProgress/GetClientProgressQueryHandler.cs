@@ -4,6 +4,8 @@ using GymApp.Modules.Progress.Application.DTOs;
 using GymApp.Modules.Progress.Application.Mappers;
 using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Domain.Repositories;
+using GymApp.Modules.Progress.Domain.ValueObjects;
+using GymApp.Modules.Progress.Application.Queries.Shared;
 
 namespace GymApp.Modules.Progress.Application.Queries.GetClientProgress;
 
@@ -28,7 +30,7 @@ internal sealed class GetClientProgressQueryHandler : IQueryHandler<GetClientPro
         CancellationToken cancellationToken)
     {
         var allMetrics = await _metricRepository.GetByUserAsync(
-            request.ClientId, request.GymId, DateOnly.MinValue, DateOnly.FromDateTime(DateTime.UtcNow), cancellationToken);
+            request.ClientId, request.GymId, new DateRange(DateOnly.MinValue, DateOnly.FromDateTime(DateTime.UtcNow)), cancellationToken);
 
         var ordered = allMetrics.OrderBy(m => m.Date).ToList();
 
@@ -41,20 +43,7 @@ internal sealed class GetClientProgressQueryHandler : IQueryHandler<GetClientPro
             .Select(ProgressMapper.ToDto)
             .ToList();
 
-        decimal? weightChange = null;
-        decimal? bodyFatChange = null;
-
-        if (ordered.Count >= 2)
-        {
-            var first = ordered.First();
-            var last = ordered.Last();
-
-            if (first.Weight.HasValue && last.Weight.HasValue)
-                weightChange = last.Weight.Value - first.Weight.Value;
-
-            if (first.BodyFatPercentage.HasValue && last.BodyFatPercentage.HasValue)
-                bodyFatChange = last.BodyFatPercentage.Value - first.BodyFatPercentage.Value;
-        }
+        var changes = BodyMetricChanges.Between(ordered);
 
         int photoCount = await _photoRepository.GetCountAsync(
             request.ClientId, request.GymId, cancellationToken);
@@ -69,8 +58,8 @@ internal sealed class GetClientProgressQueryHandler : IQueryHandler<GetClientPro
             photoCount,
             workoutStreak?.CurrentStreak ?? 0,
             workoutStreak?.LongestStreak ?? 0,
-            weightChange,
-            bodyFatChange);
+            changes.WeightChange,
+            changes.BodyFatChange);
 
         return Result.Success(response);
     }

@@ -18,7 +18,7 @@ void main() {
 
   test('GET /gyms/{gymId}/check-ins returns paginated history', () async {
     t.adapter.onGet(
-      ApiEndpoints.checkInHistory('gym-1'),
+      ApiEndpoints.checkInHistory(const GymId('gym-1')),
       respond: (_) => t.adapter.ok([Samples.checkIn(), Samples.checkIn(id: 'ci-2')]),
     );
 

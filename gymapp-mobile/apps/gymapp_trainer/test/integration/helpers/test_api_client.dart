@@ -6,6 +6,15 @@ import 'mock_http_adapter.dart';
 const String kTrainerId = 'trainer-1';
 const String kGymId = 'gym-1';
 const String kClientId = 'client-1';
+
+/// Typed forms of the ids above, for the [ApiEndpoints] path builders.
+const kTrainer = TrainerId(kTrainerId);
+const kGym = GymId(kGymId);
+const kClient = ClientId(kClientId);
+
+/// [kClientId] as addressed by the gym-staff `/members/{memberId}` routes.
+const kClientMember = MemberId(kClientId);
+
 const String kAccessToken = 'test-jwt';
 
 class TestApiClient {
@@ -44,25 +53,41 @@ class TestApiClient {
   }
 }
 
+/// Credentials + gym context seeded into [FakeSecureStorage].
+class TestSession {
+  const TestSession({
+    this.accessToken = kAccessToken,
+    this.refreshToken = 'test-refresh',
+    this.userId = kTrainerId,
+    this.gymId = kGymId,
+  });
+
+  /// No tokens, user or gym — for flows that run before authentication.
+  static const anonymous =
+      TestSession(accessToken: '', refreshToken: '', userId: '', gymId: '');
+
+  final String accessToken;
+  final String refreshToken;
+  final String userId;
+  final String gymId;
+}
+
 /// Builds an [ApiClient] with the real interceptor stack (auth, gym-id, error)
 /// wired up, pointed at a [MockHttpAdapter].
 ///
 /// Seeds in-memory secure storage with trainer-context values so every request
 /// carries `Authorization: Bearer ...` + `X-Gym-Id: ...` headers the BE expects.
 TestApiClient buildTestApiClient({
-  String accessToken = kAccessToken,
-  String refreshToken = 'test-refresh',
-  String userId = kTrainerId,
-  String gymId = kGymId,
+  TestSession session = const TestSession(),
   String baseUrl = 'https://test.api.gymapp.local',
 }) {
-  final storage = FakeSecureStorage(
-    accessToken: accessToken,
-    refreshToken: refreshToken,
-    userId: userId,
-    currentGymId: gymId,
-    userRole: 'Trainer',
-  );
+  final storage = FakeSecureStorage({
+    SecureStorageKey.accessToken: session.accessToken,
+    SecureStorageKey.refreshToken: session.refreshToken,
+    SecureStorageKey.userId: session.userId,
+    SecureStorageKey.currentGymId: session.gymId,
+    SecureStorageKey.userRole: 'Trainer',
+  });
   final client = ApiClient(
     baseUrl: baseUrl,
     storage: storage,

@@ -30,13 +30,13 @@ void main() {
       ApiEndpoints.bodyMetrics,
       respond: (_) => t.adapter.ok([Samples.bodyMetric()]),
     );
-    await ds.getBodyMetrics(
+    await ds.getBodyMetrics(BodyMetricsQuery(
       userId: 'user-1',
       gymId: 'gym-1',
       metricType: 'Weight',
       from: DateTime.utc(2026, 1, 1),
       to: DateTime.utc(2026, 4, 16),
-    );
+    ));
     final q = t.onlyRequest.query;
     expect(q['metricType']!.first, 'Weight');
     expect(q['from']!.first, '2026-01-01');
@@ -101,7 +101,7 @@ void main() {
 
   test('DELETE /progress/photos/{id} carries userId query', () async {
     t.adapter.onDelete(
-      ApiEndpoints.progressPhotoById('ph-1'),
+      ApiEndpoints.progressPhotoById(const ProgressPhotoId('ph-1')),
       respond: (_) => t.adapter.noContent(),
     );
     await ds.deleteProgressPhoto('ph-1', userId: 'user-1');

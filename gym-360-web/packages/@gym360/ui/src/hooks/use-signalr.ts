@@ -20,6 +20,45 @@ interface UseSignalRResult {
   invoke: (method: string, ...args: unknown[]) => Promise<void>;
 }
 
+const RECONNECT_DELAYS_MS = [0, 2000, 5000, 10000, 30000];
+
+function buildConnection(hubUrl: string, accessToken: string, autoReconnect: boolean): HubConnection {
+  const builder = new HubConnectionBuilder()
+    .withUrl(hubUrl, {
+      accessTokenFactory: () => accessToken,
+    })
+    .configureLogging(LogLevel.Warning);
+
+  if (autoReconnect) {
+    builder.withAutomaticReconnect(RECONNECT_DELAYS_MS);
+  }
+  return builder.build();
+}
+
+type LifecycleCallbacks = Pick<UseSignalROptions, 'onConnected' | 'onDisconnected' | 'onReconnecting'>;
+
+/** Mirrors hub lifecycle events into React state and the caller's callbacks. */
+function wireLifecycle(
+  connection: HubConnection,
+  setConnectionState: (state: HubConnectionState) => void,
+  { onConnected, onDisconnected, onReconnecting }: LifecycleCallbacks,
+) {
+  connection.onclose(() => {
+    setConnectionState(HubConnectionState.Disconnected);
+    onDisconnected?.();
+  });
+
+  connection.onreconnecting(() => {
+    setConnectionState(HubConnectionState.Reconnecting);
+    onReconnecting?.();
+  });
+
+  connection.onreconnected(() => {
+    setConnectionState(HubConnectionState.Connected);
+    onConnected?.();
+  });
+}
+
 export function useSignalR(options: UseSignalROptions): UseSignalRResult {
   const { hubUrl, accessToken, autoReconnect = true, onConnected, onDisconnected, onReconnecting } = options;
   const connectionRef = useRef<HubConnection | null>(null);
@@ -33,33 +72,9 @@ export function useSignalR(options: UseSignalROptions): UseSignalRResult {
     if (!accessToken) {
       return;
     }
-    const builder = new HubConnectionBuilder()
-      .withUrl(hubUrl, {
-        accessTokenFactory: accessToken ? () => accessToken : undefined,
-      })
-      .configureLogging(LogLevel.Warning);
-
-    if (autoReconnect) {
-      builder.withAutomaticReconnect([0, 2000, 5000, 10000, 30000]);
-    }
-
-    const connection = builder.build();
+    const connection = buildConnection(hubUrl, accessToken, autoReconnect);
     connectionRef.current = connection;
-
-    connection.onclose(() => {
-      setConnectionState(HubConnectionState.Disconnected);
-      onDisconnected?.();
-    });
-
-    connection.onreconnecting(() => {
-      setConnectionState(HubConnectionState.Reconnecting);
-      onReconnecting?.();
-    });
-
-    connection.onreconnected(() => {
-      setConnectionState(HubConnectionState.Connected);
-      onConnected?.();
-    });
+    wireLifecycle(connection, setConnectionState, { onConnected, onDisconnected, onReconnecting });
 
     void connection.start()
       .then(() => {

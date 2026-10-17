@@ -12,6 +12,37 @@ namespace GymApp.Common.Presentation;
 /// </summary>
 public static class ErrorStatusCodeMapper
 {
+    // Exact error codes from the shared API contract.
+    private static readonly Dictionary<string, int> ExactCodes = new(StringComparer.Ordinal)
+    {
+        ["GYM_SUSPENDED"] = StatusCodes.Status403Forbidden,
+        ["NOT_A_MEMBER_OF_GYM"] = StatusCodes.Status403Forbidden,
+        ["MEMBER_ROLE_REQUIRED"] = StatusCodes.Status403Forbidden,
+        ["GYM_CONTEXT_REQUIRED"] = StatusCodes.Status400BadRequest,
+        ["VALIDATION_ERROR"] = StatusCodes.Status400BadRequest,
+        ["UNAUTHORIZED"] = StatusCodes.Status401Unauthorized,
+        ["NOT_FOUND"] = StatusCodes.Status404NotFound,
+        ["CONFLICT"] = StatusCodes.Status409Conflict,
+    };
+
+    // Module error-code conventions, evaluated in order; the first match wins.
+    private static readonly (Func<string, bool> Matches, int StatusCode)[] PatternRules =
+    {
+        (EndsWith("NotFound"), StatusCodes.Status404NotFound),
+        (EndsWith(".AlreadyExists"), StatusCodes.Status409Conflict),
+        (StartsWith("Progress.Duplicate"), StatusCodes.Status409Conflict),
+        (EndsWith(".InvalidCredentials"), StatusCodes.Status401Unauthorized),
+        (EndsWith(".InvalidToken"), StatusCodes.Status401Unauthorized),
+        (EndsWith(".RefreshTokenExpired"), StatusCodes.Status401Unauthorized),
+        (EndsWith(".RefreshTokenRevoked"), StatusCodes.Status401Unauthorized),
+        (EndsWith(".EmailNotVerified"), StatusCodes.Status401Unauthorized),
+        (EndsWith(".AccountSuspended"), StatusCodes.Status403Forbidden),
+        (EndsWith(".AccountDeleted"), StatusCodes.Status403Forbidden),
+        (EndsWith(".AlreadyActiveInAnotherGym"), StatusCodes.Status409Conflict),
+        (EndsWith(".Unauthorized"), StatusCodes.Status401Unauthorized),
+        (EndsWith(".Forbidden"), StatusCodes.Status403Forbidden),
+    };
+
     public static int ToStatusCode(Error error)
     {
         var code = error.Code;
@@ -19,30 +50,21 @@ public static class ErrorStatusCodeMapper
         if (code.StartsWith("PLAN.", StringComparison.Ordinal))
             return StatusCodes.Status403Forbidden;
 
-        return code switch
+        if (ExactCodes.TryGetValue(code, out var exact))
+            return exact;
+
+        foreach (var (matches, statusCode) in PatternRules)
         {
-            "GYM_SUSPENDED" => StatusCodes.Status403Forbidden,
-            "NOT_A_MEMBER_OF_GYM" => StatusCodes.Status403Forbidden,
-            "MEMBER_ROLE_REQUIRED" => StatusCodes.Status403Forbidden,
-            "GYM_CONTEXT_REQUIRED" => StatusCodes.Status400BadRequest,
-            "VALIDATION_ERROR" => StatusCodes.Status400BadRequest,
-            "UNAUTHORIZED" => StatusCodes.Status401Unauthorized,
-            "NOT_FOUND" => StatusCodes.Status404NotFound,
-            "CONFLICT" => StatusCodes.Status409Conflict,
-            _ when code.EndsWith("NotFound", StringComparison.Ordinal) => StatusCodes.Status404NotFound,
-            _ when code.EndsWith(".AlreadyExists", StringComparison.Ordinal) => StatusCodes.Status409Conflict,
-            _ when code.StartsWith("Progress.Duplicate", StringComparison.Ordinal) => StatusCodes.Status409Conflict,
-            _ when code.EndsWith(".InvalidCredentials", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
-            _ when code.EndsWith(".InvalidToken", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
-            _ when code.EndsWith(".RefreshTokenExpired", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
-            _ when code.EndsWith(".RefreshTokenRevoked", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
-            _ when code.EndsWith(".EmailNotVerified", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
-            _ when code.EndsWith(".AccountSuspended", StringComparison.Ordinal) => StatusCodes.Status403Forbidden,
-            _ when code.EndsWith(".AccountDeleted", StringComparison.Ordinal) => StatusCodes.Status403Forbidden,
-            _ when code.EndsWith(".AlreadyActiveInAnotherGym", StringComparison.Ordinal) => StatusCodes.Status409Conflict,
-            _ when code.EndsWith(".Unauthorized", StringComparison.Ordinal) => StatusCodes.Status401Unauthorized,
-            _ when code.EndsWith(".Forbidden", StringComparison.Ordinal) => StatusCodes.Status403Forbidden,
-            _ => StatusCodes.Status400BadRequest,
-        };
+            if (matches(code))
+                return statusCode;
+        }
+
+        return StatusCodes.Status400BadRequest;
     }
+
+    private static Func<string, bool> EndsWith(string suffix) =>
+        code => code.EndsWith(suffix, StringComparison.Ordinal);
+
+    private static Func<string, bool> StartsWith(string prefix) =>
+        code => code.StartsWith(prefix, StringComparison.Ordinal);
 }

@@ -63,7 +63,7 @@ final clientNutritionProvider =
       '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
   return apiClient.get<Map<String, dynamic>>(
-    ApiEndpoints.clientFoodLog(clientId),
+    ApiEndpoints.clientFoodLog(ClientId(clientId)),
     queryParameters: {
       'trainerId': trainerId,
       'gymId': gymId,

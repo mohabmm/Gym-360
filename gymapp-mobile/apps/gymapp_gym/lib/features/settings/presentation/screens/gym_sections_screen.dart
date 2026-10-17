@@ -66,7 +66,7 @@ class GymSectionsScreen extends ConsumerWidget {
                       try {
                         await ref.read(apiClientProvider).putVoid(
                           ApiEndpoints.gymSections(
-                              ref.read(currentGymIdProvider)),
+                              GymId(ref.read(currentGymIdProvider))),
                           data: {'sections': next.toList()},
                         );
                         ref.invalidate(gymSectionsProvider);

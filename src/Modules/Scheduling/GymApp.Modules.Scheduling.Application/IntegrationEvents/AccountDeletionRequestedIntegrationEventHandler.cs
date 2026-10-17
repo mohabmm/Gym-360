@@ -4,6 +4,7 @@ using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Repositories;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.IntegrationEvents;
 
@@ -39,10 +40,10 @@ internal sealed class AccountDeletionRequestedIntegrationEventHandler
         {
             if (session.Status is SessionStatus.Pending or SessionStatus.Confirmed)
             {
-                var result = session.Cancel(
-                    reason: "Account deletion requested",
-                    cancelledBy: notification.UserId,
-                    isLateCancellation: false);
+                var result = session.Cancel(new SessionCancellation(
+                    Reason: "Account deletion requested",
+                    CancelledBy: notification.UserId,
+                    IsLateCancellation: false));
 
                 if (result.IsSuccess)
                 {

@@ -1,23 +1,19 @@
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../models/nutrition_requests.dart';
+
+export '../models/nutrition_requests.dart';
+
 class NutritionRemoteDataSource {
   final ApiClient _apiClient;
 
   NutritionRemoteDataSource({required ApiClient apiClient})
       : _apiClient = apiClient;
 
-  Future<FoodLogModel> getFoodLog({
-    required String userId,
-    required String gymId,
-    required DateTime date,
-  }) async {
+  Future<FoodLogModel> getFoodLog(DailyLogQuery query) async {
     return _apiClient.get<FoodLogModel>(
       ApiEndpoints.foodLog,
-      queryParameters: {
-        'userId': userId,
-        'gymId': gymId,
-        'date': date.toIso8601String().split('T')[0],
-      },
+      queryParameters: query.toQueryParameters(),
       parser: (data) => _foodLogFromDto(data as Map<String, dynamic>),
     );
   }
@@ -48,40 +44,19 @@ class NutritionRemoteDataSource {
     await _apiClient.delete('${ApiEndpoints.foodLog}/meals/$mealId/items/$index');
   }
 
-  Future<WaterLogModel> getWaterLog({
-    required String userId,
-    required String gymId,
-    required DateTime date,
-  }) async {
+  Future<WaterLogModel> getWaterLog(DailyLogQuery query) async {
     return _apiClient.get<WaterLogModel>(
       ApiEndpoints.waterLog,
-      queryParameters: {
-        'userId': userId,
-        'gymId': gymId,
-        'date': date.toIso8601String().split('T')[0],
-      },
+      queryParameters: query.toQueryParameters(),
       parser: (data) => WaterLogModel.fromJson(data as Map<String, dynamic>),
     );
   }
 
   /// BE POST /nutrition/water-log returns Guid (water log entry ID), 201.
-  Future<String> addWaterEntry({
-    required String userId,
-    required String gymId,
-    required DateTime date,
-    required int amountMl,
-  }) async {
-    final dateStr = '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
+  Future<String> addWaterEntry(WaterEntryRequest request) async {
     return _apiClient.post<String>(
       ApiEndpoints.waterLog,
-      data: {
-        'userId': userId,
-        'gymId': gymId,
-        'date': dateStr,
-        'amountMl': amountMl,
-      },
+      data: request.toJson(),
       parser: (data) => data.toString(),
     );
   }
@@ -94,19 +69,7 @@ class NutritionRemoteDataSource {
   Future<MealPlanModel?> getActiveMealPlan() async {
     return _apiClient.get<MealPlanModel?>(
       ApiEndpoints.myMealPlan,
-      parser: (raw) {
-        if (raw == null) return null;
-        if (raw is Map<String, dynamic>) {
-          final looksLikeEnvelope =
-              !raw.containsKey('id') && (raw.containsKey('errors') || raw.containsKey('meta'));
-          if (looksLikeEnvelope) return null;
-          // BE sometimes emits macro/calorie fields as decimals (150.00) while
-          // the model declares them as int. Coerce numerics via a normaliser
-          // so freezed's generated fromJson doesn't throw a TypeError.
-          return MealPlanModel.fromJson(_normaliseMealPlanJson(raw));
-        }
-        return null;
-      },
+      parser: _mealPlanFromRaw,
     );
   }
 
@@ -122,19 +85,31 @@ class NutritionRemoteDataSource {
         'page': page,
         'pageSize': pageSize,
       },
-      parser: (data) {
-        final list = data is List
-            ? data
-            : (data is Map && data['items'] is List
-                ? data['items'] as List
-                : const []);
-        return list
-            .map<FoodItemModel>((e) => FoodItemModel.fromFoodDatabaseJson(
-                e as Map<String, dynamic>))
-            .toList();
-      },
+      parser: (data) => _itemsOf(data)
+          .map<FoodItemModel>((e) =>
+              FoodItemModel.fromFoodDatabaseJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
+}
+
+/// A bare list, or the `items` of a paged `{ items: [...] }` payload.
+List<dynamic> _itemsOf(dynamic data) {
+  if (data is List) return data;
+  if (data is Map && data['items'] is List) return data['items'] as List;
+  return const [];
+}
+
+/// `null` when nothing is assigned (empty body or a bare envelope).
+MealPlanModel? _mealPlanFromRaw(dynamic raw) {
+  if (raw is! Map<String, dynamic>) return null;
+  final looksLikeEnvelope =
+      !raw.containsKey('id') && (raw.containsKey('errors') || raw.containsKey('meta'));
+  if (looksLikeEnvelope) return null;
+  // BE sometimes emits macro/calorie fields as decimals (150.00) while
+  // the model declares them as int. Coerce numerics via a normaliser
+  // so freezed's generated fromJson doesn't throw a TypeError.
+  return MealPlanModel.fromJson(_normaliseMealPlanJson(raw));
 }
 
 /// Coerce any numeric meal-plan field that the model types as `int` but the
@@ -162,33 +137,11 @@ Map<String, dynamic> _normaliseMealPlanJson(Map<String, dynamic> raw) {
 /// from `"<mealId>:<index>"` to satisfy the model's required `id`.
 FoodLogModel _foodLogFromDto(Map<String, dynamic> dto) {
   final meals = dto['meals'];
-  final entries = <FoodLogEntryModel>[];
-  if (meals is List) {
-    for (final rawMeal in meals) {
-      final meal = rawMeal as Map<String, dynamic>;
-      final mealId = (meal['id'] ?? '').toString();
-      final mealType = (meal['mealType'] ?? '').toString();
-      final foodItems = meal['foodItems'];
-      if (foodItems is List) {
-        for (var i = 0; i < foodItems.length; i++) {
-          final item = foodItems[i] as Map<String, dynamic>;
-          entries.add(
-            FoodLogEntryModel(
-              id: '$mealId:$i',
-              mealType: mealType,
-              name: (item['name'] ?? '').toString(),
-              quantity: (item['quantity'] as num?)?.toDouble() ?? 0,
-              unit: (item['unit'] ?? '').toString(),
-              calories: (item['calories'] as num?)?.toInt() ?? 0,
-              protein: (item['protein'] as num?)?.toDouble(),
-              carbs: (item['carbs'] as num?)?.toDouble(),
-              fat: (item['fat'] as num?)?.toDouble(),
-            ),
-          );
-        }
-      }
-    }
-  }
+  final entries = <FoodLogEntryModel>[
+    if (meals is List)
+      for (final rawMeal in meals)
+        ..._mealEntries(rawMeal as Map<String, dynamic>),
+  ];
 
   return FoodLogModel(
     id: (dto['id'] ?? '').toString(),
@@ -199,5 +152,39 @@ FoodLogModel _foodLogFromDto(Map<String, dynamic> dto) {
     totalProtein: (dto['totalProtein'] as num?)?.toDouble(),
     totalCarbs: (dto['totalCarbs'] as num?)?.toDouble(),
     totalFat: (dto['totalFat'] as num?)?.toDouble(),
+  );
+}
+
+/// Flattens one meal's `foodItems` into entries with `"<mealId>:<index>"` ids.
+List<FoodLogEntryModel> _mealEntries(Map<String, dynamic> meal) {
+  final mealId = (meal['id'] ?? '').toString();
+  final mealType = (meal['mealType'] ?? '').toString();
+  final foodItems = meal['foodItems'];
+  if (foodItems is! List) return const [];
+  return [
+    for (var i = 0; i < foodItems.length; i++)
+      _entryFromItem(
+        foodItems[i] as Map<String, dynamic>,
+        id: '$mealId:$i',
+        mealType: mealType,
+      ),
+  ];
+}
+
+FoodLogEntryModel _entryFromItem(
+  Map<String, dynamic> item, {
+  required String id,
+  required String mealType,
+}) {
+  return FoodLogEntryModel(
+    id: id,
+    mealType: mealType,
+    name: (item['name'] ?? '').toString(),
+    quantity: (item['quantity'] as num?)?.toDouble() ?? 0,
+    unit: (item['unit'] ?? '').toString(),
+    calories: (item['calories'] as num?)?.toInt() ?? 0,
+    protein: (item['protein'] as num?)?.toDouble(),
+    carbs: (item['carbs'] as num?)?.toDouble(),
+    fat: (item['fat'] as num?)?.toDouble(),
   );
 }

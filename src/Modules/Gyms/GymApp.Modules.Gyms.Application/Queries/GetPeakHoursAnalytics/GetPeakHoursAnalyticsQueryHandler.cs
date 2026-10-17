@@ -5,6 +5,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Errors;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.GetPeakHoursAnalytics;
 
@@ -48,7 +49,7 @@ internal sealed class GetPeakHoursAnalyticsQueryHandler
             return Result.Failure<PeakHoursAnalyticsResponse>(GymErrors.InvalidCheckIn);
 
         var result = await _gymQueryService.GetPeakHoursAsync(
-            request.GymId, from, to, request.TimezoneOffsetMinutes, cancellationToken);
+            new GymId(request.GymId), from, to, request.TimezoneOffsetMinutes, cancellationToken);
 
         if (result is null)
             return Result.Failure<PeakHoursAnalyticsResponse>(GymErrors.NotFound);

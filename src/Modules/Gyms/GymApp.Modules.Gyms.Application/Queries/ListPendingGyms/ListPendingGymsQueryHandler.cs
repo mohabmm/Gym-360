@@ -5,6 +5,7 @@ using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.ListPendingGyms;
 
@@ -57,7 +58,7 @@ internal sealed class ListPendingGymsQueryHandler : IQueryHandler<ListPendingGym
                 accessor.Set(reg.GymId, reg.SchemaPrefix, isOwnerScope: false);
 
                 var qs = sp.GetRequiredService<IGymQueryService>();
-                var dto = await qs.GetGymByIdAsync(reg.GymId, cancellationToken);
+                var dto = await qs.GetGymByIdAsync(new GymId(reg.GymId), cancellationToken);
                 if (dto is not null && string.Equals(dto.Status, PendingApprovalStatus, StringComparison.OrdinalIgnoreCase))
                     items.Add(dto);
             }

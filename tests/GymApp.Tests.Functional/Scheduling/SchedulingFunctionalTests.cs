@@ -9,6 +9,9 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
     public SchedulingFunctionalTests(FunctionalTestWebAppFactory factory)
         : base(factory) { }
 
+    private static string SessionActionUrl(string action) =>
+        $"api/v1/scheduling/sessions/{Guid.NewGuid()}/{action}";
+
     #region POST /api/v1/scheduling/sessions
 
     [Fact]
@@ -82,20 +85,9 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
     #region POST /api/v1/scheduling/sessions/{id}/cancel
 
     [Fact]
-    public async Task CancelSession_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{Guid.NewGuid()}/cancel",
-            new { CancelledBy = userId, Reason = "Can't make it" });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task CancelSession_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
+            SessionActionUrl("cancel"), userId => new { CancelledBy = userId, Reason = "Can't make it" }));
 
     [Fact]
     public async Task CancelSession_NoToken_Returns401()
@@ -116,13 +108,10 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
     [Fact]
     public async Task TrainerLog_AsTrainer_ProcessesRequest()
     {
-        // Arrange
         var trainerId = Guid.NewGuid();
-        var client = CreateTrainerClient(trainerId);
 
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{Guid.NewGuid()}/trainer-log",
+        AssertAuthenticated(await CreateTrainerClient(trainerId).PostAsJsonAsync(
+            SessionActionUrl("trainer-log"),
             new
             {
                 TrainerId = trainerId,
@@ -130,10 +119,7 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
                 ClientEffortRating = 8,
                 Feedback = "Good session",
                 AttendanceConfirmed = true
-            });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+            }));
     }
 
     [Fact]
@@ -153,27 +139,17 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
     #region POST /api/v1/scheduling/sessions/{id}/member-log
 
     [Fact]
-    public async Task MemberLog_AsTrainee_ProcessesRequest()
-    {
-        // Arrange
-        var memberId = Guid.NewGuid();
-        var client = CreateTraineeClient(memberId);
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{Guid.NewGuid()}/member-log",
-            new
+    public async Task MemberLog_AsTrainee_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
+            SessionActionUrl("member-log"),
+            userId => new
             {
-                MemberId = memberId,
+                MemberId = userId,
                 Rating = 4,
                 PerceivedExertion = 7,
                 PersonalNotes = "Great session",
                 Satisfaction = 8
-            });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+            }));
 
     [Fact]
     public async Task MemberLog_NoToken_Returns401()
@@ -192,19 +168,9 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
     #region GET /api/v1/scheduling/sessions
 
     [Fact]
-    public async Task GetSessions_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/scheduling/sessions?userId={userId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetSessions_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/scheduling/sessions?userId={userId}&gymId={Guid.NewGuid()}"));
 
     [Fact]
     public async Task GetSessions_NoToken_Returns401()
@@ -222,19 +188,9 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
     #region GET /api/v1/scheduling/sessions/upcoming
 
     [Fact]
-    public async Task GetUpcoming_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/scheduling/sessions/upcoming?userId={userId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetUpcoming_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/scheduling/sessions/upcoming?userId={userId}&gymId={Guid.NewGuid()}"));
 
     #endregion
 
@@ -281,19 +237,9 @@ public sealed class SchedulingFunctionalTests : BaseFunctionalTest
     #region No-Show
 
     [Fact]
-    public async Task MarkNoShow_AsTrainer_ProcessesRequest()
-    {
-        // Arrange
-        var client = CreateTrainerClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/scheduling/sessions/{Guid.NewGuid()}/no-show",
-            new { MarkedBy = Guid.NewGuid() });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task MarkNoShow_AsTrainer_ProcessesRequest() =>
+        AssertAuthenticated(await CreateTrainerClient().PostAsJsonAsync(
+            SessionActionUrl("no-show"), new { MarkedBy = Guid.NewGuid() }));
 
     #endregion
 }

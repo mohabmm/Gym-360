@@ -14,7 +14,7 @@ class CheckInRemoteDataSource {
     int pageSize = 20,
   }) async {
     return _apiClient.get<List<CheckInModel>>(
-      ApiEndpoints.checkInHistory(gymId),
+      ApiEndpoints.checkInHistory(GymId(gymId)),
       queryParameters: {
         'page': page,
         'pageSize': pageSize,

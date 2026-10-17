@@ -25,10 +25,16 @@ function ensureDir(p: string) {
   fs.mkdirSync(p, { recursive: true });
 }
 
+const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+
+function isTextual(contentType: string): boolean {
+  return contentType.includes('application/json') || contentType.includes('text/');
+}
+
 function attachPostRecorder(page: Page, records: PostRecord[]) {
   const inflight = new Map<Request, PostRecord>();
   page.on('request', (req) => {
-    if (req.method() === 'POST' || req.method() === 'PATCH' || req.method() === 'PUT' || req.method() === 'DELETE') {
+    if (MUTATING_METHODS.has(req.method())) {
       const rec: PostRecord = {
         url: req.url(),
         method: req.method(),
@@ -46,8 +52,7 @@ function attachPostRecorder(page: Page, records: PostRecord[]) {
     if (!rec) return;
     rec.status = res.status();
     try {
-      const ct = res.headers()['content-type'] ?? '';
-      if (ct.includes('application/json') || ct.includes('text/')) {
+      if (isTextual(res.headers()['content-type'] ?? '')) {
         rec.resBody = (await res.text()).slice(0, 2000);
       }
     } catch {
@@ -111,6 +116,73 @@ test('Login screen — logo loads, alt set, asset 200', async ({ page }) => {
   );
 });
 
+type NewMember = { name: string; phone: string; email: string };
+
+function newMember(): NewMember {
+  const stamp = Date.now();
+  return {
+    name: `PW Member ${stamp}`,
+    phone: `+201${String(stamp).slice(-9)}`,
+    email: `pw.${stamp}@member.local`,
+  };
+}
+
+// Modal fields: Name, Phone, Email, Floor (single Name field; no Arabic split here)
+async function fillAddMemberModal(page: Page, member: NewMember) {
+  await page.locator('label:has-text("Name") input').first().fill(member.name);
+  await page.locator('label:has-text("Phone") input').fill(member.phone);
+  await page.locator('label:has-text("Email") input').fill(member.email);
+}
+
+const isCreateMemberResponse = (r: Response) =>
+  r.url().includes('/gyms/') && r.url().endsWith('/members') && r.request().method() === 'POST';
+
+/** Submits the modal and waits for POST /members; logs any form error when it never fires. */
+async function submitAddMember(page: Page): Promise<Response | null> {
+  const submitPromise = page.waitForResponse(isCreateMemberResponse, { timeout: 30000 });
+  await page.getByRole('button', { name: /^add member$/i }).last().click();
+  try {
+    return await submitPromise;
+  } catch (e) {
+    // capture form error if any
+    const formErr = await page.locator('.text-destructive').first().textContent().catch(() => null);
+    fs.writeFileSync(
+      path.join(REPORT_DIR, 'add-member-failure.txt'),
+      `No POST /members caught. Form error: ${formErr ?? 'none'}\n`,
+    );
+    return null;
+  }
+}
+
+function writeAddMemberSummary(
+  staffCreate: PostRecord | undefined,
+  createMember: PostRecord | undefined,
+  submitResponse: Response | null,
+) {
+  const summary = {
+    staffCreate: staffCreate ? { status: staffCreate.status, body: staffCreate.resBody } : null,
+    createMember: createMember ? { status: createMember.status, body: createMember.resBody, request: createMember.reqBody } : null,
+    submitResponseStatus: submitResponse?.status() ?? null,
+  };
+  fs.writeFileSync(path.join(REPORT_DIR, 'add-member-summary.json'), JSON.stringify(summary, null, 2));
+}
+
+// Member list should refresh — search by name
+async function expectMemberListed(page: Page, member: NewMember, beforeCount: number) {
+  await page.locator('input[placeholder*="Search members"]').fill(member.name);
+  await page.waitForTimeout(1500);
+  const afterCount = await page.locator('table tbody tr').count();
+
+  fs.writeFileSync(
+    path.join(REPORT_DIR, 'add-member-list-check.json'),
+    JSON.stringify({ beforeCount, afterCount, memberName: member.name, memberPhone: member.phone }, null, 2),
+  );
+
+  // Either the new row shows in search or the list has grown
+  const hasRow = (await page.locator(`table tbody tr:has-text("${member.name}")`).count()) > 0;
+  expect(hasRow || afterCount >= 1, `Member "${member.name}" should appear in list after creation`).toBeTruthy();
+}
+
 test('Add Member — full POST flow captured + member appears in list', async ({ page }) => {
   const records: PostRecord[] = [];
   attachPostRecorder(page, records);
@@ -128,32 +200,11 @@ test('Add Member — full POST flow captured + member appears in list', async ({
   await expect(page.getByRole('heading', { name: /add member/i })).toBeVisible();
 
   // Fill form
-  const stamp = Date.now();
-  const memberName = `PW Member ${stamp}`;
-  const memberPhone = `+201${String(stamp).slice(-9)}`;
-
-  // Modal fields: Name, Phone, Email, Floor (single Name field; no Arabic split here)
-  await page.locator('label:has-text("Name") input').first().fill(memberName);
-  await page.locator('label:has-text("Phone") input').fill(memberPhone);
-  await page.locator('label:has-text("Email") input').fill(`pw.${stamp}@member.local`);
+  const member = newMember();
+  await fillAddMemberModal(page, member);
 
   // Submit and wait for both POSTs
-  const submitPromise = page.waitForResponse(
-    (r) => r.url().includes('/gyms/') && r.url().endsWith('/members') && r.request().method() === 'POST',
-    { timeout: 30000 },
-  );
-  await page.getByRole('button', { name: /^add member$/i }).last().click();
-  let submitResponse: Response | null = null;
-  try {
-    submitResponse = await submitPromise;
-  } catch (e) {
-    // capture form error if any
-    const formErr = await page.locator('.text-destructive').first().textContent().catch(() => null);
-    fs.writeFileSync(
-      path.join(REPORT_DIR, 'add-member-failure.txt'),
-      `No POST /members caught. Form error: ${formErr ?? 'none'}\n`,
-    );
-  }
+  const submitResponse = await submitAddMember(page);
 
   // Save raw POST log
   await page.waitForTimeout(1500);
@@ -166,12 +217,7 @@ test('Add Member — full POST flow captured + member appears in list', async ({
   expect(createMember, 'POST /gyms/{id}/members should fire').toBeTruthy();
 
   // Document statuses (do not fail before reporting)
-  const summary = {
-    staffCreate: staffCreate ? { status: staffCreate.status, body: staffCreate.resBody } : null,
-    createMember: createMember ? { status: createMember.status, body: createMember.resBody, request: createMember.reqBody } : null,
-    submitResponseStatus: submitResponse?.status() ?? null,
-  };
-  fs.writeFileSync(path.join(REPORT_DIR, 'add-member-summary.json'), JSON.stringify(summary, null, 2));
+  writeAddMemberSummary(staffCreate, createMember, submitResponse);
 
   // Now assert the contract
   expect(staffCreate?.status, `staff-create status; body=${staffCreate?.resBody}`).toBeLessThan(400);
@@ -180,19 +226,7 @@ test('Add Member — full POST flow captured + member appears in list', async ({
   // Modal should close & toast
   await expect(page.getByRole('heading', { name: /add member/i })).toBeHidden({ timeout: 8000 });
 
-  // Member list should refresh — search by name
-  await page.locator('input[placeholder*="Search members"]').fill(memberName);
-  await page.waitForTimeout(1500);
-  const afterCount = await page.locator('table tbody tr').count();
-
-  fs.writeFileSync(
-    path.join(REPORT_DIR, 'add-member-list-check.json'),
-    JSON.stringify({ beforeCount, afterCount, memberName, memberPhone }, null, 2),
-  );
-
-  // Either the new row shows in search or the list has grown
-  const hasRow = (await page.locator(`table tbody tr:has-text("${memberName}")`).count()) > 0;
-  expect(hasRow || afterCount >= 1, `Member "${memberName}" should appear in list after creation`).toBeTruthy();
+  await expectMemberListed(page, member, beforeCount);
 });
 
 test('POST sweep — collect all mutating requests across staff app', async ({ page }) => {

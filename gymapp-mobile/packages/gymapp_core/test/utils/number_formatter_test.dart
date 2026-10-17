@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+const _ar = AppLanguage.arabic;
+const _en = AppLanguage.english;
+
 void main() {
   setUpAll(() async {
     await initializeDateFormatting('ar');
@@ -10,20 +13,25 @@ void main() {
 
   group('NumberFormatter.formatCurrency', () {
     test('arabic uses ج.م suffix', () {
-      final result = NumberFormatter.formatCurrency(1500, locale: 'ar');
+      final result =
+          NumberFormatter.formatCurrency(const Egp(1500), language: _ar);
       expect(result, contains('ج.م'));
     });
 
     test('english uses currency prefix', () {
-      final result = NumberFormatter.formatCurrency(1500, locale: 'en');
+      final result =
+          NumberFormatter.formatCurrency(const Egp(1500), language: _en);
       expect(result, startsWith('EGP'));
     });
   });
 
   group('NumberFormatter.formatPercentage', () {
     test('appends percent sign with decimals', () {
-      expect(NumberFormatter.formatPercentage(42.5), '42.5%');
-      expect(NumberFormatter.formatPercentage(100, decimals: 0), '100%');
+      expect(NumberFormatter.formatPercentage(const Percent(42.5)), '42.5%');
+      expect(
+        NumberFormatter.formatPercentage(const Percent(100), decimals: 0),
+        '100%',
+      );
     });
   });
 
@@ -33,7 +41,7 @@ void main() {
     });
 
     test('formats height default no decimals', () {
-      expect(NumberFormatter.formatHeight(175.4), '175 cm');
+      expect(NumberFormatter.formatHeight(const Centimeters(175.4)), '175 cm');
     });
   });
 
@@ -52,52 +60,62 @@ void main() {
   });
 
   group('NumberFormatter.formatWater', () {
+    String water(int ml, AppLanguage language) =>
+        NumberFormatter.formatWater(Milliliters(ml), language: language);
+
     test('below 1000 uses ml/مل', () {
-      expect(NumberFormatter.formatWater(500, locale: 'ar'), '500 مل');
-      expect(NumberFormatter.formatWater(500, locale: 'en'), '500ml');
+      expect(water(500, _ar), '500 مل');
+      expect(water(500, _en), '500ml');
     });
 
     test('whole liters have no decimal', () {
-      expect(NumberFormatter.formatWater(2000, locale: 'en'), '2L');
-      expect(NumberFormatter.formatWater(2000, locale: 'ar'), '2 لتر');
+      expect(water(2000, _en), '2L');
+      expect(water(2000, _ar), '2 لتر');
     });
 
     test('partial liters keep one decimal', () {
-      expect(NumberFormatter.formatWater(1500, locale: 'en'), '1.5L');
+      expect(water(1500, _en), '1.5L');
     });
   });
 
   group('NumberFormatter.formatRating', () {
     test('always one decimal', () {
-      expect(NumberFormatter.formatRating(4.0), '4.0');
-      expect(NumberFormatter.formatRating(4.75), '4.8');
+      expect(NumberFormatter.formatRating(const StarRating(4.0)), '4.0');
+      expect(NumberFormatter.formatRating(const StarRating(4.75)), '4.8');
     });
   });
 
   group('NumberFormatter.formatOrdinal', () {
     test('english ordinal suffixes', () {
-      expect(NumberFormatter.formatOrdinal(1, locale: 'en'), '1st');
-      expect(NumberFormatter.formatOrdinal(2, locale: 'en'), '2nd');
-      expect(NumberFormatter.formatOrdinal(3, locale: 'en'), '3rd');
-      expect(NumberFormatter.formatOrdinal(4, locale: 'en'), '4th');
-      expect(NumberFormatter.formatOrdinal(11, locale: 'en'), '11th');
-      expect(NumberFormatter.formatOrdinal(12, locale: 'en'), '12th');
-      expect(NumberFormatter.formatOrdinal(13, locale: 'en'), '13th');
-      expect(NumberFormatter.formatOrdinal(21, locale: 'en'), '21st');
-      expect(NumberFormatter.formatOrdinal(112, locale: 'en'), '112th');
+      const expected = {
+        1: '1st',
+        2: '2nd',
+        3: '3rd',
+        4: '4th',
+        11: '11th',
+        12: '12th',
+        13: '13th',
+        21: '21st',
+        112: '112th',
+      };
+      expected.forEach((number, ordinal) {
+        expect(NumberFormatter.formatOrdinal(number, language: _en), ordinal);
+      });
     });
 
     test('arabic uses # prefix', () {
-      expect(NumberFormatter.formatOrdinal(5, locale: 'ar'), '#5');
+      expect(NumberFormatter.formatOrdinal(5, language: _ar), '#5');
     });
   });
 
   group('NumberFormatter.formatSessionCount', () {
     test('arabic uses جلسة label', () {
-      expect(NumberFormatter.formatSessionCount(3, 12, locale: 'ar'),
-          contains('3/12'));
-      expect(NumberFormatter.formatSessionCount(3, 12, locale: 'ar'),
-          contains('جلسة'));
+      final label = NumberFormatter.formatSessionCount(
+        const SessionUsage(used: 3, total: 12),
+        language: _ar,
+      );
+      expect(label, contains('3/12'));
+      expect(label, contains('جلسة'));
     });
   });
 }

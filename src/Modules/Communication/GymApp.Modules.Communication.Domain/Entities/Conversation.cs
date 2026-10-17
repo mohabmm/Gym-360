@@ -2,6 +2,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Errors;
 using GymApp.Modules.Communication.Domain.Events;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Domain.Entities;
 
@@ -52,7 +53,14 @@ public sealed class Conversation : Entity
         if (mediaUrl is not null && mediaType == MediaType.None)
             return Result.Failure<Message>(CommunicationErrors.InvalidMediaType);
 
-        var message = Message.Create(Id, senderId, content, mediaUrl, mediaType);
+        var message = Message.Create(new MessageDetails
+        {
+            ConversationId = Id,
+            SenderId = senderId,
+            Content = content,
+            MediaUrl = mediaUrl,
+            MediaType = mediaType
+        });
         _messages.Add(message);
         LastMessageAt = message.SentAt;
         UpdatedAt = DateTime.UtcNow;

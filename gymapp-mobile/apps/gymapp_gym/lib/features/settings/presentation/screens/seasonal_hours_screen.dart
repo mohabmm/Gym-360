@@ -75,7 +75,7 @@ class SeasonalHoursScreen extends ConsumerWidget {
                         final apiClient = ref.read(apiClientProvider);
                         try {
                           await apiClient.delete(
-                            '${ApiEndpoints.gymSeasonalHours(gymId)}/${h['id']}',
+                            '${ApiEndpoints.gymSeasonalHours(GymId(gymId))}/${h['id']}',
                           );
                           ref.invalidate(gymSeasonalHoursProvider);
                         } catch (e) {
@@ -143,7 +143,7 @@ class SeasonalHoursScreen extends ConsumerWidget {
                 final gymId = ref.read(currentGymIdProvider);
                 final apiClient = ref.read(apiClientProvider);
                 await apiClient.post<void>(
-                  ApiEndpoints.gymSeasonalHours(gymId),
+                  ApiEndpoints.gymSeasonalHours(GymId(gymId)),
                   data: {
                     'name': nameCtrl.text.trim(),
                     'openTime': openCtrl.text.trim(),

@@ -77,11 +77,16 @@ public class NotificationTextsTests
     {
         var userId = Guid.NewGuid();
         var stored = Notification.CreateLocalized(
-            NotificationTexts.SessionCompletedForTrainer(),
-            userId, NotificationType.TrainerFeedback, null,
-            new Dictionary<string, string> { ["sessionId"] = "s-1" });
+            new NotificationDetails
+            {
+                UserId = userId,
+                Type = NotificationType.TrainerFeedback,
+                GymId = null,
+                Data = new Dictionary<string, string> { ["sessionId"] = "s-1" }
+            },
+            NotificationTexts.SessionCompletedForTrainer());
         var repository = Substitute.For<INotificationRepository>();
-        repository.GetByUserAsync(userId, null, 1, 20, Arg.Any<CancellationToken>())
+        repository.GetByUserAsync(userId, null, new PageRequest(1, 20), Arg.Any<CancellationToken>())
             .Returns(new List<Notification> { stored });
         var sut = new GetNotificationsQueryHandler(repository);
 

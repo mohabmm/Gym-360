@@ -324,7 +324,7 @@ class _ExerciseTile extends StatelessWidget {
           ? null
           : Text(ExerciseLabels.muscleGroups(
               exercise.muscleGroups,
-              isArabic: isArabic,
+              language: AppLanguage.of(context),
             )),
     );
   }

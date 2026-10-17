@@ -61,17 +61,19 @@ internal sealed class DataImportSessionPackageIntegrationEventHandler : INotific
             n.Currency);
         var total = Money.Create(n.TotalPrice, n.Currency);
 
-        var package = SessionPackage.Create(
-            n.GymId,
-            trainerId.Value,
-            memberId.Value,
-            templateId: ImportedPackageTemplateId,
-            name: n.PackageName,
-            totalSessions: n.TotalSessions,
-            pricePerSession: pricePer,
-            totalPrice: total,
-            assignedBy: trainerId.Value,
-            expiresAt: n.ExpiresAt);
+        var package = SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = n.GymId,
+            TrainerId = trainerId.Value,
+            MemberId = memberId.Value,
+            TemplateId = ImportedPackageTemplateId,
+            Name = n.PackageName,
+            TotalSessions = n.TotalSessions,
+            PricePerSession = pricePer,
+            TotalPrice = total,
+            AssignedBy = trainerId.Value,
+            ExpiresAt = n.ExpiresAt
+        });
 
         await _packageRepository.AddAsync(package, ct);
         await _unitOfWork.SaveChangesAsync(ct);

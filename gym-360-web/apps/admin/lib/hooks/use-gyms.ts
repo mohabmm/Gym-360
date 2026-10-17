@@ -18,19 +18,36 @@ import type {
 // The API returns a paginated envelope: { data: { items: [...], page, pageSize, ... } }
 // The admin UI wants a flat array, so unwrap items here and normalise
 // casing/missing-field differences between the DTO and what the UI expects.
-type PagedGyms = { items: Array<Record<string, unknown>> };
+type PagedItems = { items: Array<Record<string, unknown>> };
 
-function normalizeGym(raw: Record<string, any>): GymListItem {
+// Accepts either a bare array or a paginated `{ items }` envelope.
+function unwrapItems(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  const items = (raw as PagedItems | undefined)?.items;
+  return Array.isArray(items) ? items : [];
+}
+
+function lowerIfString(value: unknown): unknown {
+  return typeof value === 'string' ? value.toLowerCase() : value;
+}
+
+// Fields shared by the list and detail DTO normalisers.
+function normalizeGymCommon(raw: Record<string, any>) {
   return {
     ...raw,
-    status: typeof raw.status === 'string' ? raw.status.toLowerCase() : raw.status,
-    paymentStatus:
-      typeof raw.paymentStatus === 'string' ? raw.paymentStatus.toLowerCase() : raw.paymentStatus,
-    city: raw.city ?? raw.address?.city ?? '',
+    status: lowerIfString(raw.status),
+    paymentStatus: lowerIfString(raw.paymentStatus),
     ownerName: raw.ownerName ?? '',
     planName: raw.planName ?? '',
     activeMemberCount: raw.activeMemberCount ?? raw.memberCount ?? 0,
     activeTrainerCount: raw.activeTrainerCount ?? raw.trainerCount ?? 0,
+  };
+}
+
+function normalizeGym(raw: Record<string, any>): GymListItem {
+  return {
+    ...normalizeGymCommon(raw),
+    city: raw.city ?? raw.address?.city ?? '',
     monthlyRevenue: raw.monthlyRevenue ?? 0,
   } as GymListItem;
 }
@@ -39,16 +56,11 @@ export function useGyms(params?: { search?: string; status?: string; city?: stri
   return useQuery<ApiResponse<GymListItem[]>, Error>({
     queryKey: ['gyms', JSON.stringify(params ?? {})],
     queryFn: async () => {
-      const res = await apiGet<PagedGyms | GymListItem[]>(
+      const res = await apiGet<PagedItems | GymListItem[]>(
         GYMS.LIST,
         params as Record<string, unknown>,
       );
-      const raw: unknown = res.data;
-      const items = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as PagedGyms)?.items)
-          ? (raw as PagedGyms).items
-          : [];
+      const items = unwrapItems(res.data);
       return { ...res, data: items.map((g) => normalizeGym(g as Record<string, any>)) };
     },
   });
@@ -56,14 +68,7 @@ export function useGyms(params?: { search?: string; status?: string; city?: stri
 
 function normalizeGymDetail(raw: Record<string, any>): Gym {
   return {
-    ...raw,
-    status: typeof raw.status === 'string' ? raw.status.toLowerCase() : raw.status,
-    paymentStatus:
-      typeof raw.paymentStatus === 'string' ? raw.paymentStatus.toLowerCase() : raw.paymentStatus,
-    planName: raw.planName ?? '',
-    ownerName: raw.ownerName ?? '',
-    activeMemberCount: raw.activeMemberCount ?? raw.memberCount ?? 0,
-    activeTrainerCount: raw.activeTrainerCount ?? raw.trainerCount ?? 0,
+    ...normalizeGymCommon(raw),
     amenities: raw.amenities ?? [],
     sections: raw.sections ?? [],
     operatingHours: raw.operatingHours ?? [],
@@ -83,6 +88,21 @@ export function useGym(id: string) {
   });
 }
 
+function toPendingGym(g: Record<string, any>): PendingGym {
+  return {
+    id: String(g.id),
+    name: String(g.name),
+    ownerName: String(g.ownerName ?? ''),
+    ownerEmail: String(g.contact?.email ?? g.ownerEmail ?? ''),
+    ownerPhone: String(g.contact?.phone ?? g.ownerPhone ?? ''),
+    city: String(g.address?.city ?? g.city ?? ''),
+    district: String(g.address?.state ?? g.district ?? ''),
+    requestedPlan: String(g.requestedPlan ?? ''),
+    submittedAt: String(g.createdAt ?? ''),
+    notes: g.notes ?? undefined,
+  };
+}
+
 export function usePendingGyms() {
   // Backend now exposes GET /gyms/pending. Map the response (GymResponse) to the simpler
   // PendingGym shape the onboarding UI expects.
@@ -91,111 +111,76 @@ export function usePendingGyms() {
     queryFn: async () => {
       const res = await apiGet<Array<Record<string, any>>>(GYMS.PENDING);
       const items = Array.isArray(res.data) ? res.data : [];
-      const pending: PendingGym[] = items.map((g) => ({
-        id: String(g.id),
-        name: String(g.name),
-        ownerName: String(g.ownerName ?? ''),
-        ownerEmail: String(g.contact?.email ?? g.ownerEmail ?? ''),
-        ownerPhone: String(g.contact?.phone ?? g.ownerPhone ?? ''),
-        city: String(g.address?.city ?? g.city ?? ''),
-        district: String(g.address?.state ?? g.district ?? ''),
-        requestedPlan: String(g.requestedPlan ?? ''),
-        submittedAt: String(g.createdAt ?? ''),
-        notes: g.notes ?? undefined,
-      }));
-      return { ...res, data: pending } as ApiResponse<PendingGym[]>;
+      return { ...res, data: items.map(toPendingGym) } as ApiResponse<PendingGym[]>;
     },
   });
 }
 
-export function useSuspendGym() {
+// Shared shape for gym lifecycle mutations: call the endpoint, then refresh
+// the given query keys.
+function useGymMutation<TVars>(
+  mutationFn: (vars: TVars) => Promise<ApiResponse<void>>,
+  invalidateKeys: string[][],
+) {
   const { invalidate } = useInvalidateQueries();
-  return useMutation<ApiResponse<void>, Error, { gymId: string; reason: string }>({
-    mutationFn: ({ gymId, reason }) => apiPost(GYMS.SUSPEND(gymId), { reason }),
+  return useMutation<ApiResponse<void>, Error, TVars>({
+    mutationFn,
     onSuccess: () => {
-      invalidate(['gyms']);
+      invalidateKeys.forEach((key) => invalidate(key));
     },
   });
+}
+
+const GYMS_KEYS = [['gyms']];
+const PENDING_AND_GYMS_KEYS = [['gyms', 'pending'], ['gyms']];
+
+export function useSuspendGym() {
+  return useGymMutation<{ gymId: string; reason: string }>(
+    ({ gymId, reason }) => apiPost(GYMS.SUSPEND(gymId), { reason }),
+    GYMS_KEYS,
+  );
 }
 
 export function useDeleteGym() {
-  const { invalidate } = useInvalidateQueries();
-  return useMutation<ApiResponse<void>, Error, { gymId: string }>({
-    mutationFn: ({ gymId }) => apiDelete(GYMS.DELETE(gymId)),
-    onSuccess: () => {
-      invalidate(['gyms']);
-    },
-  });
+  return useGymMutation<{ gymId: string }>(({ gymId }) => apiDelete(GYMS.DELETE(gymId)), GYMS_KEYS);
 }
 
 export function useReactivateGym() {
-  const { invalidate } = useInvalidateQueries();
-  return useMutation<ApiResponse<void>, Error, { gymId: string }>({
-    mutationFn: ({ gymId }) => apiPost(GYMS.REACTIVATE(gymId)),
-    onSuccess: () => {
-      invalidate(['gyms']);
-    },
-  });
+  return useGymMutation<{ gymId: string }>(({ gymId }) => apiPost(GYMS.REACTIVATE(gymId)), GYMS_KEYS);
 }
 
 export function useApproveGym() {
-  const { invalidate } = useInvalidateQueries();
-  return useMutation<ApiResponse<void>, Error, { gymId: string }>({
-    mutationFn: ({ gymId }) => apiPost(GYMS.APPROVE(gymId)),
-    onSuccess: () => {
-      invalidate(['gyms', 'pending']);
-      invalidate(['gyms']);
-    },
-  });
+  return useGymMutation<{ gymId: string }>(
+    ({ gymId }) => apiPost(GYMS.APPROVE(gymId)),
+    PENDING_AND_GYMS_KEYS,
+  );
 }
 
 export function useRejectGym() {
-  const { invalidate } = useInvalidateQueries();
-  return useMutation<ApiResponse<void>, Error, { gymId: string; reason: string }>({
-    mutationFn: ({ gymId, reason }) => apiPost(GYMS.REJECT(gymId), { reason }),
-    onSuccess: () => {
-      invalidate(['gyms', 'pending']);
-      invalidate(['gyms']);
+  return useGymMutation<{ gymId: string; reason: string }>(
+    ({ gymId, reason }) => apiPost(GYMS.REJECT(gymId), { reason }),
+    PENDING_AND_GYMS_KEYS,
+  );
+}
+
+// First page (50) of a gym-scoped roster endpoint, flattened to an array.
+function useGymRoster<T>(gymId: string, resource: 'members' | 'trainers', url: string) {
+  return useQuery<ApiResponse<T[]>, Error>({
+    queryKey: ['gyms', gymId, resource],
+    enabled: !!gymId,
+    queryFn: async () => {
+      const res = await apiGet<PagedItems | T[]>(url, { page: 1, pageSize: 50 });
+      return { ...res, data: unwrapItems(res.data) as T[] };
     },
   });
 }
-
-type PagedMembers = { items: Array<Record<string, unknown>> };
 
 export function useGymMembers(gymId: string) {
-  return useQuery<ApiResponse<MemberListItem[]>, Error>({
-    queryKey: ['gyms', gymId, 'members'],
-    enabled: !!gymId,
-    queryFn: async () => {
-      const res = await apiGet<PagedMembers | MemberListItem[]>(GYMS.MEMBERS(gymId), { page: 1, pageSize: 50 });
-      const raw: unknown = res.data;
-      const items = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as PagedMembers)?.items)
-          ? (raw as PagedMembers).items
-          : [];
-      return { ...res, data: items as MemberListItem[] };
-    },
-  });
+  return useGymRoster<MemberListItem>(gymId, 'members', GYMS.MEMBERS(gymId));
 }
 
-type PagedTrainers = { items: Array<Record<string, unknown>> };
-
 export function useGymTrainers(gymId: string) {
-  return useQuery<ApiResponse<TrainerListItem[]>, Error>({
-    queryKey: ['gyms', gymId, 'trainers'],
-    enabled: !!gymId,
-    queryFn: async () => {
-      const res = await apiGet<PagedTrainers | TrainerListItem[]>(GYMS.TRAINERS(gymId), { page: 1, pageSize: 50 });
-      const raw: unknown = res.data;
-      const items = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as PagedTrainers)?.items)
-          ? (raw as PagedTrainers).items
-          : [];
-      return { ...res, data: items as TrainerListItem[] };
-    },
-  });
+  return useGymRoster<TrainerListItem>(gymId, 'trainers', GYMS.TRAINERS(gymId));
 }
 
 export interface CreateGymStaffPayload {
@@ -238,8 +223,7 @@ export function useGymStaff(gymId: string) {
         GYMS.STAFF(gymId),
         { page: 1, pageSize: 100 },
       );
-      const raw = res.data as any;
-      const items: Array<Record<string, any>> = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
+      const items = unwrapItems(res.data) as Array<Record<string, any>>;
       return { ...res, data: items };
     },
   });

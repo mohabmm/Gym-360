@@ -2,6 +2,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Communication.Domain.Entities;
 using GymApp.Modules.Communication.Domain.Enums;
 using GymApp.Modules.Communication.Domain.Events;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Tests.Domain.Communication;
 
@@ -177,7 +178,7 @@ public sealed class MessageTests
         var conversationId = Guid.NewGuid();
         var senderId = Guid.NewGuid();
 
-        var message = Message.Create(conversationId, senderId, "Hello");
+        var message = NewMessage(conversationId, senderId, "Hello");
 
         message.Id.Should().NotBeEmpty();
         message.ConversationId.Should().Be(conversationId);
@@ -191,7 +192,7 @@ public sealed class MessageTests
     [Fact]
     public void MarkAsRead_ShouldSetIsReadAndReadAt()
     {
-        var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "Test");
+        var message = NewMessage(Guid.NewGuid(), Guid.NewGuid(), "Test");
 
         message.MarkAsRead();
 
@@ -202,7 +203,7 @@ public sealed class MessageTests
     [Fact]
     public void MarkAsRead_WhenAlreadyRead_ShouldNotUpdateReadAt()
     {
-        var message = Message.Create(Guid.NewGuid(), Guid.NewGuid(), "Test");
+        var message = NewMessage(Guid.NewGuid(), Guid.NewGuid(), "Test");
         message.MarkAsRead();
         var firstReadAt = message.ReadAt;
 
@@ -210,4 +211,12 @@ public sealed class MessageTests
 
         message.ReadAt.Should().Be(firstReadAt);
     }
+
+    private static Message NewMessage(Guid conversationId, Guid senderId, string content) =>
+        Message.Create(new MessageDetails
+        {
+            ConversationId = conversationId,
+            SenderId = senderId,
+            Content = content
+        });
 }

@@ -112,7 +112,7 @@ final conversationMessagesProvider =
   if (userId == null) return <MessageModel>[];
 
   return apiClient.get<List<MessageModel>>(
-    ApiEndpoints.messages(conversationId),
+    ApiEndpoints.messages(ConversationId(conversationId)),
     queryParameters: {
       'page': 1,
       'pageSize': 100,
@@ -184,7 +184,7 @@ final unreadNotificationCountProvider =
 Future<void> markTrainerNotificationRead(WidgetRef ref, String id) async {
   final apiClient = ref.read(apiClientProvider);
   try {
-    await apiClient.putVoid(ApiEndpoints.notificationMarkRead(id));
+    await apiClient.putVoid(ApiEndpoints.notificationMarkRead(NotificationId(id)));
   } catch (_) {
     // Non-critical.
   }

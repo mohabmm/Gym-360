@@ -12,26 +12,28 @@ internal sealed class ModerateTestimonialByIdEndpoint : IEndpoint
 {
     internal sealed record Request(string Status);
 
+    /// <summary>DI services the moderation endpoint needs.</summary>
+    internal sealed record ModerationServices(ITrainerPublicProfileRepository ProfileRepository, ISender Sender);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPut("api/v1/gamification/testimonials/{id:guid}/moderate", async (
             Guid id,
             Request request,
-            ITrainerPublicProfileRepository profileRepository,
-            HttpContext httpContext,
-            ISender sender,
-            CancellationToken ct) =>
+            [AsParameters] ModerationServices services,
+            HttpContext httpContext) =>
         {
+            var ct = httpContext.RequestAborted;
             if (!UserContext.TryGetUserId(httpContext, out var moderatedBy))
                 return Results.Unauthorized();
 
-            var profile = await profileRepository.FindByTestimonialIdAsync(id, ct);
+            var profile = await services.ProfileRepository.FindByTestimonialIdAsync(id, ct);
             if (profile is null)
                 return ApiResults.Problem("Gamification.TestimonialNotFound", "Testimonial not found.", 404);
 
             var isApproved = string.Equals(request.Status, "approved", StringComparison.OrdinalIgnoreCase);
             var command = new ModerateTestimonialCommand(id, profile.TrainerId, profile.GymId, isApproved, moderatedBy);
-            var result = await sender.Send(command, ct);
+            var result = await services.Sender.Send(command, ct);
 
             return result.IsSuccess
                 ? Results.NoContent()

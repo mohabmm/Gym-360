@@ -54,55 +54,20 @@ internal sealed class IdentityJwtTokenService : Application.Contracts.IJwtTokenS
 
     public async Task<string> GenerateAccessTokenAsync(User user, CancellationToken cancellationToken = default)
     {
-        string? adminRole = user.Role == UserRole.PlatformAdmin ? "super_admin" : null;
-        string? staffRole = user.Role switch
-        {
-            UserRole.GymOwner => "owner",
-            UserRole.GymStaff => "staff",
-            _ => null
-        };
-        string? principalType = MapPrincipalType(user.Role);
-
-        Guid? gymId = null;
-        string? schemaPrefix = null;
-
         // Owner branch: if the user is an Owner principal with linked Owner aggregate,
         // skip the embedded gym claim — the Owner must select a gym via /api/auth/select-gym.
         // Owners with exactly 1 owned gym still need to pick (kept simple — UI auto-confirms).
-        var isOwnerPrincipal = user.Role == UserRole.GymOwner && user.OwnerId.HasValue;
-        if (!isOwnerPrincipal)
-        {
-            var activeMembership = user.GymMemberships?.FirstOrDefault(m => m.IsActive);
-            gymId = activeMembership?.GymId;
-            if (gymId.HasValue && _tenancyOptions.Mode == TenancyMode.Hard)
-            {
-                var reg = await _gymRegistry.FindAsync(gymId.Value, cancellationToken);
-                schemaPrefix = reg?.SchemaPrefix;
-            }
-        }
+        var gymId = IsOwnerPrincipal(user)
+            ? null
+            : user.GymMemberships?.FirstOrDefault(m => m.IsActive)?.GymId;
+        var schemaPrefix = await FindSchemaPrefixAsync(gymId, cancellationToken);
 
         // Staff sub-role (Owner/Manager/Receptionist) — read from the gym's StaffRole
         // table when this is a staff token with a resolved gym. Surfaced as `staffSubRole`
         // claim for fine-grained authorization (e.g. gym_owner_or_manager policy).
-        string? staffSubRole = null;
-        if (user.Role == UserRole.GymStaff && gymId.HasValue)
-        {
-            staffSubRole = await ResolveStaffSubRoleAsync(gymId.Value, schemaPrefix, user.Id, cancellationToken);
-        }
+        var staffSubRole = await ResolveStaffSubRoleForUserAsync(user, gymId, schemaPrefix, cancellationToken);
 
-        var token = _jwtTokenService.GenerateAccessToken(
-            user.Id,
-            user.Email.Value,
-            user.Role.ToRoleClaim(),
-            gymId,
-            staffRole,
-            adminRole,
-            principalType,
-            user.OwnerId,
-            schemaPrefix,
-            staffSubRole);
-
-        return token;
+        return IssueAccessToken(user, new TenantClaims(gymId, schemaPrefix, staffSubRole));
     }
 
     public async Task<string> GenerateAccessTokenForGymAsync(
@@ -111,41 +76,65 @@ internal sealed class IdentityJwtTokenService : Application.Contracts.IJwtTokenS
         string schemaPrefix,
         CancellationToken cancellationToken = default)
     {
-        string? adminRole = user.Role == UserRole.PlatformAdmin ? "super_admin" : null;
-        string? staffRole = user.Role switch
-        {
-            UserRole.GymOwner => "owner",
-            UserRole.GymStaff => "staff",
-            _ => null
-        };
-        string? principalType = MapPrincipalType(user.Role);
-
         // Defensive: re-validate schema prefix against registry if running Hard.
         if (_tenancyOptions.Mode == TenancyMode.Hard)
-        {
-            var reg = await _gymRegistry.FindAsync(gymId, cancellationToken);
-            if (reg is null) throw new InvalidOperationException($"Gym {gymId} not in registry.");
-            schemaPrefix = reg.SchemaPrefix;
-        }
+            schemaPrefix = await GetRegisteredSchemaPrefixAsync(gymId, cancellationToken);
 
         // Resolve gym-side StaffRole sub-role (Owner/Manager/Receptionist) for staff tokens.
-        string? staffSubRole = null;
-        if (user.Role == UserRole.GymStaff)
-        {
-            staffSubRole = await ResolveStaffSubRoleAsync(gymId, schemaPrefix, user.Id, cancellationToken);
-        }
+        var staffSubRole = await ResolveStaffSubRoleForUserAsync(user, gymId, schemaPrefix, cancellationToken);
+
+        return IssueAccessToken(user, new TenantClaims(gymId, schemaPrefix, staffSubRole));
+    }
+
+    /// <summary>Gym-scoped claims embedded in an access token (all null for gym-less tokens).</summary>
+    private sealed record TenantClaims(Guid? GymId, string? SchemaPrefix, string? StaffSubRole);
+
+    private string IssueAccessToken(User user, TenantClaims tenant)
+    {
+        string? adminRole = user.Role == UserRole.PlatformAdmin ? "super_admin" : null;
 
         return _jwtTokenService.GenerateAccessToken(
-            user.Id,
-            user.Email.Value,
-            user.Role.ToRoleClaim(),
-            gymId,
-            staffRole,
-            adminRole,
-            principalType,
-            user.OwnerId,
-            schemaPrefix,
-            staffSubRole);
+            new Common.Infrastructure.Authentication.AccessTokenClaims(user.Id, user.Email.Value, user.Role.ToRoleClaim())
+            {
+                GymId = tenant.GymId,
+                StaffRole = MapStaffRole(user.Role),
+                AdminRole = adminRole,
+                PrincipalType = MapPrincipalType(user.Role),
+                OwnerId = user.OwnerId,
+                SchemaPrefix = tenant.SchemaPrefix,
+                StaffSubRole = tenant.StaffSubRole
+            });
+    }
+
+    private static bool IsOwnerPrincipal(User user) =>
+        user.Role == UserRole.GymOwner && user.OwnerId.HasValue;
+
+    private async Task<string?> FindSchemaPrefixAsync(Guid? gymId, CancellationToken cancellationToken)
+    {
+        if (!gymId.HasValue || _tenancyOptions.Mode != TenancyMode.Hard)
+            return null;
+
+        var reg = await _gymRegistry.FindAsync(gymId.Value, cancellationToken);
+        return reg?.SchemaPrefix;
+    }
+
+    private async Task<string> GetRegisteredSchemaPrefixAsync(Guid gymId, CancellationToken cancellationToken)
+    {
+        var reg = await _gymRegistry.FindAsync(gymId, cancellationToken);
+        if (reg is null) throw new InvalidOperationException($"Gym {gymId} not in registry.");
+        return reg.SchemaPrefix;
+    }
+
+    private Task<string?> ResolveStaffSubRoleForUserAsync(
+        User user,
+        Guid? gymId,
+        string? schemaPrefix,
+        CancellationToken cancellationToken)
+    {
+        if (user.Role != UserRole.GymStaff || !gymId.HasValue)
+            return Task.FromResult<string?>(null);
+
+        return ResolveStaffSubRoleAsync(gymId.Value, schemaPrefix, user.Id, cancellationToken);
     }
 
     public Task<string> GenerateRefreshTokenAsync(CancellationToken cancellationToken = default)
@@ -163,6 +152,13 @@ internal sealed class IdentityJwtTokenService : Application.Contracts.IJwtTokenS
     {
         return DateTime.UtcNow.AddMinutes(_jwtOptions.AccessTokenExpirationMinutes);
     }
+
+    private static string? MapStaffRole(UserRole role) => role switch
+    {
+        UserRole.GymOwner => "owner",
+        UserRole.GymStaff => "staff",
+        _ => null
+    };
 
     private static string? MapPrincipalType(UserRole role) => role switch
     {

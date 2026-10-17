@@ -6,6 +6,7 @@ using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
 using GymApp.Modules.Training.Application.DTOs;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.CreateProgram;
 
@@ -40,10 +41,13 @@ internal sealed class CreateProgramCommandHandler : ICommandHandler<CreateProgra
         var program = Program.Create(
             request.TrainerId,
             request.GymId,
-            request.Name,
-            request.DurationWeeks,
-            request.NameAr,
-            request.Description,
+            new ProgramDetails
+            {
+                Name = request.Name,
+                DurationWeeks = request.DurationWeeks,
+                NameAr = request.NameAr,
+                Description = request.Description
+            },
             request.IsTemplate);
 
         foreach (var weekDto in request.Weeks)

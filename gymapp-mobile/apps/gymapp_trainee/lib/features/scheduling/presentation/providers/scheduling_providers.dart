@@ -40,7 +40,9 @@ final mySessionsAllProvider =
   final gymId = auth?.currentGymId;
   if (memberId == null || gymId == null) return const [];
   final repo = ref.watch(schedulingRepositoryProvider);
-  return repo.getAllSessions(gymId: gymId, memberId: memberId);
+  return repo.getAllSessions(
+    SessionListQuery(gymId: gymId, memberId: memberId),
+  );
 });
 
 /// Bookable sessions across all Active packages.
@@ -110,7 +112,7 @@ final gymSessionPolicyProvider =
   final api = ref.watch(apiClientProvider);
   try {
     return await api.get<GymSessionPolicyModel>(
-      ApiEndpoints.gymSessionPolicy(gymId),
+      ApiEndpoints.gymSessionPolicy(GymId(gymId)),
       parser: (data) =>
           GymSessionPolicyModel.fromJson(data as Map<String, dynamic>),
     );
@@ -142,7 +144,11 @@ typedef _SlotParams = ({String trainerId, String gymId, DateTime date});
 final availabilitySlotsProvider =
     FutureProvider.family<List<String>, _SlotParams>((ref, params) async {
   final repo = ref.watch(schedulingRepositoryProvider);
-  return repo.getAvailabilitySlots(params.trainerId, params.gymId, params.date);
+  return repo.getAvailabilitySlots(AvailabilitySlotsQuery(
+    trainerId: params.trainerId,
+    gymId: params.gymId,
+    date: params.date,
+  ));
 });
 
 typedef WeeklyAvailabilityParams = ({
@@ -155,11 +161,11 @@ final weeklyAvailabilityProvider = FutureProvider.family<
     WeeklyAvailabilityModel, WeeklyAvailabilityParams>((ref, params) async {
   final repo = ref.watch(schedulingRepositoryProvider);
   final memberId = ref.watch(authProvider).valueOrNull?.user?.id;
-  return repo.getWeeklyAvailability(
+  return repo.getWeeklyAvailability(WeeklyAvailabilityQuery(
     trainerId: params.trainerId,
     gymId: params.gymId,
     startDate: params.weekStart,
     endDate: params.weekStart.add(const Duration(days: 6)),
     memberId: memberId,
-  );
+  ));
 });

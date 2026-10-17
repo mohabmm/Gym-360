@@ -10,7 +10,7 @@ final announcementsProvider =
   final gymId = ref.watch(currentGymIdProvider);
   if (gymId.isEmpty) return <AnnouncementModel>[];
   return apiClient.get<List<AnnouncementModel>>(
-    ApiEndpoints.gymAnnouncements(gymId),
+    ApiEndpoints.gymAnnouncements(GymId(gymId)),
     queryParameters: {'page': 1, 'pageSize': 100},
     parser: (data) {
       final List<dynamic> list;

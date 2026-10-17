@@ -1,35 +1,32 @@
-using GymApp.Modules.Billing.Shared;
-using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
 using GymApp.Modules.Gyms.Application.Abstractions;
+using GymApp.Modules.Gyms.Application.Services;
 using GymApp.Modules.Gyms.IntegrationEvents;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.AddMember;
 
 internal sealed class AddMemberCommandHandler : ICommandHandler<AddMemberCommand>
 {
     private readonly IGymRepository _gymRepository;
-    private readonly IGymPlanService _gymPlanService;
-    private readonly IGymQueryService _gymQueryService;
+    private readonly GymSeatLimitChecker _seatLimits;
     private readonly IGymMemberDirectory _memberDirectory;
     private readonly IGymsUnitOfWork _unitOfWork;
     private readonly IIntegrationEventPublisher _integrationEvents;
 
     public AddMemberCommandHandler(
         IGymRepository gymRepository,
-        IGymPlanService gymPlanService,
-        IGymQueryService gymQueryService,
+        GymSeatLimitChecker seatLimits,
         IGymMemberDirectory memberDirectory,
         IGymsUnitOfWork unitOfWork,
         IIntegrationEventPublisher integrationEvents)
     {
         _gymRepository = gymRepository;
-        _gymPlanService = gymPlanService;
-        _gymQueryService = gymQueryService;
+        _seatLimits = seatLimits;
         _memberDirectory = memberDirectory;
         _unitOfWork = unitOfWork;
         _integrationEvents = integrationEvents;
@@ -41,20 +38,19 @@ internal sealed class AddMemberCommandHandler : ICommandHandler<AddMemberCommand
         if (gym is null)
             return Result.Failure(GymErrors.NotFound);
 
-        var memberLimit = await _gymPlanService.GetMemberLimitAsync(request.GymId, cancellationToken);
-        var currentCount = await _gymQueryService.GetMemberCountAsync(request.GymId, cancellationToken);
+        var seat = await _seatLimits.EnsureMemberSeatAsync(request.GymId, cancellationToken);
+        if (seat.IsFailure)
+            return seat;
 
-        if (memberLimit > 0 && currentCount >= memberLimit)
-            return Result.Failure(PlanErrors.LimitExceeded("members", currentCount, memberLimit));
-
-        var result = gym.AddMember(request.UserId);
+        var result = gym.AddMember(new MemberId(request.UserId));
         if (result.IsFailure)
             return result;
 
         _gymRepository.Update(gym);
 
         var assignedNumber = await _memberDirectory.RegisterAsync(
-            request.GymId, request.UserId, request.MemberNumber, request.Section, cancellationToken);
+            new GymMemberRegistration(request.GymId, request.UserId, request.MemberNumber, request.Section),
+            cancellationToken);
 
         _integrationEvents.Enqueue(
             new MemberAddedToGymIntegrationEvent(

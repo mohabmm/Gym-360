@@ -9,20 +9,7 @@ public sealed class GymSeasonalHours : Entity
 
     private GymSeasonalHours() : base() { }
 
-    private GymSeasonalHours(
-        Guid id,
-        Guid gymId,
-        string name,
-        DateOnly startDate,
-        DateOnly endDate,
-        bool isActive) : base(id)
-    {
-        GymId = gymId;
-        Name = name;
-        StartDate = startDate;
-        EndDate = endDate;
-        IsActive = isActive;
-    }
+    private GymSeasonalHours(Guid id) : base(id) { }
 
     public Guid GymId { get; private set; }
     public string Name { get; private set; } = default!;
@@ -31,25 +18,27 @@ public sealed class GymSeasonalHours : Entity
     public IReadOnlyList<DaySchedule> DaySchedules => _daySchedules.AsReadOnly();
     public bool IsActive { get; private set; }
 
-    public static GymSeasonalHours Create(
-        Guid gymId,
-        string name,
-        DateOnly startDate,
-        DateOnly endDate,
-        List<DaySchedule> daySchedules)
+    public static GymSeasonalHours Create(Guid gymId, SeasonalHoursDetails details)
     {
-        var hours = new GymSeasonalHours(Guid.NewGuid(), gymId, name, startDate, endDate, isActive: true);
-        hours._daySchedules.AddRange(daySchedules);
+        var hours = new GymSeasonalHours(Guid.NewGuid())
+        {
+            GymId = gymId,
+            Name = details.Name,
+            StartDate = details.StartDate,
+            EndDate = details.EndDate,
+            IsActive = true
+        };
+        hours._daySchedules.AddRange(details.DaySchedules);
         return hours;
     }
 
-    public void Update(string name, DateOnly startDate, DateOnly endDate, List<DaySchedule> daySchedules)
+    public void Update(SeasonalHoursDetails details)
     {
-        Name = name;
-        StartDate = startDate;
-        EndDate = endDate;
+        Name = details.Name;
+        StartDate = details.StartDate;
+        EndDate = details.EndDate;
         _daySchedules.Clear();
-        _daySchedules.AddRange(daySchedules);
+        _daySchedules.AddRange(details.DaySchedules);
     }
 
     public void Deactivate() => IsActive = false;

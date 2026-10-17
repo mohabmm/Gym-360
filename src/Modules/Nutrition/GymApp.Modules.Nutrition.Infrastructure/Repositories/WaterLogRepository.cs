@@ -1,5 +1,6 @@
 using GymApp.Modules.Nutrition.Domain.Entities;
 using GymApp.Modules.Nutrition.Domain.Repositories;
+using GymApp.Modules.Nutrition.Domain.ValueObjects;
 using GymApp.Modules.Nutrition.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,10 @@ namespace GymApp.Modules.Nutrition.Infrastructure.Repositories;
 
 internal sealed class WaterLogRepository : IWaterLogRepository
 {
+    private const int MaxUpsertAttempts = 8;
+    private const int SqlDeadlockErrorNumber = 1205;
+    private const int SqlLockTimeoutErrorNumber = 1222;
+
     private readonly NutritionDbContext _dbContext;
 
     public WaterLogRepository(NutritionDbContext dbContext)
@@ -46,10 +51,7 @@ internal sealed class WaterLogRepository : IWaterLogRepository
     }
 
     public async Task<WaterLog> UpsertAndAppendEntryAsync(
-        Guid userId,
-        Guid gymId,
-        DateOnly date,
-        int amountMl,
+        WaterIntake intake,
         CancellationToken cancellationToken = default)
     {
         // SQL Server unique index IX_water_logs_user_date enforces one row per
@@ -57,53 +59,59 @@ internal sealed class WaterLogRepository : IWaterLogRepository
         // existing row, each Adds, but only one INSERT survives. The losers
         // catch DbUpdateException, detach their failed Added entity, then
         // reload and append on the surviving row.
-        const int maxAttempts = 8;
-        WaterLog? waterLog = null;
-        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        for (var attempt = 0; attempt < MaxUpsertAttempts; attempt++)
         {
+            WaterLog? waterLog = null;
             try
             {
-                waterLog = await _dbContext.WaterLogs
-                    .Include(w => w.Entries)
-                    .FirstOrDefaultAsync(
-                        w => w.UserId == userId && w.GymId == gymId && w.Date == date,
-                        cancellationToken);
-
-                if (waterLog is null)
-                {
-                    waterLog = WaterLog.Create(userId, gymId, date);
-                    await _dbContext.WaterLogs.AddAsync(waterLog, cancellationToken);
-                }
-
-                var addResult = waterLog.AddEntry(amountMl);
-                if (addResult.IsFailure)
-                    throw new InvalidOperationException(addResult.Error.Name);
+                waterLog = await FindOrAddDailyLogAsync(intake, cancellationToken);
+                AppendEntry(waterLog, intake.AmountMl);
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 return waterLog;
             }
-            catch (Exception ex) when (IsRetryableConcurrencyError(ex) && attempt < maxAttempts - 1)
+            catch (Exception ex) when (IsRetryableConcurrencyError(ex) && attempt < MaxUpsertAttempts - 1)
             {
                 if (waterLog is not null) DetachLocal(waterLog);
-                waterLog = null;
                 // Jittered backoff to spread deadlock retries.
                 await Task.Delay(Random.Shared.Next(15, 80 * (attempt + 1)), cancellationToken);
             }
         }
 
         throw new InvalidOperationException(
-            $"WaterLog upsert failed after {maxAttempts} attempts due to concurrent writes.");
+            $"WaterLog upsert failed after {MaxUpsertAttempts} attempts due to concurrent writes.");
+    }
+
+    private async Task<WaterLog> FindOrAddDailyLogAsync(WaterIntake intake, CancellationToken cancellationToken)
+    {
+        var waterLog = await GetByUserAndDateAsync(intake.UserId, intake.GymId, intake.Date, cancellationToken);
+        if (waterLog is not null)
+            return waterLog;
+
+        waterLog = WaterLog.Create(intake.UserId, intake.GymId, intake.Date);
+        await _dbContext.WaterLogs.AddAsync(waterLog, cancellationToken);
+        return waterLog;
+    }
+
+    private static void AppendEntry(WaterLog waterLog, int amountMl)
+    {
+        var addResult = waterLog.AddEntry(amountMl);
+        if (addResult.IsFailure)
+            throw new InvalidOperationException(addResult.Error.Name);
     }
 
     private static bool IsRetryableConcurrencyError(Exception ex)
     {
         if (ex is DbUpdateException) return true;
-        // SQL Server deadlock (1205) and lock-request timeout (1222)
         for (var e = (Exception?)ex; e is not null; e = e.InnerException)
-            if (e is SqlException sql && (sql.Number == 1205 || sql.Number == 1222))
+            if (IsDeadlockOrLockTimeout(e))
                 return true;
         return false;
     }
+
+    // SQL Server deadlock (1205) and lock-request timeout (1222)
+    private static bool IsDeadlockOrLockTimeout(Exception ex) =>
+        ex is SqlException { Number: SqlDeadlockErrorNumber or SqlLockTimeoutErrorNumber };
 
     private void DetachLocal(WaterLog waterLog)
     {

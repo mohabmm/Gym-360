@@ -4,9 +4,14 @@ namespace GymApp.Modules.Gyms.Infrastructure.Services;
 /// Parsed status / section / search filters for the gym member roster, plus the
 /// parts of the filtering that only need the gym_members directory.
 /// </summary>
-internal sealed record MemberRosterFilter(
-    string? Section, string? Search, string? ProfileStatus, bool FrozenOnly, bool IsStatusSupported)
+internal sealed record MemberRosterFilter
 {
+    public string? Section { get; init; }
+    public string? Search { get; init; }
+    public string? ProfileStatus { get; init; }
+    public bool FrozenOnly { get; init; }
+    public bool IsStatusSupported { get; init; }
+
     public bool HasSection => !string.IsNullOrWhiteSpace(Section);
 
     public bool HasSearch => !string.IsNullOrWhiteSpace(Search);
@@ -21,15 +26,17 @@ internal sealed record MemberRosterFilter(
     {
         var statusKey = status?.Trim().ToLowerInvariant();
 
-        return new MemberRosterFilter(
-            section,
-            search,
+        return new MemberRosterFilter
+        {
+            Section = section,
+            Search = search,
             // Only "active"/"inactive" map to an Identity profile status; "frozen" is a gym
             // directory flag (handled here).
-            ProfileStatus: statusKey is "active" or "inactive" ? statusKey : null,
-            FrozenOnly: statusKey == "frozen",
+            ProfileStatus = statusKey is "active" or "inactive" ? statusKey : null,
+            FrozenOnly = statusKey == "frozen",
             // Any other status value ("expired", typos) has no backing data.
-            IsStatusSupported: statusKey is null or "active" or "inactive" or "frozen");
+            IsStatusSupported = statusKey is null or "active" or "inactive" or "frozen"
+        };
     }
 
     public IEnumerable<Guid> ApplyDirectoryFilters(

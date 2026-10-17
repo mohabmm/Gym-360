@@ -9,6 +9,7 @@ import {
   type ResolvedTheme,
   type ThemePref,
 } from '../lib/theme';
+import { readChangedCookie } from '../lib/client-cookie';
 
 function resolve(pref: ThemePref): ResolvedTheme {
   if (pref !== 'system') return pref;
@@ -42,25 +43,18 @@ export function useTheme(initial: ThemePref = DEFAULT_THEME): {
   );
 
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const raw = document.cookie
-      .split(';')
-      .map((c) => c.trim())
-      .find((c) => c.startsWith(`${THEME_COOKIE}=`));
-    const value = raw ? decodeURIComponent(raw.split('=')[1] ?? '') : null;
-    if (value && isThemePref(value) && value !== theme) {
-      setThemeState(value);
-      const r = resolve(value);
-      setResolved(r);
-      apply(r);
-    }
+    const value = readChangedCookie(THEME_COOKIE, isThemePref, theme);
+    if (!value) return;
+    setThemeState(value);
+    const r = resolve(value);
+    setResolved(r);
+    apply(r);
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (theme !== 'system') return;
-    if (typeof window === 'undefined') return;
+    if (theme !== 'system' || typeof window === 'undefined') return;
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => {
       const r: ResolvedTheme = mql.matches ? 'dark' : 'light';

@@ -55,55 +55,24 @@ public sealed class Streak : Entity
             return;
         }
 
-        bool isContinuation = StreakType switch
-        {
-            StreakType.DailyWorkout or StreakType.DailyCheckIn =>
-                date.DayNumber - LastActivityDate.DayNumber == 1,
-            StreakType.WeeklyWorkout =>
-                GetIsoWeekNumber(date) - GetIsoWeekNumber(LastActivityDate) == 1
-                || (GetIsoWeekNumber(date) == GetIsoWeekNumber(LastActivityDate)),
-            _ => false
-        };
+        bool isFirstActivity = LastActivityDate == DateOnly.MinValue;
 
-        if (isContinuation || LastActivityDate == DateOnly.MinValue)
+        // For weekly streaks, only increment when moving to a new week
+        if (!isFirstActivity && IsRepeatWithinSameWeek(date))
         {
-            // For weekly streaks, only increment when moving to a new week
-            if (StreakType == StreakType.WeeklyWorkout
-                && LastActivityDate != DateOnly.MinValue
-                && GetIsoWeekNumber(date) == GetIsoWeekNumber(LastActivityDate))
-            {
-                LastActivityDate = date;
-                UpdatedAt = DateTime.UtcNow;
-                return;
-            }
-
-            CurrentStreak++;
-        }
-        else
-        {
-            CurrentStreak = 1;
+            TouchLastActivity(date);
+            return;
         }
 
-        LastActivityDate = date;
-        UpdatedAt = DateTime.UtcNow;
+        CurrentStreak = isFirstActivity || IsContinuation(date) ? CurrentStreak + 1 : 1;
+        TouchLastActivity(date);
 
         if (CurrentStreak > LongestStreak)
         {
             LongestStreak = CurrentStreak;
         }
 
-        foreach (int milestone in Milestones)
-        {
-            if (CurrentStreak == milestone)
-            {
-                RaiseDomainEvent(new StreakMilestoneReachedDomainEvent(
-                    UserId,
-                    GymId,
-                    StreakType.ToString(),
-                    milestone));
-                break;
-            }
-        }
+        RaiseMilestoneIfReached();
     }
 
     public void ResetIfBroken(DateOnly today)
@@ -128,6 +97,42 @@ public sealed class Streak : Entity
             UpdatedAt = DateTime.UtcNow;
         }
     }
+
+    private bool IsContinuation(DateOnly date) => StreakType switch
+    {
+        StreakType.DailyWorkout or StreakType.DailyCheckIn =>
+            date.DayNumber - LastActivityDate.DayNumber == 1,
+        StreakType.WeeklyWorkout =>
+            GetIsoWeekNumber(date) - GetIsoWeekNumber(LastActivityDate) == 1
+            || IsSameIsoWeek(date, LastActivityDate),
+        _ => false
+    };
+
+    private bool IsRepeatWithinSameWeek(DateOnly date) =>
+        StreakType == StreakType.WeeklyWorkout && IsSameIsoWeek(date, LastActivityDate);
+
+    private void TouchLastActivity(DateOnly date)
+    {
+        LastActivityDate = date;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    private void RaiseMilestoneIfReached()
+    {
+        if (!Milestones.Contains(CurrentStreak))
+        {
+            return;
+        }
+
+        RaiseDomainEvent(new StreakMilestoneReachedDomainEvent(
+            UserId,
+            GymId,
+            StreakType.ToString(),
+            CurrentStreak));
+    }
+
+    private static bool IsSameIsoWeek(DateOnly a, DateOnly b) =>
+        GetIsoWeekNumber(a) == GetIsoWeekNumber(b);
 
     private static int GetIsoWeekNumber(DateOnly date)
     {

@@ -43,10 +43,17 @@ public class VoidPaymentCommandHandlerTests
     {
         // Arrange -- No refund flow, only void (per Q9)
         var paymentId = Guid.NewGuid();
-        var payment = Payment.Create(
-            Guid.NewGuid(), Guid.NewGuid(), Money.Create(500m),
-            PaymentMethod.Cash, PaymentPurpose.Membership,
-            "RCP-TEST-001", Guid.NewGuid(), null);
+        var payment = Payment.Create(new PaymentDetails
+        {
+            GymId = Guid.NewGuid(),
+            MemberId = Guid.NewGuid(),
+            Amount = Money.Create(500m),
+            PaymentMethod = PaymentMethod.Cash,
+            Purpose = PaymentPurpose.Membership,
+            ReceiptNumber = "RCP-TEST-001",
+            RecordedBy = Guid.NewGuid(),
+            ReferenceId = null
+        });
         _paymentRepository.GetByIdAsync(paymentId, Arg.Any<CancellationToken>())
             .Returns(payment);
 
@@ -66,10 +73,17 @@ public class VoidPaymentCommandHandlerTests
     {
         // Arrange
         var paymentId = Guid.NewGuid();
-        var payment = Payment.Create(
-            Guid.NewGuid(), Guid.NewGuid(), Money.Create(500m),
-            PaymentMethod.Cash, PaymentPurpose.Membership,
-            "RCP-TEST-002", Guid.NewGuid(), null);
+        var payment = Payment.Create(new PaymentDetails
+        {
+            GymId = Guid.NewGuid(),
+            MemberId = Guid.NewGuid(),
+            Amount = Money.Create(500m),
+            PaymentMethod = PaymentMethod.Cash,
+            Purpose = PaymentPurpose.Membership,
+            ReceiptNumber = "RCP-TEST-002",
+            RecordedBy = Guid.NewGuid(),
+            ReferenceId = null
+        });
         payment.Void("First void"); // Void it once
         _paymentRepository.GetByIdAsync(paymentId, Arg.Any<CancellationToken>())
             .Returns(payment);

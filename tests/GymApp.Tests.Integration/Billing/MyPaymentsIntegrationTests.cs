@@ -26,14 +26,17 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
     {
         var gymsDb = Scope.ServiceProvider.GetRequiredService<GymsDbContext>();
         var gym = Gym.Create(
-            ownerId: Guid.NewGuid(),
-            name: "Integration Gym",
-            description: null,
-            address: new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
-            contactInfo: new ContactInfo("gym@test.com", "+201234567890"),
-            gymCode: GymCode.Generate());
+            Guid.NewGuid(),
+            new GymDetails
+            {
+                Name = "Integration Gym",
+                Description = null,
+                Address = new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Generate()
+            });
         gym.Approve();
-        gym.AddMember(memberId);
+        gym.AddMember(new MemberId(memberId));
         gymsDb.Gyms.Add(gym);
         await gymsDb.SaveChangesAsync();
         return gym;
@@ -49,25 +52,25 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         return gym;
     }
 
-    private async Task<Payment> SeedPayment(
-        Guid gymId,
-        Guid memberId,
-        decimal amount = 500m,
-        bool voided = false,
-        string receiptPrefix = "REC-TEST")
+    private sealed record PaymentSeed(decimal Amount = 500m, bool Voided = false, string ReceiptPrefix = "REC-TEST");
+
+    private async Task<Payment> SeedPayment(Guid gymId, Guid memberId, PaymentSeed? seed = null)
     {
+        var (amount, voided, receiptPrefix) = seed ?? new PaymentSeed();
         var repo = Scope.ServiceProvider.GetRequiredService<IPaymentRepository>();
         var uow = Scope.ServiceProvider.GetRequiredService<IBillingUnitOfWork>();
 
-        var payment = Payment.Create(
-            gymId,
-            memberId,
-            Money.Create(amount),
-            PaymentMethod.Cash,
-            PaymentPurpose.Membership,
-            $"{receiptPrefix}-{Guid.NewGuid():N}".Substring(0, 20),
-            Guid.NewGuid(),
-            null);
+        var payment = Payment.Create(new PaymentDetails
+        {
+            GymId = gymId,
+            MemberId = memberId,
+            Amount = Money.Create(amount),
+            PaymentMethod = PaymentMethod.Cash,
+            Purpose = PaymentPurpose.Membership,
+            ReceiptNumber = $"{receiptPrefix}-{Guid.NewGuid():N}".Substring(0, 20),
+            RecordedBy = Guid.NewGuid(),
+            ReferenceId = null
+        });
 
         if (voided)
         {
@@ -79,6 +82,13 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         return payment;
     }
 
+    private async Task<HttpResponseMessage> GetMyPaymentsAsync(Guid userId, Guid gymId)
+    {
+        var client = CreateTraineeClient(userId);
+        client.DefaultRequestHeaders.Add("X-Gym-Id", gymId.ToString());
+        return await client.GetAsync("api/v1/billing/me/payments");
+    }
+
     [Fact]
     public async Task Should_Return200WithData_When_ActiveMemberHasPayments()
     {
@@ -86,10 +96,7 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         var gym = await SeedActiveGymWithMember(userId);
         await SeedPayment(gym.Id, userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/payments");
+        var response = await GetMyPaymentsAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -100,10 +107,7 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/payments");
+        var response = await GetMyPaymentsAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -114,10 +118,7 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(Guid.NewGuid());
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/payments");
+        var response = await GetMyPaymentsAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -128,10 +129,7 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gym = await SeedSuspendedGymWithMember(userId);
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/payments");
+        var response = await GetMyPaymentsAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -142,13 +140,10 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         // PRD (Q9): Voided payments MUST be included in the response.
         var userId = Guid.NewGuid();
         var gym = await SeedActiveGymWithMember(userId);
-        await SeedPayment(gym.Id, userId, amount: 1000m, voided: false, receiptPrefix: "REC-OK");
-        await SeedPayment(gym.Id, userId, amount: 500m, voided: true, receiptPrefix: "REC-VOID");
+        await SeedPayment(gym.Id, userId, new PaymentSeed(Amount: 1000m, Voided: false, ReceiptPrefix: "REC-OK"));
+        await SeedPayment(gym.Id, userId, new PaymentSeed(Amount: 500m, Voided: true, ReceiptPrefix: "REC-VOID"));
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gym.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/payments");
+        var response = await GetMyPaymentsAsync(userId, gym.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();
@@ -165,13 +160,10 @@ public sealed class MyPaymentsIntegrationTests : BaseIntegrationTest
         var userId = Guid.NewGuid();
         var gymA = await SeedActiveGymWithMember(userId);
         var gymB = await SeedActiveGymWithMember(userId);
-        await SeedPayment(gymA.Id, userId, amount: 1111m, receiptPrefix: "REC-GYMA");
-        await SeedPayment(gymB.Id, userId, amount: 2222m, receiptPrefix: "REC-GYMB");
+        await SeedPayment(gymA.Id, userId, new PaymentSeed(Amount: 1111m, ReceiptPrefix: "REC-GYMA"));
+        await SeedPayment(gymB.Id, userId, new PaymentSeed(Amount: 2222m, ReceiptPrefix: "REC-GYMB"));
 
-        var client = CreateTraineeClient(userId);
-        client.DefaultRequestHeaders.Add("X-Gym-Id", gymB.Id.ToString());
-
-        var response = await client.GetAsync("api/v1/billing/me/payments");
+        var response = await GetMyPaymentsAsync(userId, gymB.Id);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadAsStringAsync();

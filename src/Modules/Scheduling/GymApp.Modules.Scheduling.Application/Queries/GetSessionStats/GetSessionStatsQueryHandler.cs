@@ -4,6 +4,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Application.DTOs;
 using GymApp.Modules.Scheduling.Domain.Enums;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Queries.GetSessionStats;
 
@@ -24,21 +25,22 @@ internal sealed class GetSessionStatsQueryHandler
         var today = GymLocalTime.Today();
         var from = request.From ?? today.AddMonths(-1);
         var to = request.To ?? today;
+        var range = new GymDateRange(request.GymId, from, to);
 
         var completedCount = await _sessionRepository.GetCountByStatusAsync(
-            request.TrainerId, request.GymId, SessionStatus.Completed, from, to, cancellationToken);
+            request.TrainerId, SessionStatus.Completed, range, cancellationToken);
 
         var cancelledByTrainer = await _sessionRepository.GetCountByStatusAsync(
-            request.TrainerId, request.GymId, SessionStatus.CancelledByTrainer, from, to, cancellationToken);
+            request.TrainerId, SessionStatus.CancelledByTrainer, range, cancellationToken);
 
         var cancelledByMember = await _sessionRepository.GetCountByStatusAsync(
-            request.TrainerId, request.GymId, SessionStatus.CancelledByMember, from, to, cancellationToken);
+            request.TrainerId, SessionStatus.CancelledByMember, range, cancellationToken);
 
         var lateCancelled = await _sessionRepository.GetCountByStatusAsync(
-            request.TrainerId, request.GymId, SessionStatus.LateCancelled, from, to, cancellationToken);
+            request.TrainerId, SessionStatus.LateCancelled, range, cancellationToken);
 
         var noShowCount = await _sessionRepository.GetCountByStatusAsync(
-            request.TrainerId, request.GymId, SessionStatus.NoShow, from, to, cancellationToken);
+            request.TrainerId, SessionStatus.NoShow, range, cancellationToken);
 
         var cancelledCount = cancelledByTrainer + cancelledByMember + lateCancelled;
         var totalScheduled = completedCount + cancelledCount + noShowCount;

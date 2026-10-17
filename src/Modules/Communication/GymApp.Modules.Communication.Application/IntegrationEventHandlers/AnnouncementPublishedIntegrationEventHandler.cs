@@ -7,6 +7,7 @@ using GymApp.Modules.Gyms.IntegrationEvents;
 using GymApp.Modules.Gyms.Shared;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -61,12 +62,15 @@ internal sealed class AnnouncementPublishedIntegrationEventHandler
         foreach (var memberId in memberIds)
         {
             var notif = Notification.CreateLocalized(
-                NotificationTexts.Announcement(notification.Title),
-                memberId,
-                NotificationType.Announcement,
-                notification.GymId,
-                // Each notification carries its own copy of the metadata.
-                new Dictionary<string, string>(data));
+                new NotificationDetails
+                {
+                    UserId = memberId,
+                    Type = NotificationType.Announcement,
+                    GymId = notification.GymId,
+                    // Each notification carries its own copy of the metadata.
+                    Data = new Dictionary<string, string>(data)
+                },
+                NotificationTexts.Announcement(notification.Title));
 
             await _notificationRepository.AddAsync(notif, cancellationToken);
         }

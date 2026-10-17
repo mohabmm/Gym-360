@@ -26,33 +26,23 @@ public sealed class SessionPackage : Entity
     public Guid AssignedBy { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public static SessionPackage Create(
-        Guid gymId,
-        Guid trainerId,
-        Guid memberId,
-        Guid templateId,
-        string name,
-        int totalSessions,
-        Money pricePerSession,
-        Money totalPrice,
-        Guid assignedBy,
-        DateTime? expiresAt = null)
+    public static SessionPackage Create(SessionPackageDetails details)
     {
         return new SessionPackage
         {
             Id = Guid.NewGuid(),
-            GymId = gymId,
-            TrainerId = trainerId,
-            MemberId = memberId,
-            TemplateId = templateId,
-            Name = name,
-            TotalSessions = totalSessions,
-            RemainingSessions = totalSessions,
-            PricePerSession = pricePerSession,
-            TotalPrice = totalPrice,
+            GymId = details.GymId,
+            TrainerId = details.TrainerId,
+            MemberId = details.MemberId,
+            TemplateId = details.TemplateId,
+            Name = details.Name,
+            TotalSessions = details.TotalSessions,
+            RemainingSessions = details.TotalSessions,
+            PricePerSession = details.PricePerSession,
+            TotalPrice = details.TotalPrice,
             Status = PackageStatus.Active,
-            ExpiresAt = expiresAt,
-            AssignedBy = assignedBy,
+            ExpiresAt = details.ExpiresAt,
+            AssignedBy = details.AssignedBy,
             CreatedAt = DateTime.UtcNow
         };
     }

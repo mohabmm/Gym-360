@@ -5,6 +5,7 @@ using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Application.Abstractions;
+using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.Commands.AssignProgram;
 
@@ -35,15 +36,17 @@ internal sealed class AssignProgramCommandHandler : ICommandHandler<AssignProgra
 
         var endDate = DateOnly.FromDateTime(request.StartDate).AddDays(program.DurationWeeks * 7);
 
-        var assignment = WorkoutAssignment.Create(
-            request.TrainerId,
-            request.ClientId,
-            request.GymId,
-            AssignmentType.Program,
-            DateOnly.FromDateTime(request.StartDate),
-            programId: request.ProgramId,
-            endDate: endDate,
-            notes: request.Notes);
+        var assignment = WorkoutAssignment.Create(new WorkoutAssignmentDetails
+        {
+            TrainerId = request.TrainerId,
+            ClientId = request.ClientId,
+            GymId = request.GymId,
+            AssignmentType = AssignmentType.Program,
+            StartDate = DateOnly.FromDateTime(request.StartDate),
+            ProgramId = request.ProgramId,
+            EndDate = endDate,
+            Notes = request.Notes
+        });
 
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

@@ -143,7 +143,7 @@ Future<void> _updateLogo(
     if (gymId.isEmpty) return;
     final apiClient = ref.read(apiClientProvider);
     await apiClient.put<void>(
-      ApiEndpoints.gymBranding(gymId),
+      ApiEndpoints.gymBranding(GymId(gymId)),
       data: {'logoUrl': url},
       parser: (_) {},
     );

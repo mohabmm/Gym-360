@@ -1,3 +1,97 @@
+/// A validation message available in Arabic and English.
+class LocalizedMessage {
+  const LocalizedMessage(this.ar, this.en);
+
+  final String ar;
+  final String en;
+
+  /// Arabic for `'ar'`, English for any other locale.
+  String resolve(String locale) => locale == 'ar' ? ar : en;
+}
+
+/// A single validation rule: when [fails] matches, [message] is reported.
+class ValidationRule<T> {
+  const ValidationRule(this.fails, this.message);
+
+  final bool Function(T value) fails;
+  final LocalizedMessage message;
+}
+
+/// An inclusive numeric range.
+class NumRange {
+  const NumRange(this.min, this.max);
+
+  final num min;
+  final num max;
+
+  bool excludes(num? number) => number == null || number < min || number > max;
+}
+
+/// How an empty text value is detected before the rules run.
+enum BlankCheck {
+  /// Empty after trimming whitespace.
+  trimmed,
+
+  /// Literally empty (whitespace counts as a value).
+  untrimmed;
+
+  bool isBlank(String value) =>
+      (this == BlankCheck.trimmed ? value.trim() : value).isEmpty;
+}
+
+/// Runs an ordered list of [ValidationRule]s and returns the first failure.
+///
+/// A `null` (or [isBlank]) value either reports [requiredMessage] or, when
+/// that is `null` (optional field), passes without running the rules.
+class FieldValidator<T> {
+  const FieldValidator(this.rules, {this.requiredMessage, this.isBlank});
+
+  final List<ValidationRule<T>> rules;
+  final LocalizedMessage? requiredMessage;
+  final bool Function(T value)? isBlank;
+
+  String? call(T? value, {String locale = 'ar'}) {
+    final failed = value == null || (isBlank?.call(value) ?? false)
+        ? requiredMessage
+        : _firstFailure(value);
+    return failed?.resolve(locale);
+  }
+
+  LocalizedMessage? _firstFailure(T value) {
+    for (final rule in rules) {
+      if (rule.fails(value)) return rule.message;
+    }
+    return null;
+  }
+}
+
+/// Builds a [FieldValidator] for text fields with the shared blank check.
+FieldValidator<String> _text(
+  List<ValidationRule<String>> rules, {
+  LocalizedMessage? required,
+  BlankCheck blank = BlankCheck.trimmed,
+}) =>
+    FieldValidator<String>(
+      rules,
+      requiredMessage: required,
+      isBlank: blank.isBlank,
+    );
+
+/// Fails when the (normalised) value does not match [pattern].
+ValidationRule<String> _pattern(
+  RegExp pattern,
+  LocalizedMessage message, {
+  String Function(String value)? normalize,
+}) =>
+    ValidationRule(
+      (v) => !pattern.hasMatch(normalize == null ? v.trim() : normalize(v)),
+      message,
+    );
+
+/// Fails when the parsed number falls outside [range].
+ValidationRule<String> _numberIn(NumRange range, LocalizedMessage message) =>
+    ValidationRule((v) => range.excludes(double.tryParse(v)), message);
+
 /// Form field validators supporting Arabic and English error messages.
 class Validators {
   Validators._();
@@ -14,43 +108,61 @@ class Validators {
     r'^[A-Z0-9]{6}$',
   );
 
+  static final RegExp _phoneSeparators = RegExp(r'[\s-]');
+  static final RegExp _letter = RegExp(r'[a-zA-Z]');
+  static final RegExp _digit = RegExp(r'[0-9]');
+  static final RegExp _otpRegex = RegExp(r'^[0-9]{6}$');
+  static final RegExp _memberNumberRegex = RegExp(r'^[0-9]{4,8}$');
+
+  static const _fieldRequired =
+      LocalizedMessage('هذا الحقل مطلوب', 'This field is required');
+
   /// Validate email address.
-  static String? email(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return locale == 'ar'
-          ? 'البريد الإلكتروني مطلوب'
-          : 'Email is required';
-    }
-    if (!_emailRegex.hasMatch(value.trim())) {
-      return locale == 'ar'
-          ? 'البريد الإلكتروني غير صالح'
-          : 'Invalid email address';
-    }
-    return null;
-  }
+  static final email = _text(
+    [
+      _pattern(
+        _emailRegex,
+        const LocalizedMessage(
+          'البريد الإلكتروني غير صالح',
+          'Invalid email address',
+        ),
+      ),
+    ],
+    required: const LocalizedMessage(
+      'البريد الإلكتروني مطلوب',
+      'Email is required',
+    ),
+  );
 
   /// Validate password (minimum 8 characters, at least 1 letter + 1 number).
-  static String? password(String? value, {String locale = 'ar'}) {
-    if (value == null || value.isEmpty) {
-      return locale == 'ar' ? 'كلمة المرور مطلوبة' : 'Password is required';
-    }
-    if (value.length < 8) {
-      return locale == 'ar'
-          ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'
-          : 'Password must be at least 8 characters';
-    }
-    if (!value.contains(RegExp(r'[a-zA-Z]'))) {
-      return locale == 'ar'
-          ? 'كلمة المرور يجب أن تحتوي على حرف واحد على الأقل'
-          : 'Password must contain at least one letter';
-    }
-    if (!value.contains(RegExp(r'[0-9]'))) {
-      return locale == 'ar'
-          ? 'كلمة المرور يجب أن تحتوي على رقم واحد على الأقل'
-          : 'Password must contain at least one number';
-    }
-    return null;
-  }
+  static final password = _text(
+    [
+      ValidationRule(
+        (v) => v.length < 8,
+        const LocalizedMessage(
+          'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+          'Password must be at least 8 characters',
+        ),
+      ),
+      ValidationRule(
+        (v) => !v.contains(_letter),
+        const LocalizedMessage(
+          'كلمة المرور يجب أن تحتوي على حرف واحد على الأقل',
+          'Password must contain at least one letter',
+        ),
+      ),
+      ValidationRule(
+        (v) => !v.contains(_digit),
+        const LocalizedMessage(
+          'كلمة المرور يجب أن تحتوي على رقم واحد على الأقل',
+          'Password must contain at least one number',
+        ),
+      ),
+    ],
+    required:
+        const LocalizedMessage('كلمة المرور مطلوبة', 'Password is required'),
+    blank: BlankCheck.untrimmed,
+  );
 
   /// Validate password confirmation.
   static String? confirmPassword(
@@ -58,142 +170,144 @@ class Validators {
     String password, {
     String locale = 'ar',
   }) {
-    if (value == null || value.isEmpty) {
-      return locale == 'ar'
-          ? 'تأكيد كلمة المرور مطلوب'
-          : 'Password confirmation is required';
-    }
-    if (value != password) {
-      return locale == 'ar'
-          ? 'كلمات المرور غير متطابقة'
-          : 'Passwords do not match';
-    }
-    return null;
+    return _text(
+      [
+        ValidationRule(
+          (v) => v != password,
+          const LocalizedMessage(
+            'كلمات المرور غير متطابقة',
+            'Passwords do not match',
+          ),
+        ),
+      ],
+      required: const LocalizedMessage(
+        'تأكيد كلمة المرور مطلوب',
+        'Password confirmation is required',
+      ),
+      blank: BlankCheck.untrimmed,
+    )(value, locale: locale);
   }
 
   /// Validate required field.
-  static String? required(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return locale == 'ar' ? 'هذا الحقل مطلوب' : 'This field is required';
-    }
-    return null;
-  }
+  static final required = _text(const [], required: _fieldRequired);
 
   /// Validate name (2-50 characters).
-  static String? name(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return locale == 'ar' ? 'الاسم مطلوب' : 'Name is required';
-    }
-    if (value.trim().length < 2) {
-      return locale == 'ar'
-          ? 'الاسم يجب أن يكون حرفين على الأقل'
-          : 'Name must be at least 2 characters';
-    }
-    if (value.trim().length > 50) {
-      return locale == 'ar'
-          ? 'الاسم يجب أن لا يتجاوز 50 حرف'
-          : 'Name must not exceed 50 characters';
-    }
-    return null;
-  }
+  static final name = _text(
+    [
+      ValidationRule(
+        (v) => v.trim().length < 2,
+        const LocalizedMessage(
+          'الاسم يجب أن يكون حرفين على الأقل',
+          'Name must be at least 2 characters',
+        ),
+      ),
+      ValidationRule(
+        (v) => v.trim().length > 50,
+        const LocalizedMessage(
+          'الاسم يجب أن لا يتجاوز 50 حرف',
+          'Name must not exceed 50 characters',
+        ),
+      ),
+    ],
+    required: const LocalizedMessage('الاسم مطلوب', 'Name is required'),
+  );
 
-  /// Validate phone number (Egyptian format).
-  static String? phone(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return null; // Phone is optional
-    }
-    if (!_phoneRegex.hasMatch(value.replaceAll(RegExp(r'[\s-]'), ''))) {
-      return locale == 'ar'
-          ? 'رقم الهاتف غير صالح'
-          : 'Invalid phone number';
-    }
-    return null;
-  }
+  /// Validate phone number (Egyptian format). Phone is optional.
+  static final phone = _text([
+    _pattern(
+      _phoneRegex,
+      const LocalizedMessage('رقم الهاتف غير صالح', 'Invalid phone number'),
+      normalize: (v) => v.replaceAll(_phoneSeparators, ''),
+    ),
+  ]);
 
   /// Validate gym code (6 alphanumeric characters).
-  static String? gymCode(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return locale == 'ar' ? 'كود الجيم مطلوب' : 'Gym code is required';
-    }
-    if (!_gymCodeRegex.hasMatch(value.trim().toUpperCase())) {
-      return locale == 'ar'
-          ? 'كود الجيم يجب أن يكون 6 أحرف أو أرقام'
-          : 'Gym code must be 6 alphanumeric characters';
-    }
-    return null;
-  }
+  static final gymCode = _text(
+    [
+      _pattern(
+        _gymCodeRegex,
+        const LocalizedMessage(
+          'كود الجيم يجب أن يكون 6 أحرف أو أرقام',
+          'Gym code must be 6 alphanumeric characters',
+        ),
+        normalize: (v) => v.trim().toUpperCase(),
+      ),
+    ],
+    required: const LocalizedMessage('كود الجيم مطلوب', 'Gym code is required'),
+  );
 
   /// Validate OTP (6 digits).
-  static String? otp(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return locale == 'ar' ? 'رمز التحقق مطلوب' : 'OTP is required';
-    }
-    if (value.trim().length != 6 || !RegExp(r'^[0-9]{6}$').hasMatch(value)) {
-      return locale == 'ar'
-          ? 'رمز التحقق يجب أن يكون 6 أرقام'
-          : 'OTP must be 6 digits';
-    }
-    return null;
-  }
+  static final otp = _text(
+    [
+      ValidationRule(
+        (v) => v.trim().length != 6 || !_otpRegex.hasMatch(v),
+        const LocalizedMessage(
+          'رمز التحقق يجب أن يكون 6 أرقام',
+          'OTP must be 6 digits',
+        ),
+      ),
+    ],
+    required: const LocalizedMessage('رمز التحقق مطلوب', 'OTP is required'),
+  );
 
   /// Validate positive number.
-  static String? positiveNumber(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return locale == 'ar' ? 'هذا الحقل مطلوب' : 'This field is required';
-    }
-    final number = double.tryParse(value);
-    if (number == null || number <= 0) {
-      return locale == 'ar'
-          ? 'يرجى إدخال رقم صالح'
-          : 'Please enter a valid number';
-    }
-    return null;
-  }
+  static final positiveNumber = _text(
+    [
+      ValidationRule(
+        (v) => (double.tryParse(v) ?? 0) <= 0,
+        const LocalizedMessage(
+          'يرجى إدخال رقم صالح',
+          'Please enter a valid number',
+        ),
+      ),
+    ],
+    required: _fieldRequired,
+  );
 
-  /// Validate weight (10-500 kg).
-  static String? weight(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) return null;
-    final number = double.tryParse(value);
-    if (number == null || number < 10 || number > 500) {
-      return locale == 'ar'
-          ? 'الوزن يجب أن يكون بين 10 و 500 كجم'
-          : 'Weight must be between 10 and 500 kg';
-    }
-    return null;
-  }
+  /// Validate weight (10-500 kg). Weight is optional.
+  static final weight = _text([
+    _numberIn(
+      const NumRange(10, 500),
+      const LocalizedMessage(
+        'الوزن يجب أن يكون بين 10 و 500 كجم',
+        'Weight must be between 10 and 500 kg',
+      ),
+    ),
+  ]);
 
-  /// Validate height (50-300 cm).
-  static String? height(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) return null;
-    final number = double.tryParse(value);
-    if (number == null || number < 50 || number > 300) {
-      return locale == 'ar'
-          ? 'الطول يجب أن يكون بين 50 و 300 سم'
-          : 'Height must be between 50 and 300 cm';
-    }
-    return null;
-  }
+  /// Validate height (50-300 cm). Height is optional.
+  static final height = _text([
+    _numberIn(
+      const NumRange(50, 300),
+      const LocalizedMessage(
+        'الطول يجب أن يكون بين 50 و 300 سم',
+        'Height must be between 50 and 300 cm',
+      ),
+    ),
+  ]);
+
+  static const _ratingOutOfRange = LocalizedMessage(
+    'التقييم يجب أن يكون بين 1 و 5',
+    'Rating must be between 1 and 5',
+  );
 
   /// Validate rating (1-5).
-  static String? rating(int? value, {String locale = 'ar'}) {
-    if (value == null || value < 1 || value > 5) {
-      return locale == 'ar'
-          ? 'التقييم يجب أن يكون بين 1 و 5'
-          : 'Rating must be between 1 and 5';
-    }
-    return null;
-  }
+  static final rating = FieldValidator<int>(
+    [ValidationRule(const NumRange(1, 5).excludes, _ratingOutOfRange)],
+    requiredMessage: _ratingOutOfRange,
+  );
 
   /// Validate member number.
-  static String? memberNumber(String? value, {String locale = 'ar'}) {
-    if (value == null || value.trim().isEmpty) {
-      return locale == 'ar' ? 'رقم العضو مطلوب' : 'Member number is required';
-    }
-    if (!RegExp(r'^[0-9]{4,8}$').hasMatch(value.trim())) {
-      return locale == 'ar'
-          ? 'رقم العضو غير صالح'
-          : 'Invalid member number';
-    }
-    return null;
-  }
+  static final memberNumber = _text(
+    [
+      _pattern(
+        _memberNumberRegex,
+        const LocalizedMessage('رقم العضو غير صالح', 'Invalid member number'),
+      ),
+    ],
+    required: const LocalizedMessage(
+      'رقم العضو مطلوب',
+      'Member number is required',
+    ),
+  );
 }

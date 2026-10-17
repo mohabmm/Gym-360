@@ -12,11 +12,14 @@ public sealed class GymTests
     {
         return Gym.Create(
             Guid.NewGuid(),
-            "Test Gym",
-            "A test gym",
-            new Address("123 St", "Cairo", "Cairo", "Egypt", "12345"),
-            new ContactInfo("gym@test.com", "+201234567890"),
-            GymCode.Create("ABC123"));
+            new GymDetails
+            {
+                Name = "Test Gym",
+                Description = "A test gym",
+                Address = new Address("123 St", "Cairo", "Cairo", "Egypt", "12345"),
+                ContactInfo = new ContactInfo("gym@test.com", "+201234567890"),
+                GymCode = GymCode.Create("ABC123")
+            });
     }
 
     private static Gym CreateActiveGym()
@@ -25,6 +28,23 @@ public sealed class GymTests
         gym.Approve();
         gym.ClearDomainEvents();
         return gym;
+    }
+
+    private static void AssertSingleEvent<TEvent>(Gym gym) =>
+        gym.GetDomainEvents().Should().ContainSingle()
+            .Which.Should().BeOfType<TEvent>();
+
+    // Adds the same fresh id twice to an active gym; the second add must fail with the code.
+    private static void AssertSecondAddRejected(Func<Gym, Guid, Result> add, string expectedCode)
+    {
+        var gym = CreateActiveGym();
+        var id = Guid.NewGuid();
+        add(gym, id);
+
+        var result = add(gym, id);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(expectedCode);
     }
 
     // --- Creation ---
@@ -36,11 +56,14 @@ public sealed class GymTests
 
         var gym = Gym.Create(
             ownerId,
-            "My Gym",
-            "Description",
-            new Address("St", "City", "State", "Country", "00000"),
-            new ContactInfo("e@e.com", "+201111111111"),
-            GymCode.Create("XYZ789"));
+            new GymDetails
+            {
+                Name = "My Gym",
+                Description = "Description",
+                Address = new Address("St", "City", "State", "Country", "00000"),
+                ContactInfo = new ContactInfo("e@e.com", "+201111111111"),
+                GymCode = GymCode.Create("XYZ789")
+            });
 
         gym.Id.Should().NotBeEmpty();
         gym.OwnerId.Should().Be(ownerId);
@@ -261,14 +284,12 @@ public sealed class GymTests
     public void AddMember_WhenActive_ShouldSucceed()
     {
         var gym = CreateActiveGym();
-        var memberId = Guid.NewGuid();
+        var memberId = new MemberId(Guid.NewGuid());
 
-        var result = gym.AddMember(memberId);
+        gym.AddMember(memberId).IsSuccess.Should().BeTrue();
 
-        result.IsSuccess.Should().BeTrue();
         gym.MemberIds.Should().Contain(memberId);
-        gym.GetDomainEvents().Should().ContainSingle()
-            .Which.Should().BeOfType<MemberAddedToGymDomainEvent>();
+        AssertSingleEvent<MemberAddedToGymDomainEvent>(gym);
     }
 
     [Fact]
@@ -276,39 +297,28 @@ public sealed class GymTests
     {
         var gym = CreateDefaultGym(); // PendingApproval
 
-        var result = gym.AddMember(Guid.NewGuid());
+        var result = gym.AddMember(new MemberId(Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Gyms.NotApproved");
     }
 
     [Fact]
-    public void AddMember_Duplicate_ShouldFail()
-    {
-        var gym = CreateActiveGym();
-        var memberId = Guid.NewGuid();
-        gym.AddMember(memberId);
-
-        var result = gym.AddMember(memberId);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Gyms.MemberAlreadyAdded");
-    }
+    public void AddMember_Duplicate_ShouldFail() =>
+        AssertSecondAddRejected((gym, id) => gym.AddMember(new MemberId(id)), "Gyms.MemberAlreadyAdded");
 
     [Fact]
     public void RemoveMember_WhenExists_ShouldSucceed()
     {
         var gym = CreateActiveGym();
-        var memberId = Guid.NewGuid();
+        var memberId = new MemberId(Guid.NewGuid());
         gym.AddMember(memberId);
         gym.ClearDomainEvents();
 
-        var result = gym.RemoveMember(memberId);
+        gym.RemoveMember(memberId).IsSuccess.Should().BeTrue();
 
-        result.IsSuccess.Should().BeTrue();
         gym.MemberIds.Should().NotContain(memberId);
-        gym.GetDomainEvents().Should().ContainSingle()
-            .Which.Should().BeOfType<MemberRemovedFromGymDomainEvent>();
+        AssertSingleEvent<MemberRemovedFromGymDomainEvent>(gym);
     }
 
     [Fact]
@@ -316,7 +326,7 @@ public sealed class GymTests
     {
         var gym = CreateActiveGym();
 
-        var result = gym.RemoveMember(Guid.NewGuid());
+        var result = gym.RemoveMember(new MemberId(Guid.NewGuid()));
 
         result.IsFailure.Should().BeTrue();
         result.Error.Code.Should().Be("Gyms.MemberNotFound");
@@ -326,28 +336,17 @@ public sealed class GymTests
     public void AddTrainer_WhenActive_ShouldSucceed()
     {
         var gym = CreateActiveGym();
-        var trainerId = Guid.NewGuid();
+        var trainerId = new TrainerId(Guid.NewGuid());
 
-        var result = gym.AddTrainer(trainerId);
+        gym.AddTrainer(trainerId).IsSuccess.Should().BeTrue();
 
-        result.IsSuccess.Should().BeTrue();
         gym.TrainerIds.Should().Contain(trainerId);
-        gym.GetDomainEvents().Should().ContainSingle()
-            .Which.Should().BeOfType<TrainerAddedToGymDomainEvent>();
+        AssertSingleEvent<TrainerAddedToGymDomainEvent>(gym);
     }
 
     [Fact]
-    public void AddTrainer_Duplicate_ShouldFail()
-    {
-        var gym = CreateActiveGym();
-        var trainerId = Guid.NewGuid();
-        gym.AddTrainer(trainerId);
-
-        var result = gym.AddTrainer(trainerId);
-
-        result.IsFailure.Should().BeTrue();
-        result.Error.Code.Should().Be("Gyms.TrainerAlreadyAdded");
-    }
+    public void AddTrainer_Duplicate_ShouldFail() =>
+        AssertSecondAddRejected((gym, id) => gym.AddTrainer(new TrainerId(id)), "Gyms.TrainerAlreadyAdded");
 
     // --- Update methods ---
 

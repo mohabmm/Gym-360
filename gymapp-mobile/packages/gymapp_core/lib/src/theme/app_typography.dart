@@ -32,126 +32,56 @@ class AppTypography {
     required bool isArabic,
     required bool isDark,
   }) {
-    final body = _body(isArabic);
-    final display = _display(isArabic);
     final textColor =
         isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
     final secondaryColor =
         isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+    final display = _Face(_display(isArabic), textColor);
+    final body = _Face(_body(isArabic), textColor);
+    final bodySecondary = _Face(_body(isArabic), secondaryColor);
 
     return TextTheme(
-      displayLarge: TextStyle(
-        fontFamily: display,
-        fontSize: 34,
-        fontWeight: FontWeight.w800,
-        color: textColor,
-        height: 1.15,
-        letterSpacing: -0.5,
-      ),
-      displayMedium: TextStyle(
-        fontFamily: display,
-        fontSize: 28,
-        fontWeight: FontWeight.w800,
-        color: textColor,
-        height: 1.2,
-        letterSpacing: -0.4,
-      ),
-      displaySmall: TextStyle(
-        fontFamily: display,
-        fontSize: 24,
-        fontWeight: FontWeight.w700,
-        color: textColor,
-        height: 1.25,
-        letterSpacing: -0.3,
-      ),
-      headlineLarge: TextStyle(
-        fontFamily: display,
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-        color: textColor,
-        height: 1.3,
-        letterSpacing: -0.2,
-      ),
-      headlineMedium: TextStyle(
-        fontFamily: display,
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: textColor,
-        height: 1.3,
-      ),
-      headlineSmall: TextStyle(
-        fontFamily: display,
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-        height: 1.4,
-      ),
-      titleLarge: TextStyle(
-        fontFamily: body,
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-        height: 1.4,
-      ),
-      titleMedium: TextStyle(
-        fontFamily: body,
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-        height: 1.4,
-      ),
-      titleSmall: TextStyle(
-        fontFamily: body,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-        height: 1.4,
-      ),
-      bodyLarge: TextStyle(
-        fontFamily: body,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-        color: textColor,
-        height: 1.5,
-      ),
-      bodyMedium: TextStyle(
-        fontFamily: body,
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
-        color: textColor,
-        height: 1.5,
-      ),
-      bodySmall: TextStyle(
-        fontFamily: body,
-        fontSize: 12,
-        fontWeight: FontWeight.w400,
-        color: secondaryColor,
-        height: 1.5,
-      ),
-      labelLarge: TextStyle(
-        fontFamily: body,
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-        height: 1.4,
-        letterSpacing: 0.1,
-      ),
-      labelMedium: TextStyle(
-        fontFamily: body,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: secondaryColor,
-        height: 1.4,
-        letterSpacing: 0.2,
-      ),
-      labelSmall: TextStyle(
-        fontFamily: body,
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: secondaryColor,
-        height: 1.4,
-        letterSpacing: 0.6,
-      ),
+      displayLarge: display.style(34, FontWeight.w800, 1.15, letterSpacing: -0.5),
+      displayMedium: display.style(28, FontWeight.w800, 1.2, letterSpacing: -0.4),
+      displaySmall: display.style(24, FontWeight.w700, 1.25, letterSpacing: -0.3),
+      headlineLarge: display.style(22, FontWeight.w700, 1.3, letterSpacing: -0.2),
+      headlineMedium: display.style(20, FontWeight.w700, 1.3),
+      headlineSmall: display.style(18, FontWeight.w600, 1.4),
+      titleLarge: body.style(16, FontWeight.w600, 1.4),
+      titleMedium: body.style(14, FontWeight.w600, 1.4),
+      titleSmall: body.style(12, FontWeight.w600, 1.4),
+      bodyLarge: body.style(16, FontWeight.w400, 1.5),
+      bodyMedium: body.style(14, FontWeight.w400, 1.5),
+      bodySmall: bodySecondary.style(12, FontWeight.w400, 1.5),
+      labelLarge: body.style(14, FontWeight.w600, 1.4, letterSpacing: 0.1),
+      labelMedium:
+          bodySecondary.style(12, FontWeight.w600, 1.4, letterSpacing: 0.2),
+      labelSmall:
+          bodySecondary.style(11, FontWeight.w600, 1.4, letterSpacing: 0.6),
+    );
+  }
+}
+
+/// A font family + colour pair from which the individual text styles derive.
+class _Face {
+  const _Face(this.fontFamily, this.color);
+
+  final String fontFamily;
+  final Color color;
+
+  TextStyle style(
+    double fontSize,
+    FontWeight fontWeight,
+    double height, {
+    double? letterSpacing,
+  }) {
+    return TextStyle(
+      fontFamily: fontFamily,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
     );
   }
 }

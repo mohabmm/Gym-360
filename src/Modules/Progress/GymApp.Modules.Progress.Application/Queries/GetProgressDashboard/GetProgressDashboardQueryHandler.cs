@@ -2,8 +2,10 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Progress.Application.DTOs;
 using GymApp.Modules.Progress.Application.Mappers;
+using GymApp.Modules.Progress.Application.Queries.Shared;
 using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Domain.Repositories;
+using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Application.Queries.GetProgressDashboard;
 
@@ -34,23 +36,9 @@ internal sealed class GetProgressDashboardQueryHandler : IQueryHandler<GetProgre
 
         // Get all metrics to compute weight/body fat change from first entry
         var allMetrics = await _metricRepository.GetByUserAsync(
-            request.UserId, request.GymId, DateOnly.MinValue, DateOnly.FromDateTime(DateTime.UtcNow), cancellationToken);
+            request.UserId, request.GymId, new DateRange(DateOnly.MinValue, DateOnly.FromDateTime(DateTime.UtcNow)), cancellationToken);
 
-        decimal? weightChange = null;
-        decimal? bodyFatChange = null;
-
-        if (allMetrics.Count >= 2)
-        {
-            var ordered = allMetrics.OrderBy(m => m.Date).ToList();
-            var first = ordered.First();
-            var last = ordered.Last();
-
-            if (first.Weight.HasValue && last.Weight.HasValue)
-                weightChange = last.Weight.Value - first.Weight.Value;
-
-            if (first.BodyFatPercentage.HasValue && last.BodyFatPercentage.HasValue)
-                bodyFatChange = last.BodyFatPercentage.Value - first.BodyFatPercentage.Value;
-        }
+        var changes = BodyMetricChanges.Between(allMetrics.OrderBy(m => m.Date).ToList());
 
         int photoCount = await _photoRepository.GetCountAsync(
             request.UserId, request.GymId, cancellationToken);
@@ -63,8 +51,8 @@ internal sealed class GetProgressDashboardQueryHandler : IQueryHandler<GetProgre
 
         var response = new ProgressDashboardResponse(
             latestDto,
-            weightChange,
-            bodyFatChange,
+            changes.WeightChange,
+            changes.BodyFatChange,
             photoCount,
             workoutStreak?.CurrentStreak ?? 0,
             workoutStreak?.LongestStreak ?? 0,

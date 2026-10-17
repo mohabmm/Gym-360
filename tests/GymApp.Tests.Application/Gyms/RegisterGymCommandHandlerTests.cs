@@ -24,7 +24,7 @@ public class RegisterGymCommandHandlerTests
     {
         _tenantContext.IsHardIsolation.Returns(false);
         _sut = new RegisterGymCommandHandler(
-            _gymRepository, _unitOfWork, _provisioner, _tenantContext, _scopeFactory, _integrationEvents);
+            _gymRepository, _unitOfWork, _tenantContext, new TenantGymProvisioningWriter(_provisioner, _scopeFactory), _integrationEvents);
     }
 
     private static RegisterGymCommand CreateValidCommand() =>
@@ -50,7 +50,6 @@ public class RegisterGymCommandHandlerTests
         await _gymRepository.Received(1).AddAsync(Arg.Any<Gym>(), Arg.Any<CancellationToken>());
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await _provisioner.DidNotReceive().ProvisionAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<GymProvisioningRequest>(), Arg.Any<CancellationToken>());
     }
 }

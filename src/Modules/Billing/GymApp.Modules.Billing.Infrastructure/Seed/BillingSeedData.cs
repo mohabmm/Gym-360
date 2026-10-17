@@ -1,4 +1,5 @@
 using GymApp.Modules.Billing.Domain.Entities;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Modules.Billing.Infrastructure.Seed;
 
@@ -18,10 +19,58 @@ public static class BillingSeedData
     {
         return new List<SubscriptionPlan>
         {
-            CreatePlan(FreePlanId, "free", "Free", 0m, 0m, 25, 1, 1, "Basic gym management features", 1),
-            CreatePlan(StarterPlanId, "starter", "Starter", 499m, 4990m, 75, -1, 3, "Essential training and management tools", 2),
-            CreatePlan(ProPlanId, "pro", "Pro", 999m, 9990m, 200, -1, 10, "Advanced features for growing gyms", 3),
-            CreatePlan(BusinessPlanId, "business", "Business", 1999m, 19990m, 500, -1, -1, "Full platform access for large operations", 4),
+            CreatePlan(FreePlanId, new SubscriptionPlanDetails
+            {
+                Code = "free",
+                Name = "Free",
+                MonthlyPriceEgp = 0m,
+                AnnualPriceEgp = 0m,
+                MemberLimit = 25,
+                TrainerLimit = 1,
+                StaffLimit = 1,
+                Description = "Basic gym management features",
+                IsPublic = true,
+                SortOrder = 1
+            }),
+            CreatePlan(StarterPlanId, new SubscriptionPlanDetails
+            {
+                Code = "starter",
+                Name = "Starter",
+                MonthlyPriceEgp = 499m,
+                AnnualPriceEgp = 4990m,
+                MemberLimit = 75,
+                TrainerLimit = -1,
+                StaffLimit = 3,
+                Description = "Essential training and management tools",
+                IsPublic = true,
+                SortOrder = 2
+            }),
+            CreatePlan(ProPlanId, new SubscriptionPlanDetails
+            {
+                Code = "pro",
+                Name = "Pro",
+                MonthlyPriceEgp = 999m,
+                AnnualPriceEgp = 9990m,
+                MemberLimit = 200,
+                TrainerLimit = -1,
+                StaffLimit = 10,
+                Description = "Advanced features for growing gyms",
+                IsPublic = true,
+                SortOrder = 3
+            }),
+            CreatePlan(BusinessPlanId, new SubscriptionPlanDetails
+            {
+                Code = "business",
+                Name = "Business",
+                MonthlyPriceEgp = 1999m,
+                AnnualPriceEgp = 19990m,
+                MemberLimit = 500,
+                TrainerLimit = -1,
+                StaffLimit = -1,
+                Description = "Full platform access for large operations",
+                IsPublic = true,
+                SortOrder = 4
+            }),
         };
     }
 
@@ -64,7 +113,14 @@ public static class BillingSeedData
             ("early_session_start", "Early Session Start (Testing Mode)", "Trainer can start a session before its scheduled time. Off by default; the StartSession endpoint enforces a 15-minute pre-window otherwise.", "Scheduling", 33),
         };
 
-        return features.Select(f => CreateFeature(f.Code, f.Name, f.Description, f.Category, f.Sort)).ToList();
+        return features.Select(f => Feature.Create(new FeatureDetails
+        {
+            Code = f.Code,
+            Name = f.Name,
+            Description = f.Description,
+            Category = f.Category,
+            SortOrder = f.Sort
+        })).ToList();
     }
 
     /// <summary>
@@ -175,23 +231,10 @@ public static class BillingSeedData
         };
     }
 
-    private static SubscriptionPlan CreatePlan(
-        Guid id,
-        string code,
-        string name,
-        decimal monthlyPrice,
-        decimal annualPrice,
-        int memberLimit,
-        int trainerLimit,
-        int staffLimit,
-        string description,
-        int sortOrder)
+    private static SubscriptionPlan CreatePlan(Guid id, SubscriptionPlanDetails details)
     {
         // Use reflection to set the Id since SubscriptionPlan.Create generates a new one
-        var plan = SubscriptionPlan.Create(
-            code, name, monthlyPrice, annualPrice,
-            memberLimit, trainerLimit, staffLimit,
-            description, isPublic: true, sortOrder: sortOrder);
+        var plan = SubscriptionPlan.Create(details);
 
         // Set the well-known Id for seeding (needed for plan-feature FK references)
         typeof(GymApp.Common.Domain.Entity)
@@ -199,10 +242,5 @@ public static class BillingSeedData
             .SetValue(plan, id);
 
         return plan;
-    }
-
-    private static Feature CreateFeature(string code, string name, string description, string category, int sortOrder)
-    {
-        return Feature.Create(code, name, description, category, sortOrder);
     }
 }

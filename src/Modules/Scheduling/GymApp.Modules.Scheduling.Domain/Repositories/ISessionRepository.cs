@@ -1,5 +1,6 @@
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Domain.Repositories;
 
@@ -11,16 +12,12 @@ public interface ISessionRepository
 
     Task<IReadOnlyList<Session>> GetByTrainerAsync(
         Guid trainerId,
-        Guid gymId,
-        DateOnly startDate,
-        DateOnly endDate,
+        GymDateRange range,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Session>> GetByMemberAsync(
         Guid memberId,
-        Guid gymId,
-        DateOnly startDate,
-        DateOnly endDate,
+        GymDateRange range,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Session>> GetUpcomingByTrainerAsync(
@@ -44,9 +41,7 @@ public interface ISessionRepository
 
     Task<int> GetCountByStatusAsync(
         Guid trainerId,
-        Guid gymId,
         SessionStatus status,
-        DateOnly startDate,
-        DateOnly endDate,
+        GymDateRange range,
         CancellationToken cancellationToken = default);
 }

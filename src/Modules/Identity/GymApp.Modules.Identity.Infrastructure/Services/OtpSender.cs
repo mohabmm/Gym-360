@@ -48,28 +48,15 @@ internal sealed class OtpSender : IOtpSender
         string purpose,
         CancellationToken cancellationToken)
     {
-        var host = _configuration["Otp:Smtp:Host"]
-            ?? throw new InvalidOperationException("Otp:Smtp:Host is not configured.");
-        var port = int.Parse(_configuration["Otp:Smtp:Port"] ?? "587");
-        var useSsl = bool.Parse(_configuration["Otp:Smtp:UseSsl"] ?? "true");
-        var username = _configuration["Otp:Smtp:Username"] ?? string.Empty;
-        var password = _configuration["Otp:Smtp:Password"] ?? string.Empty;
-        var from = _configuration["Otp:Smtp:From"] ?? "noreply@gymapp.com";
-        var fromName = _configuration["Otp:Smtp:FromName"] ?? "GymApp";
+        var settings = SmtpSettings.Load(_configuration);
 
         var (subject, body) = BuildEmailContent(code, purpose);
 
-        using var client = new SmtpClient(host, port)
-        {
-            EnableSsl = useSsl,
-            Credentials = string.IsNullOrEmpty(username)
-                ? CredentialCache.DefaultNetworkCredentials
-                : new NetworkCredential(username, password)
-        };
+        using var client = CreateSmtpClient(settings);
 
         using var message = new MailMessage
         {
-            From = new MailAddress(from, fromName),
+            From = new MailAddress(settings.From, settings.FromName),
             Subject = subject,
             Body = body,
             IsBodyHtml = true
@@ -81,6 +68,38 @@ internal sealed class OtpSender : IOtpSender
         _logger.LogInformation(
             "[OTP] Email sent to {Recipient} for purpose {Purpose}",
             recipient, purpose);
+    }
+
+    private static SmtpClient CreateSmtpClient(SmtpSettings settings) => new(settings.Host, settings.Port)
+    {
+        EnableSsl = settings.UseSsl,
+        Credentials = string.IsNullOrEmpty(settings.Username)
+            ? CredentialCache.DefaultNetworkCredentials
+            : new NetworkCredential(settings.Username, settings.Password)
+    };
+
+    /// <summary>Otp:Smtp:* configuration with its defaults applied.</summary>
+    private sealed record SmtpSettings
+    {
+        public required string Host { get; init; }
+        public required int Port { get; init; }
+        public required bool UseSsl { get; init; }
+        public required string Username { get; init; }
+        public required string Password { get; init; }
+        public required string From { get; init; }
+        public required string FromName { get; init; }
+
+        public static SmtpSettings Load(IConfiguration configuration) => new()
+        {
+            Host = configuration["Otp:Smtp:Host"]
+                ?? throw new InvalidOperationException("Otp:Smtp:Host is not configured."),
+            Port = int.Parse(configuration["Otp:Smtp:Port"] ?? "587"),
+            UseSsl = bool.Parse(configuration["Otp:Smtp:UseSsl"] ?? "true"),
+            Username = configuration["Otp:Smtp:Username"] ?? string.Empty,
+            Password = configuration["Otp:Smtp:Password"] ?? string.Empty,
+            From = configuration["Otp:Smtp:From"] ?? "noreply@gymapp.com",
+            FromName = configuration["Otp:Smtp:FromName"] ?? "GymApp"
+        };
     }
 
     private static (string Subject, string Body) BuildEmailContent(string code, string purpose)

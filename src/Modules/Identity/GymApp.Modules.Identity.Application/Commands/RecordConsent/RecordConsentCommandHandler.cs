@@ -33,34 +33,33 @@ internal sealed class RecordConsentCommandHandler : ICommandHandler<RecordConsen
             request.UserId, request.ConsentType, cancellationToken);
 
         if (existingConsent is not null)
-        {
-            if (request.IsGranted)
-            {
-                existingConsent.Grant(request.ConsentText, request.IpAddress);
-            }
-            else
-            {
-                existingConsent.Withdraw();
-            }
-
-            _consentRepository.Update(existingConsent);
-        }
-        else
-        {
-            if (request.IsGranted)
-            {
-                var consent = UserConsent.Create(
-                    request.UserId,
-                    request.ConsentType,
-                    request.ConsentText,
-                    request.IpAddress);
-
-                await _consentRepository.AddAsync(consent, cancellationToken);
-            }
-        }
+            ApplyToExisting(existingConsent, request);
+        else if (request.IsGranted)
+            await AddGrantedConsentAsync(request, cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
+    }
+
+    private void ApplyToExisting(UserConsent existingConsent, RecordConsentCommand request)
+    {
+        if (request.IsGranted)
+            existingConsent.Grant(request.ConsentText, request.IpAddress);
+        else
+            existingConsent.Withdraw();
+
+        _consentRepository.Update(existingConsent);
+    }
+
+    private Task AddGrantedConsentAsync(RecordConsentCommand request, CancellationToken cancellationToken)
+    {
+        var consent = UserConsent.Create(
+            request.UserId,
+            request.ConsentType,
+            request.ConsentText,
+            request.IpAddress);
+
+        return _consentRepository.AddAsync(consent, cancellationToken);
     }
 }

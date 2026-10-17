@@ -15,6 +15,13 @@ internal sealed record MemberDirectoryEntry(
 internal sealed record TrainerRequestInfo(
     Guid TrainerId, TrainerRequestStatus Status, string? Bio, List<string> Specializations);
 
+// Per-roster context for member projections: the gym plus the join date / section
+// used when a member has no gym_members row.
+internal sealed record MemberRosterContext(Guid GymId, DateTime JoinedAtFallback, string? SectionFallback = null);
+
+// Per-gym activity figures for a trainer projection.
+internal sealed record TrainerActivity(TrainerRequestInfo? Request, int ActiveMemberCount, TrainerStats Stats);
+
 /// <summary>
 /// Entity/profile → DTO projections shared by the <see cref="GymQueryService"/> read paths.
 /// </summary>
@@ -71,16 +78,14 @@ internal static class GymQueryMappings
     // join date / section; a member with no Identity profile keeps null name fields.
     public static MemberDto ToMemberDto(
         Guid memberId,
-        Guid gymId,
         UserProfileInfo? profile,
         MemberDirectoryEntry? directory,
-        DateTime joinedAtFallback,
-        string? sectionFallback = null) => new(
+        MemberRosterContext roster) => new(
         MemberId: memberId,
-        GymId: gymId,
-        Section: directory is not null ? directory.Section : sectionFallback,
+        GymId: roster.GymId,
+        Section: directory is not null ? directory.Section : roster.SectionFallback,
         MemberNumber: directory?.MemberNumber,
-        JoinedAt: directory?.JoinedAt ?? joinedAtFallback,
+        JoinedAt: directory?.JoinedAt ?? roster.JoinedAtFallback,
         FirstName: profile?.FirstName,
         LastName: profile?.LastName,
         Email: profile?.Email,
@@ -96,9 +101,7 @@ internal static class GymQueryMappings
         Guid trainerId,
         Guid gymId,
         UserProfileInfo? profile,
-        TrainerRequestInfo? request,
-        int activeMemberCount,
-        TrainerStats stats) => new(
+        TrainerActivity activity) => new(
         TrainerId: trainerId,
         GymId: gymId,
         FirstName: profile?.FirstName,
@@ -106,12 +109,12 @@ internal static class GymQueryMappings
         Email: profile?.Email,
         PhoneNumber: profile?.PhoneNumber,
         ProfilePhotoUrl: profile?.ProfilePhotoUrl,
-        Status: (request?.Status ?? TrainerRequestStatus.Approved).ToString(),
-        Specializations: request?.Specializations ?? (IReadOnlyList<string>)Array.Empty<string>(),
-        Bio: request?.Bio,
-        ActiveMemberCount: activeMemberCount,
-        Rating: stats.Rating,
-        MonthlyScore: stats.MonthlyScore);
+        Status: (activity.Request?.Status ?? TrainerRequestStatus.Approved).ToString(),
+        Specializations: activity.Request?.Specializations ?? (IReadOnlyList<string>)Array.Empty<string>(),
+        Bio: activity.Request?.Bio,
+        ActiveMemberCount: activity.ActiveMemberCount,
+        Rating: activity.Stats.Rating,
+        MonthlyScore: activity.Stats.MonthlyScore);
 
     public static GymClassDto ToGymClassDto(GymClass gymClass, UserProfileInfo? trainer) => new(
         gymClass.Id,

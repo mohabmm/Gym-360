@@ -15,20 +15,8 @@ class ProgressRepository {
   }) =>
       _remoteDataSource.getDashboard(userId: userId, gymId: gymId);
 
-  Future<List<BodyMetricEntryModel>> getBodyMetrics({
-    required String userId,
-    required String gymId,
-    String? metricType,
-    DateTime? from,
-    DateTime? to,
-  }) =>
-      _remoteDataSource.getBodyMetrics(
-        userId: userId,
-        gymId: gymId,
-        metricType: metricType,
-        from: from,
-        to: to,
-      );
+  Future<List<BodyMetricEntryModel>> getBodyMetrics(BodyMetricsQuery query) =>
+      _remoteDataSource.getBodyMetrics(query);
 
   /// Returns the metric ID (Guid string).
   Future<String> logBodyMetric(Map<String, dynamic> body) =>

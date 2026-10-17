@@ -36,47 +36,58 @@ internal sealed class DataImportMemberIntegrationEventHandler : INotificationHan
 
         var existing = await _userRepository.GetByPhoneAsync(phoneResult.Value, ct);
         if (existing is not null)
-        {
-            // Backfill NationalId for an already-known member so a migration import
-            // still lands the identity number even when the person pre-exists.
-            existing.SetNationalId(n.NationalId);
+            BackfillExistingMember(existing, n);
+        else
+            await _userRepository.AddAsync(CreateImportedTrainee(n, phoneResult.Value), ct);
 
-            if (!existing.GymMemberships.Any(m => m.GymId == n.GymId && m.IsActive))
-                existing.LinkToGym(n.GymId, UserRole.Trainee, n.Section, n.MemberNumber);
+        await _unitOfWork.SaveChangesAsync(ct);
+    }
 
-            _userRepository.Update(existing);
-            await _unitOfWork.SaveChangesAsync(ct);
-            return;
-        }
+    private void BackfillExistingMember(User existing, DataImportMemberIntegrationEvent n)
+    {
+        // Backfill NationalId for an already-known member so a migration import
+        // still lands the identity number even when the person pre-exists.
+        existing.SetNationalId(n.NationalId);
 
-        Email? email = null;
-        if (!string.IsNullOrWhiteSpace(n.Email))
-        {
-            var emailResult = Email.Create(n.Email);
-            if (emailResult.IsSuccess) email = emailResult.Value;
-        }
+        if (!existing.GymMemberships.Any(m => m.IsActiveAt(n.GymId)))
+            existing.LinkToGym(n.GymId, UserRole.Trainee, n.Section, n.MemberNumber);
 
-        email ??= Email.Create($"imported-{n.MemberNumber}-{n.GymId:N}@gymapp.local").Value;
+        _userRepository.Update(existing);
+    }
 
-        if (!Enum.TryParse<Gender>(n.Gender, ignoreCase: true, out var gender))
-            gender = Gender.Male;
-
+    private static User CreateImportedTrainee(DataImportMemberIntegrationEvent n, PhoneNumber phone)
+    {
         var user = User.Create(
             new NewUserDetails
             {
-                Email = email,
-                PhoneNumber = phoneResult.Value,
+                Email = ResolveEmail(n),
+                PhoneNumber = phone,
                 PasswordHash = string.Empty,
                 FirstName = n.FirstName,
                 LastName = n.LastName,
-                Gender = gender,
+                Gender = ParseGenderOrDefault(n.Gender),
                 NationalId = n.NationalId
             },
             UserRole.Trainee);
 
         user.LinkToGym(n.GymId, UserRole.Trainee, n.Section, n.MemberNumber);
-
-        await _userRepository.AddAsync(user, ct);
-        await _unitOfWork.SaveChangesAsync(ct);
+        return user;
     }
+
+    // Falls back to a synthetic, gym-scoped address when the row has no (valid) email.
+    private static Email ResolveEmail(DataImportMemberIntegrationEvent n) =>
+        TryCreateEmail(n.Email)
+        ?? Email.Create($"imported-{n.MemberNumber}-{n.GymId:N}@gymapp.local").Value;
+
+    private static Email? TryCreateEmail(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var emailResult = Email.Create(raw);
+        return emailResult.IsSuccess ? emailResult.Value : null;
+    }
+
+    private static Gender ParseGenderOrDefault(string? raw) =>
+        Enum.TryParse<Gender>(raw, ignoreCase: true, out var gender) ? gender : Gender.Male;
 }

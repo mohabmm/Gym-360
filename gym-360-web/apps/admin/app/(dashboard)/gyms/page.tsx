@@ -108,6 +108,47 @@ function FilterSelect({ value, onChange, allLabel, options }: {
   );
 }
 
+interface GymFilters {
+  status: string;
+  city: string;
+  plan: string;
+  dateRange: DateRange | null;
+}
+
+function matchesGymFilters(gym: GymListItem, filters: GymFilters): boolean {
+  return matches(filters.status, gym.status)
+    && matches(filters.city, gym.city)
+    && matches(filters.plan, gym.planName)
+    && inDateRange(gym.createdAt, filters.dateRange);
+}
+
+function GymsTableArea({ isError, isLoading, gyms, onRowClick }: {
+  isError: boolean;
+  isLoading: boolean;
+  gyms: GymListItem[];
+  onRowClick: (gym: GymListItem) => void;
+}) {
+  if (isError) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 dark:border-red-800 dark:bg-red-950/20">
+        <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
+        <p className="text-sm text-red-700 dark:text-red-400">Failed to load gyms. Please refresh the page.</p>
+      </div>
+    );
+  }
+  if (isLoading) return <TableSkeleton rows={8} columns={9} />;
+  return (
+    <DataTable
+      data={gyms}
+      columns={columns}
+      searchPlaceholder="Search gyms..."
+      searchColumn="name"
+      enableExport
+      onRowClick={onRowClick}
+    />
+  );
+}
+
 export default function GymsPage() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -130,10 +171,7 @@ export default function GymsPage() {
 
   const filteredGyms = useMemo(
     () => allGyms.filter((gym) =>
-      matches(statusFilter, gym.status)
-      && matches(cityFilter, gym.city)
-      && matches(planFilter, gym.planName)
-      && inDateRange(gym.createdAt, dateRange)),
+      matchesGymFilters(gym, { status: statusFilter, city: cityFilter, plan: planFilter, dateRange })),
     [allGyms, statusFilter, cityFilter, planFilter, dateRange],
   );
 
@@ -174,23 +212,12 @@ export default function GymsPage() {
         )}
       </div>
 
-      {isError ? (
-        <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 dark:border-red-800 dark:bg-red-950/20">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0" />
-          <p className="text-sm text-red-700 dark:text-red-400">Failed to load gyms. Please refresh the page.</p>
-        </div>
-      ) : isLoading ? (
-        <TableSkeleton rows={8} columns={9} />
-      ) : (
-        <DataTable
-          data={filteredGyms}
-          columns={columns}
-          searchPlaceholder="Search gyms..."
-          searchColumn="name"
-          enableExport
-          onRowClick={(gym) => router.push(`/gyms/${gym.id}`)}
-        />
-      )}
+      <GymsTableArea
+        isError={isError}
+        isLoading={isLoading}
+        gyms={filteredGyms}
+        onRowClick={(gym) => router.push(`/gyms/${gym.id}`)}
+      />
 
       <AddGymModal open={showAddModal} owners={owners} onClose={() => setShowAddModal(false)} />
     </div>

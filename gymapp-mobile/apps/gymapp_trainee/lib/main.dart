@@ -20,8 +20,26 @@ Future<void> main() async {
 
   await runWithTelemetry('gymapp-trainee', telemetry, () async {
     WidgetsFlutterBinding.ensureInitialized();
+    await _initializePlatform();
+    await telemetry.init();
 
-    // Load locale data for both UI languages so DateFormat('…', 'en') renders
+    runApp(
+      ProviderScope(
+        overrides: [
+          telemetryServiceProvider.overrideWithValue(telemetry),
+          // Override the core placeholder with the actual billing API implementation
+          planFeaturesProvider.overrideWith(_loadPlanFeatures),
+        ],
+        child: const GymAppTrainee(),
+      ),
+    );
+  });
+}
+
+/// Locale data, Firebase, Hive boxes and orientation — everything that must be
+/// ready before the first frame.
+Future<void> _initializePlatform() async {
+  // Load locale data for both UI languages so DateFormat('…', 'en') renders
   // Latin digits and English month names instead of falling back to the
   // device locale — fixes BUG-15 where the Next Session card showed Arabic
   // numerals / months while the rest of the UI was English.
@@ -56,64 +74,58 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+}
 
-  await telemetry.init();
+/// No active gym (newly registered user not yet linked to a gym): an empty
+/// plan so FeatureGate renders fallbacks instead of firing
+/// GYM_CONTEXT_REQUIRED 400s against the API.
+const _noGymPlan = PlanFeaturesModel(
+  gymId: '',
+  planCode: '',
+  planName: '',
+  memberLimit: 0,
+  trainerLimit: 0,
+  staffLimit: 0,
+  features: <PlanFeatureItemModel>[],
+);
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        telemetryServiceProvider.overrideWithValue(telemetry),
-        // Override the core placeholder with the actual billing API implementation
-        planFeaturesProvider.overrideWith(
-          (ref) async {
-            final apiClient = ref.watch(apiClientProvider);
-            final authState = ref.watch(authProvider);
-            if (authState.valueOrNull?.status != AuthStatus.authenticated) {
-              throw Exception('Not authenticated');
-            }
-            // No active gym (newly registered user not yet linked to a gym):
-            // return an empty plan so FeatureGate renders fallbacks instead of
-            // firing GYM_CONTEXT_REQUIRED 400s against the API.
-            final gymId = authState.valueOrNull?.currentGymId;
-            if (gymId == null || gymId.isEmpty) {
-              return const PlanFeaturesModel(
-                gymId: '',
-                planCode: '',
-                planName: '',
-                memberLimit: 0,
-                trainerLimit: 0,
-                staffLimit: 0,
-                features: <PlanFeatureItemModel>[],
-              );
-            }
-            // Try cache first
-            final planBox = Hive.box(StorageKeys.planFeaturesBox);
-            final cachedJson = planBox.get(StorageKeys.cachedPlanFeatures);
-            if (cachedJson != null) {
-              try {
-                return PlanFeaturesModel.fromJson(
-                    Map<String, dynamic>.from(cachedJson as Map));
-              } catch (_) {}
-            }
-            // Pass gymId explicitly as a query param. The GymIdInterceptor
-            // also sets the X-Gym-Id header, but sending both makes this
-            // resilient to header drops on proxies / stale BE builds that
-            // still require the query param.
-            final features = await apiClient.get<PlanFeaturesModel>(
-              ApiEndpoints.planFeatures,
-              queryParameters: {'gymId': gymId},
-              parser: (data) =>
-                  PlanFeaturesModel.fromJson(data as Map<String, dynamic>),
-            );
-            await planBox.put(StorageKeys.cachedPlanFeatures, features.toJson());
-            return features;
-          },
-        ),
-      ],
-      child: const GymAppTrainee(),
-    ),
+/// Plan features for the active gym: Hive cache first, then the billing API.
+Future<PlanFeaturesModel> _loadPlanFeatures(Ref ref) async {
+  final apiClient = ref.watch(apiClientProvider);
+  final authState = ref.watch(authProvider);
+  if (authState.valueOrNull?.status != AuthStatus.authenticated) {
+    throw Exception('Not authenticated');
+  }
+  final gymId = authState.valueOrNull?.currentGymId;
+  if (gymId == null || gymId.isEmpty) return _noGymPlan;
+
+  // Try cache first
+  final planBox = Hive.box(StorageKeys.planFeaturesBox);
+  final cached = _cachedPlanFeatures(planBox);
+  if (cached != null) return cached;
+
+  // Pass gymId explicitly as a query param. The GymIdInterceptor
+  // also sets the X-Gym-Id header, but sending both makes this
+  // resilient to header drops on proxies / stale BE builds that
+  // still require the query param.
+  final features = await apiClient.get<PlanFeaturesModel>(
+    ApiEndpoints.planFeatures,
+    queryParameters: {'gymId': gymId},
+    parser: (data) => PlanFeaturesModel.fromJson(data as Map<String, dynamic>),
   );
-  });
+  await planBox.put(StorageKeys.cachedPlanFeatures, features.toJson());
+  return features;
+}
+
+PlanFeaturesModel? _cachedPlanFeatures(Box<dynamic> planBox) {
+  final cachedJson = planBox.get(StorageKeys.cachedPlanFeatures);
+  if (cachedJson == null) return null;
+  try {
+    return PlanFeaturesModel.fromJson(
+        Map<String, dynamic>.from(cachedJson as Map));
+  } catch (_) {
+    return null;
+  }
 }
 
 class GymAppTrainee extends ConsumerWidget {

@@ -73,7 +73,7 @@ class _SessionPoliciesScreenState extends ConsumerState<SessionPoliciesScreen> {
       final gymId = ref.read(currentGymIdProvider);
 
       await apiClient.put<void>(
-        ApiEndpoints.gymSessionPolicy(gymId),
+        ApiEndpoints.gymSessionPolicy(GymId(gymId)),
         data: {
           'cancellationWindowHours': cancelWindow,
           'noshowThreshold': threshold,

@@ -38,10 +38,15 @@ class AvailabilityParser {
     if (value is! String) return null;
     final parts = value.split(':');
     if (parts.length < 2) return null;
-    final h = int.tryParse(parts[0]);
-    final m = int.tryParse(parts[1]);
+    final h = _parseInRange(parts[0], 23);
+    final m = _parseInRange(parts[1], 59);
     if (h == null || m == null) return null;
-    if (h < 0 || h > 23 || m < 0 || m > 59) return null;
     return TimeOfDay(hour: h, minute: m);
+  }
+
+  /// Parses [part] as an int in `0..max`, or null when malformed/out of range.
+  static int? _parseInRange(String part, int max) {
+    final v = int.tryParse(part);
+    return (v != null && v >= 0 && v <= max) ? v : null;
   }
 }

@@ -16,19 +16,24 @@ public sealed class JwtOptions
     public int RefreshTokenExpirationDays { get; init; } = 30;
 }
 
+/// <summary>
+/// The identity and scope claims carried by an access token. Optional claims are
+/// omitted from the token when null/empty.
+/// </summary>
+public sealed record AccessTokenClaims(Guid UserId, string Email, string Role)
+{
+    public Guid? GymId { get; init; }
+    public string? StaffRole { get; init; }
+    public string? AdminRole { get; init; }
+    public string? PrincipalType { get; init; }
+    public Guid? OwnerId { get; init; }
+    public string? SchemaPrefix { get; init; }
+    public string? StaffSubRole { get; init; }
+}
+
 public interface IJwtTokenService
 {
-    string GenerateAccessToken(
-        Guid userId,
-        string email,
-        string role,
-        Guid? gymId = null,
-        string? staffRole = null,
-        string? adminRole = null,
-        string? principalType = null,
-        Guid? ownerId = null,
-        string? schemaPrefix = null,
-        string? staffSubRole = null);
+    string GenerateAccessToken(AccessTokenClaims claims);
 
     string GenerateRefreshToken();
     ClaimsPrincipal? ValidateToken(string token);
@@ -43,46 +48,9 @@ public sealed class JwtTokenService : IJwtTokenService
         _options = options.Value;
     }
 
-    public string GenerateAccessToken(
-        Guid userId,
-        string email,
-        string role,
-        Guid? gymId = null,
-        string? staffRole = null,
-        string? adminRole = null,
-        string? principalType = null,
-        Guid? ownerId = null,
-        string? schemaPrefix = null,
-        string? staffSubRole = null)
+    public string GenerateAccessToken(AccessTokenClaims claims)
     {
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new(JwtRegisteredClaimNames.Email, email),
-            new("role", role),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-
-        if (gymId.HasValue)
-            claims.Add(new Claim("gymId", gymId.Value.ToString()));
-
-        if (!string.IsNullOrEmpty(staffRole))
-            claims.Add(new Claim("staffRole", staffRole));
-
-        if (!string.IsNullOrEmpty(adminRole))
-            claims.Add(new Claim("adminRole", adminRole));
-
-        if (!string.IsNullOrEmpty(principalType))
-            claims.Add(new Claim("principalType", principalType));
-
-        if (ownerId.HasValue)
-            claims.Add(new Claim("ownerId", ownerId.Value.ToString()));
-
-        if (!string.IsNullOrEmpty(schemaPrefix))
-            claims.Add(new Claim("schemaPrefix", schemaPrefix));
-
-        if (!string.IsNullOrEmpty(staffSubRole))
-            claims.Add(new Claim("staffSubRole", staffSubRole));
+        var tokenClaims = BuildClaims(claims);
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -90,11 +58,38 @@ public sealed class JwtTokenService : IJwtTokenService
         var token = new JwtSecurityToken(
             issuer: _options.Issuer,
             audience: _options.Audience,
-            claims: claims,
+            claims: tokenClaims,
             expires: DateTime.UtcNow.AddMinutes(_options.AccessTokenExpirationMinutes),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static List<Claim> BuildClaims(AccessTokenClaims claims)
+    {
+        var tokenClaims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, claims.UserId.ToString()),
+            new(JwtRegisteredClaimNames.Email, claims.Email),
+            new("role", claims.Role),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        AddIfPresent(tokenClaims, "gymId", claims.GymId?.ToString());
+        AddIfPresent(tokenClaims, "staffRole", claims.StaffRole);
+        AddIfPresent(tokenClaims, "adminRole", claims.AdminRole);
+        AddIfPresent(tokenClaims, "principalType", claims.PrincipalType);
+        AddIfPresent(tokenClaims, "ownerId", claims.OwnerId?.ToString());
+        AddIfPresent(tokenClaims, "schemaPrefix", claims.SchemaPrefix);
+        AddIfPresent(tokenClaims, "staffSubRole", claims.StaffSubRole);
+
+        return tokenClaims;
+    }
+
+    private static void AddIfPresent(List<Claim> claims, string type, string? value)
+    {
+        if (!string.IsNullOrEmpty(value))
+            claims.Add(new Claim(type, value));
     }
 
     public string GenerateRefreshToken()

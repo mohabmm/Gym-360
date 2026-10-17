@@ -21,6 +21,24 @@ type CheckInPayload = {
   staffId?: string;
 };
 
+type MemberLike = { id: string; name: string; phone?: string; status: string };
+
+// Search by name substring, exact member id, or phone suffix (q is already lower-cased).
+function matchesMemberQuery(m: MemberLike, q: string) {
+  return (m.name ?? '').toLowerCase().includes(q) || m.id.toLowerCase() === q || !!m.phone?.endsWith(q);
+}
+
+// Flash message explaining why a manual check-in cannot proceed, or null when it can.
+function manualCheckInBlocker(found: MemberLike | undefined, query: string): string | null {
+  if (!found) return `No match for "${query}".`;
+  if (found.status !== 'active') return `${found.name} — membership is ${found.status}.`;
+  return null;
+}
+
+function checkInErrorMessage(err: unknown, fallback: string) {
+  return (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ?? fallback;
+}
+
 export default function CheckInsPage() {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;
@@ -76,9 +94,7 @@ export default function CheckInsPage() {
       setNumpadError(null);
       setNumpadOpen(false);
     } catch (err) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
-        'Check-in failed.';
+      const msg = checkInErrorMessage(err, 'Check-in failed.');
       setNumpadError(msg);
     }
   };
@@ -95,15 +111,10 @@ export default function CheckInsPage() {
   const manualSubmit = async () => {
     const q = manualQuery.trim().toLowerCase();
     if (!q) return;
-    const found = members.find(
-      (m) => m.name.toLowerCase().includes(q) || m.id.toLowerCase() === q || m.phone?.endsWith(q),
-    );
-    if (!found) {
-      showFlash(`No match for "${manualQuery}".`);
-      return;
-    }
-    if (found.status !== 'active') {
-      showFlash(`${found.name} — membership is ${found.status}.`);
+    const found = members.find((m) => matchesMemberQuery(m, q));
+    const blocker = manualCheckInBlocker(found, manualQuery);
+    if (blocker || !found) {
+      showFlash(blocker!);
       return;
     }
     try {
@@ -116,9 +127,7 @@ export default function CheckInsPage() {
       setManualQuery('');
       setShowManualCheckIn(false);
     } catch (err) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
-        'Check-in failed.';
+      const msg = checkInErrorMessage(err, 'Check-in failed.');
       showFlash(msg);
     }
   };
@@ -138,9 +147,7 @@ export default function CheckInsPage() {
       showFlash(`Checked in via QR.`);
       setQrOpen(false);
     } catch (err) {
-      const msg =
-        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message ??
-        'QR check-in failed.';
+      const msg = checkInErrorMessage(err, 'QR check-in failed.');
       setQrError(msg);
     }
   };
@@ -249,11 +256,7 @@ export default function CheckInsPage() {
               />
               {manualQuery.trim().length > 0 && (() => {
                 const q = manualQuery.trim().toLowerCase();
-                const filtered = members.filter((m) =>
-                  (m.name ?? '').toLowerCase().includes(q) ||
-                  m.id.toLowerCase() === q ||
-                  m.phone?.endsWith(q)
-                ).slice(0, 5);
+                const filtered = members.filter((m) => matchesMemberQuery(m, q)).slice(0, 5);
                 return filtered.length > 0 ? (
                   <ul className="absolute z-10 top-full left-0 right-0 mt-1 rounded-lg border bg-card shadow-lg divide-y">
                     {filtered.map((m) => (

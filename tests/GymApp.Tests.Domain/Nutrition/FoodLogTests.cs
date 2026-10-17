@@ -16,10 +16,20 @@ public sealed class FoodLogTests
     {
         return new List<FoodItem>
         {
-            new("Foul Medames", 200, "g", 250, 15, 30, 5),
-            new("Baladi Bread", 100, "g", 280, 8, 55, 2)
+            new() { Name = "Foul Medames", Quantity = 200, Unit = "g", Calories = 250, Protein = 15, Carbs = 30, Fat = 5 },
+            new() { Name = "Baladi Bread", Quantity = 100, Unit = "g", Calories = 280, Protein = 8, Carbs = 55, Fat = 2 }
         };
     }
+
+    private static List<FoodItem> EggsBreakfast() => new()
+    {
+        new() { Name = "Eggs", Quantity = 150, Unit = "g", Calories = 220, Protein = 18, Carbs = 1, Fat = 15 }
+    };
+
+    private static List<FoodItem> ChickenLunch() => new()
+    {
+        new() { Name = "Chicken", Quantity = 200, Unit = "g", Calories = 330, Protein = 40, Carbs = 0, Fat = 14 }
+    };
 
     [Fact]
     public void Create_ShouldSetPropertiesCorrectly()
@@ -73,14 +83,8 @@ public sealed class FoodLogTests
     {
         var log = CreateDefaultFoodLog();
 
-        log.AddMeal(MealType.Breakfast, new List<FoodItem>
-        {
-            new("Eggs", 150, "g", 220, 18, 1, 15)
-        });
-        log.AddMeal(MealType.Lunch, new List<FoodItem>
-        {
-            new("Chicken", 200, "g", 330, 40, 0, 14)
-        });
+        log.AddMeal(MealType.Breakfast, EggsBreakfast());
+        log.AddMeal(MealType.Lunch, ChickenLunch());
 
         log.Meals.Should().HaveCount(2);
         log.DailyTotals.TotalCalories.Should().Be(550);
@@ -91,14 +95,8 @@ public sealed class FoodLogTests
     public void RemoveMeal_ExistingMeal_ShouldRemoveAndRecalculate()
     {
         var log = CreateDefaultFoodLog();
-        var meal1 = log.AddMeal(MealType.Breakfast, new List<FoodItem>
-        {
-            new("Eggs", 150, "g", 220, 18, 1, 15)
-        });
-        log.AddMeal(MealType.Lunch, new List<FoodItem>
-        {
-            new("Chicken", 200, "g", 330, 40, 0, 14)
-        });
+        var meal1 = log.AddMeal(MealType.Breakfast, EggsBreakfast());
+        log.AddMeal(MealType.Lunch, ChickenLunch());
 
         var result = log.RemoveMeal(meal1.Id);
 
@@ -123,7 +121,7 @@ public sealed class FoodLogTests
         var log = CreateDefaultFoodLog();
         var meal = log.AddMeal(MealType.Snack, new List<FoodItem>
         {
-            new("Apple", 150, "g", 80, 0.4m, 21, 0.2m)
+            new() { Name = "Apple", Quantity = 150, Unit = "g", Calories = 80, Protein = 0.4m, Carbs = 21, Fat = 0.2m }
         });
 
         log.RemoveMeal(meal.Id);
@@ -152,7 +150,7 @@ public sealed class FoodLogTests
         var log = CreateDefaultFoodLog();
         var meal = log.AddMeal(MealType.Snack, new List<FoodItem>
         {
-            new("Apple", 150, "g", 80, 0.4m, 21, 0.2m)
+            new() { Name = "Apple", Quantity = 150, Unit = "g", Calories = 80, Protein = 0.4m, Carbs = 21, Fat = 0.2m }
         });
 
         var result = log.RemoveFoodItem(meal.Id, 0);

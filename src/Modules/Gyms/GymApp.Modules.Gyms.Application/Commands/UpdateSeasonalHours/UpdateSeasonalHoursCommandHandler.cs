@@ -4,7 +4,6 @@ using GymApp.Modules.Gyms.Application.Abstractions;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Errors;
 using GymApp.Modules.Gyms.Domain.Repositories;
-using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Commands.UpdateSeasonalHours;
 
@@ -36,29 +35,11 @@ internal sealed class UpdateSeasonalHoursCommandHandler : ICommandHandler<Update
 
         foreach (var input in request.Overrides)
         {
-            if (!DateOnly.TryParse(input.StartDate, out var start))
-                return Result.Failure(new Error("Gyms.InvalidDate", $"Invalid start date: {input.StartDate}"));
-            if (!DateOnly.TryParse(input.EndDate, out var end))
-                return Result.Failure(new Error("Gyms.InvalidDate", $"Invalid end date: {input.EndDate}"));
-            if (end < start)
-                return Result.Failure(new Error("Gyms.InvalidDateRange", "End date must be on or after start date."));
+            var details = SeasonalOverrideParser.Parse(input);
+            if (details.IsFailure)
+                return Result.Failure(details.Error);
 
-            var schedules = new List<DaySchedule>();
-            if (input.DaySchedules is not null)
-            {
-                foreach (var ds in input.DaySchedules)
-                {
-                    if (!Enum.TryParse<DayOfWeek>(ds.DayOfWeek, ignoreCase: true, out var day))
-                        return Result.Failure(new Error("Gyms.InvalidDayOfWeek", $"Invalid day: {ds.DayOfWeek}"));
-                    if (!TimeOnly.TryParse(ds.OpenTime, out var open))
-                        return Result.Failure(new Error("Gyms.InvalidTime", $"Invalid open: {ds.OpenTime}"));
-                    if (!TimeOnly.TryParse(ds.CloseTime, out var close))
-                        return Result.Failure(new Error("Gyms.InvalidTime", $"Invalid close: {ds.CloseTime}"));
-                    schedules.Add(new DaySchedule(day, open, close, ds.IsClosed));
-                }
-            }
-
-            var entity = GymSeasonalHours.Create(request.GymId, input.Name, start, end, schedules);
+            var entity = GymSeasonalHours.Create(request.GymId, details.Value);
             if (!input.IsActive) entity.Deactivate();
             await _seasonalRepository.AddAsync(entity, cancellationToken);
         }

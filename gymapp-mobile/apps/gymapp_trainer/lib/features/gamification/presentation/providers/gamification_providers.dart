@@ -12,7 +12,7 @@ final myRatingsSummaryProvider =
   if (gymId == null || trainerId == null) return const {};
 
   return apiClient.get<Map<String, dynamic>>(
-    ApiEndpoints.trainerPublicProfile(trainerId),
+    ApiEndpoints.trainerPublicProfile(TrainerId(trainerId)),
     queryParameters: {'gymId': gymId},
     parser: (data) => data is Map<String, dynamic> ? data : {},
   );
@@ -30,7 +30,7 @@ final myTestimonialsProvider =
   if (auth.user == null || gymId == null) return [];
 
   final profile = await apiClient.get<Map<String, dynamic>>(
-    ApiEndpoints.trainerPublicProfile(auth.user!.id),
+    ApiEndpoints.trainerPublicProfile(TrainerId(auth.user!.id)),
     queryParameters: {'gymId': gymId},
     parser: (data) => data is Map<String, dynamic> ? data : {},
   );

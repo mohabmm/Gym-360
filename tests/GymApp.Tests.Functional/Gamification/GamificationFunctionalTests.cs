@@ -9,18 +9,26 @@ public sealed class GamificationFunctionalTests : BaseFunctionalTest
     public GamificationFunctionalTests(FunctionalTestWebAppFactory factory)
         : base(factory) { }
 
+    private const string RatingsUrl = "api/v1/gamification/trainer-ratings";
+
+    private static object UncommentedRating(int stars) => new
+    {
+        GymId = Guid.NewGuid(),
+        TrainerId = Guid.NewGuid(),
+        ClientId = Guid.NewGuid(),
+        SessionId = Guid.NewGuid(),
+        Stars = stars
+    };
+
     #region POST /api/v1/gamification/trainer-ratings
 
     [Fact]
     public async Task SubmitRating_AsTrainee_ProcessesRequest()
     {
-        // Arrange
         var clientId = Guid.NewGuid();
         var gymId = Guid.NewGuid();
-        var client = CreateTraineeClient(clientId, gymId);
 
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/gamification/trainer-ratings", new
+        AssertAuthenticated(await CreateTraineeClient(clientId, gymId).PostAsJsonAsync(RatingsUrl, new
         {
             GymId = gymId,
             TrainerId = Guid.NewGuid(),
@@ -28,48 +36,20 @@ public sealed class GamificationFunctionalTests : BaseFunctionalTest
             SessionId = Guid.NewGuid(),
             Stars = 5,
             Comment = "Amazing trainer!"
-        });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        }));
     }
 
     [Fact]
-    public async Task SubmitRating_InvalidStars_Returns400()
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/gamification/trainer-ratings", new
-        {
-            GymId = Guid.NewGuid(),
-            TrainerId = Guid.NewGuid(),
-            ClientId = Guid.NewGuid(),
-            SessionId = Guid.NewGuid(),
-            Stars = 0 // Invalid
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.BadRequest);
-    }
+    public async Task SubmitRating_InvalidStars_Returns400() =>
+        AssertStatusCode(
+            await CreateTraineeClient().PostAsJsonAsync(RatingsUrl, UncommentedRating(stars: 0)), // Invalid
+            HttpStatusCode.BadRequest);
 
     [Fact]
-    public async Task SubmitRating_NoToken_Returns401()
-    {
-        // Act
-        var response = await AnonymousClient.PostAsJsonAsync("api/v1/gamification/trainer-ratings", new
-        {
-            GymId = Guid.NewGuid(),
-            TrainerId = Guid.NewGuid(),
-            ClientId = Guid.NewGuid(),
-            SessionId = Guid.NewGuid(),
-            Stars = 4
-        });
-
-        // Assert
-        AssertStatusCode(response, HttpStatusCode.Unauthorized);
-    }
+    public async Task SubmitRating_NoToken_Returns401() =>
+        AssertStatusCode(
+            await AnonymousClient.PostAsJsonAsync(RatingsUrl, UncommentedRating(stars: 4)),
+            HttpStatusCode.Unauthorized);
 
     [Theory]
     [InlineData(1)]
@@ -77,13 +57,8 @@ public sealed class GamificationFunctionalTests : BaseFunctionalTest
     [InlineData(3)]
     [InlineData(4)]
     [InlineData(5)]
-    public async Task SubmitRating_ValidStarValues_ProcessesRequest(int stars)
-    {
-        // Arrange
-        var client = CreateTraineeClient();
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/gamification/trainer-ratings", new
+    public async Task SubmitRating_ValidStarValues_ProcessesRequest(int stars) =>
+        AssertAuthenticated(await CreateTraineeClient().PostAsJsonAsync(RatingsUrl, new
         {
             GymId = Guid.NewGuid(),
             TrainerId = Guid.NewGuid(),
@@ -91,11 +66,7 @@ public sealed class GamificationFunctionalTests : BaseFunctionalTest
             SessionId = Guid.NewGuid(),
             Stars = stars,
             Comment = $"Rating of {stars} stars"
-        });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+        }));
 
     #endregion
 

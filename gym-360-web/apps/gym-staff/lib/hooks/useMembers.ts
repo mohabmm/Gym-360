@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
 import type { MemberListItem } from '@gym360/ui';
+import { useGymId, useGymScope, type GymScope } from './query-helpers';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normaliseMember(m: any): MemberListItem {
@@ -27,11 +27,6 @@ function normaliseMember(m: any): MemberListItem {
     lastCheckIn: m.lastCheckIn ?? undefined,
     avatarUrl: m.profilePhotoUrl ?? undefined,
   };
-}
-
-function useGymId() {
-  const { data: session } = useSession();
-  return session?.user?.gymId;
 }
 
 // Refresh the member list and the member's own detail query.
@@ -288,15 +283,22 @@ function invalidateAfterQuickAssign(qc: QueryClient, gymId: string | undefined, 
  * SessionPackage that downstream apps (trainer roster, scheduling, billing)
  * read to surface the trainer-member relationship.
  */
+export interface QuickAssignInput {
+  memberId: string; trainerId: string; sessionCount: number; totalPrice?: number; paymentMethod?: string;
+}
+
+function requireGymAndUser({ gymId, userId }: GymScope) {
+  if (!gymId) throw new Error('No gym selected.');
+  if (!userId) throw new Error('No active session.');
+  return { gymId, userId };
+}
+
 export function useQuickAssignTrainer() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const userId = session?.user?.id;
+  const scope = useGymScope();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { memberId: string; trainerId: string; sessionCount: number; totalPrice?: number; paymentMethod?: string }) => {
-      if (!gymId) throw new Error('No gym selected.');
-      if (!userId) throw new Error('No active session.');
+    mutationFn: async (data: QuickAssignInput) => {
+      const { gymId, userId } = requireGymAndUser(scope);
       const res = await apiClient.post('/billing/packages/quick-assign', {
         gymId,
         trainerId: data.trainerId,
@@ -308,7 +310,7 @@ export function useQuickAssignTrainer() {
       });
       return res.data;
     },
-    onSuccess: (_, vars) => invalidateAfterQuickAssign(qc, gymId, vars.memberId),
+    onSuccess: (_, vars) => invalidateAfterQuickAssign(qc, scope.gymId, vars.memberId),
   });
 }
 

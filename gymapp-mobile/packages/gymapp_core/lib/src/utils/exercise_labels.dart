@@ -1,4 +1,5 @@
 import '../models/exercise_model.dart';
+import '../types/app_language.dart';
 
 /// Display labels for the exercise library's backend enums (muscle group,
 /// equipment, category) and locale-aware exercise names.
@@ -47,29 +48,29 @@ class ExerciseLabels {
     'none': 'No equipment',
   };
 
-  static String muscleGroup(String value, {required bool isArabic}) =>
-      _label(value, _muscleGroupsAr, isArabic);
+  static String muscleGroup(String value, {required AppLanguage language}) =>
+      _label(value, _muscleGroupsAr, language);
 
-  static String equipment(String value, {required bool isArabic}) =>
-      _label(value, _equipmentAr, isArabic);
+  static String equipment(String value, {required AppLanguage language}) =>
+      _label(value, _equipmentAr, language);
 
-  static String category(String value, {required bool isArabic}) =>
-      _label(value, _categoriesAr, isArabic);
+  static String category(String value, {required AppLanguage language}) =>
+      _label(value, _categoriesAr, language);
 
   /// Comma-separated muscle groups, e.g. "الصدر، الترايسبس".
   static String muscleGroups(
     Iterable<String> values, {
-    required bool isArabic,
+    required AppLanguage language,
   }) =>
       values
-          .map((v) => muscleGroup(v, isArabic: isArabic))
-          .join(isArabic ? '، ' : ', ');
+          .map((v) => muscleGroup(v, language: language))
+          .join(language.listSeparator);
 
   /// Exercise name for the current locale: Arabic when available in the
   /// Arabic UI, otherwise the English name.
-  static String name(ExerciseModel exercise, {required bool isArabic}) {
+  static String name(ExerciseModel exercise, {required AppLanguage language}) {
     final arabic = exercise.nameAr;
-    return isArabic && arabic != null && arabic.trim().isNotEmpty
+    return language.isArabic && arabic != null && arabic.trim().isNotEmpty
         ? arabic
         : exercise.name;
   }
@@ -84,15 +85,20 @@ class ExerciseLabels {
     if (exercise.nameAr?.toLowerCase().contains(q) ?? false) return true;
     for (final group in exercise.muscleGroups) {
       if (group.toLowerCase().contains(q)) return true;
-      if (muscleGroup(group, isArabic: true).contains(q)) return true;
+      if (muscleGroup(group, language: AppLanguage.arabic).contains(q))
+        return true;
     }
     return false;
   }
 
-  static String _label(String value, Map<String, String> arabic, bool isArabic) {
+  static String _label(
+    String value,
+    Map<String, String> arabic,
+    AppLanguage language,
+  ) {
     final key = value.trim().toLowerCase();
     if (key.isEmpty) return value;
-    if (isArabic) return arabic[key] ?? value;
+    if (language.isArabic) return arabic[key] ?? value;
     return _englishOverrides[key] ?? value;
   }
 }

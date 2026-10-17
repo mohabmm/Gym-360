@@ -52,7 +52,7 @@ class _AddStaffScreenState extends ConsumerState<AddStaffScreen> {
       );
 
       await apiClient.post<void>(
-        ApiEndpoints.gymStaff(gymId),
+        ApiEndpoints.gymStaff(GymId(gymId)),
         data: {'userId': userId, 'role': _role},
         parser: (_) {},
       );

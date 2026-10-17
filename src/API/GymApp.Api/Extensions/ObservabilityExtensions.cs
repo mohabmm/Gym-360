@@ -88,13 +88,15 @@ internal sealed class SignozDbSemconvCompatProcessor : BaseProcessor<Activity>
         if (activity.GetTagItem("db.system") is null)
             activity.SetTag("db.system", system == "microsoft.sql_server" ? "mssql" : system);
 
-        if (activity.GetTagItem("db.name") is null && activity.GetTagItem("db.namespace") is { } ns)
-            activity.SetTag("db.name", ns);
+        BackfillLegacyTag(activity, legacyKey: "db.name", stableKey: "db.namespace");
+        BackfillLegacyTag(activity, legacyKey: "db.statement", stableKey: "db.query.text");
+        BackfillLegacyTag(activity, legacyKey: "db.operation", stableKey: "db.operation.name");
+    }
 
-        if (activity.GetTagItem("db.statement") is null && activity.GetTagItem("db.query.text") is { } text)
-            activity.SetTag("db.statement", text);
-
-        if (activity.GetTagItem("db.operation") is null && activity.GetTagItem("db.operation.name") is { } op)
-            activity.SetTag("db.operation", op);
+    // Copies the stable attribute into the legacy key when only the stable one is present.
+    private static void BackfillLegacyTag(Activity activity, string legacyKey, string stableKey)
+    {
+        if (activity.GetTagItem(legacyKey) is null && activity.GetTagItem(stableKey) is { } value)
+            activity.SetTag(legacyKey, value);
     }
 }

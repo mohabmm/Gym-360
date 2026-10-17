@@ -2,6 +2,7 @@ using GymApp.Modules.Gamification.Domain.Entities;
 using GymApp.Modules.Gamification.Domain.Repositories;
 using GymApp.Modules.Gamification.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Infrastructure.Repositories;
 
@@ -24,16 +25,15 @@ internal sealed class TrainerRatingRepository : ITrainerRatingRepository
     public async Task<IReadOnlyList<TrainerRating>> GetByTrainerAsync(
         Guid gymId,
         Guid trainerId,
-        DateTime fromDate,
-        DateTime toDate,
+        DateTimeRange range,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TrainerRatings
             .AsNoTracking()
             .Where(tr => tr.GymId == gymId
                 && tr.TrainerId == trainerId
-                && tr.CreatedAt >= fromDate
-                && tr.CreatedAt <= toDate)
+                && tr.CreatedAt >= range.From
+                && tr.CreatedAt <= range.To)
             .OrderByDescending(tr => tr.CreatedAt)
             .ToListAsync(cancellationToken);
     }

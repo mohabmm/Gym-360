@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Modules.Billing.Domain.Entities;
 
@@ -14,22 +15,17 @@ public sealed class Feature : Entity
     public int SortOrder { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    public static Feature Create(
-        string code,
-        string name,
-        string? description = null,
-        string? category = null,
-        int sortOrder = 0)
+    public static Feature Create(FeatureDetails details)
     {
         return new Feature
         {
             Id = Guid.NewGuid(),
-            Code = code,
-            Name = name,
-            Description = description,
-            Category = category,
+            Code = details.Code,
+            Name = details.Name,
+            Description = details.Description,
+            Category = details.Category,
             IsActive = true,
-            SortOrder = sortOrder,
+            SortOrder = details.SortOrder,
             CreatedAt = DateTime.UtcNow
         };
     }

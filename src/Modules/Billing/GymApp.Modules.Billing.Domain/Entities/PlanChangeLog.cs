@@ -1,4 +1,5 @@
 using GymApp.Common.Domain;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 
 namespace GymApp.Modules.Billing.Domain.Entities;
 
@@ -16,27 +17,19 @@ public sealed class PlanChangeLog : Entity
     public Guid ChangedBy { get; private set; }
     public DateTime ChangedAt { get; private set; }
 
-    public static PlanChangeLog Create(
-        string changeType,
-        Guid changedBy,
-        Guid? gymId = null,
-        string? entityType = null,
-        Guid? entityId = null,
-        string? oldValue = null,
-        string? newValue = null,
-        string? reason = null)
+    public static PlanChangeLog Create(PlanChangeLogDetails details)
     {
         return new PlanChangeLog
         {
             Id = Guid.NewGuid(),
-            GymId = gymId,
-            ChangeType = changeType,
-            EntityType = entityType,
-            EntityId = entityId,
-            OldValue = oldValue,
-            NewValue = newValue,
-            Reason = reason,
-            ChangedBy = changedBy,
+            GymId = details.GymId,
+            ChangeType = details.ChangeType,
+            EntityType = details.EntityType,
+            EntityId = details.EntityId,
+            OldValue = details.OldValue,
+            NewValue = details.NewValue,
+            Reason = details.Reason,
+            ChangedBy = details.ChangedBy,
             ChangedAt = DateTime.UtcNow
         };
     }

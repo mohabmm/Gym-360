@@ -2,6 +2,7 @@ using GymApp.Modules.Gyms.Shared;
 using GymApp.Modules.Gyms.Domain.Enums;
 using GymApp.Modules.Gyms.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Infrastructure.Services;
 
@@ -23,7 +24,7 @@ internal sealed class GymMembershipChecker : IGymMembershipChecker
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
 
-        return gym is not null && gym.MemberIds.Contains(userId);
+        return gym is not null && gym.MemberIds.Contains(new MemberId(userId));
     }
 
     public async Task<bool> IsGymSuspendedAsync(
@@ -57,6 +58,6 @@ internal sealed class GymMembershipChecker : IGymMembershipChecker
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == gymId, cancellationToken);
 
-        return gym is null ? Array.Empty<Guid>() : gym.MemberIds.ToArray();
+        return gym is null ? Array.Empty<Guid>() : gym.MemberIds.Select(id => id.Value).ToArray();
     }
 }

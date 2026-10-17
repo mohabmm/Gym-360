@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Errors;
+using GymApp.Modules.Gyms.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gyms.Application.Queries.GetGymClassById;
 
@@ -17,7 +18,7 @@ internal sealed class GetGymClassByIdQueryHandler : IQueryHandler<GetGymClassByI
 
     public async Task<Result<GymClassDto>> Handle(GetGymClassByIdQuery request, CancellationToken cancellationToken)
     {
-        var gymClass = await _gymQueryService.GetClassByIdAsync(request.GymId, request.ClassId, cancellationToken);
+        var gymClass = await _gymQueryService.GetClassByIdAsync(new GymId(request.GymId), request.ClassId, cancellationToken);
 
         if (gymClass is null)
             return Result.Failure<GymClassDto>(GymErrors.ClassNotFound);

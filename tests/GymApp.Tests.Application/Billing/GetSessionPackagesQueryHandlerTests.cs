@@ -21,16 +21,18 @@ public class GetSessionPackagesQueryHandlerTests
     }
 
     private SessionPackage Package(Guid? trainerId = null, Guid? memberId = null) =>
-        SessionPackage.Create(
-            _gymId,
-            trainerId ?? Guid.NewGuid(),
-            memberId ?? Guid.NewGuid(),
-            templateId: Guid.NewGuid(),
-            name: "10 Sessions",
-            totalSessions: 10,
-            pricePerSession: Money.Create(500m),
-            totalPrice: Money.Create(5000m),
-            assignedBy: Guid.NewGuid());
+        SessionPackage.Create(new SessionPackageDetails
+        {
+            GymId = _gymId,
+            TrainerId = trainerId ?? Guid.NewGuid(),
+            MemberId = memberId ?? Guid.NewGuid(),
+            TemplateId = Guid.NewGuid(),
+            Name = "10 Sessions",
+            TotalSessions = 10,
+            PricePerSession = Money.Create(500m),
+            TotalPrice = Money.Create(5000m),
+            AssignedBy = Guid.NewGuid()
+        });
 
     [Fact]
     public async Task Handle_WithoutMemberOrTrainer_ReturnsEveryPackageInTheGym()

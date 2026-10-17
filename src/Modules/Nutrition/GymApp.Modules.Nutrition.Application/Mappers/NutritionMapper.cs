@@ -49,29 +49,24 @@ internal static class NutritionMapper
             plan.Name,
             plan.Description,
             plan.DailyCalorieTarget,
-            new MacroTargetsDto(
-                plan.MacroTargets.ProteinGrams,
-                plan.MacroTargets.CarbsGrams,
-                plan.MacroTargets.FatGrams),
+            ToMacroTargetsDto(plan.MacroTargets),
             plan.IsTemplate,
             plan.CreatedAt);
 
-    public static MealPlanDetailDto ToMealPlanDetailDto(MealPlan plan) =>
-        new(
-            plan.Id,
-            plan.TrainerId,
-            plan.ClientId,
-            plan.Name,
-            plan.Description,
-            plan.DailyCalorieTarget,
-            new MacroTargetsDto(
-                plan.MacroTargets.ProteinGrams,
-                plan.MacroTargets.CarbsGrams,
-                plan.MacroTargets.FatGrams),
-            plan.IsTemplate,
-            plan.CreatedAt,
+    public static MealPlanDetailDto ToMealPlanDetailDto(MealPlan plan)
+    {
+        // Detail = summary fields + update timestamp + days.
+        var (id, trainerId, clientId, name, description, dailyCalorieTarget, macroTargets, isTemplate, createdAt) =
+            ToMealPlanDto(plan);
+
+        return new(
+            id, trainerId, clientId, name, description, dailyCalorieTarget, macroTargets, isTemplate, createdAt,
             plan.UpdatedAt,
             plan.Days.Select(ToMealPlanDayDto).ToList());
+    }
+
+    public static MacroTargetsDto ToMacroTargetsDto(Domain.ValueObjects.MacroTargets targets) =>
+        new(targets.ProteinGrams, targets.CarbsGrams, targets.FatGrams);
 
     public static MealPlanDayDto ToMealPlanDayDto(MealPlanDay day) =>
         new(

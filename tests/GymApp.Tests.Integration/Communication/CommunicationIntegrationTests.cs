@@ -9,35 +9,25 @@ public sealed class CommunicationIntegrationTests : BaseIntegrationTest
     public CommunicationIntegrationTests(IntegrationTestWebAppFactory factory)
         : base(factory) { }
 
+    private const string ConversationsUrl = "api/v1/communication/conversations";
+
     #region Conversations
 
     [Fact]
-    public async Task CreateConversation_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        var request = new
+    public async Task CreateConversation_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(ConversationsUrl, userId => new
         {
             GymId = Guid.NewGuid(),
             InitiatorId = userId,
             ParticipantId = Guid.NewGuid(),
             Type = "direct"
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync("api/v1/communication/conversations", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+        }));
 
     [Fact]
     public async Task CreateConversation_Unauthenticated_ReturnsUnauthorized()
     {
         // Act
-        var response = await HttpClient.PostAsJsonAsync("api/v1/communication/conversations", new
+        var response = await HttpClient.PostAsJsonAsync(ConversationsUrl, new
         {
             GymId = Guid.NewGuid(),
             InitiatorId = Guid.NewGuid(),
@@ -50,19 +40,9 @@ public sealed class CommunicationIntegrationTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task GetConversations_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/conversations?userId={userId}&gymId={Guid.NewGuid()}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetConversations_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"{ConversationsUrl}?userId={userId}&gymId={Guid.NewGuid()}"));
 
     #endregion
 
@@ -71,25 +51,17 @@ public sealed class CommunicationIntegrationTests : BaseIntegrationTest
     [Fact]
     public async Task SendMessage_Authenticated_ProcessesRequest()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
         var conversationId = Guid.NewGuid();
 
-        var request = new
-        {
-            ConversationId = conversationId,
-            SenderId = userId,
-            Content = "Hello, I have a question about my workout plan",
-            MessageType = "text"
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/communication/conversations/{conversationId}/messages", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        AssertAuthenticated(await PostAsTraineeAsync(
+            $"{ConversationsUrl}/{conversationId}/messages",
+            userId => new
+            {
+                ConversationId = conversationId,
+                SenderId = userId,
+                Content = "Hello, I have a question about my workout plan",
+                MessageType = "text"
+            }));
     }
 
     [Fact]
@@ -127,19 +99,9 @@ public sealed class CommunicationIntegrationTests : BaseIntegrationTest
     #region Notifications
 
     [Fact]
-    public async Task GetNotifications_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/notifications?userId={userId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetNotifications_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/communication/notifications?userId={userId}"));
 
     [Fact]
     public async Task GetNotifications_Unauthenticated_ReturnsUnauthorized()
@@ -153,79 +115,33 @@ public sealed class CommunicationIntegrationTests : BaseIntegrationTest
     }
 
     [Fact]
-    public async Task GetUnreadCount_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/notifications/unread-count?userId={userId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetUnreadCount_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/communication/notifications/unread-count?userId={userId}"));
 
     [Fact]
-    public async Task MarkNotificationRead_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-        var notificationId = Guid.NewGuid();
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            $"api/v1/communication/notifications/{notificationId}/read",
-            new { UserId = userId });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task MarkNotificationRead_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
+            $"api/v1/communication/notifications/{Guid.NewGuid()}/read", userId => new { UserId = userId }));
 
     [Fact]
-    public async Task MarkAllNotificationsRead_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            "api/v1/communication/notifications/read-all",
-            new { UserId = userId });
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task MarkAllNotificationsRead_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
+            "api/v1/communication/notifications/read-all", userId => new { UserId = userId }));
 
     #endregion
 
     #region Notification Preferences
 
     [Fact]
-    public async Task GetNotificationPreferences_Authenticated_ReturnsResponse()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        // Act
-        var response = await client.GetAsync(
-            $"api/v1/communication/notifications/preferences?userId={userId}");
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task GetNotificationPreferences_Authenticated_ReturnsResponse() =>
+        AssertAuthenticated(await GetAsTraineeAsync(
+            userId => $"api/v1/communication/notifications/preferences?userId={userId}"));
 
     [Fact]
     public async Task UpdateNotificationPreferences_Authenticated_ProcessesRequest()
     {
-        // Arrange
         var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
         var request = new
         {
             UserId = userId,
@@ -236,12 +152,8 @@ public sealed class CommunicationIntegrationTests : BaseIntegrationTest
             ChatNotifications = true
         };
 
-        // Act
-        var response = await client.PutAsJsonAsync(
-            "api/v1/communication/notifications/preferences", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
+        AssertAuthenticated(await CreateTraineeClient(userId).PutAsJsonAsync(
+            "api/v1/communication/notifications/preferences", request));
     }
 
     #endregion
@@ -249,26 +161,10 @@ public sealed class CommunicationIntegrationTests : BaseIntegrationTest
     #region Device Token
 
     [Fact]
-    public async Task RegisterDeviceToken_Authenticated_ProcessesRequest()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var client = CreateTraineeClient(userId);
-
-        var request = new
-        {
-            UserId = userId,
-            Token = "fcm-device-token-" + Guid.NewGuid(),
-            Platform = "ios"
-        };
-
-        // Act
-        var response = await client.PostAsJsonAsync(
-            "api/v1/communication/notifications/device-token", request);
-
-        // Assert
-        response.StatusCode.Should().NotBe(HttpStatusCode.Unauthorized);
-    }
+    public async Task RegisterDeviceToken_Authenticated_ProcessesRequest() =>
+        AssertAuthenticated(await PostAsTraineeAsync(
+            "api/v1/communication/notifications/device-token",
+            userId => new { UserId = userId, Token = "fcm-device-token-" + Guid.NewGuid(), Platform = "ios" }));
 
     #endregion
 }

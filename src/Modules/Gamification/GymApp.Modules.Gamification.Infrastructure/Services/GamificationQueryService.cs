@@ -2,6 +2,7 @@ using GymApp.Modules.Gamification.Application.Contracts;
 using GymApp.Modules.Gamification.Domain.Enums;
 using GymApp.Modules.Gamification.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using GymApp.Modules.Gamification.Domain.ValueObjects;
 
 namespace GymApp.Modules.Gamification.Infrastructure.Services;
 
@@ -58,8 +59,7 @@ internal sealed class GamificationQueryService : IGamificationQueryService
     public async Task<bool> IsCoachOfTheMonthAsync(
         Guid trainerId,
         Guid gymId,
-        int month,
-        int year,
+        LeaderboardPeriod period,
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TrainerMonthlyScores
@@ -67,8 +67,8 @@ internal sealed class GamificationQueryService : IGamificationQueryService
             .AnyAsync(
                 tms => tms.TrainerId == trainerId
                     && tms.GymId == gymId
-                    && tms.Month == month
-                    && tms.Year == year
+                    && tms.Month == period.Month
+                    && tms.Year == period.Year
                     && tms.IsCoachOfTheMonth,
                 cancellationToken);
     }

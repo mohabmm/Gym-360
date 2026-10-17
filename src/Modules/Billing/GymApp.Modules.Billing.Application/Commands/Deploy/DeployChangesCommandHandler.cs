@@ -3,6 +3,7 @@ using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Application.DTOs;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Application.Abstractions;
 
 namespace GymApp.Modules.Billing.Application.Commands.Deploy;
@@ -30,14 +31,16 @@ internal sealed class DeployChangesCommandHandler : ICommandHandler<DeployChange
             _ => 0
         };
 
-        var log = PlanChangeLog.Create(
-            "Deploy",
-            request.DeployedBy,
-            request.TargetId,
-            "Deploy",
-            request.TargetId,
-            newValue: request.Scope,
-            reason: $"Deploy triggered for scope: {request.Scope}");
+        var log = PlanChangeLog.Create(new PlanChangeLogDetails
+        {
+            ChangeType = "Deploy",
+            ChangedBy = request.DeployedBy,
+            GymId = request.TargetId,
+            EntityType = "Deploy",
+            EntityId = request.TargetId,
+            NewValue = request.Scope,
+            Reason = $"Deploy triggered for scope: {request.Scope}"
+        });
 
         await _changeLogRepository.AddAsync(log, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

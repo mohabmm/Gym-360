@@ -1,6 +1,7 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Identity.Application.Abstractions;
+using GymApp.Modules.Identity.Application.Common;
 using GymApp.Modules.Identity.Application.Contracts;
 using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.Errors;
@@ -32,43 +33,11 @@ internal sealed class CreateGymStaffCommandHandler : ICommandHandler<CreateGymSt
         if (emailResult.IsFailure)
             return Result.Failure<Guid>(emailResult.Error);
 
-        var existing = await _userRepository.GetByEmailAsync(emailResult.Value, cancellationToken);
-        DomainEntities.User user;
+        var userResult = await ResolveStaffUserAsync(request, emailResult.Value, cancellationToken);
+        if (userResult.IsFailure)
+            return Result.Failure<Guid>(userResult.Error);
 
-        if (existing is not null)
-        {
-            // Reuse only when the account is already a GymStaff (cross-gym
-            // staff transfer). Reusing an Owner / Admin / Trainer / Trainee
-            // would silently absorb someone else's identity into a staff role.
-            if (existing.Role != UserRole.GymStaff)
-                return Result.Failure<Guid>(UserErrors.EmailReservedForOtherRole);
-            user = existing;
-            if (user.GymMemberships.Any(m => m.IsActive))
-                return Result.Failure<Guid>(new Error("User.AlreadyHasActiveMembership", "This user already has an active gym membership. Each user may belong to one gym at a time."));
-        }
-        else
-        {
-            var phoneResult = PhoneNumber.Create(NormalizePhone(request.Phone, request.Email));
-            if (phoneResult.IsFailure)
-                return Result.Failure<Guid>(phoneResult.Error);
-
-            var passwordHash = _passwordHasher.Hash(request.Password);
-
-            user = DomainEntities.User.Create(
-                new NewUserDetails
-                {
-                    Email = emailResult.Value,
-                    PhoneNumber = phoneResult.Value,
-                    PasswordHash = passwordHash,
-                    FirstName = request.FirstName,
-                    LastName = request.LastName,
-                    Gender = Gender.Male
-                },
-                UserRole.GymStaff);
-
-            user.Activate();
-            await _userRepository.AddAsync(user, cancellationToken);
-        }
+        var user = userResult.Value;
 
         var linkResult = user.LinkToGym(request.GymId, UserRole.GymStaff, section: null, memberNumber: null);
         if (linkResult.IsFailure)
@@ -79,23 +48,55 @@ internal sealed class CreateGymStaffCommandHandler : ICommandHandler<CreateGymSt
         return Result.Success(user.Id);
     }
 
-    private static string NormalizePhone(string? raw, string email)
+    private async Task<Result<DomainEntities.User>> ResolveStaffUserAsync(
+        CreateGymStaffCommand request,
+        Email email,
+        CancellationToken cancellationToken)
     {
-        var trimmed = raw?.Trim() ?? string.Empty;
+        var existing = await _userRepository.GetByEmailAsync(email, cancellationToken);
 
-        if (string.IsNullOrEmpty(trimmed))
-        {
-            var hash = Math.Abs(email.GetHashCode()).ToString().PadLeft(10, '0');
-            return "+999" + hash[..Math.Min(10, hash.Length)];
-        }
+        return existing is not null
+            ? ReuseExistingStaff(existing)
+            : await CreateStaffUserAsync(request, email, cancellationToken);
+    }
 
-        var digits = new string(trimmed.Where(c => char.IsDigit(c) || c == '+').ToArray());
+    private static Result<DomainEntities.User> ReuseExistingStaff(DomainEntities.User existing)
+    {
+        // Reuse only when the account is already a GymStaff (cross-gym
+        // staff transfer). Reusing an Owner / Admin / Trainer / Trainee
+        // would silently absorb someone else's identity into a staff role.
+        if (existing.Role != UserRole.GymStaff)
+            return Result.Failure<DomainEntities.User>(UserErrors.EmailReservedForOtherRole);
+        if (existing.GymMemberships.Any(m => m.IsActive))
+            return Result.Failure<DomainEntities.User>(new Error("User.AlreadyHasActiveMembership", "This user already has an active gym membership. Each user may belong to one gym at a time."));
+        return Result.Success(existing);
+    }
 
-        if (digits.StartsWith("+")) return digits;
-        if (digits.StartsWith("00")) return "+" + digits[2..];
-        if (digits.Length == 11 && digits.StartsWith("01")) return "+20" + digits[1..];
-        if (digits.Length == 10 && digits.StartsWith("1")) return "+20" + digits;
+    private async Task<Result<DomainEntities.User>> CreateStaffUserAsync(
+        CreateGymStaffCommand request,
+        Email email,
+        CancellationToken cancellationToken)
+    {
+        var phoneResult = PhoneNumber.Create(MemberPhoneNormalizer.NormalizeOrPlaceholder(request.Phone, request.Email));
+        if (phoneResult.IsFailure)
+            return Result.Failure<DomainEntities.User>(phoneResult.Error);
 
-        return "+" + digits;
+        var passwordHash = _passwordHasher.Hash(request.Password);
+
+        var user = DomainEntities.User.Create(
+            new NewUserDetails
+            {
+                Email = email,
+                PhoneNumber = phoneResult.Value,
+                PasswordHash = passwordHash,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Gender = Gender.Male
+            },
+            UserRole.GymStaff);
+
+        user.Activate();
+        await _userRepository.AddAsync(user, cancellationToken);
+        return Result.Success(user);
     }
 }

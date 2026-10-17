@@ -1,5 +1,4 @@
 using GymApp.Modules.Identity.Domain.Entities;
-using GymApp.Modules.Identity.Domain.Enums;
 using GymApp.Modules.Identity.Domain.ValueObjects;
 using GymApp.Modules.Identity.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -33,24 +32,17 @@ public static class IdentityDemoSupport
     /// </summary>
     public static async Task<bool> LinkUserToGymAsync(
         IServiceProvider services,
-        string email,
-        Guid gymId,
-        UserRole role,
-        string? section,
-        string? memberNumber = null,
+        DemoGymLink link,
         CancellationToken ct = default)
     {
         using var scope = services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var vo = Email.Create(email).Value;
 
-        var user = await ctx.Users.FirstOrDefaultAsync(u => u.Email == vo, ct);
-        if (user is null) return false;
-
-        if (user.GymMemberships.Any(m => m.GymId == gymId && m.Role == role && m.IsActive))
+        var user = await FindTrackedUserAsync(ctx, link.Email, ct);
+        if (user is null || user.GymMemberships.Any(link.IsSatisfiedBy))
             return false;
 
-        var result = user.LinkToGym(gymId, role, section, memberNumber);
+        var result = user.LinkToGym(link.GymId, link.Role, link.Section, link.MemberNumber);
         if (!result.IsSuccess) return false;
 
         await ctx.SaveChangesAsync(ct);
@@ -64,38 +56,44 @@ public static class IdentityDemoSupport
     /// </summary>
     public static async Task<Guid?> EnsureOwnerAggregateAsync(
         IServiceProvider services,
-        string email,
-        string companyName,
-        string billingEmail,
+        DemoOwnerProfile profile,
         CancellationToken ct = default)
     {
         using var scope = services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var vo = Email.Create(email).Value;
 
-        var user = await ctx.Users.FirstOrDefaultAsync(u => u.Email == vo, ct);
+        var user = await FindTrackedUserAsync(ctx, profile.Email, ct);
         if (user is null) return null;
 
         // If already linked, return existing owner row.
-        if (user.OwnerId is not null)
-        {
-            var existing = await ctx.Set<Owner>().FirstOrDefaultAsync(o => o.Id == user.OwnerId, ct);
-            if (existing is not null) return existing.Id;
-        }
+        var linked = await FindLinkedOwnerAsync(ctx, user, ct);
+        if (linked is not null) return linked.Id;
 
         // Existing Owner row by user_id (legacy paths) — relink user instead of duplicating.
-        var byUser = await ctx.Set<Owner>().FirstOrDefaultAsync(o => o.UserId == user.Id, ct);
-        if (byUser is not null)
-        {
-            user.LinkToOwner(byUser.Id);
-            await ctx.SaveChangesAsync(ct);
-            return byUser.Id;
-        }
+        var owner = await ctx.Set<Owner>().FirstOrDefaultAsync(o => o.UserId == user.Id, ct)
+            ?? AddOwner(ctx, user, profile);
 
-        var owner = Owner.Create(user.Id, companyName, billingEmail);
-        ctx.Set<Owner>().Add(owner);
         user.LinkToOwner(owner.Id);
         await ctx.SaveChangesAsync(ct);
         return owner.Id;
+    }
+
+    private static Task<User?> FindTrackedUserAsync(IdentityDbContext ctx, string email, CancellationToken ct)
+    {
+        var vo = Email.Create(email).Value;
+        return ctx.Users.FirstOrDefaultAsync(u => u.Email == vo, ct);
+    }
+
+    private static async Task<Owner?> FindLinkedOwnerAsync(IdentityDbContext ctx, User user, CancellationToken ct)
+    {
+        if (user.OwnerId is null) return null;
+        return await ctx.Set<Owner>().FirstOrDefaultAsync(o => o.Id == user.OwnerId, ct);
+    }
+
+    private static Owner AddOwner(IdentityDbContext ctx, User user, DemoOwnerProfile profile)
+    {
+        var owner = Owner.Create(user.Id, profile.CompanyName, profile.BillingEmail);
+        ctx.Set<Owner>().Add(owner);
+        return owner;
     }
 }

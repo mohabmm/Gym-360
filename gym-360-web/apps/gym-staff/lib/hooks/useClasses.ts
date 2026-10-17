@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
 import type { GymClass } from '@gym360/ui';
+import { useGymMutation, postData, putData, type GymScope } from './query-helpers';
 
 const DAY_NAME_TO_INDEX: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
@@ -88,53 +89,38 @@ export interface ClassMutationInput {
   color?: string;
 }
 
-export function useCreateClass() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: ClassMutationInput) => {
-      const res = await apiClient.post(`/gyms/${gymId}/classes`, {
-        name: data.name,
-        description: data.description,
-        trainerId: data.trainerId,
-        schedule: {
-          dayOfWeek: data.dayOfWeek,
-          startTime: toApiTime(data.startTime),
-          durationMinutes: diffMinutes(data.startTime, data.endTime),
-          isRecurring: data.isRecurring,
-        },
-        capacity: data.capacity,
-        waitlistEnabled: true,
-      });
-      return res.data;
+// Shared body for create/update: the API takes a nested schedule with a duration rather than an end time.
+function toClassPayload(data: ClassMutationInput) {
+  return {
+    name: data.name,
+    description: data.description,
+    trainerId: data.trainerId,
+    schedule: {
+      dayOfWeek: data.dayOfWeek,
+      startTime: toApiTime(data.startTime),
+      durationMinutes: diffMinutes(data.startTime, data.endTime),
+      isRecurring: data.isRecurring,
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['classes', gymId] }),
-  });
+    capacity: data.capacity,
+  };
+}
+
+const classesKey = ({ gymId }: GymScope) => ['classes', gymId];
+
+export function useCreateClass() {
+  return useGymMutation(
+    (data: ClassMutationInput, { gymId }) =>
+      postData(`/gyms/${gymId}/classes`, { ...toClassPayload(data), waitlistEnabled: true }),
+    classesKey,
+  );
 }
 
 export function useUpdateClass() {
-  const { data: session } = useSession();
-  const gymId = session?.user?.gymId;
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...data }: ClassMutationInput & { id: string }) => {
-      const res = await apiClient.put(`/gyms/${gymId}/classes/${id}`, {
-        name: data.name,
-        description: data.description,
-        trainerId: data.trainerId,
-        schedule: {
-          dayOfWeek: data.dayOfWeek,
-          startTime: toApiTime(data.startTime),
-          durationMinutes: diffMinutes(data.startTime, data.endTime),
-          isRecurring: data.isRecurring,
-        },
-        capacity: data.capacity,
-      });
-      return res.data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['classes', gymId] }),
-  });
+  return useGymMutation(
+    ({ id, ...data }: ClassMutationInput & { id: string }, { gymId }) =>
+      putData(`/gyms/${gymId}/classes/${id}`, toClassPayload(data)),
+    classesKey,
+  );
 }
 
 export function useDeleteClass() {

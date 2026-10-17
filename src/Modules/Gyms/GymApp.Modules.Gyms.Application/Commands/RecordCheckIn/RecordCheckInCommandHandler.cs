@@ -1,7 +1,6 @@
 using GymApp.Modules.Identity.Shared;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
-using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Gyms.Application.DTOs;
 using GymApp.Modules.Gyms.Domain.Entities;
 using GymApp.Modules.Gyms.Domain.Enums;
@@ -15,23 +14,20 @@ internal sealed class RecordCheckInCommandHandler : ICommandHandler<RecordCheckI
 {
     private readonly IGymRepository _gymRepository;
     private readonly ICheckInRepository _checkInRepository;
-    private readonly IGymMemberDirectory _memberDirectory;
-    private readonly IGymMemberRepository _gymMemberRepository;
+    private readonly CheckInEligibilityChecker _eligibilityChecker;
     private readonly IUserProfileLookup _userProfileLookup;
     private readonly IGymsUnitOfWork _unitOfWork;
 
     public RecordCheckInCommandHandler(
         IGymRepository gymRepository,
         ICheckInRepository checkInRepository,
-        IGymMemberDirectory memberDirectory,
-        IGymMemberRepository gymMemberRepository,
+        CheckInEligibilityChecker eligibilityChecker,
         IUserProfileLookup userProfileLookup,
         IGymsUnitOfWork unitOfWork)
     {
         _gymRepository = gymRepository;
         _checkInRepository = checkInRepository;
-        _memberDirectory = memberDirectory;
-        _gymMemberRepository = gymMemberRepository;
+        _eligibilityChecker = eligibilityChecker;
         _userProfileLookup = userProfileLookup;
         _unitOfWork = unitOfWork;
     }
@@ -45,44 +41,11 @@ internal sealed class RecordCheckInCommandHandler : ICommandHandler<RecordCheckI
         if (!Enum.TryParse<CheckInMethod>(request.Method, ignoreCase: true, out var method))
             return Result.Failure<CheckInResultDto>(GymErrors.InvalidCheckIn);
 
-        // Resolve member ID based on check-in method
-        Guid memberId;
+        var eligibleMember = await _eligibilityChecker.ResolveEligibleMemberAsync(request, cancellationToken);
+        if (eligibleMember.IsFailure)
+            return Result.Failure<CheckInResultDto>(eligibleMember.Error);
 
-        if (request.MemberId.HasValue)
-        {
-            memberId = request.MemberId.Value;
-        }
-        else if (!string.IsNullOrWhiteSpace(request.QrToken))
-        {
-            var resolved = await _memberDirectory.FindMemberIdByNumberAsync(
-                request.GymId, request.QrToken.Trim(), cancellationToken);
-            if (resolved is null)
-                return Result.Failure<CheckInResultDto>(GymErrors.InvalidCheckIn);
-            memberId = resolved.Value;
-        }
-        else if (!string.IsNullOrWhiteSpace(request.MemberNumber))
-        {
-            var resolved = await _memberDirectory.FindMemberIdByNumberAsync(
-                request.GymId, request.MemberNumber, cancellationToken);
-            if (resolved is null)
-                return Result.Failure<CheckInResultDto>(GymErrors.InvalidCheckIn);
-            memberId = resolved.Value;
-        }
-        else
-        {
-            return Result.Failure<CheckInResultDto>(GymErrors.InvalidCheckIn);
-        }
-
-        var gymMember = await _gymMemberRepository.GetAsync(request.GymId, memberId, cancellationToken);
-        if (gymMember?.IsFrozen == true)
-            return Result.Failure<CheckInResultDto>(GymErrors.MemberFrozen);
-
-        var latestCheckIn = await _checkInRepository.GetLatestForMemberAsync(
-            request.GymId, memberId, cancellationToken);
-
-        if (latestCheckIn is not null && latestCheckIn.CheckedInAt.Date == DateTime.UtcNow.Date)
-            return Result.Failure<CheckInResultDto>(GymErrors.DuplicateCheckIn);
-
+        var memberId = eligibleMember.Value;
         var checkIn = CheckIn.Create(request.GymId, memberId, method, request.StaffId);
 
         await _checkInRepository.AddAsync(checkIn, cancellationToken);

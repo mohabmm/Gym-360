@@ -1,6 +1,3 @@
-using FluentAssertions;
-using NetArchTest.Rules;
-
 namespace GymApp.Tests.Architecture;
 
 public class ModuleBoundaryTests : BaseTest
@@ -10,43 +7,22 @@ public class ModuleBoundaryTests : BaseTest
     /// </summary>
     private static readonly string[] ProtectedLayers = { "Domain", "Application", "Infrastructure" };
 
-    public static IEnumerable<object[]> ModulePairsWithLayers()
-    {
-        foreach (var sourceModule in ModuleNames)
-        {
-            foreach (var targetModule in ModuleNames)
-            {
-                if (sourceModule == targetModule) continue;
-
-                foreach (var sourceLayer in ProtectedLayers)
-                {
-                    foreach (var targetLayer in ProtectedLayers)
-                    {
-                        yield return new object[] { sourceModule, sourceLayer, targetModule, targetLayer };
-                    }
-                }
-            }
-        }
-    }
+    public static IEnumerable<object[]> ModulePairsWithLayers() =>
+        from sourceModule in ModuleNames
+        from targetModule in OtherModules(sourceModule)
+        from sourceLayer in ProtectedLayers
+        from targetLayer in ProtectedLayers
+        select new object[] { sourceModule, sourceLayer, targetModule, targetLayer };
 
     [Theory]
     [MemberData(nameof(ModulePairsWithLayers))]
     public void Module_Should_Not_Reference_Another_Modules_Protected_Layers(
-        string sourceModule, string sourceLayer, string targetModule, string targetLayer)
-    {
-        var sourceAssembly = GetAssembly(sourceModule, sourceLayer);
-        var targetNamespace = $"GymApp.Modules.{targetModule}.{targetLayer}";
-
-        var result = Types.InAssembly(sourceAssembly)
-            .ShouldNot()
-            .HaveDependencyOn(targetNamespace)
-            .GetResult();
-
-        result.IsSuccessful.Should().BeTrue(
+        string sourceModule, string sourceLayer, string targetModule, string targetLayer) =>
+        AssertNoDependency(
+            GetAssembly(sourceModule, sourceLayer),
+            $"GymApp.Modules.{targetModule}.{targetLayer}",
             $"{sourceModule}.{sourceLayer} must not reference {targetModule}.{targetLayer}. " +
-            $"Only IntegrationEvents cross-references are allowed. " +
-            $"Failing types: {FormatFailingTypes(result.FailingTypeNames)}");
-    }
+            $"Only IntegrationEvents cross-references are allowed.");
 
     [Theory]
     [MemberData(nameof(Modules))]
@@ -54,31 +30,22 @@ public class ModuleBoundaryTests : BaseTest
     {
         var presAssembly = GetAssembly(module, "Presentation");
 
-        foreach (var otherModule in ModuleNames)
+        var forbiddenTargets =
+            from otherModule in OtherModules(module)
+            from layer in ProtectedLayers
+            select $"{otherModule}.{layer}";
+
+        foreach (var target in forbiddenTargets)
         {
-            if (otherModule == module) continue;
-
-            foreach (var layer in ProtectedLayers)
-            {
-                var targetNamespace = $"GymApp.Modules.{otherModule}.{layer}";
-
-                var result = Types.InAssembly(presAssembly)
-                    .ShouldNot()
-                    .HaveDependencyOn(targetNamespace)
-                    .GetResult();
-
-                result.IsSuccessful.Should().BeTrue(
-                    $"{module}.Presentation must not reference {otherModule}.{layer}. " +
-                    $"Failing types: {FormatFailingTypes(result.FailingTypeNames)}");
-            }
+            AssertNoDependency(
+                presAssembly,
+                $"GymApp.Modules.{target}",
+                $"{module}.Presentation must not reference {target}.");
         }
     }
 
     public static IEnumerable<object[]> Modules => AllModules();
 
-    private static string FormatFailingTypes(IEnumerable<string>? typeNames)
-    {
-        if (typeNames is null) return "none";
-        return string.Join(", ", typeNames);
-    }
+    private static IEnumerable<string> OtherModules(string module) =>
+        ModuleNames.Where(other => other != module);
 }

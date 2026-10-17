@@ -6,6 +6,7 @@ using GymApp.Modules.Communication.Domain.Repositories;
 using GymApp.Modules.Training.IntegrationEvents;
 using MediatR;
 using GymApp.Modules.Communication.Application.Abstractions;
+using GymApp.Modules.Communication.Domain.ValueObjects;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
@@ -35,11 +36,14 @@ internal sealed class RemoteWorkoutActivatedIntegrationEventHandler : INotificat
 
 
         var notif = Notification.CreateLocalized(
-            NotificationTexts.RemoteWorkoutActivated(notification.Reason),
-            notification.ClientId,
-            NotificationType.RemoteWorkoutActivated,
-            notification.GymId,
-            data);
+            new NotificationDetails
+            {
+                UserId = notification.ClientId,
+                Type = NotificationType.RemoteWorkoutActivated,
+                GymId = notification.GymId,
+                Data = data
+            },
+            NotificationTexts.RemoteWorkoutActivated(notification.Reason));
 
         await _notificationRepository.AddAsync(notif, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

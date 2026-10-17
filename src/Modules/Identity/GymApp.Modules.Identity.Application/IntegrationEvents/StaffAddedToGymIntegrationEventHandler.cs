@@ -35,7 +35,7 @@ internal sealed class StaffAddedToGymIntegrationEventHandler
             return;
         }
 
-        if (user.GymMemberships.Any(m => m.GymId == n.GymId && m.Role == UserRole.GymStaff && m.IsActive))
+        if (user.GymMemberships.Any(m => m.IsActiveAs(n.GymId, UserRole.GymStaff)))
             return;
 
         var otherActive = user.GymMemberships.FirstOrDefault(m => m.IsActive && m.GymId != n.GymId);
