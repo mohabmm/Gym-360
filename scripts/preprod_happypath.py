@@ -8,13 +8,11 @@ ROOT = Path(__file__).resolve().parent.parent
 JWT = lambda r: (ROOT/"test_logs/preprod"/f"jwt_{r}.txt").read_text().strip()
 GYM = "bdaeb6ec-5302-45e3-aa75-e86756a22490"
 
-def hit(method, path, role, body=None, headers=None, expect_codes=None):
+def hit(method, path, role, body=None):
     url = BASE + path
     r = urllib.request.Request(url, method=method)
     r.add_header("Authorization", f"Bearer {JWT(role)}")
     r.add_header("X-Gym-Id", GYM)
-    if headers:
-        for k,v in headers.items(): r.add_header(k,v)
     data = None
     if body is not None:
         r.add_header("Content-Type", "application/json")
