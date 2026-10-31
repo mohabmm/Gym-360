@@ -72,6 +72,7 @@ config/*-service-account*.json
 *.pem
 *.pfx
 *.p12
+*.p8
 *.key
 secrets/
 **/secrets.json

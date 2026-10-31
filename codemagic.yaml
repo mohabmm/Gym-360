@@ -1,0 +1,157 @@
+# Codemagic CI/CD: every merge to `develop` ships the affected iOS apps to TestFlight.
+#
+# Each workflow builds only when its own app, the shared gymapp_core package, or
+# this file changed. A backend or web-only merge starts no build.
+#
+# Signing uses the encrypted `gym360_apple` variable group on the Codemagic app:
+#   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER,
+#   APP_STORE_CONNECT_PRIVATE_KEY (.p8 contents), CERTIFICATE_PRIVATE_KEY (PEM).
+# Each build fetches the distribution certificate matching CERTIFICATE_PRIVATE_KEY and
+# its App Store profile, creating the profile on first use.
+
+definitions:
+  environment: &ios_environment
+    flutter: 3.44.9
+    xcode: latest
+    cocoapods: default
+
+  triggering: &develop_merge
+    events:
+      - push
+    branch_patterns:
+      - pattern: develop
+        include: true
+    cancel_previous_builds: false
+
+  scripts:
+    - &generate_shared_code
+      name: Generate gymapp_core code
+      script: |
+        cd "$CM_BUILD_DIR/gymapp-mobile/packages/gymapp_core"
+        flutter pub get
+        dart run build_runner build --delete-conflicting-outputs
+    - &get_app_packages
+      name: Get app packages
+      script: |
+        cd "$CM_BUILD_DIR/$APP_DIR"
+        flutter pub get
+    - &run_tests
+      name: Run tests
+      script: |
+        cd "$CM_BUILD_DIR/$APP_DIR"
+        flutter test
+    - &apply_signing
+      name: Set up code signing
+      script: |
+        keychain initialize
+        app-store-connect fetch-signing-files "$BUNDLE_ID" \
+          --type IOS_APP_STORE \
+          --strict-match-identifier \
+          --create
+        keychain add-certificates
+        xcode-project use-profiles --project "$CM_BUILD_DIR/$APP_DIR/ios/Runner.xcodeproj"
+    - &build_ipa
+      name: Build IPA
+      script: |
+        cd "$CM_BUILD_DIR/$APP_DIR"
+        # Date-prefixed, so it always exceeds earlier builds (including manual uploads).
+        # PROJECT_BUILD_NUMBER keeps same-day builds unique and increasing.
+        flutter build ipa --release \
+          --build-number="$(date -u +%Y%m%d).$PROJECT_BUILD_NUMBER" \
+          --export-options-plist=/Users/builder/export_options.plist
+
+  publishing: &testflight
+    app_store_connect:
+      api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+      key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+      issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+      # Upload only: internal testers need no Beta App Review.
+      submit_to_testflight: false
+
+workflows:
+  ios-staff-testflight:
+    name: iOS Staff - TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    triggering: *develop_merge
+    when:
+      changeset:
+        includes:
+          - gymapp-mobile/apps/gymapp_gym/
+          - gymapp-mobile/packages/gymapp_core/
+          - codemagic.yaml
+    environment:
+      <<: *ios_environment
+      groups:
+        - gym360_apple
+      vars:
+        BUNDLE_ID: com.gym360.staff
+        APP_DIR: gymapp-mobile/apps/gymapp_gym
+    scripts:
+      - *generate_shared_code
+      - *get_app_packages
+      - *run_tests
+      - *apply_signing
+      - *build_ipa
+    artifacts:
+      - gymapp-mobile/apps/gymapp_gym/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing: *testflight
+
+  ios-trainee-testflight:
+    name: iOS Member - TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    triggering: *develop_merge
+    when:
+      changeset:
+        includes:
+          - gymapp-mobile/apps/gymapp_trainee/
+          - gymapp-mobile/packages/gymapp_core/
+          - codemagic.yaml
+    environment:
+      <<: *ios_environment
+      groups:
+        - gym360_apple
+      vars:
+        BUNDLE_ID: com.gym360.trainee
+        APP_DIR: gymapp-mobile/apps/gymapp_trainee
+    scripts:
+      - *generate_shared_code
+      - *get_app_packages
+      - *run_tests
+      - *apply_signing
+      - *build_ipa
+    artifacts:
+      - gymapp-mobile/apps/gymapp_trainee/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing: *testflight
+
+  ios-trainer-testflight:
+    name: iOS Trainer - TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    triggering: *develop_merge
+    when:
+      changeset:
+        includes:
+          - gymapp-mobile/apps/gymapp_trainer/
+          - gymapp-mobile/packages/gymapp_core/
+          - codemagic.yaml
+    environment:
+      <<: *ios_environment
+      groups:
+        - gym360_apple
+      vars:
+        BUNDLE_ID: com.gym360.trainer
+        APP_DIR: gymapp-mobile/apps/gymapp_trainer
+    scripts:
+      - *generate_shared_code
+      - *get_app_packages
+      - *run_tests
+      - *apply_signing
+      - *build_ipa
+    artifacts:
+      - gymapp-mobile/apps/gymapp_trainer/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing: *testflight
