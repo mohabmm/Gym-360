@@ -9,12 +9,12 @@ Coverage: Trainee 20 · Trainer 15 · Staff 15.
 
 ---
 
-# TRAINEE APP — 20 edge cases  (`com.example.gymapp_trainee`)
+# TRAINEE APP — 20 edge cases  (`com.gym360.trainee`)
 
 ## TC-01 — Account lockout after 5 failed logins
 **Tags:** auth, boundary, state-transitions
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-01 trainee lockout after 5 failed logins
 ---
 - launchApp:
@@ -45,7 +45,7 @@ name: TC-01 trainee lockout after 5 failed logins
 ## TC-02 — OTP rate limit: 4th OTP request inside an hour blocked
 **Tags:** auth, boundary, time-based
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-02 OTP rate limit
 ---
 - launchApp:
@@ -70,7 +70,7 @@ name: TC-02 OTP rate limit
 ## TC-03 — Register with under-13 DOB blocked
 **Tags:** validation, PDPL, boundary
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-03 under-13 registration blocked
 ---
 - launchApp:
@@ -91,7 +91,7 @@ name: TC-03 under-13 registration blocked
 ## TC-04 — Register with 13-15 DOB triggers parental consent gate
 **Tags:** validation, PDPL, consent
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-04 parental consent gate 13-15
 ---
 - launchApp:
@@ -113,7 +113,7 @@ name: TC-04 parental consent gate 13-15
 ## TC-05 — Link gym with invalid 6-char code shows not-found, never advances
 **Tags:** validation, multi-tenant, boundary
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-05 invalid gym code
 ---
 - runFlow: login_trainee_no_gym.yaml
@@ -130,7 +130,7 @@ name: TC-05 invalid gym code
 ## TC-06 — JWT expiry mid-session redirects to login (no silent crash)
 **Tags:** auth, time-based, network
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-06 JWT expiry mid-session
 ---
 - runFlow: login_trainee.yaml
@@ -147,7 +147,7 @@ name: TC-06 JWT expiry mid-session
 ## TC-07 — Log weight of 0 rejected, of 9999 warned
 **Tags:** validation, boundary
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-07 weight log edges
 ---
 - runFlow: login_trainee.yaml
@@ -170,7 +170,7 @@ name: TC-07 weight log edges
 ## TC-08 — Cross-midnight booking: book at 23:58 for 00:30 tomorrow
 **Tags:** time-based, scheduling
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-08 cross-midnight booking
 ---
 - runFlow: login_trainee.yaml
@@ -191,7 +191,7 @@ name: TC-08 cross-midnight booking
 ## TC-09 — Late cancel inside window deducts session from package
 **Tags:** scheduling, billing, business-rule
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-09 late cancel deducts package
 ---
 - runFlow: login_trainee.yaml
@@ -211,7 +211,7 @@ name: TC-09 late cancel deducts package
 ## TC-10 — Cancel 25h before window: NO deduction
 **Tags:** scheduling, billing, business-rule, boundary
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-10 cancel outside window no deduction
 ---
 - runFlow: login_trainee.yaml
@@ -229,7 +229,7 @@ name: TC-10 cancel outside window no deduction
 ## TC-11 — Book session with 0 remaining sessions blocked
 **Tags:** billing, business-rule, boundary
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-11 book with zero package
 ---
 # pre-seed: trainee package exhausted
@@ -244,7 +244,7 @@ name: TC-11 book with zero package
 ## TC-12 — Book session when membership expired blocked
 **Tags:** billing, business-rule
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-12 book with expired membership
 ---
 - runFlow: login_trainee_expired.yaml
@@ -258,7 +258,7 @@ name: TC-12 book with expired membership
 ## TC-13 — Chat opens empty state when no assigned trainer
 **Tags:** auth, empty-state
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-13 chat without trainer
 ---
 - runFlow: login_trainee_no_trainer.yaml
@@ -272,7 +272,7 @@ name: TC-13 chat without trainer
 ## TC-14 — Progress photo >10MB rejected client-side, never uploads
 **Tags:** validation, resource-limit, boundary
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-14 photo size limit
 ---
 - runFlow: login_trainee.yaml
@@ -292,7 +292,7 @@ name: TC-14 photo size limit
 ## TC-15 — First progress photo blocks upload until photo-sharing consent
 **Tags:** PDPL, consent, state-transition
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-15 photo consent gate
 ---
 - runFlow: login_trainee_fresh.yaml   # never uploaded a photo before
@@ -318,7 +318,7 @@ name: TC-15 photo consent gate
 ## TC-16 — Switch language Ar↔En mid-session preserves nav stack
 **Tags:** localization, state-transition
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-16 language toggle preserves state
 ---
 - runFlow: login_trainee.yaml
@@ -346,7 +346,7 @@ name: TC-16 language toggle preserves state
 ## TC-17 — Leaderboard opt-out hides public name but keeps private rank
 **Tags:** privacy, business-rule
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-17 leaderboard opt-out
 ---
 - runFlow: login_trainee.yaml
@@ -369,7 +369,7 @@ name: TC-17 leaderboard opt-out
 ## TC-18 — Water log: pressing +500ml 20× in 5s only logs unique entries
 **Tags:** concurrency, debounce, boundary
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-18 water log debounce
 ---
 - runFlow: login_trainee.yaml
@@ -389,7 +389,7 @@ name: TC-18 water log debounce
 ## TC-19 — Kill app mid-guided workout, resume restores set index + timer
 **Tags:** state-persistence, crash-recovery
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-19 guided workout resume
 ---
 - runFlow: login_trainee_remote_on.yaml   # trainer enabled remote mode
@@ -409,7 +409,7 @@ name: TC-19 guided workout resume
 ## TC-20 — Offline workout log queues and syncs on reconnect (last-writer-wins)
 **Tags:** offline, sync, business-rule
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 name: TC-20 offline workout sync
 ---
 - runFlow: login_trainee.yaml
@@ -439,12 +439,12 @@ name: TC-20 offline workout sync
 
 ---
 
-# TRAINER APP — 15 edge cases  (`com.example.gymapp_trainer`)
+# TRAINER APP — 15 edge cases  (`com.gym360.trainer`)
 
 ## TC-21 — Pending-approval trainer cannot enter shell, sees gate screen
 **Tags:** auth, state-transition
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-21 pending trainer gated
 ---
 - launchApp:
@@ -460,7 +460,7 @@ name: TC-21 pending trainer gated
 ## TC-22 — Activate Remote Workout Mode pushes notification + flips trainee UI
 **Tags:** push, cross-app, state-transition
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-22 remote mode activation cross-app
 ---
 - runFlow: login_trainer.yaml
@@ -481,7 +481,7 @@ name: TC-22 remote mode activation cross-app
 ## TC-23 — Deactivate Remote Mode notifies trainee, card disappears
 **Tags:** push, cross-app, state-transition
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-23 remote mode deactivation
 ---
 - runFlow: login_trainer.yaml
@@ -496,7 +496,7 @@ name: TC-23 remote mode deactivation
 ## TC-24 — Save workout with 0 exercises blocked
 **Tags:** validation, boundary
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-24 empty workout save
 ---
 - runFlow: login_trainer.yaml
@@ -513,7 +513,7 @@ name: TC-24 empty workout save
 ## TC-25 — Superset of a single exercise rejected
 **Tags:** validation, boundary
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-25 superset of one
 ---
 - runFlow: login_trainer.yaml
@@ -532,7 +532,7 @@ name: TC-25 superset of one
 ## TC-26 — Trainer cannot assign workout to a member outside their gym
 **Tags:** multi-tenant, authorization
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-26 cross-gym assign blocked
 ---
 - runFlow: login_trainer.yaml
@@ -546,7 +546,7 @@ name: TC-26 cross-gym assign blocked
 ## TC-27 — Live session fails gracefully if assigned client account deleted mid-flow
 **Tags:** state-transition, error-handling
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-27 live session client deleted
 ---
 - runFlow: login_trainer.yaml
@@ -566,7 +566,7 @@ name: TC-27 live session client deleted
 ## TC-28 — Post-session log: missing required fields rejected, partial save not silent
 **Tags:** validation
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-28 post-session log validation
 ---
 - runFlow: login_trainer.yaml
@@ -588,7 +588,7 @@ name: TC-28 post-session log validation
 ## TC-29 — Add certification with past expiry date rejected
 **Tags:** validation, time-based
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-29 expired cert rejected
 ---
 - runFlow: login_trainer.yaml
@@ -608,7 +608,7 @@ name: TC-29 expired cert rejected
 ## TC-30 — Availability: end-time before start-time rejected
 **Tags:** validation, time-based
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-30 invalid availability range
 ---
 - runFlow: login_trainer.yaml
@@ -627,7 +627,7 @@ name: TC-30 invalid availability range
 ## TC-31 — Recurring session capped at 12 weeks
 **Tags:** business-rule, boundary
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-31 recurring 12-week cap
 ---
 - runFlow: login_trainer.yaml
@@ -646,7 +646,7 @@ name: TC-31 recurring 12-week cap
 ## TC-32 — Trainer never sees individual ratings, only aggregate
 **Tags:** privacy, business-rule
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-32 ratings privacy
 ---
 - runFlow: login_trainer.yaml
@@ -663,7 +663,7 @@ name: TC-32 ratings privacy
 ## TC-33 — Earnings dashboard offline: cached snapshot rendered, banner shown
 **Tags:** offline
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-33 earnings offline cache
 ---
 - runFlow: login_trainer.yaml
@@ -682,7 +682,7 @@ name: TC-33 earnings offline cache
 ## TC-34 — Broadcast to 0 selected clients blocked
 **Tags:** validation, boundary
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-34 empty broadcast
 ---
 - runFlow: login_trainer.yaml
@@ -698,7 +698,7 @@ name: TC-34 empty broadcast
 ## TC-35 — Chat image >10MB rejected client-side
 **Tags:** resource-limit, validation
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 name: TC-35 chat image size limit
 ---
 - runFlow: login_trainer.yaml
@@ -718,12 +718,12 @@ name: TC-35 chat image size limit
 
 ---
 
-# GYM STAFF APP — 15 edge cases  (`com.example.gymapp_gym`)
+# GYM STAFF APP — 15 edge cases  (`com.gym360.staff`)
 
 ## TC-36 — Receptionist sees no Revenue tab (authorization)
 **Tags:** authorization, role
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-36 receptionist hides revenue
 ---
 - launchApp:
@@ -738,7 +738,7 @@ name: TC-36 receptionist hides revenue
 ## TC-37 — Manual check-in of expired member blocked with renewal message
 **Tags:** business-rule, billing
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-37 manual check-in expired
 ---
 - runFlow: login_staff.yaml
@@ -759,7 +759,7 @@ name: TC-37 manual check-in expired
 ## TC-38 — Kiosk: non-numeric member number rejected
 **Tags:** validation, boundary, kiosk
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-38 kiosk invalid number
 ---
 - runFlow: login_staff.yaml
@@ -777,7 +777,7 @@ name: TC-38 kiosk invalid number
 ## TC-39 — Kiosk: 3 rapid taps on same number = 1 check-in (debounce)
 **Tags:** concurrency, debounce, kiosk
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-39 kiosk rapid debounce
 ---
 - runFlow: login_staff_kiosk.yaml
@@ -804,7 +804,7 @@ name: TC-39 kiosk rapid debounce
 ## TC-40 — Add member with duplicate email surfaces 400, form retains input
 **Tags:** validation
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-40 duplicate email
 ---
 - runFlow: login_staff.yaml
@@ -825,7 +825,7 @@ name: TC-40 duplicate email
 ## TC-41 — Add member to section not enabled at the gym blocked
 **Tags:** multi-tenant, business-rule
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-41 disabled section blocked
 ---
 # pre-seed: gym has only `mens` enabled
@@ -840,7 +840,7 @@ name: TC-41 disabled section blocked
 ## TC-42 — Record payment of 0 EGP rejected
 **Tags:** validation, billing, boundary
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-42 zero payment rejected
 ---
 - runFlow: login_staff.yaml
@@ -859,7 +859,7 @@ name: TC-42 zero payment rejected
 ## TC-43 — Void payment marks Voided + excludes from revenue total
 **Tags:** business-rule, billing, state-transition
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-43 void payment excluded from revenue
 ---
 - runFlow: login_staff.yaml
@@ -890,7 +890,7 @@ name: TC-43 void payment excluded from revenue
 ## TC-44 — Freeze active membership blocks check-in
 **Tags:** state-transition, business-rule
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-44 freeze blocks check-in
 ---
 - runFlow: login_staff.yaml
@@ -918,7 +918,7 @@ name: TC-44 freeze blocks check-in
 ## TC-45 — Unfreeze restores check-in
 **Tags:** state-transition
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-45 unfreeze restores check-in
 ---
 - runFlow: login_staff.yaml
@@ -943,7 +943,7 @@ name: TC-45 unfreeze restores check-in
 ## TC-46 — Create class with capacity 0 rejected
 **Tags:** validation, boundary
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-46 class capacity zero
 ---
 - runFlow: login_staff.yaml
@@ -961,7 +961,7 @@ name: TC-46 class capacity zero
 ## TC-47 — Class full → next booking auto-waitlists; cancellation auto-promotes
 **Tags:** business-rule, state-transition, push
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-47 waitlist auto-promote
 ---
 - runFlow: login_staff.yaml
@@ -992,7 +992,7 @@ name: TC-47 waitlist auto-promote
 ## TC-48 — Cancel full class fires N push notifications to booked members
 **Tags:** push, cross-app
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-48 cancel class push fanout
 ---
 - runFlow: login_staff.yaml
@@ -1012,7 +1012,7 @@ name: TC-48 cancel class push fanout
 ## TC-49 — Approve pending trainer flips status, unlocks trainer-app shell
 **Tags:** state-transition, cross-app, authorization
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-49 approve trainer unlocks app
 ---
 - runFlow: login_staff.yaml
@@ -1031,7 +1031,7 @@ name: TC-49 approve trainer unlocks app
 ## TC-50 — Kiosk PIN must be ≥4 digits and numeric
 **Tags:** validation, boundary, kiosk, security
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 name: TC-50 kiosk PIN policy
 ---
 - runFlow: login_staff.yaml
@@ -1062,7 +1062,7 @@ These are referenced by `runFlow:` from cases above. Each is a tiny independent 
 
 ## `login_trainee.yaml`
 ```yaml
-appId: com.example.gymapp_trainee
+appId: com.gym360.trainee
 ---
 - launchApp:
     clearState: true
@@ -1078,7 +1078,7 @@ appId: com.example.gymapp_trainee
 
 ## `login_trainer.yaml`
 ```yaml
-appId: com.example.gymapp_trainer
+appId: com.gym360.trainer
 ---
 - launchApp:
     clearState: true
@@ -1094,7 +1094,7 @@ appId: com.example.gymapp_trainer
 
 ## `login_staff.yaml`
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 ---
 - launchApp:
     clearState: true
@@ -1110,7 +1110,7 @@ appId: com.example.gymapp_gym
 
 ## `login_receptionist.yaml`
 ```yaml
-appId: com.example.gymapp_gym
+appId: com.gym360.staff
 ---
 - launchApp:
     clearState: true

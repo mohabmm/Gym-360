@@ -15,13 +15,13 @@ GymApp is a B2B SaaS gym management platform for the Egyptian market. One .NET 8
 
 | App | Path | Android applicationId | Primary persona |
 |---|---|---|---|
-| Trainee | `gymapp-mobile/apps/gymapp_trainee` | `com.example.gymapp_trainee` | Gym member |
+| Trainee | `gymapp-mobile/apps/gymapp_trainee` | `com.gym360.trainee` | Gym member |
 | Trainer | `gymapp-mobile/apps/gymapp_trainer` | `com.gym360.trainer` | Personal trainer (gym-approved) |
-| Gym Staff | `gymapp-mobile/apps/gymapp_gym` | `com.example.gymapp_gym` | Owner / manager / receptionist (also kiosk mode) |
+| Gym Staff | `gymapp-mobile/apps/gymapp_gym` | `com.gym360.staff` | Owner / manager / receptionist (also kiosk mode) |
 
 Backend: the mobile apps default to the remote dev environment `https://staging-api.gym-365.com` (`ApiBaseUrl` in `gymapp_core`); pass `--dart-define=API_BASE_URL=http://localhost:8080` to target a local Docker stack. API restart (local): `docker compose build gymapp-api && docker compose up -d gymapp-api`.
 
-iOS bundle ids: `com.example.gymappTrainee`, `com.example.gymappTrainer`, `com.example.gymappGym`.
+iOS bundle ids: `com.gym360.trainee`, `com.gym360.trainer`, `com.gym360.staff` (same as the Android applicationIds).
 
 ---
 
