@@ -237,3 +237,8 @@ trainer-api-test-report.md
 tests/e2e_cycle/creds_*.json
 **/e2e/.auth/
 **/.mobai/runs/
+
+# Android release bundles (built locally for Play upload)
+*.aab
+# Flutter Android debug source sets are code, not build output
+!gymapp-mobile/apps/*/android/app/src/debug/
