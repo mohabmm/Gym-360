@@ -1,30 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gymapp_core/gymapp_core.dart' show FeatureFlagKeys, featureFlagsProvider;
 
 import 'providers.dart';
 import 'router.dart';
 
-/// Bottom navigation shell wrapping the 5 main tabs.
-/// Home | Clients | Workouts | Schedule | More
+/// Bottom navigation shell. Tabs come from the gym's feature flags:
+/// Home | Clients | Workouts | Schedule | More (PT gyms: Home | Clients | More).
 class ShellScreen extends ConsumerWidget {
   final Widget child;
 
   const ShellScreen({super.key, required this.child});
 
-  static int _calculateSelectedIndex(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith(AppRoutes.home)) return 0;
-    if (location.startsWith(AppRoutes.clients)) return 1;
-    if (location.startsWith(AppRoutes.workouts)) return 2;
-    if (location.startsWith(AppRoutes.schedule)) return 3;
-    if (location.startsWith(AppRoutes.more)) return 4;
-    return 0;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedIndex = _calculateSelectedIndex(context);
     final isArabic =
         Localizations.localeOf(context).languageCode == 'ar';
 
@@ -39,55 +29,52 @@ class ShellScreen extends ConsumerWidget {
       body: authResolving
           ? const Center(child: CircularProgressIndicator())
           : child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          switch (index) {
-            case 0:
-              context.go(AppRoutes.home);
-              break;
-            case 1:
-              context.go(AppRoutes.clients);
-              break;
-            case 2:
-              context.go(AppRoutes.workouts);
-              break;
-            case 3:
-              context.go(AppRoutes.schedule);
-              break;
-            case 4:
-              context.go(AppRoutes.more);
-              break;
-          }
-        },
-        destinations: [
+      bottomNavigationBar: _TrainerNavBar(isArabic: isArabic),
+    );
+  }
+}
+
+class _Tab {
+  final String path;
+  final String? flag;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String ar;
+  final String en;
+  const _Tab(this.path, this.flag, this.icon, this.selectedIcon, this.ar, this.en);
+}
+
+const _tabs = [
+  _Tab(AppRoutes.home, null, Icons.home_outlined, Icons.home, 'الرئيسية', 'Home'),
+  _Tab(AppRoutes.clients, null, Icons.people_outline, Icons.people, 'العملاء', 'Clients'),
+  _Tab(AppRoutes.workouts, FeatureFlagKeys.trainingWorkouts, Icons.fitness_center_outlined, Icons.fitness_center, 'التمارين', 'Workouts'),
+  _Tab(AppRoutes.schedule, FeatureFlagKeys.schedulingBooking, Icons.calendar_today_outlined, Icons.calendar_today, 'الجدول', 'Schedule'),
+  _Tab(AppRoutes.more, null, Icons.more_horiz, Icons.more_horiz, 'المزيد', 'More'),
+];
+
+/// Bottom navigation built only from enabled tabs (PT gyms: Home · Clients · More).
+class _TrainerNavBar extends ConsumerWidget {
+  final bool isArabic;
+  const _TrainerNavBar({required this.isArabic});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final flags = ref.watch(featureFlagsProvider);
+    final tabs = _tabs.where((t) => t.flag == null || flags.isEnabled(t.flag!)).toList();
+    final location = GoRouterState.of(context).matchedLocation;
+    final current = tabs.lastIndexWhere((t) => location.startsWith(t.path));
+
+    return NavigationBar(
+      selectedIndex: current < 0 ? 0 : current,
+      onDestinationSelected: (index) => context.go(tabs[index].path),
+      destinations: [
+        for (final t in tabs)
           NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home),
-            label: isArabic ? 'الرئيسية' : 'Home',
+            icon: Icon(t.icon),
+            selectedIcon: Icon(t.selectedIcon),
+            label: isArabic ? t.ar : t.en,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.people_outline),
-            selectedIcon: const Icon(Icons.people),
-            label: isArabic ? 'العملاء' : 'Clients',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.fitness_center_outlined),
-            selectedIcon: const Icon(Icons.fitness_center),
-            label: isArabic ? 'التمارين' : 'Workouts',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.calendar_today_outlined),
-            selectedIcon: const Icon(Icons.calendar_today),
-            label: isArabic ? 'الجدول' : 'Schedule',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.more_horiz),
-            selectedIcon: const Icon(Icons.more_horiz),
-            label: isArabic ? 'المزيد' : 'More',
-          ),
-        ],
-      ),
+      ],
     );
   }
 }

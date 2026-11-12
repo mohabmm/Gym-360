@@ -10,8 +10,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isArabic =
-        Localizations.localeOf(context).languageCode == 'ar';
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final theme = Theme.of(context);
     final themeMode = ref.watch(themeModeProvider);
 
@@ -33,7 +32,8 @@ class SettingsScreen extends ConsumerWidget {
                 trailing: Switch(
                   value: isArabic,
                   onChanged: (value) {
-                    final locale = value ? const Locale('ar') : const Locale('en');
+                    final locale =
+                        value ? const Locale('ar') : const Locale('en');
                     ref.read(localeProvider.notifier).state = locale;
                     final box = Hive.box(StorageKeys.settingsBox);
                     box.put(StorageKeys.locale, locale.languageCode);
@@ -85,25 +85,41 @@ class SettingsScreen extends ConsumerWidget {
           }),
           const SizedBox(height: 16),
 
-          // Notifications section
-          _SettingsSection(
-            title: isArabic ? 'الاشعارات' : 'Notifications',
-            children: [
-              _SettingsTile(
-                icon: Icons.notifications_outlined,
-                title: isArabic ? 'اشعارات الحجز' : 'Booking Notifications',
-                subtitle: isArabic ? 'تلقي اشعارات الحجوزات الجديدة' : 'Get notified about new bookings',
-                trailing: const _NotificationToggle(prefKey: 'notif_bookings'),
-              ),
-              _SettingsTile(
-                icon: Icons.message_outlined,
-                title: isArabic ? 'اشعارات الرسائل' : 'Message Notifications',
-                subtitle: isArabic ? 'تلقي اشعارات الرسائل الجديدة' : 'Get notified about new messages',
-                trailing: const _NotificationToggle(prefKey: 'notif_messages'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
+          // Notifications section: only toggles for modules that are on.
+          if (ref.watch(isFeatureEnabledProvider(
+                  FeatureFlagKeys.schedulingBooking)) ||
+              ref.watch(isFeatureEnabledProvider(
+                  FeatureFlagKeys.communicationChat))) ...[
+            _SettingsSection(
+              title: isArabic ? 'الاشعارات' : 'Notifications',
+              children: [
+                if (ref.watch(isFeatureEnabledProvider(
+                    FeatureFlagKeys.schedulingBooking)))
+                  _SettingsTile(
+                    icon: Icons.notifications_outlined,
+                    title: isArabic ? 'اشعارات الحجز' : 'Booking Notifications',
+                    subtitle: isArabic
+                        ? 'تلقي اشعارات الحجوزات الجديدة'
+                        : 'Get notified about new bookings',
+                    trailing:
+                        const _NotificationToggle(prefKey: 'notif_bookings'),
+                  ),
+                if (ref.watch(isFeatureEnabledProvider(
+                    FeatureFlagKeys.communicationChat)))
+                  _SettingsTile(
+                    icon: Icons.message_outlined,
+                    title:
+                        isArabic ? 'اشعارات الرسائل' : 'Message Notifications',
+                    subtitle: isArabic
+                        ? 'تلقي اشعارات الرسائل الجديدة'
+                        : 'Get notified about new messages',
+                    trailing:
+                        const _NotificationToggle(prefKey: 'notif_messages'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Privacy section (PDPL)
           _SettingsSection(
@@ -112,13 +128,17 @@ class SettingsScreen extends ConsumerWidget {
               _SettingsTile(
                 icon: Icons.download_outlined,
                 title: isArabic ? 'تنزيل بياناتي' : 'Download My Data',
-                subtitle: isArabic ? 'تصدير نسخة من بياناتك' : 'Export a copy of your data',
+                subtitle: isArabic
+                    ? 'تصدير نسخة من بياناتك'
+                    : 'Export a copy of your data',
                 onTap: () => _requestDataExport(context, ref, isArabic),
               ),
               _SettingsTile(
                 icon: Icons.delete_forever_outlined,
                 title: isArabic ? 'حذف الحساب' : 'Delete Account',
-                subtitle: isArabic ? 'حذف حسابك نهائيا' : 'Permanently delete your account',
+                subtitle: isArabic
+                    ? 'حذف حسابك نهائيا'
+                    : 'Permanently delete your account',
                 titleColor: AppColors.error,
                 onTap: () => _confirmDeleteAccount(context, ref, isArabic),
               ),
@@ -147,8 +167,7 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  void _showThemePicker(
-      BuildContext context, WidgetRef ref, bool isArabic) {
+  void _showThemePicker(BuildContext context, WidgetRef ref, bool isArabic) {
     showModalBottomSheet(
       context: context,
       builder: (ctx) => Column(
@@ -231,8 +250,7 @@ class SettingsScreen extends ConsumerWidget {
             child: Text(isArabic ? 'الغاء' : 'Cancel'),
           ),
           ElevatedButton(
-            style:
-                ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(isArabic ? 'حذف نهائيا' : 'Delete Permanently'),
           ),
@@ -261,7 +279,9 @@ class SettingsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: Text(isArabic ? 'تسجيل الخروج' : 'Sign Out'),
         content: Text(
-          isArabic ? 'هل تريد تسجيل الخروج؟' : 'Are you sure you want to sign out?',
+          isArabic
+              ? 'هل تريد تسجيل الخروج؟'
+              : 'Are you sure you want to sign out?',
         ),
         actions: [
           TextButton(
@@ -375,7 +395,8 @@ class _SettingsTile extends StatelessWidget {
       subtitle: subtitle != null
           ? Text(subtitle!, style: theme.textTheme.bodySmall)
           : null,
-      trailing: trailing ?? (onTap != null ? const Icon(Icons.chevron_right) : null),
+      trailing:
+          trailing ?? (onTap != null ? const Icon(Icons.chevron_right) : null),
       onTap: onTap,
     );
   }

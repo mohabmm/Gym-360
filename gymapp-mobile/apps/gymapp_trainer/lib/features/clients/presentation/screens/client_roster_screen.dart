@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../sessions/presentation/pt/pt_coach_widgets.dart';
+
 import '../providers/client_providers.dart';
 
 class ClientRosterScreen extends ConsumerStatefulWidget {
   const ClientRosterScreen({super.key});
 
   @override
-  ConsumerState<ClientRosterScreen> createState() =>
-      _ClientRosterScreenState();
+  ConsumerState<ClientRosterScreen> createState() => _ClientRosterScreenState();
 }
 
 class _ClientRosterScreenState extends ConsumerState<ClientRosterScreen> {
@@ -26,9 +27,18 @@ class _ClientRosterScreenState extends ConsumerState<ClientRosterScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isArabic =
-        Localizations.localeOf(context).languageCode == 'ar';
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final clientsAsync = ref.watch(clientRosterProvider);
+    // pt.packages: remaining sessions and trial badge per client.
+    final packagesByMember =
+        ref.watch(isFeatureEnabledProvider(FeatureFlagKeys.ptPackages))
+            ? {
+                for (final p
+                    in ref.watch(activeClientPackagesProvider).valueOrNull ??
+                        const <SessionPackageModel>[])
+                  p.memberId: p,
+              }
+            : const <String, SessionPackageModel>{};
 
     return Scaffold(
       appBar: AppBar(
@@ -61,18 +71,15 @@ class _ClientRosterScreenState extends ConsumerState<ClientRosterScreen> {
                   final filtered = _searchQuery.isEmpty
                       ? clients
                       : clients.where((c) {
-                          final name =
-                              '${c.user.firstName} ${c.user.lastName}'
-                                  .toLowerCase();
+                          final name = '${c.user.firstName} ${c.user.lastName}'
+                              .toLowerCase();
                           return name.contains(_searchQuery.toLowerCase());
                         }).toList();
 
                   if (filtered.isEmpty) {
                     return EmptyState(
                       icon: Icons.people_outline,
-                      title: isArabic
-                          ? 'لا يوجد عملاء'
-                          : 'No clients found',
+                      title: isArabic ? 'لا يوجد عملاء' : 'No clients found',
                       subtitle: _searchQuery.isNotEmpty
                           ? (isArabic
                               ? 'جرب بحثا مختلفا'
@@ -91,8 +98,8 @@ class _ClientRosterScreenState extends ConsumerState<ClientRosterScreen> {
                       return _ClientCard(
                         client: client,
                         isArabic: isArabic,
-                        onTap: () =>
-                            context.push('/clients/${client.user.id}'),
+                        package: packagesByMember[client.user.id],
+                        onTap: () => context.push('/clients/${client.user.id}'),
                       );
                     },
                   );
@@ -122,11 +129,13 @@ class _ClientCard extends StatelessWidget {
   final ClientSummary client;
   final bool isArabic;
   final VoidCallback onTap;
+  final SessionPackageModel? package;
 
   const _ClientCard({
     required this.client,
     required this.isArabic,
     required this.onTap,
+    this.package,
   });
 
   @override
@@ -160,6 +169,22 @@ class _ClientCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
+                    if (package != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(children: [
+                          Text(
+                            isArabic
+                                ? 'متبقي ${package!.remainingSessions} من ${package!.totalSessions}'
+                                : '${package!.remainingSessions} of ${package!.totalSessions} left',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          if (package!.isTrial) ...[
+                            const SizedBox(width: 6),
+                            TrialBadge(isArabic: isArabic),
+                          ],
+                        ]),
+                      ),
                     if (client.goalTags.isNotEmpty)
                       Wrap(
                         spacing: 4,
@@ -173,7 +198,7 @@ class _ClientCard extends StatelessWidget {
                                   ),
                                   decoration: BoxDecoration(
                                     color: theme.colorScheme.primary
-                                        .withOpacity(0.1),
+                                        .withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -190,7 +215,14 @@ class _ClientCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.grey400),
+              if (package != null && package!.remainingSessions > 0)
+                FeatureFlagGate(
+                  flag: FeatureFlagKeys.ptDualSessionLogging,
+                  child:
+                      QuickLogButton(memberId: client.user.id, compact: true),
+                )
+              else
+                const Icon(Icons.chevron_right, color: AppColors.grey400),
             ],
           ),
         ),

@@ -9,6 +9,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/providers.dart';
+import 'core/feature_flags.dart';
 import 'core/router.dart';
 
 Future<void> main() async {
@@ -41,6 +42,7 @@ Future<void> main() async {
   await Hive.openBox(StorageKeys.userBox);
   await Hive.openBox(StorageKeys.gymBox);
   await Hive.openBox(StorageKeys.planFeaturesBox);
+  await Hive.openBox(HiveFeatureFlagCache.boxName);
   await Hive.openBox(StorageKeys.offlineQueueBox);
   await Hive.openBox(StorageKeys.settingsBox);
   await Hive.openBox(StorageKeys.workoutCacheBox);
@@ -59,8 +61,9 @@ Future<void> main() async {
       ProviderScope(
         overrides: [
           telemetryServiceProvider.overrideWithValue(telemetry),
+          featureFlagServiceProvider.overrideWith(createTrainerFeatureFlagService),
         ],
-        child: const GymAppTrainer(),
+        child: const TrainerFeatureFlagsSync(child: GymAppTrainer()),
       ),
     );
   });

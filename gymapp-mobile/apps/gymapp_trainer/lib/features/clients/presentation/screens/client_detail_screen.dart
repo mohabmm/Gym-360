@@ -8,6 +8,7 @@ import '../../../../core/providers.dart';
 import '../../../../core/session_type_l10n.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../providers/client_providers.dart';
+import '../../../sessions/presentation/pt/pt_coach_widgets.dart';
 
 /// Client detail screen with 5 tabs: Overview, Progress, Sessions, Workouts, Notes.
 class ClientDetailScreen extends ConsumerStatefulWidget {
@@ -16,142 +17,155 @@ class ClientDetailScreen extends ConsumerStatefulWidget {
   const ClientDetailScreen({super.key, required this.clientId});
 
   @override
-  ConsumerState<ClientDetailScreen> createState() =>
-      _ClientDetailScreenState();
+  ConsumerState<ClientDetailScreen> createState() => _ClientDetailScreenState();
 }
 
-class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen>
-    with TickerProviderStateMixin {
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 5, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isArabic =
-        Localizations.localeOf(context).languageCode == 'ar';
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final clientAsync = ref.watch(clientDetailProvider(widget.clientId));
+    final flags = ref.watch(featureFlagsProvider);
+    bool on(String key) => flags.isEnabled(key);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: clientAsync.whenOrNull(
-          data: (data) => Text(
-            '${data.user.firstName} ${data.user.lastName}',
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline),
-            tooltip: isArabic ? 'محادثة' : 'Chat',
-            onPressed: () => _startChat(context, ref),
-          ),
-          IconButton(
-            icon: const Icon(Icons.note_add_outlined),
-            tooltip: isArabic ? 'ملاحظات' : 'Notes',
-            onPressed: () =>
-                context.push('/clients/${widget.clientId}/notes'),
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'onboarding':
-                  context.push(
-                      '/clients/${widget.clientId}/onboarding');
-                  break;
-                case 'remote_workout':
-                  _showRemoteWorkoutDialog(context, ref);
-                  break;
-                case 'assign_workout':
-                  context.push('/clients/${widget.clientId}/assign-workout');
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'onboarding',
-                child: ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.assignment_outlined),
-                  title: Text(isArabic ? 'نموذج الاستقبال' : 'Intake Form'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'remote_workout',
-                child: ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.wifi_tethering),
-                  title: Text(
-                      isArabic ? 'التمرين عن بعد' : 'Remote Workout'),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'assign_workout',
-                child: ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.fitness_center),
-                  title: Text(isArabic ? 'تعيين تمرين' : 'Assign Workout'),
-                ),
-              ),
-            ],
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: [
-            Tab(text: isArabic ? 'نظرة عامة' : 'Overview'),
-            Tab(text: isArabic ? 'التقدم' : 'Progress'),
-            Tab(text: isArabic ? 'الجلسات' : 'Sessions'),
-            Tab(text: isArabic ? 'التمارين' : 'Workouts'),
-            Tab(text: isArabic ? 'ملاحظات' : 'Notes'),
-          ],
-        ),
+    // Tabs, actions and menu items exist only for features that are on (no gaps).
+    final tabs = <(String, String, Widget Function(ClientDetailData))>[
+      (
+        'نظرة عامة',
+        'Overview',
+        (d) => _OverviewTab(data: d, isArabic: isArabic)
       ),
-      body: clientAsync.when(
-        data: (data) => TabBarView(
-          controller: _tabController,
-          children: [
-            _OverviewTab(data: data, isArabic: isArabic),
-            _ProgressTab(data: data, isArabic: isArabic),
-            _SessionsTab(data: data, isArabic: isArabic),
-            _WorkoutsTab(data: data, isArabic: isArabic),
-            _NotesTab(
-              data: data,
-              clientId: widget.clientId,
-              isArabic: isArabic,
-            ),
-          ],
+      if (on(FeatureFlagKeys.ptProgressMeasurements))
+        (
+          'التقدم',
+          'Progress',
+          (d) => _ProgressTab(data: d, isArabic: isArabic)
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => AppErrorWidget(
-          message: e.toString(),
-          onRetry: () =>
-              ref.invalidate(clientDetailProvider(widget.clientId)),
+      if (on(FeatureFlagKeys.ptDualSessionLogging))
+        (
+          'الجلسات',
+          'Sessions',
+          (d) => _SessionsTab(data: d, isArabic: isArabic)
+        ),
+      if (on(FeatureFlagKeys.trainingWorkouts))
+        (
+          'التمارين',
+          'Workouts',
+          (d) => _WorkoutsTab(data: d, isArabic: isArabic)
+        ),
+      if (on(FeatureFlagKeys.gymMemberRecords))
+        (
+          'ملاحظات',
+          'Notes',
+          (d) =>
+              _NotesTab(data: d, clientId: widget.clientId, isArabic: isArabic)
+        ),
+    ];
+    final menu = <(String, IconData, String, String)>[
+      if (on(FeatureFlagKeys.gymMemberRecords))
+        (
+          'onboarding',
+          Icons.assignment_outlined,
+          'نموذج الاستقبال',
+          'Intake Form'
+        ),
+      if (on(FeatureFlagKeys.trainingRemoteWorkout))
+        (
+          'remote_workout',
+          Icons.wifi_tethering,
+          'التمرين عن بعد',
+          'Remote Workout'
+        ),
+      if (on(FeatureFlagKeys.trainingWorkouts))
+        (
+          'assign_workout',
+          Icons.fitness_center,
+          'تعيين تمرين',
+          'Assign Workout'
+        ),
+    ];
+
+    return DefaultTabController(
+      key: ValueKey(tabs.length),
+      length: tabs.length,
+      child: Scaffold(
+        bottomNavigationBar: _PtActionBar(clientId: widget.clientId),
+        appBar: AppBar(
+          title: clientAsync.whenOrNull(
+            data: (data) => Text(
+              '${data.user.firstName} ${data.user.lastName}',
+            ),
+          ),
+          actions: [
+            if (on(FeatureFlagKeys.communicationChat))
+              IconButton(
+                icon: const Icon(Icons.chat_bubble_outline),
+                tooltip: isArabic ? 'محادثة' : 'Chat',
+                onPressed: () => _startChat(context, ref),
+              ),
+            if (on(FeatureFlagKeys.gymMemberRecords))
+              IconButton(
+                icon: const Icon(Icons.note_add_outlined),
+                tooltip: isArabic ? 'ملاحظات' : 'Notes',
+                onPressed: () =>
+                    context.push('/clients/${widget.clientId}/notes'),
+              ),
+            if (menu.isNotEmpty)
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  switch (value) {
+                    case 'onboarding':
+                      context.push('/clients/${widget.clientId}/onboarding');
+                      break;
+                    case 'remote_workout':
+                      _showRemoteWorkoutDialog(context, ref);
+                      break;
+                    case 'assign_workout':
+                      context
+                          .push('/clients/${widget.clientId}/assign-workout');
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  for (final m in menu)
+                    PopupMenuItem(
+                      value: m.$1,
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(m.$2),
+                        title: Text(isArabic ? m.$3 : m.$4),
+                      ),
+                    ),
+                ],
+              ),
+          ],
+          bottom: TabBar(
+            isScrollable: true,
+            tabs: [for (final t in tabs) Tab(text: isArabic ? t.$1 : t.$2)],
+          ),
+        ),
+        body: clientAsync.when(
+          data: (data) => TabBarView(
+            children: [for (final t in tabs) t.$3(data)],
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => AppErrorWidget(
+            message: e.toString(),
+            onRetry: () =>
+                ref.invalidate(clientDetailProvider(widget.clientId)),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _startChat(BuildContext context, WidgetRef ref) async {
-    final isArabic =
-        Localizations.localeOf(context).languageCode == 'ar';
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final gymId = ref.read(activeGymIdProvider);
     if (gymId == null) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-            isArabic ? 'لا يوجد جيم نشط' : 'No active gym'),
+        content: Text(isArabic ? 'لا يوجد جيم نشط' : 'No active gym'),
       ));
       return;
     }
@@ -179,8 +193,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen>
   }
 
   void _showRemoteWorkoutDialog(BuildContext context, WidgetRef ref) {
-    final isArabic =
-        Localizations.localeOf(context).languageCode == 'ar';
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final reasonController = TextEditingController();
 
     showDialog(
@@ -224,8 +237,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen>
                       final isActive = status?.isActive ?? false;
                       return ElevatedButton(
                         onPressed: () async {
-                          final authState =
-                              ref.read(authProvider);
+                          final authState = ref.read(authProvider);
                           final trainerId = authState.user?.id;
                           final gymId = ref.read(activeGymIdProvider);
                           if (trainerId == null || gymId == null) {
@@ -263,8 +275,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen>
                           }
                           ref.invalidate(
                               remoteWorkoutProvider(widget.clientId));
-                          ref.invalidate(
-                              clientDetailProvider(widget.clientId));
+                          ref.invalidate(clientDetailProvider(widget.clientId));
                           if (ctx.mounted) Navigator.pop(ctx);
                         },
                         child: Text(isActive
@@ -304,8 +315,7 @@ class _OverviewTab extends StatelessWidget {
                 children: [
                   AvatarWidget(
                     imageUrl: data.user.photoUrl,
-                    name:
-                        '${data.user.firstName} ${data.user.lastName}',
+                    name: '${data.user.firstName} ${data.user.lastName}',
                     size: 80,
                   ),
                   const SizedBox(height: 12),
@@ -474,10 +484,9 @@ class _OverviewTab extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color:
-                                data.activePackage!.remainingSessions == 1
-                                    ? AppColors.error
-                                    : AppColors.warning,
+                            color: data.activePackage!.remainingSessions == 1
+                                ? AppColors.error
+                                : AppColors.warning,
                           ),
                         ),
                       ),
@@ -504,9 +513,7 @@ class _ProgressTab extends StatelessWidget {
     if (data.bodyMetrics.isEmpty) {
       return EmptyState(
         icon: Icons.trending_up,
-        title: isArabic
-            ? 'لا توجد بيانات تقدم'
-            : 'No progress data yet',
+        title: isArabic ? 'لا توجد بيانات تقدم' : 'No progress data yet',
         subtitle: isArabic
             ? 'سيظهر تقدم العميل هنا'
             : "Client's progress will appear here",
@@ -548,16 +555,18 @@ class _SessionsTab extends StatelessWidget {
     if (data.sessions.isEmpty) {
       return EmptyState(
         icon: Icons.event_outlined,
-        title:
-            isArabic ? 'لا توجد جلسات' : 'No sessions yet',
+        title: isArabic ? 'لا توجد جلسات' : 'No sessions yet',
       );
     }
 
     final now = DateTime.now();
     final sorted = [...data.sessions]
       ..sort((a, b) => b.scheduledAt.compareTo(a.scheduledAt));
-    final upcoming =
-        sorted.where((s) => s.scheduledAt.isAfter(now)).toList().reversed.toList();
+    final upcoming = sorted
+        .where((s) => s.scheduledAt.isAfter(now))
+        .toList()
+        .reversed
+        .toList();
     final past = sorted.where((s) => !s.scheduledAt.isAfter(now)).toList();
 
     return ListView(
@@ -565,20 +574,20 @@ class _SessionsTab extends StatelessWidget {
       children: [
         if (upcoming.isNotEmpty) ...[
           Text(isArabic ? 'القادمة' : 'Upcoming',
-              style:
-                  theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          ...upcoming.map((s) => _SessionRow(
-              session: s, isArabic: isArabic, parent: this)),
+          ...upcoming.map(
+              (s) => _SessionRow(session: s, isArabic: isArabic, parent: this)),
           const SizedBox(height: 16),
         ],
         if (past.isNotEmpty) ...[
           Text(isArabic ? 'السابقة' : 'Past',
-              style:
-                  theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          ...past.map((s) =>
-              _SessionRow(session: s, isArabic: isArabic, parent: this)),
+          ...past.map(
+              (s) => _SessionRow(session: s, isArabic: isArabic, parent: this)),
         ],
       ],
     );
@@ -591,74 +600,74 @@ class _SessionsTab extends StatelessWidget {
       builder: (ctx) {
         final theme = Theme.of(ctx);
         return Consumer(builder: (ctx, ref, _) {
-        final testMode = ref.watch(testModeProvider);
-        final lead = const Duration(minutes: 10);
-        final canStartByTime = !DateTime.now()
-            .isBefore(session.scheduledAt.subtract(lead));
-        final s = session.status.toLowerCase();
-        final canStart = (testMode || canStartByTime) &&
-            (s == 'confirmed' ||
-                s == 'inprogress' ||
-                (testMode && s == 'pending'));
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat('EEEE, MMM dd yyyy', isArabic ? 'ar' : 'en')
-                      .format(session.scheduledAt),
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${DateFormat('HH:mm').format(session.scheduledAt)} • '
-                  '${session.durationMinutes} ${isArabic ? 'دقيقة' : 'min'} • '
-                  '${sessionTypeLabel(session.sessionType, isArabic)}',
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${isArabic ? 'الحالة:' : 'Status:'} ${_statusLabel(session.status, isArabic)}',
-                  style: TextStyle(color: _statusColor(session.status)),
-                ),
-                if ((session.focus ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(isArabic ? 'التركيز' : 'Focus',
-                      style: theme.textTheme.labelMedium),
-                  Text(session.focus!),
-                ],
-                const SizedBox(height: 16),
-                if (canStart)
-                  FilledButton.icon(
-                    icon: const Icon(Icons.play_arrow),
-                    label: Text(isArabic ? 'ابدأ الجلسة' : 'Start session'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      context.push('/sessions/${session.id}/live');
-                    },
-                  )
-                else if (session.status.toLowerCase() == 'confirmed' ||
-                    session.status.toLowerCase() == 'inprogress')
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      isArabic
-                          ? 'لا يمكن بدء الجلسة قبل موعدها'
-                          : 'Session cannot start before its scheduled time',
-                      style: theme.textTheme.bodySmall,
-                    ),
+          final testMode = ref.watch(testModeProvider);
+          final lead = const Duration(minutes: 10);
+          final canStartByTime =
+              !DateTime.now().isBefore(session.scheduledAt.subtract(lead));
+          final s = session.status.toLowerCase();
+          final canStart = (testMode || canStartByTime) &&
+              (s == 'confirmed' ||
+                  s == 'inprogress' ||
+                  (testMode && s == 'pending'));
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat('EEEE, MMM dd yyyy', isArabic ? 'ar' : 'en')
+                        .format(session.scheduledAt),
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${DateFormat('HH:mm').format(session.scheduledAt)} • '
+                    '${session.durationMinutes} ${isArabic ? 'دقيقة' : 'min'} • '
+                    '${sessionTypeLabel(session.sessionType, isArabic)}',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${isArabic ? 'الحالة:' : 'Status:'} ${_statusLabel(session.status, isArabic)}',
+                    style: TextStyle(color: _statusColor(session.status)),
+                  ),
+                  if ((session.focus ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(isArabic ? 'التركيز' : 'Focus',
+                        style: theme.textTheme.labelMedium),
+                    Text(session.focus!),
+                  ],
+                  const SizedBox(height: 16),
+                  if (canStart)
+                    FilledButton.icon(
+                      icon: const Icon(Icons.play_arrow),
+                      label: Text(isArabic ? 'ابدأ الجلسة' : 'Start session'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        context.push('/sessions/${session.id}/live');
+                      },
+                    )
+                  else if (session.status.toLowerCase() == 'confirmed' ||
+                      session.status.toLowerCase() == 'inprogress')
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isArabic
+                            ? 'لا يمكن بدء الجلسة قبل موعدها'
+                            : 'Session cannot start before its scheduled time',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        );
+          );
         });
       },
     );
@@ -745,8 +754,7 @@ class _SessionRow extends StatelessWidget {
       child: ListTile(
         onTap: () => parent.showDetailSheet(context, session),
         leading: CircleAvatar(
-          backgroundColor:
-              parent._statusColor(session.status).withOpacity(0.1),
+          backgroundColor: parent._statusColor(session.status).withOpacity(0.1),
           child: Icon(
             parent._statusIcon(session.status),
             color: parent._statusColor(session.status),
@@ -784,9 +792,7 @@ class _WorkoutsTab extends StatelessWidget {
     if (data.workoutAssignments.isEmpty) {
       return EmptyState(
         icon: Icons.fitness_center,
-        title: isArabic
-            ? 'لا توجد تمارين معينة'
-            : 'No workouts assigned',
+        title: isArabic ? 'لا توجد تمارين معينة' : 'No workouts assigned',
       );
     }
 
@@ -807,8 +813,7 @@ class _WorkoutsTab extends StatelessWidget {
             ),
             subtitle: Text(
               assignment.scheduledDate != null
-                  ? DateFormat('dd/MM/yyyy')
-                      .format(assignment.scheduledDate!)
+                  ? DateFormat('dd/MM/yyyy').format(assignment.scheduledDate!)
                   : (assignment.status ?? ''),
             ),
             trailing: const Icon(Icons.chevron_right),
@@ -840,9 +845,7 @@ class _NotesTab extends ConsumerWidget {
           children: [
             EmptyState(
               icon: Icons.note_outlined,
-              title: isArabic
-                  ? 'لا توجد ملاحظات'
-                  : 'No notes yet',
+              title: isArabic ? 'لا توجد ملاحظات' : 'No notes yet',
               subtitle: isArabic
                   ? 'اضف ملاحظات خاصة عن هذا العميل'
                   : 'Add private notes about this client',
@@ -887,6 +890,41 @@ class _NotesTab extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// PT actions for this client: one-tap session log and measurements.
+class _PtActionBar extends ConsumerWidget {
+  final String clientId;
+  const _PtActionBar({required this.clientId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final flags = ref.watch(featureFlagsProvider);
+    final canLog = flags.isEnabled(FeatureFlagKeys.ptDualSessionLogging);
+    final canMeasure = flags.isEnabled(FeatureFlagKeys.ptProgressMeasurements);
+    if (!canLog && !canMeasure) return const SizedBox.shrink();
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: Row(
+          children: [
+            if (canLog) Expanded(child: QuickLogButton(memberId: clientId)),
+            if (canLog && canMeasure) const SizedBox(width: 12),
+            if (canMeasure)
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push(measurementsRoute(clientId)),
+                  icon: const Icon(Icons.straighten, size: 18),
+                  label: Text(isArabic ? 'القياسات' : 'Measurements'),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
