@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../api_exceptions.dart';
+import '../../feature_flags/feature_flag_signals.dart';
 
 /// Maps DioException and HTTP status codes to typed ApiExceptions with
 /// human-readable messages extracted from the backend's standard envelope:
@@ -34,6 +35,8 @@ class ErrorInterceptor extends Interceptor {
   };
 
   static const _serverErrorStatuses = {500, 502, 503, 504};
+
+  static const _featureDisabledPrefix = 'FEATURE_DISABLED:';
 
   ApiException? _mapToApiException(DioException err) {
     if (_timeoutTypes.contains(err.type)) {
@@ -93,8 +96,15 @@ class ErrorInterceptor extends Interceptor {
   /// Plan-gating and suspension errors are keyed by error code, not status.
   ApiException? _mapBusinessError(_ParsedError parsed) {
     final meta = parsed.firstMeta;
+    final code = parsed.errorCode ?? '';
+    if (code.startsWith(_featureDisabledPrefix)) {
+      final key = code.substring(_featureDisabledPrefix.length);
+      FeatureFlagSignals.reportDisabled(key);
+      return FeatureDisabledException(featureKey: key);
+    }
     switch (parsed.errorCode) {
       case 'PLAN.FEATURE_NOT_AVAILABLE':
+        FeatureFlagSignals.reportDisabled((meta?['feature'] as String?) ?? '');
         return FeatureGatedException(
           featureCode: (meta?['feature'] as String?) ?? '',
           requiredPlan: (meta?['requiredPlan'] as String?) ?? '',

@@ -52,6 +52,15 @@ export 'src/models/trainer_availability_model.dart';
 export 'src/models/weekly_availability_model.dart';
 export 'src/models/remote_workout_model.dart';
 
+// Feature flags (per-gym presets + overrides)
+export 'src/feature_flags/feature_flag_keys.dart';
+export 'src/feature_flags/feature_flags.dart';
+export 'src/feature_flags/feature_flag_service.dart';
+export 'src/feature_flags/feature_flags_provider.dart';
+export 'src/feature_flags/feature_flag_gate.dart';
+export 'src/feature_flags/feature_route_guard.dart';
+export 'src/feature_flags/feature_flag_signals.dart';
+
 // Network
 export 'src/network/api_base_url.dart';
 export 'src/network/api_client.dart';

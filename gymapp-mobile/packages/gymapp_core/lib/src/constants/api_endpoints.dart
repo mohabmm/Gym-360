@@ -274,6 +274,9 @@ class ApiEndpoints {
   static const String quickAssignPackage =
       '$basePrefix/billing/packages/quick-assign';
   static const String planFeatures = '$basePrefix/billing/plan-features';
+
+  /// Resolved per-gym feature flags (pt_module / business presets + overrides).
+  static const String featureFlagsMe = '$basePrefix/feature-flags/me';
   // Trainer's view of all their clients' active packages.
   static const String myClientPackages =
       '$basePrefix/billing/packages/my-clients';
