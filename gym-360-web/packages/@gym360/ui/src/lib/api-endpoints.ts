@@ -145,3 +145,18 @@ export const ADMIN = {
   PLATFORM_CONFIG: '/admin/platform-config',
   SECURITY_SETTINGS: '/admin/security-settings',
 } as const;
+
+// Feature flags (per-gym presets + overrides). Admin routes require the super_admin role.
+export const FEATURE_FLAGS = {
+  ME: '/feature-flags/me',
+  CATALOG: '/admin/feature-flags/catalog',
+  GYMS: '/admin/feature-flags/gyms',
+  GYM: (gymId: string) => `/admin/feature-flags/gyms/${gymId}`,
+  GYM_PRESET: (gymId: string) => `/admin/feature-flags/gyms/${gymId}/preset`,
+  BULK_PRESET: '/admin/feature-flags/gyms/preset',
+  GYM_OVERRIDE: (gymId: string, key: string) =>
+    `/admin/feature-flags/gyms/${gymId}/overrides/${encodeURIComponent(key)}`,
+  PRESETS: '/admin/feature-flags/presets',
+  PRESET: (code: string) => `/admin/feature-flags/presets/${encodeURIComponent(code)}`,
+  AUDIT: '/admin/feature-flags/audit',
+} as const;

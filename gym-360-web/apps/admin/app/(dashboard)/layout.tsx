@@ -6,8 +6,9 @@ import { SidebarNav, type NavSection, LocaleToggle, ThemeToggle } from '@gym360/
 import Image from 'next/image';
 import {
   LayoutDashboard, Building2, Users, CreditCard, Layers, BarChart3, TrendingDown,
-  BookOpen, Settings, UserPlus, FileBarChart, HeadphonesIcon,
+  BookOpen, Settings, UserPlus, FileBarChart, HeadphonesIcon, ToggleRight,
 } from 'lucide-react';
+import { useFlagsText } from '@/lib/feature-flags-text';
 import { usePendingGyms } from '@/lib/hooks';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -16,6 +17,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { data: pendingData } = usePendingGyms();
   const { data: session } = useSession();
   const pendingCount = pendingData?.data?.length ?? 0;
+  const { t: flagsText } = useFlagsText();
+  // Feature flags are Super Admin only: other roles get no menu item (routes are guarded too).
+  const isSuperAdmin = session?.user?.adminRole === 'super_admin';
 
   const navSections: NavSection[] = [
     {
@@ -27,6 +31,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         { label: 'Users', href: '/users', icon: <Users className="h-4 w-4" /> },
         { label: 'Subscriptions', href: '/subscriptions', icon: <CreditCard className="h-4 w-4" /> },
         { label: 'Plans & Features', href: '/plans', icon: <Layers className="h-4 w-4" /> },
+        ...(isSuperAdmin
+          ? [{ label: flagsText.navLabel, href: '/feature-flags', icon: <ToggleRight className="h-4 w-4" /> }]
+          : []),
       ],
     },
     {
