@@ -1,3 +1,4 @@
+using GymApp.Common.Application.FeatureFlags;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
@@ -14,31 +15,30 @@ internal sealed class AssignSessionPackageCommandHandler : ICommandHandler<Assig
 {
     private readonly ISessionPackageRepository _packageRepository;
     private readonly ISessionPackageTemplateRepository _templateRepository;
-    private readonly IGymPlanService _gymPlanService;
+    private readonly IFeatureFlagService _featureFlags;
     private readonly IBillingUnitOfWork _unitOfWork;
 
     public AssignSessionPackageCommandHandler(
         ISessionPackageRepository packageRepository,
         ISessionPackageTemplateRepository templateRepository,
-        IGymPlanService gymPlanService,
+        IFeatureFlagService featureFlags,
         IBillingUnitOfWork unitOfWork)
     {
         _packageRepository = packageRepository;
         _templateRepository = templateRepository;
-        _gymPlanService = gymPlanService;
+        _featureFlags = featureFlags;
         _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<Guid>> Handle(AssignSessionPackageCommand request, CancellationToken cancellationToken)
     {
-        bool isEnabled = await _gymPlanService.IsFeatureEnabledAsync(
-            request.GymId, "session_packages", cancellationToken);
+        if (!await _featureFlags.IsEnabledAsync(request.GymId, FeatureKeys.PtPackages, cancellationToken))
+            return Result.Failure<Guid>(FeatureFlagErrors.FeatureDisabled(FeatureKeys.PtPackages));
 
-        if (!isEnabled)
-        {
-            string currentPlan = await _gymPlanService.GetPlanCodeAsync(request.GymId, cancellationToken);
-            return Result.Failure<Guid>(PlanErrors.FeatureNotAvailable("session_packages", currentPlan, "Pro"));
-        }
+        // While pt.auto_expiry is off (default) packages never expire, so none gets an expiry date.
+        var expiresAt = await _featureFlags.IsEnabledAsync(request.GymId, FeatureKeys.PtAutoExpiry, cancellationToken)
+            ? request.ExpiresAt
+            : null;
 
         var template = await _templateRepository.GetByIdAsync(request.TemplateId, cancellationToken);
 
@@ -58,7 +58,7 @@ internal sealed class AssignSessionPackageCommandHandler : ICommandHandler<Assig
             PricePerSession = template.PricePerSession,
             TotalPrice = template.TotalPrice,
             AssignedBy = request.AssignedBy,
-            ExpiresAt = request.ExpiresAt
+            ExpiresAt = expiresAt
         });
 
         await _packageRepository.AddAsync(package, cancellationToken);

@@ -1,3 +1,4 @@
+using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.IntegrationEvents;
 using GymApp.Modules.Communication.Application.Notifications;
@@ -12,19 +13,26 @@ namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
 internal sealed class PaymentReceivedIntegrationEventHandler : INotificationHandler<PaymentReceivedIntegrationEvent>
 {
+    private readonly IFeatureFlagService _featureFlags;
     private readonly INotificationRepository _notificationRepository;
     private readonly ICommunicationUnitOfWork _unitOfWork;
 
     public PaymentReceivedIntegrationEventHandler(
+        IFeatureFlagService featureFlags,
         INotificationRepository notificationRepository,
         ICommunicationUnitOfWork unitOfWork)
     {
+        _featureFlags = featureFlags;
         _notificationRepository = notificationRepository;
         _unitOfWork = unitOfWork;
     }
 
     public async Task Handle(PaymentReceivedIntegrationEvent notification, CancellationToken cancellationToken)
     {
+        // Notifications of disabled features never run for that gym.
+        if (!await _featureFlags.IsEnabledAsync(notification.GymId, FeatureKeys.GymFinance, cancellationToken))
+            return;
+
         var data = new Dictionary<string, string>
         {
             ["paymentId"] = notification.PaymentId.ToString(),

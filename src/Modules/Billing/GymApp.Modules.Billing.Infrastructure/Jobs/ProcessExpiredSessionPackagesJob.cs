@@ -1,3 +1,5 @@
+using GymApp.Modules.Billing.Domain.Entities;
+using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Application.Tenancy;
 using GymApp.Common.Infrastructure.Tenancy;
 using GymApp.Modules.Billing.Domain.Enums;
@@ -66,13 +68,23 @@ internal sealed class ProcessExpiredSessionPackagesJob : IJob
         }
 
         var dbContext = sp.GetRequiredService<BillingDbContext>();
+        var flags = sp.GetRequiredService<IFeatureFlagService>();
         var now = DateTime.UtcNow;
 
-        var expiredPackages = await dbContext.SessionPackages
+        var candidates = await dbContext.SessionPackages
             .Where(p => p.Status == PackageStatus.Active
                         && p.ExpiresAt != null
                         && p.ExpiresAt < now)
             .ToListAsync(ct);
+
+        // pt.auto_expiry is a per-gym setting, default OFF: while it is off, sessions never
+        // expire automatically for that gym.
+        var expiredPackages = new List<SessionPackage>();
+        foreach (var gymPackages in candidates.GroupBy(p => p.GymId))
+        {
+            if (await flags.IsEnabledAsync(gymPackages.Key, FeatureKeys.PtAutoExpiry, ct))
+                expiredPackages.AddRange(gymPackages);
+        }
 
         foreach (var package in expiredPackages)
         {
