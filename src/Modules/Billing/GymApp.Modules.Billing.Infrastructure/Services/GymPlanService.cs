@@ -1,4 +1,5 @@
 using GymApp.Common.Application.Abstractions;
+using GymApp.Common.Application.FeatureFlags;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Billing.Infrastructure.Data;
@@ -9,7 +10,10 @@ namespace GymApp.Modules.Billing.Infrastructure.Services;
 
 /// <summary>
 /// The CRITICAL service that ALL modules depend on for feature gating.
-/// Resolution order: Override > Plan Default > OFF (fail-closed).
+/// Feature on/off is answered by <see cref="IFeatureFlagService"/> (preset/override per gym) via
+/// <see cref="LegacyFeatureMap"/>; the subscription plan only supplies seat and storage limits
+/// (or the preset's pinned limits plan). Unmapped legacy codes (testing mode) keep the old
+/// resolution order: Override > Plan Default > OFF (fail-closed).
 /// Results are cached in Redis with key "v2:plan-features:{gymId}", TTL 5 min.
 /// The "v1:" prefix allows cache invalidation across all gyms by bumping the version prefix.
 /// </summary>
@@ -17,6 +21,7 @@ internal sealed class GymPlanService : IGymPlanService
 {
     private readonly BillingDbContext _dbContext;
     private readonly ICacheService _cacheService;
+    private readonly IFeatureFlagService _featureFlags;
     private readonly ILogger<GymPlanService> _logger;
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
@@ -24,10 +29,12 @@ internal sealed class GymPlanService : IGymPlanService
     public GymPlanService(
         BillingDbContext dbContext,
         ICacheService cacheService,
+        IFeatureFlagService featureFlags,
         ILogger<GymPlanService> logger)
     {
         _dbContext = dbContext;
         _cacheService = cacheService;
+        _featureFlags = featureFlags;
         _logger = logger;
     }
 
@@ -36,8 +43,17 @@ internal sealed class GymPlanService : IGymPlanService
         string featureCode,
         CancellationToken cancellationToken = default)
     {
-        var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
-        return featureSet?.EnabledFeatures.Contains(featureCode) ?? false;
+        var (kind, flagKey) = LegacyFeatureMap.Lookup(featureCode);
+        switch (kind)
+        {
+            case LegacyFeatureMap.Kind.AlwaysOn:
+                return true;
+            case LegacyFeatureMap.Kind.Flag:
+                return await _featureFlags.IsEnabledAsync(gymId, flagKey!, cancellationToken);
+            default:
+                var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
+                return featureSet?.EnabledFeatures.Contains(featureCode) ?? false;
+        }
     }
 
     public async Task<List<string>> GetEnabledFeaturesAsync(
@@ -45,13 +61,25 @@ internal sealed class GymPlanService : IGymPlanService
         CancellationToken cancellationToken = default)
     {
         var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
-        return featureSet?.EnabledFeatures ?? new List<string>();
+        var flags = await _featureFlags.GetResolvedAsync(gymId, cancellationToken);
+
+        var unmappedFromPlan = (featureSet?.EnabledFeatures ?? new List<string>())
+            .Where(code => LegacyFeatureMap.Lookup(code).Kind == LegacyFeatureMap.Kind.Unmapped);
+
+        return LegacyFeatureMap.EnabledLegacyCodes(flags)
+            .Concat(unmappedFromPlan)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
     }
 
     public async Task<int> GetMemberLimitAsync(
         Guid gymId,
         CancellationToken cancellationToken = default)
     {
+        var presetPlan = await GetPresetLimitsPlanAsync(gymId, cancellationToken);
+        if (presetPlan is not null)
+            return presetPlan.MemberLimit;
+
         var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
         return featureSet?.MemberLimit ?? 25;
     }
@@ -60,6 +88,10 @@ internal sealed class GymPlanService : IGymPlanService
         Guid gymId,
         CancellationToken cancellationToken = default)
     {
+        var presetPlan = await GetPresetLimitsPlanAsync(gymId, cancellationToken);
+        if (presetPlan is not null)
+            return presetPlan.TrainerLimit;
+
         var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
         return featureSet?.TrainerLimit ?? 1;
     }
@@ -68,6 +100,10 @@ internal sealed class GymPlanService : IGymPlanService
         Guid gymId,
         CancellationToken cancellationToken = default)
     {
+        var presetPlan = await GetPresetLimitsPlanAsync(gymId, cancellationToken);
+        if (presetPlan is not null)
+            return presetPlan.StaffLimit;
+
         var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
         return featureSet?.StaffLimit ?? 1;
     }
@@ -114,6 +150,21 @@ internal sealed class GymPlanService : IGymPlanService
     {
         var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
         return featureSet?.CheckInRetentionDays ?? 30;
+    }
+
+    /// <summary>
+    /// The subscription plan whose seat limits the gym's feature preset pins (pilot PT gyms use
+    /// Business limits), or null when the preset does not pin limits.
+    /// </summary>
+    private async Task<SubscriptionPlan?> GetPresetLimitsPlanAsync(Guid gymId, CancellationToken cancellationToken)
+    {
+        var flags = await _featureFlags.GetResolvedAsync(gymId, cancellationToken);
+        if (string.IsNullOrWhiteSpace(flags.LimitsPlanCode))
+            return null;
+
+        return await _dbContext.SubscriptionPlans
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Code == flags.LimitsPlanCode && p.IsActive, cancellationToken);
     }
 
     private async Task<GymFeatureSet?> GetOrBuildFeatureSetAsync(

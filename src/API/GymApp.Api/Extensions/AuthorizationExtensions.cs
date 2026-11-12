@@ -12,6 +12,8 @@ public static class AuthorizationExtensions
         builder.Services.AddAuthorizationBuilder()
             .AddPolicy("platform_admin", p => p.RequireAuthenticatedUser().RequireClaim("adminRole"))
             .AddPolicy("AdminPolicy", p => p.RequireAuthenticatedUser().RequireClaim("adminRole"))
+            // Super Admin only (feature flags): the token carries the admin's real AdminRole.
+            .AddPolicy("super_admin", p => p.RequireAuthenticatedUser().RequireClaim("adminRole", "super_admin"))
             .AddPolicy("gym_owner", p => p.RequireAuthenticatedUser().RequireClaim("staffRole", "owner"))
             .AddPolicy("gym_staff", p => p.RequireAuthenticatedUser().RequireClaim("staffRole"))
             .AddPolicy("gym_owner_or_admin", p => p.RequireAuthenticatedUser().RequireAssertion(ctx =>

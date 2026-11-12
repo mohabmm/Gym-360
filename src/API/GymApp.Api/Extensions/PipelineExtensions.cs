@@ -52,6 +52,9 @@ public static class PipelineExtensions
         // --- Tenant resolution (no-op when Tenancy:Mode=Soft) ---
         app.UseMiddleware<TenantResolutionMiddleware>();
 
+        // --- Feature flags: 403 FEATURE_DISABLED:<key> for features off in the caller's gym ---
+        app.UseMiddleware<FeatureFlagEnforcementMiddleware>();
+
         // --- Health check endpoints ---
         app.MapHealthChecks("/health/live");
         app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

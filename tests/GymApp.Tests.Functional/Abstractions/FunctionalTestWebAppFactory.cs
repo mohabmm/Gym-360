@@ -55,6 +55,9 @@ public sealed class FunctionalTestWebAppFactory
                 // requires the bootstrap migration + gyms_registry rows that
                 // these tests don't seed.
                 ["Tenancy:Mode"] = "Soft",
+                // Existing suites exercise every module: gyms default to the all-on preset.
+                // Feature-flag tests assign presets explicitly.
+                ["FeatureFlags:DefaultPreset"] = "business",
                 // Jwt:SecretKey is set via env var in the ctor — Program.cs validates
                 // it before Build(), so an in-memory override here is too late.
             });
@@ -87,6 +90,7 @@ public sealed class FunctionalTestWebAppFactory
             typeof(GymApp.Modules.Billing.Infrastructure.Data.BillingDbContext),
             typeof(GymApp.Modules.Gamification.Infrastructure.Data.GamificationDbContext),
             typeof(GymApp.Common.Infrastructure.Outbox.OutboxDbContext),
+            typeof(GymApp.Common.Infrastructure.FeatureFlags.Persistence.FeatureFlagsDbContext),
         };
 
         foreach (var contextType in publicContextTypes)
@@ -100,10 +104,13 @@ public sealed class FunctionalTestWebAppFactory
             .GetService<GymApp.Modules.Identity.Application.Abstractions.IIdentityUnitOfWork>();
         if (identityUow is DbContext identityDbContext)
             await identityDbContext.Database.EnsureCreatedAsync();
+
+        await GymApp.Common.Infrastructure.FeatureFlags.FeatureFlagSeeder.SeedAsync(Services);
     }
 
     private static Task EnsureSchemaAsync(DbContext dbContext) =>
         dbContext is GymApp.Common.Infrastructure.Outbox.OutboxDbContext
+            or GymApp.Common.Infrastructure.FeatureFlags.Persistence.FeatureFlagsDbContext
             ? EnsureOutboxTablesAsync(dbContext)
             : dbContext.Database.EnsureCreatedAsync();
 
