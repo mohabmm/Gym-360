@@ -1,11 +1,11 @@
-namespace GymApp.Api.Startup;
+namespace GymApp.Common.Infrastructure.Tenancy.Provisioning;
 
 /// <summary>
 /// Schema-agnostic, idempotent T-SQL that adds the PT-module columns to every
 /// <c>session_packages</c> and <c>sessions</c> table (legacy and per-gym schemas).
 /// Mirrors the EF model in SessionPackageConfiguration / SessionConfiguration.
 /// </summary>
-internal static class PtSchemaPatch
+public static class PtSchemaPatch
 {
     private const string AddColumn = @"
 IF COL_LENGTH(' + QUOTENAME(s.name + N'.{0}', '''') + N', ''{1}'') IS NULL
