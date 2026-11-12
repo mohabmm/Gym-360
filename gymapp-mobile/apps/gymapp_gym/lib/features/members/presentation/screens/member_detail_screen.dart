@@ -19,12 +19,21 @@ class MemberDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final member = ref.watch(memberDetailProvider(memberId));
-    final payments = ref.watch(memberPaymentsProvider(memberId));
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final authState = ref.watch(authProvider).valueOrNull;
-    final canFreeze = authState?.hasPermission(StaffPermission.freezeMember) ?? false;
-    final canDelete = authState?.hasPermission(StaffPermission.deleteMember) ?? false;
-    final canAssignTrainer = authState?.hasPermission(StaffPermission.assignPackage) ?? false;
+    final flags = ref.watch(featureFlagsProvider);
+    // Payments and freeze belong to modules PT gyms keep off: not built, not fetched.
+    final showPayments = flags.isEnabled(FeatureFlagKeys.gymFinance);
+    final payments = showPayments
+        ? ref.watch(memberPaymentsProvider(memberId))
+        : const AsyncValue<List<PaymentModel>>.data([]);
+    final canFreeze =
+        (authState?.hasPermission(StaffPermission.freezeMember) ?? false) &&
+            flags.isEnabled(FeatureFlagKeys.gymMemberships);
+    final canDelete =
+        authState?.hasPermission(StaffPermission.deleteMember) ?? false;
+    final canAssignTrainer =
+        authState?.hasPermission(StaffPermission.assignPackage) ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -36,7 +45,8 @@ class MemberDetailScreen extends ConsumerWidget {
               ? m.gymMemberships!.first
               : null;
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(memberDetailProvider(memberId)),
+            onRefresh: () async =>
+                ref.invalidate(memberDetailProvider(memberId)),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -56,13 +66,18 @@ class MemberDetailScreen extends ConsumerWidget {
                           children: [
                             Text(
                               '${m.firstName} ${m.lastName}',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
                                     fontWeight: FontWeight.w700,
                                   ),
                             ),
-                            if (m.status?.toLowerCase() == AppConstants.memberFrozen)
+                            if (m.status?.toLowerCase() ==
+                                AppConstants.memberFrozen)
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
                                 child: Chip(
                                   avatar: const Icon(Icons.ac_unit, size: 16),
                                   label: Text(isArabic ? 'مجمد' : 'Frozen'),
@@ -76,7 +91,8 @@ class MemberDetailScreen extends ConsumerWidget {
                               ),
                             if (m.phone != null) Text(m.phone!),
                             if (m.email.isNotEmpty) Text(m.email),
-                            if (m.nationalId != null && m.nationalId!.isNotEmpty)
+                            if (m.nationalId != null &&
+                                m.nationalId!.isNotEmpty)
                               Text(
                                 '${isArabic ? 'الرقم القومي' : 'National ID'}: ${m.nationalId!}',
                                 style: Theme.of(context).textTheme.bodySmall,
@@ -97,9 +113,10 @@ class MemberDetailScreen extends ConsumerWidget {
                       children: [
                         Text(
                           isArabic ? 'تفاصيل الاشتراك' : 'Membership Details',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                         const SizedBox(height: 8),
                         _DetailRow(
@@ -128,7 +145,8 @@ class MemberDetailScreen extends ConsumerWidget {
                     child: AppButton(
                       text: isArabic ? 'تعيين مدرب' : 'Assign Trainer',
                       icon: Icons.fitness_center,
-                      onPressed: () => _showAssignTrainerDialog(context, ref, isArabic),
+                      onPressed: () =>
+                          _showAssignTrainerDialog(context, ref, isArabic),
                     ),
                   ),
                 if (canAssignTrainer) const SizedBox(height: 8),
@@ -154,40 +172,44 @@ class MemberDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
 
                 // Payment History
-                Text(
-                  isArabic ? 'سجل المدفوعات' : 'Payment History',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                payments.when(
-                  data: (payList) {
-                    if (payList.isEmpty) {
-                      return Text(
-                        isArabic ? 'لا توجد مدفوعات' : 'No payments yet',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      );
-                    }
-                    return Column(
-                      children: payList.map((p) {
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(Icons.receipt),
-                          title: Text(
-                            NumberFormatter.formatCurrency(Egp(p.amount)),
-                          ),
-                          subtitle: p.createdAt != null
-                              ? Text(DateFormatter.formatShort(p.createdAt!))
-                              : null,
-                          trailing: Text(_paymentStatusLabel(p.status, isArabic)),
+                if (showPayments) ...[
+                  Text(
+                    isArabic ? 'سجل المدفوعات' : 'Payment History',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  payments.when(
+                    data: (payList) {
+                      if (payList.isEmpty) {
+                        return Text(
+                          isArabic ? 'لا توجد مدفوعات' : 'No payments yet',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         );
-                      }).toList(),
-                    );
-                  },
-                  loading: () => const CircularProgressIndicator(),
-                  error: (_, __) => Text(isArabic ? 'تعذر التحميل' : 'Failed to load'),
-                ),
+                      }
+                      return Column(
+                        children: payList.map((p) {
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.receipt),
+                            title: Text(
+                              NumberFormatter.formatCurrency(Egp(p.amount)),
+                            ),
+                            subtitle: p.createdAt != null
+                                ? Text(DateFormatter.formatShort(p.createdAt!))
+                                : null,
+                            trailing:
+                                Text(_paymentStatusLabel(p.status, isArabic)),
+                          );
+                        }).toList(),
+                      );
+                    },
+                    loading: () => const CircularProgressIndicator(),
+                    error: (_, __) =>
+                        Text(isArabic ? 'تعذر التحميل' : 'Failed to load'),
+                  ),
+                ],
 
                 if (canDelete) ...[
                   const SizedBox(height: 20),
@@ -212,7 +234,9 @@ class MemberDetailScreen extends ConsumerWidget {
 
   Future<void> _showAssignTrainerDialog(
       BuildContext context, WidgetRef ref, bool isArabic) async {
-    final trainersAsync = await ref.read(trainersProvider.future).catchError((_) => <UserModel>[]);
+    final trainersAsync = await ref
+        .read(trainersProvider.future)
+        .catchError((_) => <UserModel>[]);
     final eligible = trainersAsync.where((t) {
       final s = (t.status ?? '').toLowerCase();
       return s != 'pending_approval' && s != 'rejected';
@@ -221,7 +245,9 @@ class MemberDetailScreen extends ConsumerWidget {
     if (!context.mounted) return;
     if (eligible.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(isArabic ? 'لا يوجد مدربون مؤهلون' : 'No approved trainers at this gym yet.'),
+        content: Text(isArabic
+            ? 'لا يوجد مدربون مؤهلون'
+            : 'No approved trainers at this gym yet.'),
       ));
       return;
     }
@@ -230,6 +256,11 @@ class MemberDetailScreen extends ConsumerWidget {
     int selectedSessions = _kSessionCountOptions.first;
     final priceController = TextEditingController();
     String selectedMethod = 'Cash';
+    // pt.trial_sessions: free 1–3 session trial (one per trainee) instead of a paid package.
+    final trialsEnabled = ref
+        .read(featureFlagsProvider)
+        .isEnabled(FeatureFlagKeys.ptTrialSessions);
+    bool isTrial = false;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -252,49 +283,79 @@ class MemberDetailScreen extends ConsumerWidget {
                       .toList(),
                   onChanged: (v) => setState(() => selectedTrainerId = v),
                 ),
+                if (trialsEnabled) ...[
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: isTrial,
+                    title: Text(isArabic ? 'حصص تجريبية مجانية' : 'Free trial'),
+                    subtitle: Text(isArabic
+                        ? 'من ١ إلى ٣ حصص، مرة واحدة لكل متدرب'
+                        : '1–3 sessions, once per trainee'),
+                    onChanged: (v) => setState(() {
+                      isTrial = v;
+                      selectedSessions = v ? 1 : _kSessionCountOptions.first;
+                    }),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
+                  key: ValueKey(isTrial),
                   value: selectedSessions,
                   isExpanded: true,
-                  items: _kSessionCountOptions
+                  items: (isTrial ? const [1, 2, 3] : _kSessionCountOptions)
                       .map((n) => DropdownMenuItem(
                             value: n,
                             child: Text(isArabic ? '$n حصة' : '$n sessions'),
                           ))
                       .toList(),
-                  onChanged: (v) => setState(() => selectedSessions = v ?? _kSessionCountOptions.first),
+                  onChanged: (v) => setState(() =>
+                      selectedSessions = v ?? _kSessionCountOptions.first),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: priceController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: isArabic ? 'السعر الإجمالي (ج.م)' : 'Total price (EGP)',
-                    hintText: isArabic ? 'اتركه فارغًا لمجاني' : 'Leave blank for free',
+                if (!isTrial) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: priceController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: isArabic
+                          ? 'السعر الإجمالي (ج.م)'
+                          : 'Total price (EGP)',
+                      hintText: isArabic
+                          ? 'اتركه فارغًا لمجاني'
+                          : 'Leave blank for free',
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedMethod,
-                  isExpanded: true,
-                  decoration: InputDecoration(labelText: isArabic ? 'طريقة الدفع' : 'Payment method'),
-                  items: [
-                    DropdownMenuItem(
-                        value: 'Cash',
-                        child: Text(isArabic ? 'نقدي' : 'Cash')),
-                    DropdownMenuItem(
-                        value: 'Card',
-                        child: Text(isArabic ? 'بطاقة' : 'Card')),
-                    DropdownMenuItem(
-                        value: 'BankTransfer',
-                        child: Text(isArabic ? 'تحويل بنكي' : 'Bank Transfer')),
-                    DropdownMenuItem(
-                        value: 'MobileWallet',
-                        child: Text(isArabic ? 'محفظة الكترونية' : 'Mobile Wallet')),
-                  ],
-                  onChanged: (v) => setState(() => selectedMethod = v ?? 'Cash'),
-                ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedMethod,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                        labelText: isArabic ? 'طريقة الدفع' : 'Payment method'),
+                    items: [
+                      DropdownMenuItem(
+                          value: 'Cash',
+                          child: Text(isArabic ? 'نقدي' : 'Cash')),
+                      DropdownMenuItem(
+                          value: 'Card',
+                          child: Text(isArabic ? 'بطاقة' : 'Card')),
+                      DropdownMenuItem(
+                          value: 'BankTransfer',
+                          child:
+                              Text(isArabic ? 'تحويل بنكي' : 'Bank Transfer')),
+                      // Backend PaymentMethod has no MobileWallet: wallets/InstaPay are 'Online'.
+                      DropdownMenuItem(
+                          value: 'Online',
+                          child: Text(isArabic
+                              ? 'محفظة الكترونية / انستاباي'
+                              : 'Mobile wallet / InstaPay')),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => selectedMethod = v ?? 'Cash'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -304,7 +365,9 @@ class MemberDetailScreen extends ConsumerWidget {
               child: Text(isArabic ? 'الغاء' : 'Cancel'),
             ),
             TextButton(
-              onPressed: selectedTrainerId == null ? null : () => Navigator.of(ctx).pop(true),
+              onPressed: selectedTrainerId == null
+                  ? null
+                  : () => Navigator.of(ctx).pop(true),
               child: Text(isArabic ? 'تعيين' : 'Assign'),
             ),
           ],
@@ -327,7 +390,9 @@ class MemberDetailScreen extends ConsumerWidget {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
       final assignedBy = ref.read(authProvider).valueOrNull?.user?.id;
-      if (assignedBy == null) throw const ApiException(message: 'No active session.', errorCode: 'NO_SESSION');
+      if (assignedBy == null)
+        throw const ApiException(
+            message: 'No active session.', errorCode: 'NO_SESSION');
       await apiClient.post<void>(
         ApiEndpoints.quickAssignPackage,
         data: {
@@ -336,18 +401,24 @@ class MemberDetailScreen extends ConsumerWidget {
           'memberId': memberId,
           'sessionCount': selectedSessions,
           'assignedBy': assignedBy,
-          if (priceNum != null && priceNum > 0) 'totalPrice': priceNum,
-          if (priceNum != null && priceNum > 0) 'paymentMethod': selectedMethod,
+          if (isTrial) 'isTrial': true,
+          if (!isTrial && priceNum != null && priceNum > 0)
+            'totalPrice': priceNum,
+          if (!isTrial && priceNum != null && priceNum > 0)
+            'paymentMethod': selectedMethod,
         },
         parser: (_) {},
       );
       ref.invalidate(memberDetailProvider(memberId));
       ref.invalidate(membersProvider);
       messenger.showSnackBar(SnackBar(
-        content: Text(isArabic ? 'تم التعيين' : 'Trainer assigned'),
+        content: Text(isTrial
+            ? (isArabic ? 'تم تعيين الحصص التجريبية' : 'Free trial assigned')
+            : (isArabic ? 'تم التعيين' : 'Trainer assigned')),
       ));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(staffErrorText(e, isArabic: isArabic))));
+      messenger.showSnackBar(
+          SnackBar(content: Text(staffErrorText(e, isArabic: isArabic))));
     }
   }
 
@@ -443,7 +514,8 @@ class MemberDetailScreen extends ConsumerWidget {
     try {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
-      await apiClient.delete(ApiEndpoints.gymMemberById(GymId(gymId), MemberId(memberId)));
+      await apiClient
+          .delete(ApiEndpoints.gymMemberById(GymId(gymId), MemberId(memberId)));
       ref.invalidate(membersProvider);
       messenger.showSnackBar(
         SnackBar(
@@ -452,7 +524,8 @@ class MemberDetailScreen extends ConsumerWidget {
       );
       if (context.mounted) context.pop();
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(staffErrorText(e, isArabic: isArabic))));
+      messenger.showSnackBar(
+          SnackBar(content: Text(staffErrorText(e, isArabic: isArabic))));
     }
   }
 }

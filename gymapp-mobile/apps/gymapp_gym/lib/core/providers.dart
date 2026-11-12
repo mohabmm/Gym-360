@@ -450,8 +450,7 @@ final gymBrandingProvider = FutureProvider<GymBrandingModel?>((ref) async {
     final apiClient = ref.read(apiClientProvider);
     final branding = await apiClient.get<GymBrandingModel>(
       ApiEndpoints.gymBranding(GymId(gymId)),
-      parser: (data) =>
-          GymBrandingModel.fromJson(data as Map<String, dynamic>),
+      parser: (data) => GymBrandingModel.fromJson(data as Map<String, dynamic>),
     );
     await gymBox.put(StorageKeys.gymBranding, branding.toJson());
     return branding;

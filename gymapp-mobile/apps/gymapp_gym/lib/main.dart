@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'core/feature_flags.dart';
 import 'core/providers.dart';
 import 'core/router.dart';
 
@@ -34,6 +35,7 @@ Future<void> main() async {
     Hive.openBox(StorageKeys.userBox),
     Hive.openBox(StorageKeys.gymBox),
     Hive.openBox(StorageKeys.planFeaturesBox),
+    Hive.openBox(HiveFeatureFlagCache.boxName),
     Hive.openBox(StorageKeys.settingsBox),
     Hive.openBox(StorageKeys.offlineQueueBox),
     Hive.openBox(StorageKeys.consentBox),
@@ -61,8 +63,9 @@ Future<void> main() async {
           planFeaturesProvider.overrideWith(
             (ref) => ref.watch(gymPlanFeaturesProvider.future),
           ),
+          featureFlagServiceProvider.overrideWith(createStaffFeatureFlagService),
         ],
-        child: const GymAppGymStaff(),
+        child: const StaffFeatureFlagsSync(child: GymAppGymStaff()),
       ),
     );
   });

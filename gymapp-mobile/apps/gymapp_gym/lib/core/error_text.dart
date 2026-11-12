@@ -18,7 +18,8 @@ String staffErrorText(Object error, {bool? isArabic}) {
     final translated = _arabicByMessage[message];
     if (translated != null) return translated;
     if (message.isEmpty || message == 'Something went wrong.') {
-      return _arabicByStatus[error.statusCode] ?? 'حدث خطأ. يرجى المحاولة مرة اخرى.';
+      return _arabicByStatus[error.statusCode] ??
+          'حدث خطأ. يرجى المحاولة مرة اخرى.';
     }
     return message;
   }
@@ -50,9 +51,9 @@ const Map<int, String> _arabicByStatus = {
 const Map<String, String> _arabicByMessage = {
   'The provided credentials are invalid.':
       'البريد الالكتروني او كلمة المرور غير صحيحة.',
-  'The member is already added to this gym.': 'العضو مضاف بالفعل الى هذه الصالة.',
-  'The check-in is invalid.':
-      'العضو غير موجود. تاكد من الرقم او اسأل الموظف.',
+  'The member is already added to this gym.':
+      'العضو مضاف بالفعل الى هذه الصالة.',
+  'The check-in is invalid.': 'العضو غير موجود. تاكد من الرقم او اسأل الموظف.',
   'A check-in already exists for this member today.':
       'تم تسجيل حضور هذا العضو اليوم بالفعل.',
   "The member's membership is frozen and cannot check in.":

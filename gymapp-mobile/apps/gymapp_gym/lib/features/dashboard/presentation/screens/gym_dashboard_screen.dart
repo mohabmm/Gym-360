@@ -7,6 +7,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/permissions.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
+import '../../../pt/presentation/widgets/pt_desk_home.dart';
 import '../providers/dashboard_provider.dart';
 
 class GymDashboardScreen extends ConsumerWidget {
@@ -14,6 +15,12 @@ class GymDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // PT gyms (analytics off): the desk home replaces the analytics dashboard,
+    // so none of the analytics endpoints are called.
+    if (!ref.watch(isFeatureEnabledProvider(FeatureFlagKeys.analytics)) &&
+        ref.watch(currentGymIdProvider).isNotEmpty) {
+      return const PtDeskHome();
+    }
     final dashboard = ref.watch(dashboardProvider);
     final gym = ref.watch(activeGymProvider);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
@@ -58,11 +65,13 @@ class GymDashboardScreen extends ConsumerWidget {
             tooltip: isArabic ? 'وضع الكيوسك' : 'Kiosk Mode',
             onPressed: () => context.go(RoutePaths.kiosk),
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: isArabic ? 'الاعلانات' : 'Announcements',
-            onPressed: () => context.push(RoutePaths.announcements),
-          ),
+          if (ref.watch(isFeatureEnabledProvider(
+              FeatureFlagKeys.communicationAnnouncements)))
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              tooltip: isArabic ? 'الاعلانات' : 'Announcements',
+              onPressed: () => context.push(RoutePaths.announcements),
+            ),
         ],
       ),
       body: dashboard.when(
@@ -95,8 +104,11 @@ class GymDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // Top Classes
-              _TopClassesList(classes: data.topClasses, isArabic: isArabic),
-              const SizedBox(height: 20),
+              if (ref.watch(
+                  isFeatureEnabledProvider(FeatureFlagKeys.classes))) ...[
+                _TopClassesList(classes: data.topClasses, isArabic: isArabic),
+                const SizedBox(height: 20),
+              ],
 
               // At Risk Members
               _AtRiskMembersList(
@@ -106,16 +118,18 @@ class GymDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // Coach of the Month (gated)
-              FeatureGate(
-                featureCode: FeatureCodes.coachLeaderboard,
-                showLoadingShimmer: false,
-                child: data.coachOfMonth != null
-                    ? _CoachOfMonthCard(
-                        coach: data.coachOfMonth!,
-                        isArabic: isArabic,
-                      )
-                    : const SizedBox.shrink(),
-              ),
+              if (ref.watch(
+                  isFeatureEnabledProvider(FeatureFlagKeys.coachLeaderboard)))
+                FeatureGate(
+                  featureCode: FeatureCodes.coachLeaderboard,
+                  showLoadingShimmer: false,
+                  child: data.coachOfMonth != null
+                      ? _CoachOfMonthCard(
+                          coach: data.coachOfMonth!,
+                          isArabic: isArabic,
+                        )
+                      : const SizedBox.shrink(),
+                ),
               const SizedBox(height: 20),
 
               // Recent Activity Feed
@@ -299,10 +313,8 @@ class _PeakHoursHeatmap extends StatelessWidget {
 
     if (data.isEmpty) return const SizedBox.shrink();
 
-    final maxCount = data
-        .map((e) => e.count)
-        .reduce((a, b) => a > b ? a : b)
-        .clamp(1, 9999);
+    final maxCount =
+        data.map((e) => e.count).reduce((a, b) => a > b ? a : b).clamp(1, 9999);
 
     final dayLabels = isArabic
         ? ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س']
@@ -378,8 +390,7 @@ class _PeakHoursHeatmap extends StatelessWidget {
                         return Row(
                           children: List.generate(18, (h) {
                             final hour = h + 6;
-                            final count =
-                                heatmapData['${day}_$hour'] ?? 0;
+                            final count = heatmapData['${day}_$hour'] ?? 0;
                             final intensity = count / maxCount;
                             return Container(
                               width: 20,
@@ -537,11 +548,10 @@ class _AtRiskMembersList extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(m.name,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500)),
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w500)),
                           if (m.planName != null)
-                            Text(m.planName!,
-                                style: theme.textTheme.bodySmall),
+                            Text(m.planName!, style: theme.textTheme.bodySmall),
                         ],
                       ),
                     ),
