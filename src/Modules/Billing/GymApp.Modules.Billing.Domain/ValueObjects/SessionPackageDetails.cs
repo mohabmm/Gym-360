@@ -13,4 +13,7 @@ public sealed record SessionPackageDetails
     public required Money TotalPrice { get; init; }
     public required Guid AssignedBy { get; init; }
     public DateTime? ExpiresAt { get; init; }
+
+    /// <summary>Free trial package (pt.trial_sessions): price 0, one per member.</summary>
+    public bool IsTrial { get; init; }
 }

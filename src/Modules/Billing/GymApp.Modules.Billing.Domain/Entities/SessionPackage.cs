@@ -26,6 +26,18 @@ public sealed class SessionPackage : Entity
     public Guid AssignedBy { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
+    /// <summary>Free trial package (pt.trial_sessions).</summary>
+    public bool IsTrial { get; private set; }
+
+    /// <summary>When the last session was used (trial end date for conversion tracking).</summary>
+    public DateTime? ExhaustedAt { get; private set; }
+
+    /// <summary>Bit set of <see cref="PackageMilestone"/> values already announced, so each fires once.</summary>
+    public int MilestonesSent { get; private set; }
+
+    /// <summary>Sessions counted against the package and not reversed.</summary>
+    public int UsedSessions => TotalSessions - RemainingSessions;
+
     public static SessionPackage Create(SessionPackageDetails details)
     {
         return new SessionPackage
@@ -43,7 +55,8 @@ public sealed class SessionPackage : Entity
             Status = PackageStatus.Active,
             ExpiresAt = details.ExpiresAt,
             AssignedBy = details.AssignedBy,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            IsTrial = details.IsTrial
         };
     }
 
@@ -93,17 +106,70 @@ public sealed class SessionPackage : Entity
         Status = PackageStatus.Expired;
     }
 
+    /// <summary>
+    /// Gives back a session that was counted for <paramref name="sessionId"/> (the trainee said
+    /// "not me" and the desk reversed it). Idempotent; never exceeds the package size.
+    /// </summary>
+    public Result RestoreSession(Guid sessionId)
+    {
+        var counted = _usageHistory.Count(u => u.SessionId == sessionId
+            && u.UsageType is PackageUsageType.Completed or PackageUsageType.LateCancelled or PackageUsageType.NoShow);
+        var reversed = _usageHistory.Count(u => u.SessionId == sessionId && u.UsageType == PackageUsageType.Reversed);
+
+        if (counted <= reversed || RemainingSessions >= TotalSessions)
+            return Result.Success();
+
+        RemainingSessions++;
+        _usageHistory.Add(PackageUsage.Create(Id, sessionId, PackageUsageType.Reversed));
+
+        if (Status == PackageStatus.Exhausted)
+        {
+            Status = PackageStatus.Active;
+            ExhaustedAt = null;
+        }
+
+        return Result.Success();
+    }
+
     private void CheckAndRaiseEvents()
     {
         if (RemainingSessions <= 0)
         {
             RemainingSessions = 0;
             Status = PackageStatus.Exhausted;
+            ExhaustedAt = DateTime.UtcNow;
             RaiseDomainEvent(new SessionPackageExhaustedDomainEvent(Id, MemberId));
         }
-        else if (RemainingSessions <= 3)
+        else if (!IsTrial && RemainingSessions <= 3)
         {
             RaiseDomainEvent(new SessionPackageLowDomainEvent(Id, MemberId, RemainingSessions));
         }
+
+        var milestone = MilestoneFor(IsTrial, RemainingSessions);
+        if (milestone is { } m && MarkMilestone(m))
+            RaiseDomainEvent(new SessionPackageMilestoneReachedDomainEvent(Id, GymId, MemberId, TrainerId, m, RemainingSessions));
+    }
+
+    /// <summary>
+    /// Renewal reminders fire at exactly 3 and exactly 1 sessions left on paid packages; trials
+    /// alert when one free session is left and when the trial is used up.
+    /// </summary>
+    public static PackageMilestone? MilestoneFor(bool isTrial, int remaining) => (isTrial, remaining) switch
+    {
+        (false, 3) => PackageMilestone.RenewalThreeLeft,
+        (false, 1) => PackageMilestone.RenewalOneLeft,
+        (true, 1) => PackageMilestone.TrialLastSession,
+        (true, 0) => PackageMilestone.TrialFinished,
+        _ => null,
+    };
+
+    private bool MarkMilestone(PackageMilestone milestone)
+    {
+        var bit = 1 << (int)milestone;
+        if ((MilestonesSent & bit) != 0)
+            return false;
+
+        MilestonesSent |= bit;
+        return true;
     }
 }

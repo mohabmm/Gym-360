@@ -73,6 +73,16 @@ internal sealed class SessionPackageConfiguration : IEntityTypeConfiguration<Ses
 
         builder.Property(sp => sp.ExpiresAt);
 
+        builder.Property(sp => sp.IsTrial)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(sp => sp.ExhaustedAt);
+
+        builder.Property(sp => sp.MilestonesSent)
+            .HasDefaultValue(0)
+            .IsRequired();
+
         builder.Property(sp => sp.AssignedBy)
             .IsRequired();
 

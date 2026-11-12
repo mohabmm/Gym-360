@@ -72,6 +72,7 @@ public static class DatabaseInitializer
 
             await PatchRegistryGymCodeAsync();
             await BackfillDurableOutboxAsync();
+            await PatchPtModuleColumnsAsync();
 
             var hardMode = IsHardMode;
             if (hardMode)
@@ -236,6 +237,25 @@ IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Durable-outbox backfill failed; per-gym writes may 500 on the outbox INSERT.");
+            }
+        }
+
+        // Step 1a'' — PT module columns (Validation_1_PrivateSessions). Per-gym tables are
+        // created from the EF model, never migrated, so existing g{N}_billing.session_packages
+        // and g{N}_scheduling.sessions tables need the new columns added here. Additive and
+        // idempotent (adds a column only if missing, with a default); no data is changed.
+        // The legacy billing/scheduling schemas get the same columns from the EF migrations.
+        private async Task PatchPtModuleColumnsAsync()
+        {
+            try
+            {
+                var registry = _sp.GetRequiredService<TenantRegistryDbContext>();
+                await registry.Database.ExecuteSqlRawAsync(PtSchemaPatch.Sql);
+                _logger.LogInformation("PT module column patch ensured across existing schemas.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "PT module column patch failed; trial/quick-log features will error for affected gyms.");
             }
         }
 

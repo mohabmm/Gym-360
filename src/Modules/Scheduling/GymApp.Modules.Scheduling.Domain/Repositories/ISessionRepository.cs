@@ -33,6 +33,19 @@ public interface ISessionRepository
         DateOnly date,
         CancellationToken cancellationToken = default);
 
+    /// <summary>A quick-logged session for the same coach and client since <paramref name="sinceUtc"/> (double-tap guard).</summary>
+    Task<Session?> FindRecentQuickLogAsync(
+        Guid trainerId,
+        Guid memberId,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Sessions in the gym with the given trainee-confirmation state (desk review list).</summary>
+    Task<IReadOnlyList<Session>> GetByMemberConfirmationAsync(
+        Guid gymId,
+        MemberConfirmationStatus status,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(
         Session session,
         CancellationToken cancellationToken = default);

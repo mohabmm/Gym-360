@@ -77,4 +77,16 @@ public static class SchedulingErrors
 
     public static readonly Error NotSessionParticipant =
         new("Scheduling.NotSessionParticipant.Forbidden", "Only the session's trainer or member can read its exercise logs.");
+
+    public static readonly Error MemberConfirmationNotPending =
+        new("Scheduling.MemberConfirmationNotPending", "This session is not waiting for your confirmation.");
+
+    public static readonly Error SessionNotDisputed =
+        new("Scheduling.SessionNotDisputed", "Only a session the trainee disputed can be reversed.");
+
+    public static readonly Error ClientNotAssignedToTrainer =
+        new("Scheduling.ClientNotAssignedToTrainer.Forbidden", "This client has no active package with you.");
+
+    public static readonly Error NoSessionsRemaining =
+        new("Scheduling.NoSessionsRemaining", "This client has no sessions left in their package.");
 }

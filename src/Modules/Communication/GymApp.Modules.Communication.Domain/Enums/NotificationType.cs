@@ -16,5 +16,8 @@ public enum NotificationType
     ClassBooked = 11,
     PackageLow = 12,
     CoachOfTheMonth = 13,
-    LeaderboardUpdate = 14
+    LeaderboardUpdate = 14,
+    TrialAlert = 15,
+    SessionConfirmation = 16,
+    SessionDisputed = 17
 }

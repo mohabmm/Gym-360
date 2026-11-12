@@ -42,6 +42,9 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ProcessedOnUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -169,6 +172,10 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DisputeReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("int");
 
@@ -179,13 +186,26 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("GymId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("IsQuickLog")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsRecurring")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<int>("MemberConfirmation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<Guid>("MemberId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("MemberRespondedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("RecurrenceRule")
                         .HasMaxLength(200)
@@ -400,13 +420,22 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid>("GymId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("MemberId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("RemainingSessions")
+                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("TotalSessions")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 

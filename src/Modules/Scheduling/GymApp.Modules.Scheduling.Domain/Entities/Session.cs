@@ -52,6 +52,13 @@ public sealed class Session : Entity
     public DateTime? CancelledAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
+    /// <summary>Logged by the coach in one step (no booking), see <see cref="LogCompleted"/>.</summary>
+    public bool IsQuickLog { get; private set; }
+
+    public MemberConfirmationStatus MemberConfirmation { get; private set; }
+    public DateTime? MemberRespondedAt { get; private set; }
+    public string? DisputeReason { get; private set; }
+
     public static Session Create(
         SessionParticipants participants,
         SessionSchedule schedule,
@@ -69,6 +76,75 @@ public sealed class Session : Entity
             IsRecurring = true,
             RecurrenceRule = recurrenceRule
         });
+
+    /// <summary>
+    /// Coach logs a session that already happened in one step (pt.dual_session_logging): the
+    /// session is created completed, counts against the package like any completed session,
+    /// and waits for the trainee to confirm.
+    /// </summary>
+    public static Session LogCompleted(SessionParticipants participants, SessionSchedule schedule, string? notes)
+    {
+        var session = new Session(participants, schedule, SessionType.PersonalTraining)
+        {
+            Focus = notes,
+            IsQuickLog = true,
+        };
+        session.MarkCompleted();
+        return session;
+    }
+
+    /// <summary>Trainee confirms the coach's log.</summary>
+    public Result ConfirmByMember(Guid memberId, DateTime nowUtc)
+    {
+        var check = EnsureAwaitingMember(memberId);
+        if (check.IsFailure)
+            return check;
+
+        MemberConfirmation = MemberConfirmationStatus.Confirmed;
+        MemberRespondedAt = nowUtc;
+        return Result.Success();
+    }
+
+    /// <summary>Trainee says the session did not happen; the desk reviews it.</summary>
+    public Result DisputeByMember(Guid memberId, string? reason, DateTime nowUtc)
+    {
+        var check = EnsureAwaitingMember(memberId);
+        if (check.IsFailure)
+            return check;
+
+        MemberConfirmation = MemberConfirmationStatus.Disputed;
+        MemberRespondedAt = nowUtc;
+        DisputeReason = reason;
+        return Result.Success();
+    }
+
+    /// <summary>Desk accepts a dispute: the session no longer counts and its package session is restored.</summary>
+    public Result ReverseDisputed()
+    {
+        if (MemberConfirmation != MemberConfirmationStatus.Disputed)
+            return Result.Failure(SchedulingErrors.SessionNotDisputed);
+
+        MemberConfirmation = MemberConfirmationStatus.Reversed;
+        RaiseDomainEvent(new SessionReversedDomainEvent(Id, TrainerId, MemberId, GymId));
+        return Result.Success();
+    }
+
+    private Result EnsureAwaitingMember(Guid memberId)
+    {
+        if (memberId != MemberId)
+            return Result.Failure(SchedulingErrors.NotSessionParticipant);
+
+        return MemberConfirmation is MemberConfirmationStatus.Pending
+            ? Result.Success()
+            : Result.Failure(SchedulingErrors.MemberConfirmationNotPending);
+    }
+
+    private void MarkCompleted()
+    {
+        Status = SessionStatus.Completed;
+        MemberConfirmation = MemberConfirmationStatus.Pending;
+        RaiseDomainEvent(new SessionCompletedDomainEvent(Id, TrainerId, MemberId, GymId));
+    }
 
     private static Session Booked(Session session)
     {
@@ -126,8 +202,7 @@ public sealed class Session : Entity
         if (Status != SessionStatus.InProgress)
             return Result.Failure(SchedulingErrors.InvalidStatusTransition);
 
-        Status = SessionStatus.Completed;
-        RaiseDomainEvent(new SessionCompletedDomainEvent(Id, TrainerId, MemberId, GymId));
+        MarkCompleted();
         return Result.Success();
     }
 
