@@ -1,3 +1,4 @@
+using GymApp.Common.Infrastructure.FeatureFlags;
 using GymApp.Api.Seed;
 using GymApp.Common.Application.Tenancy;
 using GymApp.Common.Infrastructure.Tenancy;
@@ -84,6 +85,8 @@ public static class DatabaseInitializer
                     await MigrateContextAsync(_sp, ctxType, "soft");
             }
 
+            await SeedFeatureFlagsAsync();
+
             await RunIdentityDevSeederAsync();
 
             if (hardMode)
@@ -92,6 +95,21 @@ public static class DatabaseInitializer
                 await RunSoftModeSeedersAsync();
 
             await BackfillExerciseNamesForAllAsync(hardMode);
+        }
+
+        // Feature flags: sync the code registry, presets, and assign unassigned gyms to the
+        // default preset (pt_module). Runs after the registry + per-gym migrations so every
+        // gym exists. Failure is logged, never fatal: unresolved gyms fall back to pt_module.
+        private async Task SeedFeatureFlagsAsync()
+        {
+            try
+            {
+                await FeatureFlagSeeder.SeedAsync(_sp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "FeatureFlagSeeder failed");
+            }
         }
 
         private async Task MigrateContextAsync(IServiceProvider innerSp, Type ctxType, string label)
