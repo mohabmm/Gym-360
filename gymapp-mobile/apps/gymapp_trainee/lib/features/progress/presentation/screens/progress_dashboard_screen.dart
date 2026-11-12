@@ -15,6 +15,10 @@ class ProgressDashboardScreen extends ConsumerWidget {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final dashboardAsync = ref.watch(progressDashboardDetailProvider);
     final metricsAsync = ref.watch(bodyMetricsProvider);
+    final flags = ref.watch(featureFlagsProvider);
+    final showStreaks = flags.isEnabled(FeatureFlagKeys.gamificationStreaks);
+    final showCheckIns = flags.isEnabled(FeatureFlagKeys.gymAttendance);
+    final showPhotos = flags.isEnabled(FeatureFlagKeys.progressPhotos);
 
     return Scaffold(
       appBar: AppBar(
@@ -31,25 +35,26 @@ class ProgressDashboardScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(progressDashboardDetailProvider);
           ref.invalidate(bodyMetricsProvider);
-          ref.invalidate(progressPhotosProvider);
+          if (showPhotos) ref.invalidate(progressPhotosProvider);
         },
         child: CustomScrollView(
           slivers: [
             // Streak card (from dashboard — no separate /progress/streaks endpoint)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: dashboardAsync.when(
-                  data: (dashboard) => _StreakCard(
-                    currentStreak: dashboard.currentWorkoutStreak,
-                    longestStreak: dashboard.longestWorkoutStreak,
-                    isArabic: isArabic,
+            if (showStreaks)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: dashboardAsync.when(
+                    data: (dashboard) => _StreakCard(
+                      currentStreak: dashboard.currentWorkoutStreak,
+                      longestStreak: dashboard.longestWorkoutStreak,
+                      isArabic: isArabic,
+                    ),
+                    loading: () => const ShimmerCard(height: 80),
+                    error: (_, __) => const SizedBox.shrink(),
                   ),
-                  loading: () => const ShimmerCard(height: 80),
-                  error: (_, __) => const SizedBox.shrink(),
                 ),
               ),
-            ),
 
             // Stats row
             SliverToBoxAdapter(
@@ -76,27 +81,29 @@ class ProgressDashboardScreen extends ConsumerWidget {
                             trendUp: (change ?? 0) > 0,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: StatCard(
-                            label:
-                                isArabic ? 'أيام الحضور' : 'Check-In Streak',
-                            value: '${dashboard.currentCheckInStreak}',
-                            icon: Icons.event_available,
-                            iconColor: Colors.green,
-                            compact: true,
+                        if (showCheckIns) const SizedBox(width: 8),
+                        if (showCheckIns)
+                          Expanded(
+                            child: StatCard(
+                              label:
+                                  isArabic ? 'أيام الحضور' : 'Check-In Streak',
+                              value: '${dashboard.currentCheckInStreak}',
+                              icon: Icons.event_available,
+                              iconColor: Colors.green,
+                              compact: true,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: StatCard(
-                            label: isArabic ? 'الصور' : 'Photos',
-                            value: '${dashboard.photoCount}',
-                            icon: Icons.photo_library_outlined,
-                            iconColor: Colors.purple,
-                            compact: true,
+                        if (showPhotos) const SizedBox(width: 8),
+                        if (showPhotos)
+                          Expanded(
+                            child: StatCard(
+                              label: isArabic ? 'الصور' : 'Photos',
+                              value: '${dashboard.photoCount}',
+                              icon: Icons.photo_library_outlined,
+                              iconColor: Colors.purple,
+                              compact: true,
+                            ),
                           ),
-                        ),
                       ],
                     );
                   },
@@ -135,14 +142,15 @@ class ProgressDashboardScreen extends ConsumerWidget {
                         onTap: () => context.push(AppRoutes.logMeasurements),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ActionCard(
-                        icon: Icons.photo_camera,
-                        label: isArabic ? 'صور التقدم' : 'Progress Photos',
-                        onTap: () => context.push(AppRoutes.progressPhotos),
+                    if (showPhotos) const SizedBox(width: 12),
+                    if (showPhotos)
+                      Expanded(
+                        child: _ActionCard(
+                          icon: Icons.photo_camera,
+                          label: isArabic ? 'صور التقدم' : 'Progress Photos',
+                          onTap: () => context.push(AppRoutes.progressPhotos),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -245,9 +253,7 @@ class _WeightChart extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Center(
             child: Text(
-              isArabic
-                  ? 'لا توجد بيانات وزن بعد'
-                  : 'No weight data yet',
+              isArabic ? 'لا توجد بيانات وزن بعد' : 'No weight data yet',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
@@ -330,8 +336,7 @@ class _ActionCard extends StatelessWidget {
           child: Column(
             children: [
               Icon(icon,
-                  size: 28,
-                  color: Theme.of(context).colorScheme.primary),
+                  size: 28, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 8),
               Text(
                 label,

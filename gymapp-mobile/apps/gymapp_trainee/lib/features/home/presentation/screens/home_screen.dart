@@ -12,6 +12,8 @@ import '../widgets/weekly_activity_chart.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../../../communication/presentation/widgets/notification_bell.dart';
 import '../../../scheduling/presentation/providers/scheduling_providers.dart';
+import '../../../scheduling/presentation/widgets/pt_session_widgets.dart';
+import '../../../membership/presentation/providers/membership_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -22,11 +24,19 @@ class HomeScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.valueOrNull?.user;
     final pagePad = context.responsivePagePadding;
+    final flags = ref.watch(featureFlagsProvider);
+
+    List<Widget> section(double pad, String flag, Widget child, {double top = 0}) =>
+        flags.isEnabled(flag)
+            ? [SliverToBoxAdapter(child: Padding(padding: EdgeInsets.fromLTRB(pad, top, pad, 8), child: child))]
+            : const [];
 
     return RtlScaffold(
       isArabic: isArabic,
       body: RefreshIndicator(
         onRefresh: () async {
+          ref.invalidate(mySessionsAllProvider);
+          ref.invalidate(activePackagesProvider);
           ref.invalidate(todaysWorkoutProvider);
           ref.invalidate(upcomingSessionsListProvider);
           ref.invalidate(progressDashboardProvider);
@@ -44,36 +54,26 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(pagePad, 4, pagePad, 8),
-                child: const TodaysWorkoutCard(),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(pagePad, 0, pagePad, 8),
-                child: const NextSessionCard(),
-              ),
-            ),
+            // Every section belongs to a feature; disabled ones are not built at all,
+            // so a PT gym sees packages, sessions to confirm and progress, with no gaps.
+            ...section(pagePad, FeatureFlagKeys.ptPackages, const PackageSummaryCard(), top: 4),
+            ...section(pagePad, FeatureFlagKeys.ptDualSessionLogging, const ConfirmSessionsCard()),
+            ...section(pagePad, FeatureFlagKeys.trainingWorkouts, const TodaysWorkoutCard(), top: 4),
+            ...section(pagePad, FeatureFlagKeys.schedulingBooking, const NextSessionCard()),
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(pagePad, 8, pagePad, 4),
                 child: _StatsRow(),
               ),
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(pagePad, 12, pagePad, 8),
-                child: const WeeklyActivityChart(),
+            ...section(pagePad, FeatureFlagKeys.trainingWorkouts, const WeeklyActivityChart(), top: 12),
+            if (flags.isEnabled(FeatureFlagKeys.communicationAnnouncements))
+              SliverToBoxAdapter(
+                child: _AnnouncementsFeed(
+                  isArabic: isArabic,
+                  pagePad: pagePad,
+                ),
               ),
-            ),
-            SliverToBoxAdapter(
-              child: _AnnouncementsFeed(
-                isArabic: isArabic,
-                pagePad: pagePad,
-              ),
-            ),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
@@ -199,8 +199,10 @@ class _GymLogo extends ConsumerWidget {
     final branding = ref.watch(gymBrandingProvider);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final semanticLabel = isArabic ? 'الدخول إلى النادي' : 'Check in';
+    final canCheckIn = ref.watch(isFeatureEnabledProvider(FeatureFlagKeys.gymAttendance));
 
     Widget wrap(Widget child) {
+      if (!canCheckIn) return child;
       return Semantics(
         button: true,
         label: semanticLabel,
@@ -256,86 +258,111 @@ class _GymLogo extends ConsumerWidget {
 class _StatsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final progressAsync = ref.watch(progressDashboardProvider);
-    final waterAsync = ref.watch(todaysWaterProvider);
+    final flags = ref.watch(featureFlagsProvider);
+    final cards = <Widget>[
+      if (flags.isEnabled(FeatureFlagKeys.gamificationStreaks)) const _StreakStat(),
+      if (flags.isEnabled(FeatureFlagKeys.ptProgressMeasurements)) const _WeightStat(),
+      if (flags.isEnabled(FeatureFlagKeys.nutrition)) const _WaterStat(),
+    ];
+    if (cards.isEmpty) return const SizedBox.shrink();
 
     return Row(
       children: [
-        Expanded(
-          child: progressAsync.when(
-            data: (progress) => StatCard.gradient(
-              label: isArabic ? 'السلسلة' : 'Streak',
-              value: '${progress.currentWorkoutStreak}',
-              icon: Icons.local_fire_department,
-              gradientOverride: const LinearGradient(
-                colors: [Color(0xFFFB923C), Color(0xFFEA580C)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              onTap: () => context.push(AppRoutes.progress),
-            ),
-            loading: () => const ShimmerStatCard(),
-            error: (_, __) => StatCard(
-              label: isArabic ? 'السلسلة' : 'Streak',
-              value: '-',
-              icon: Icons.local_fire_department,
-              iconColor: Colors.orange,
-              onTap: () => context.push(AppRoutes.progress),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: progressAsync.when(
-            data: (progress) {
-              final weight = progress.latestMetrics?.weight;
-              final change = progress.weightChangeFromFirst;
-              return StatCard(
-                label: isArabic ? 'الوزن' : 'Weight',
-                value: weight != null
-                    ? '${weight.toStringAsFixed(1)} kg'
-                    : '-',
-                icon: Icons.monitor_weight_outlined,
-                iconColor: AppColors.info,
-                trend: change != null
-                    ? '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}'
-                    : null,
-                trendUp: (change ?? 0) > 0,
-                onTap: () => context.push(AppRoutes.logWeight),
-              );
-            },
-            loading: () => const ShimmerStatCard(),
-            error: (_, __) => StatCard(
-              label: isArabic ? 'الوزن' : 'Weight',
-              value: '-',
-              icon: Icons.monitor_weight_outlined,
-              iconColor: AppColors.info,
-              onTap: () => context.push(AppRoutes.logWeight),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: waterAsync.when(
-            data: (water) => StatCard(
-              label: isArabic ? 'الماء' : 'Water',
-              value: '${(water.totalMl / 1000).toStringAsFixed(1)}L',
-              icon: Icons.water_drop_outlined,
-              iconColor: Colors.cyan,
-              onTap: () => context.push(AppRoutes.waterTracker),
-            ),
-            loading: () => const ShimmerStatCard(),
-            error: (_, __) => StatCard(
-              label: isArabic ? 'الماء' : 'Water',
-              value: '-',
-              icon: Icons.water_drop_outlined,
-              iconColor: Colors.cyan,
-              onTap: () => context.push(AppRoutes.waterTracker),
-            ),
-          ),
-        ),
+        for (var i = 0; i < cards.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(child: cards[i]),
+        ],
       ],
     );
+  }
+}
+
+class _StreakStat extends ConsumerWidget {
+  const _StreakStat();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final label = isArabic ? 'السلسلة' : 'Streak';
+    return ref.watch(progressDashboardProvider).when(
+          data: (progress) => StatCard.gradient(
+            label: label,
+            value: '${progress.currentWorkoutStreak}',
+            icon: Icons.local_fire_department,
+            gradientOverride: const LinearGradient(
+              colors: [Color(0xFFFB923C), Color(0xFFEA580C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            onTap: () => context.push(AppRoutes.progress),
+          ),
+          loading: () => const ShimmerStatCard(),
+          error: (_, __) => StatCard(
+            label: label,
+            value: '-',
+            icon: Icons.local_fire_department,
+            iconColor: Colors.orange,
+          ),
+        );
+  }
+}
+
+class _WeightStat extends ConsumerWidget {
+  const _WeightStat();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final label = isArabic ? 'الوزن' : 'Weight';
+    return ref.watch(progressDashboardProvider).when(
+          data: (progress) {
+            final weight = progress.latestMetrics?.weight;
+            final change = progress.weightChangeFromFirst;
+            return StatCard(
+              label: label,
+              value: weight != null ? '${weight.toStringAsFixed(1)} kg' : '-',
+              icon: Icons.monitor_weight_outlined,
+              iconColor: AppColors.info,
+              trend: change != null ? '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}' : null,
+              trendUp: (change ?? 0) > 0,
+              onTap: () => context.push(AppRoutes.progress),
+            );
+          },
+          loading: () => const ShimmerStatCard(),
+          error: (_, __) => StatCard(
+            label: label,
+            value: '-',
+            icon: Icons.monitor_weight_outlined,
+            iconColor: AppColors.info,
+            onTap: () => context.push(AppRoutes.progress),
+          ),
+        );
+  }
+}
+
+class _WaterStat extends ConsumerWidget {
+  const _WaterStat();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final label = isArabic ? 'الماء' : 'Water';
+    return ref.watch(todaysWaterProvider).when(
+          data: (water) => StatCard(
+            label: label,
+            value: '${(water.totalMl / 1000).toStringAsFixed(1)}L',
+            icon: Icons.water_drop_outlined,
+            iconColor: Colors.cyan,
+            onTap: () => context.push(AppRoutes.waterTracker),
+          ),
+          loading: () => const ShimmerStatCard(),
+          error: (_, __) => StatCard(
+            label: label,
+            value: '-',
+            icon: Icons.water_drop_outlined,
+            iconColor: Colors.cyan,
+            onTap: () => context.push(AppRoutes.waterTracker),
+          ),
+        );
   }
 }

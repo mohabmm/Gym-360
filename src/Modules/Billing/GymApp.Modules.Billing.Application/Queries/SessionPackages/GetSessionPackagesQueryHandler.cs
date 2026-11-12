@@ -70,5 +70,6 @@ internal sealed class GetSessionPackagesQueryHandler : IQueryHandler<GetSessionP
             u.UsedAt,
             u.UsageType.ToString())).ToList(),
         p.AssignedBy,
-        p.CreatedAt);
+        p.CreatedAt,
+        p.IsTrial);
 }

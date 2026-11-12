@@ -277,6 +277,17 @@ class ApiEndpoints {
 
   /// Resolved per-gym feature flags (pt_module / business presets + overrides).
   static const String featureFlagsMe = '$basePrefix/feature-flags/me';
+
+  // ---- PT module ----
+  /// Coach logs a session in one tap: POST { memberId, notes? }.
+  static const String sessionQuickLog = '$basePrefix/scheduling/sessions/quick-log';
+  static String sessionMemberConfirm(String id) => '$basePrefix/scheduling/sessions/$id/member-confirm';
+  static String sessionMemberDispute(String id) => '$basePrefix/scheduling/sessions/$id/member-dispute';
+  static String sessionReverse(String id) => '$basePrefix/scheduling/sessions/$id/reverse';
+  static const String sessionsForReview = '$basePrefix/scheduling/sessions/review';
+  static const String trialsNotConverted = '$basePrefix/billing/trials/not-converted';
+  static const String ptDashboard = '$basePrefix/billing/pt-dashboard';
+  static const String bodyMetricsForClient = '$basePrefix/progress/body-metrics/client';
   // Trainer's view of all their clients' active packages.
   static const String myClientPackages =
       '$basePrefix/billing/packages/my-clients';

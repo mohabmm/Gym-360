@@ -123,7 +123,8 @@ internal sealed class GetMyPackagesQueryHandler
             LastUsedAt: p.UsageHistory
                 .OrderByDescending(u => u.UsedAt)
                 .Select(u => (DateTime?)u.UsedAt)
-                .FirstOrDefault());
+                .FirstOrDefault(),
+            p.IsTrial);
 
     private static string? TrainerNameOf(
         SessionPackage p,
