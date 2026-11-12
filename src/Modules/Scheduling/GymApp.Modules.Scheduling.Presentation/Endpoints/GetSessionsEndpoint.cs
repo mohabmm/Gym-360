@@ -21,6 +21,7 @@ internal sealed class GetSessionsEndpoint : IEndpoint
             string? status,
             int page,
             int pageSize,
+            string? memberConfirmation,
             ISender sender) =>
         {
             var resolved = headerGymId ?? queryGymId;
@@ -30,7 +31,7 @@ internal sealed class GetSessionsEndpoint : IEndpoint
                     "The X-Gym-Id header (or gymId query parameter) is required.",
                     400);
 
-            var query = new GetSessionsQuery(resolved.Value, trainerId, memberId, from, to, status, page, pageSize);
+            var query = new GetSessionsQuery(resolved.Value, trainerId, memberId, from, to, status, page, pageSize, memberConfirmation);
 
             var result = await sender.Send(query);
 

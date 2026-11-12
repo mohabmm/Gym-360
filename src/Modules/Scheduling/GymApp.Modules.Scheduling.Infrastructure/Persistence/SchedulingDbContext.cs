@@ -84,6 +84,7 @@ public sealed class SchedulingDbContext : DbContext, ISchedulingUnitOfWork
             entity.HasKey(e => e.Id);
             entity.Property(e => e.GymId).IsRequired();
             entity.Property(e => e.MemberId).IsRequired();
+            entity.Property(e => e.TrainerId).IsRequired();
             entity.Property(e => e.Status).HasMaxLength(20).IsRequired();
             entity.Property(e => e.TotalSessions).IsRequired();
             entity.Property(e => e.RemainingSessions).IsRequired();

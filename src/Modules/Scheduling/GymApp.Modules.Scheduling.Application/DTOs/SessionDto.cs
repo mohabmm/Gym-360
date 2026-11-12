@@ -16,4 +16,7 @@ public sealed record SessionDto(
     string? Focus,
     string Status,
     bool IsRecurring,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    // pt.dual_session_logging: None | Pending | Confirmed | Disputed | Reversed
+    string MemberConfirmation = "None",
+    bool IsQuickLog = false);

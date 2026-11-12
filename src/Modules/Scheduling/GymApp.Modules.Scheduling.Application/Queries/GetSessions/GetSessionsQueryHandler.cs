@@ -54,6 +54,13 @@ internal sealed class GetSessionsQueryHandler
             sessions = sessions.Where(s => s.Status == statusFilter).ToList();
         }
 
+        // pt.dual_session_logging: e.g. ?memberConfirmation=Pending for the trainee's "confirm" list.
+        if (!string.IsNullOrWhiteSpace(request.MemberConfirmation) &&
+            Enum.TryParse<MemberConfirmationStatus>(request.MemberConfirmation, true, out var confirmationFilter))
+        {
+            sessions = sessions.Where(s => s.MemberConfirmation == confirmationFilter).ToList();
+        }
+
         var totalCount = sessions.Count;
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
@@ -83,5 +90,7 @@ internal sealed class GetSessionsQueryHandler
             session.Focus,
             session.Status.ToString(),
             session.IsRecurring,
-            session.CreatedAt);
+            session.CreatedAt,
+            session.MemberConfirmation.ToString(),
+            session.IsQuickLog);
 }

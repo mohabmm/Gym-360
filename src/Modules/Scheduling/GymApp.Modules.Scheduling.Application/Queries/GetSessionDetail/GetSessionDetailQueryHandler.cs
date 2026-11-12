@@ -44,7 +44,10 @@ internal sealed class GetSessionDetailQueryHandler
             session.CreatedAt,
             ToDto(session.TrainerLog),
             ToDto(session.MemberLog),
-            session.ExerciseLogs.OrderBy(l => l.OrderIndex).Select(ToDto).ToList());
+            session.ExerciseLogs.OrderBy(l => l.OrderIndex).Select(ToDto).ToList(),
+            session.MemberConfirmation.ToString(),
+            session.IsQuickLog,
+            session.DisputeReason);
 
         return Result.Success(detail);
     }

@@ -48,7 +48,9 @@ internal sealed class GetUpcomingSessionsQueryHandler
                 s.Focus,
                 s.Status.ToString(),
                 s.IsRecurring,
-                s.CreatedAt))
+                s.CreatedAt,
+                s.MemberConfirmation.ToString(),
+                s.IsQuickLog))
             .ToList();
 
         return Result.Success(dtos);

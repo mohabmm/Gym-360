@@ -46,14 +46,35 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
         Guid trainerId,
         CancellationToken cancellationToken = default)
     {
+        // Free trial sessions are used before paid ones; then oldest package first.
         return await _dbContext.SessionPackages
             .Include(sp => sp.UsageHistory)
             .Where(sp => sp.GymId == gymId
                 && sp.MemberId == memberId
                 && sp.TrainerId == trainerId
                 && sp.Status == PackageStatus.Active)
+            .OrderByDescending(sp => sp.IsTrial)
+            .ThenBy(sp => sp.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<SessionPackage>> GetByGymWithUsageAsync(Guid gymId, CancellationToken cancellationToken = default) =>
+        await _dbContext.SessionPackages
+            .AsNoTracking()
+            .Include(sp => sp.UsageHistory)
+            .Where(sp => sp.GymId == gymId)
+            .ToListAsync(cancellationToken);
+
+    public Task<bool> HasTrialAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default) =>
+        _dbContext.SessionPackages
+            .AsNoTracking()
+            .AnyAsync(sp => sp.GymId == gymId && sp.MemberId == memberId && sp.IsTrial, cancellationToken);
+
+    public Task<SessionPackage?> FindByUsageSessionAsync(Guid gymId, Guid sessionId, CancellationToken cancellationToken = default) =>
+        _dbContext.SessionPackages
+            .Include(sp => sp.UsageHistory)
+            .Where(sp => sp.GymId == gymId && sp.UsageHistory.Any(u => u.SessionId == sessionId))
+            .FirstOrDefaultAsync(cancellationToken);
 
     public async Task AddAsync(SessionPackage package, CancellationToken cancellationToken = default)
     {

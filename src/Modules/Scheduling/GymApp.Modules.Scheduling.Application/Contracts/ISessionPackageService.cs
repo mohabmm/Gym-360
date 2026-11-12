@@ -20,6 +20,16 @@ public interface ISessionPackageService
         Guid memberId,
         Guid gymId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sessions left across the member's Active packages with this trainer, or null when the
+    /// member has no Active package with the trainer (not their client).
+    /// </summary>
+    Task<int?> GetRemainingWithTrainerAsync(
+        Guid memberId,
+        Guid trainerId,
+        Guid gymId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record SessionPackageStatusDto(

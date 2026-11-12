@@ -11,4 +11,5 @@ public sealed record GetSessionsQuery(
     DateOnly? To,
     string? Status,
     int Page,
-    int PageSize) : IQuery<PagedResponse<SessionDto>>;
+    int PageSize,
+    string? MemberConfirmation = null) : IQuery<PagedResponse<SessionDto>>;
