@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Enums;
 using GymApp.Modules.Billing.Domain.Repositories;
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,11 +42,10 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
         ListNewestFirstAsync(sp => sp.GymId == gymId && sp.TrainerId == trainerId, cancellationToken);
 
     public async Task<SessionPackage?> GetActiveByMemberAndTrainerAsync(
-        Guid gymId,
-        Guid memberId,
-        Guid trainerId,
+        PackageParticipants participants,
         CancellationToken cancellationToken = default)
     {
+        var (gymId, memberId, trainerId) = participants;
         // Free trial sessions are used before paid ones; then oldest package first.
         return await _dbContext.SessionPackages
             .Include(sp => sp.UsageHistory)
@@ -65,15 +65,15 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
             .Where(sp => sp.GymId == gymId)
             .ToListAsync(cancellationToken);
 
-    public Task<bool> HasTrialAsync(Guid gymId, Guid memberId, CancellationToken cancellationToken = default) =>
+    public Task<bool> HasTrialAsync(PackageOwner owner, CancellationToken cancellationToken = default) =>
         _dbContext.SessionPackages
             .AsNoTracking()
-            .AnyAsync(sp => sp.GymId == gymId && sp.MemberId == memberId && sp.IsTrial, cancellationToken);
+            .AnyAsync(sp => sp.GymId == owner.GymId && sp.MemberId == owner.MemberId && sp.IsTrial, cancellationToken);
 
-    public Task<SessionPackage?> FindByUsageSessionAsync(Guid gymId, Guid sessionId, CancellationToken cancellationToken = default) =>
+    public Task<SessionPackage?> FindByUsageSessionAsync(PackageSessionRef session, CancellationToken cancellationToken = default) =>
         _dbContext.SessionPackages
             .Include(sp => sp.UsageHistory)
-            .Where(sp => sp.GymId == gymId && sp.UsageHistory.Any(u => u.SessionId == sessionId))
+            .Where(sp => sp.GymId == session.GymId && sp.UsageHistory.Any(u => u.SessionId == session.SessionId))
             .FirstOrDefaultAsync(cancellationToken);
 
     public async Task AddAsync(SessionPackage package, CancellationToken cancellationToken = default)

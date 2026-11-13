@@ -72,41 +72,20 @@ internal sealed class GymPlanService : IGymPlanService
             .ToList();
     }
 
-    public async Task<int> GetMemberLimitAsync(
+    public Task<int> GetMemberLimitAsync(
         Guid gymId,
-        CancellationToken cancellationToken = default)
-    {
-        var presetPlan = await GetPresetLimitsPlanAsync(gymId, cancellationToken);
-        if (presetPlan is not null)
-            return presetPlan.MemberLimit;
+        CancellationToken cancellationToken = default) =>
+        GetSeatLimitAsync(gymId, SeatLimit.Members, cancellationToken);
 
-        var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
-        return featureSet?.MemberLimit ?? 25;
-    }
-
-    public async Task<int> GetTrainerLimitAsync(
+    public Task<int> GetTrainerLimitAsync(
         Guid gymId,
-        CancellationToken cancellationToken = default)
-    {
-        var presetPlan = await GetPresetLimitsPlanAsync(gymId, cancellationToken);
-        if (presetPlan is not null)
-            return presetPlan.TrainerLimit;
+        CancellationToken cancellationToken = default) =>
+        GetSeatLimitAsync(gymId, SeatLimit.Trainers, cancellationToken);
 
-        var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
-        return featureSet?.TrainerLimit ?? 1;
-    }
-
-    public async Task<int> GetStaffLimitAsync(
+    public Task<int> GetStaffLimitAsync(
         Guid gymId,
-        CancellationToken cancellationToken = default)
-    {
-        var presetPlan = await GetPresetLimitsPlanAsync(gymId, cancellationToken);
-        if (presetPlan is not null)
-            return presetPlan.StaffLimit;
-
-        var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
-        return featureSet?.StaffLimit ?? 1;
-    }
+        CancellationToken cancellationToken = default) =>
+        GetSeatLimitAsync(gymId, SeatLimit.Staff, cancellationToken);
 
     public async Task<string> GetPlanCodeAsync(
         Guid gymId,
@@ -150,6 +129,25 @@ internal sealed class GymPlanService : IGymPlanService
     {
         var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
         return featureSet?.CheckInRetentionDays ?? 30;
+    }
+
+    /// <summary>How to read one seat limit from a plan or a cached feature set, and its fallback.</summary>
+    private sealed record SeatLimit(Func<SubscriptionPlan, int> FromPlan, Func<GymFeatureSet, int> FromFeatureSet, int Default)
+    {
+        public static readonly SeatLimit Members = new(p => p.MemberLimit, f => f.MemberLimit, 25);
+        public static readonly SeatLimit Trainers = new(p => p.TrainerLimit, f => f.TrainerLimit, 1);
+        public static readonly SeatLimit Staff = new(p => p.StaffLimit, f => f.StaffLimit, 1);
+    }
+
+    /// <summary>The preset's pinned limits plan wins; otherwise the gym's own subscription plan.</summary>
+    private async Task<int> GetSeatLimitAsync(Guid gymId, SeatLimit limit, CancellationToken cancellationToken)
+    {
+        var presetPlan = await GetPresetLimitsPlanAsync(gymId, cancellationToken);
+        if (presetPlan is not null)
+            return limit.FromPlan(presetPlan);
+
+        var featureSet = await GetOrBuildFeatureSetAsync(gymId, cancellationToken);
+        return featureSet is null ? limit.Default : limit.FromFeatureSet(featureSet);
     }
 
     /// <summary>

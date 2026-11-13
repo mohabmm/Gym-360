@@ -33,25 +33,17 @@ export default function DisputedSessionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t.reviewTitle} description={t.reviewDescription} />
-      {isLoading && <PtState text="…" />}
-      {isError && <PtState text={t.loadError} />}
-      {!isLoading && !isError && sessions.length === 0 && <PtState text={t.reviewEmpty} />}
+      <ReviewState isLoading={isLoading} isError={isError} isEmpty={sessions.length === 0} />
       {sessions.length > 0 && (
         <PtTable head={[t.member, t.coach, t.sessionDate, '']}>
           {sessions.map((s) => (
-            <tr key={s.id}>
-              <PtCell className="font-medium">{memberName.get(s.memberId) ?? '—'}</PtCell>
-              <PtCell>{trainerName.get(s.trainerId) ?? '—'}</PtCell>
-              <PtCell>{formatDateTime(s.scheduledAt)}</PtCell>
-              <PtCell className="text-end">
-                <button
-                  onClick={() => setTarget(s.id)}
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100"
-                >
-                  {t.reverse}
-                </button>
-              </PtCell>
-            </tr>
+            <DisputedRow
+              key={s.id}
+              member={memberName.get(s.memberId)}
+              coach={trainerName.get(s.trainerId)}
+              scheduledAt={s.scheduledAt}
+              onReverse={() => setTarget(s.id)}
+            />
           ))}
         </PtTable>
       )}
@@ -65,5 +57,37 @@ export default function DisputedSessionsPage() {
         variant="danger"
       />
     </div>
+  );
+}
+
+/** Loading, error or "nothing to review" line; nothing once there are rows. */
+function ReviewState({ isLoading, isError, isEmpty }: { isLoading: boolean; isError: boolean; isEmpty: boolean }) {
+  const t = usePtText();
+  if (isLoading) return <PtState text="…" />;
+  if (isError) return <PtState text={t.loadError} />;
+  return isEmpty ? <PtState text={t.reviewEmpty} /> : null;
+}
+
+function DisputedRow({ member, coach, scheduledAt, onReverse }: {
+  member?: string;
+  coach?: string;
+  scheduledAt: string;
+  onReverse: () => void;
+}) {
+  const t = usePtText();
+  return (
+    <tr>
+      <PtCell className="font-medium">{member ?? '—'}</PtCell>
+      <PtCell>{coach ?? '—'}</PtCell>
+      <PtCell>{formatDateTime(scheduledAt)}</PtCell>
+      <PtCell className="text-end">
+        <button
+          onClick={onReverse}
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100"
+        >
+          {t.reverse}
+        </button>
+      </PtCell>
+    </tr>
   );
 }

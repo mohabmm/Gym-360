@@ -53,8 +53,8 @@ internal sealed class SessionPackageMilestoneReachedIntegrationEventHandler
         {
             var desk = await _desk.GetDeskUserIdsAsync(e.GymId, cancellationToken);
             var text = e.Milestone == Milestones.TrialFinished
-                ? NotificationTexts.TrialFinished(memberName)
-                : NotificationTexts.TrialLastSession(memberName);
+                ? PtNotificationTexts.TrialFinished(memberName)
+                : PtNotificationTexts.TrialLastSession(memberName);
             await _notifier.SendAsync(
                 new PtNotification(e.GymId, desk.Append(e.TrainerId).ToList(), NotificationType.TrialAlert, text, data),
                 cancellationToken);
@@ -63,7 +63,7 @@ internal sealed class SessionPackageMilestoneReachedIntegrationEventHandler
 
         await _notifier.SendAsync(
             new PtNotification(e.GymId, new[] { e.MemberId }, NotificationType.PackageLow,
-                NotificationTexts.RenewalReminderForMember(e.Remaining), data),
+                PtNotificationTexts.RenewalReminderForMember(e.Remaining), data),
             cancellationToken);
 
         var staff = new List<Guid> { e.TrainerId };
@@ -72,7 +72,7 @@ internal sealed class SessionPackageMilestoneReachedIntegrationEventHandler
 
         await _notifier.SendAsync(
             new PtNotification(e.GymId, staff, NotificationType.PackageLow,
-                NotificationTexts.RenewalReminderForStaff(memberName, e.Remaining), data),
+                PtNotificationTexts.RenewalReminderForStaff(memberName, e.Remaining), data),
             cancellationToken);
     }
 }

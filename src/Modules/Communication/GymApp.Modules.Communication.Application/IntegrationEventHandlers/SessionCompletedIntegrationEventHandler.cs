@@ -59,7 +59,7 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
             var confirmData = new Dictionary<string, string>(data) { ["type"] = "session_confirm" };
             await _ptNotifier.SendAsync(
                 new PtNotification(notification.GymId, new[] { notification.MemberId }, NotificationType.SessionConfirmation,
-                    NotificationTexts.SessionConfirmRequest(), confirmData),
+                    PtNotificationTexts.SessionConfirmRequest(), confirmData),
                 cancellationToken);
             return;
         }

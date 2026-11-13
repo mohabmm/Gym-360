@@ -34,10 +34,10 @@ public sealed class SessionDualLoggingTests
     {
         var session = QuickLogged();
 
-        session.ConfirmByMember(MemberId, DateTime.UtcNow).IsSuccess.Should().BeTrue();
+        session.ConfirmByMember(new MemberResponse(MemberId, DateTime.UtcNow)).IsSuccess.Should().BeTrue();
         session.MemberConfirmation.Should().Be(MemberConfirmationStatus.Confirmed);
 
-        session.ConfirmByMember(MemberId, DateTime.UtcNow).IsFailure.Should().BeTrue();
+        session.ConfirmByMember(new MemberResponse(MemberId, DateTime.UtcNow)).IsFailure.Should().BeTrue();
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class SessionDualLoggingTests
     {
         var session = QuickLogged();
 
-        session.ConfirmByMember(Guid.NewGuid(), DateTime.UtcNow).IsFailure.Should().BeTrue();
+        session.ConfirmByMember(new MemberResponse(Guid.NewGuid(), DateTime.UtcNow)).IsFailure.Should().BeTrue();
         session.MemberConfirmation.Should().Be(MemberConfirmationStatus.Pending);
     }
 
@@ -55,7 +55,7 @@ public sealed class SessionDualLoggingTests
         var session = QuickLogged();
         session.ClearDomainEvents();
 
-        session.DisputeByMember(MemberId, "I was not there", DateTime.UtcNow).IsSuccess.Should().BeTrue();
+        session.DisputeByMember(new MemberResponse(MemberId, DateTime.UtcNow, "I was not there")).IsSuccess.Should().BeTrue();
         session.DisputeReason.Should().Be("I was not there");
         session.ReverseDisputed().IsSuccess.Should().BeTrue();
 

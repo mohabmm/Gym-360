@@ -32,7 +32,7 @@ public class QuickLogSessionTests
     {
         _clock.UtcNow.Returns(new DateTime(2026, 11, 12, 16, 0, 0, DateTimeKind.Utc));
         _flags.IsEnabledAsync(Gym, FeatureKeys.PtDualSessionLogging, Arg.Any<CancellationToken>()).Returns(true);
-        _sut = new QuickLogSessionCommandHandler(_sessions, _packages, _flags, _clock, _events, _uow);
+        _sut = new QuickLogSessionCommandHandler(new QuickLogStateLoader(_sessions, _packages, _clock), _sessions, _flags, _events, _uow);
     }
 
     [Fact]

@@ -19,48 +19,48 @@ public static class FeatureRegistry
     public static IReadOnlyList<FeatureDefinition> All { get; } = new List<FeatureDefinition>
     {
         // ---- PT module (ON) ----
-        Pt(K.PtTrialSessions, FeatureApps.All,
+        Pt(K.PtTrialSessions, FeatureApps.All, new(
             "Trial sessions", "الحصص التجريبية",
             "Free trial session package; the desk assigns a coach.",
-            "باقة حصص تجريبية مجانية، ويحدد الاستقبال المدرب."),
-        Pt(K.PtProgressMeasurements, FeatureApps.All,
+            "باقة حصص تجريبية مجانية، ويحدد الاستقبال المدرب.")),
+        Pt(K.PtProgressMeasurements, FeatureApps.All, new(
             "Progress measurements", "قياسات التقدم",
             "Coach records measurements from session 1; trainee sees progress.",
-            "يسجل المدرب القياسات من الحصة الأولى ويرى المتدرب تقدمه."),
-        Pt(K.PtTrialEndAlerts, FeatureApps.Trainer | Staff,
+            "يسجل المدرب القياسات من الحصة الأولى ويرى المتدرب تقدمه.")),
+        Pt(K.PtTrialEndAlerts, FeatureApps.Trainer | Staff, new(
             "Trial end alerts", "تنبيهات نهاية التجربة",
             "Alert coach and desk at the last free session, plus a 'finished trial, not converted' list.",
-            "تنبيه المدرب والاستقبال عند آخر حصة مجانية، وقائمة بمن أنهى التجربة ولم يشترك."),
-        Pt(K.PtPackages, FeatureApps.All,
+            "تنبيه المدرب والاستقبال عند آخر حصة مجانية، وقائمة بمن أنهى التجربة ولم يشترك.")),
+        Pt(K.PtPackages, FeatureApps.All, new(
             "PT packages", "باقات التدريب الشخصي",
             "Paid PT packages with a remaining-sessions counter.",
-            "باقات تدريب شخصي مدفوعة مع عداد الحصص المتبقية."),
-        Pt(K.PtDualSessionLogging, Mobile | Staff,
+            "باقات تدريب شخصي مدفوعة مع عداد الحصص المتبقية.")),
+        Pt(K.PtDualSessionLogging, Mobile | Staff, new(
             "Session logging", "تسجيل الحصص",
             "Coach logs a session in one or two taps; trainee confirms.",
-            "يسجل المدرب الحصة بضغطة أو ضغطتين ويؤكدها المتدرب."),
-        Pt(K.PtRenewalReminders, FeatureApps.All,
+            "يسجل المدرب الحصة بضغطة أو ضغطتين ويؤكدها المتدرب.")),
+        Pt(K.PtRenewalReminders, FeatureApps.All, new(
             "Renewal reminders", "تذكيرات التجديد",
             "Reminders at 3 sessions left and 1 session left.",
-            "تذكير عند بقاء ٣ حصص وعند بقاء حصة واحدة."),
-        Pt(K.PtOwnerDashboard, Staff,
+            "تذكير عند بقاء ٣ حصص وعند بقاء حصة واحدة.")),
+        Pt(K.PtOwnerDashboard, Staff, new(
             "PT owner dashboard", "لوحة المالك للتدريب الشخصي",
             "Trial-to-paid conversion per coach, renewals and sessions logged.",
-            "نسبة التحويل من التجربة إلى الاشتراك لكل مدرب، والتجديدات، والحصص المسجلة."),
+            "نسبة التحويل من التجربة إلى الاشتراك لكل مدرب، والتجديدات، والحصص المسجلة.")),
 
         // ---- PT later phase (OFF) ----
-        Off(K.PtMonthlyReport, "pt", FeatureApps.All,
+        Off(K.PtMonthlyReport, "pt", FeatureApps.All, new(
             "Monthly progress report", "تقرير التقدم الشهري",
             "Monthly progress report with the gym logo, shareable on WhatsApp.",
-            "تقرير تقدم شهري بشعار النادي قابل للمشاركة على واتساب."),
-        Off(K.PtCoachRatings, "pt", FeatureApps.Trainee | Staff | FeatureApps.Trainer,
+            "تقرير تقدم شهري بشعار النادي قابل للمشاركة على واتساب.")),
+        Off(K.PtCoachRatings, "pt", FeatureApps.Trainee | Staff | FeatureApps.Trainer, new(
             "Coach ratings", "تقييمات المدربين",
             "Anonymous combined coach ratings, owner only, shown after at least 5 ratings.",
-            "تقييمات مجمعة ومجهولة للمدربين، للمالك فقط، تظهر بعد ٥ تقييمات على الأقل."),
-        Off(K.PtCoachPerformance, "pt", Staff,
+            "تقييمات مجمعة ومجهولة للمدربين، للمالك فقط، تظهر بعد ٥ تقييمات على الأقل.")),
+        Off(K.PtCoachPerformance, "pt", Staff, new(
             "Coach performance", "أداء المدرب",
             "Per-coach page with conversion, renewals and sessions.",
-            "صفحة لكل مدرب بنسبة التحويل والتجديدات والحصص."),
+            "صفحة لكل مدرب بنسبة التحويل والتجديدات والحصص.")),
 
         // ---- Settings ----
         new(K.PtAutoExpiry, "pt",
@@ -70,98 +70,98 @@ public static class FeatureRegistry
             Staff, InPtModule: false, FeatureKind.Setting),
 
         // ---- Every other module (OFF in pt_module) ----
-        Off(K.GymMemberships, "gym", FeatureApps.Trainee | Staff,
+        Off(K.GymMemberships, "gym", FeatureApps.Trainee | Staff, new(
             "Memberships", "الاشتراكات",
             "Membership plans, balances, freeze and unfreeze.",
-            "خطط العضوية والأرصدة والتجميد."),
-        Off(K.GymAttendance, "gym", FeatureApps.Trainee | Staff,
+            "خطط العضوية والأرصدة والتجميد.")),
+        Off(K.GymAttendance, "gym", FeatureApps.Trainee | Staff, new(
             "Attendance & check-in", "الحضور وتسجيل الدخول",
             "QR and manual check-in, check-in log and kiosk.",
-            "تسجيل الدخول بالرمز أو يدويًا وسجل الحضور وجهاز الاستقبال."),
-        Off(K.GymFinance, "gym", FeatureApps.Trainer | Staff,
+            "تسجيل الدخول بالرمز أو يدويًا وسجل الحضور وجهاز الاستقبال.")),
+        Off(K.GymFinance, "gym", FeatureApps.Trainer | Staff, new(
             "Finance", "المالية",
             "Payments, receipts, revenue dashboards and trainer earnings.",
-            "المدفوعات والإيصالات ولوحات الإيرادات وأرباح المدربين."),
-        Off(K.PaymentsInApp, "payments", FeatureApps.Trainee,
+            "المدفوعات والإيصالات ولوحات الإيرادات وأرباح المدربين.")),
+        Off(K.PaymentsInApp, "payments", FeatureApps.Trainee, new(
             "In-app payments", "الدفع داخل التطبيق",
             "Online payment inside the apps (no gateway is integrated yet).",
-            "الدفع الإلكتروني داخل التطبيقات (لا توجد بوابة دفع مدمجة بعد)."),
-        Off(K.Classes, "classes", FeatureApps.Trainee | Staff,
+            "الدفع الإلكتروني داخل التطبيقات (لا توجد بوابة دفع مدمجة بعد).")),
+        Off(K.Classes, "classes", FeatureApps.Trainee | Staff, new(
             "Group classes", "الحصص الجماعية",
             "Class schedule, booking, waitlist and attendance.",
-            "جدول الحصص الجماعية والحجز وقائمة الانتظار والحضور."),
-        Off(K.SchedulingBooking, "scheduling", Mobile,
+            "جدول الحصص الجماعية والحجز وقائمة الانتظار والحضور.")),
+        Off(K.SchedulingBooking, "scheduling", Mobile, new(
             "Session booking & availability", "حجز الحصص والمواعيد",
             "Trainee self-booking, coach availability, recurring sessions and leave.",
-            "حجز المتدرب للحصص ومواعيد المدرب والحصص المتكررة والإجازات."),
-        Off(K.TrainingWorkouts, "training", FeatureApps.All,
+            "حجز المتدرب للحصص ومواعيد المدرب والحصص المتكررة والإجازات.")),
+        Off(K.TrainingWorkouts, "training", FeatureApps.All, new(
             "Workouts & exercise library", "التمارين ومكتبة التمارين",
             "Workout builder, templates, assignments, workout logs and exercises.",
-            "إنشاء التمارين والقوالب والتعيين وسجل التمارين ومكتبة التمارين."),
-        Off(K.TrainingPrograms, "training", Mobile,
+            "إنشاء التمارين والقوالب والتعيين وسجل التمارين ومكتبة التمارين.")),
+        Off(K.TrainingPrograms, "training", Mobile, new(
             "Multi-week programs", "البرامج متعددة الأسابيع",
             "Progressive multi-week training programs.",
-            "برامج تدريبية متدرجة لعدة أسابيع."),
-        Off(K.TrainingRemoteWorkout, "training", Mobile,
+            "برامج تدريبية متدرجة لعدة أسابيع.")),
+        Off(K.TrainingRemoteWorkout, "training", Mobile, new(
             "Remote workout", "التمرين عن بعد",
             "Coach activates guided workouts for clients.",
-            "يفعّل المدرب تمارين موجهة لعملائه."),
-        Off(K.Nutrition, "nutrition", Mobile,
+            "يفعّل المدرب تمارين موجهة لعملائه.")),
+        Off(K.Nutrition, "nutrition", Mobile, new(
             "Nutrition", "التغذية",
             "Food log, water tracking and meal plans.",
-            "سجل الطعام وتتبع الماء والخطط الغذائية."),
-        Off(K.ProgressPhotos, "progress", Mobile,
+            "سجل الطعام وتتبع الماء والخطط الغذائية.")),
+        Off(K.ProgressPhotos, "progress", Mobile, new(
             "Progress photos", "صور التقدم",
             "Upload and compare transformation photos.",
-            "رفع صور التحول ومقارنتها."),
-        Off(K.GamificationStreaks, "gamification", FeatureApps.Trainee,
+            "رفع صور التحول ومقارنتها.")),
+        Off(K.GamificationStreaks, "gamification", FeatureApps.Trainee, new(
             "Streaks", "سلاسل الالتزام",
             "Attendance streaks and milestone notifications.",
-            "سلاسل الالتزام وإشعارات الإنجاز."),
-        Off(K.CommunicationChat, "communication", Mobile | FeatureApps.StaffWeb,
+            "سلاسل الالتزام وإشعارات الإنجاز.")),
+        Off(K.CommunicationChat, "communication", Mobile | FeatureApps.StaffWeb, new(
             "Chat", "المحادثات",
             "In-app chat between trainees, coaches and staff.",
-            "المحادثات داخل التطبيق بين المتدربين والمدربين والموظفين."),
-        Off(K.CommunicationAnnouncements, "communication", FeatureApps.All,
+            "المحادثات داخل التطبيق بين المتدربين والمدربين والموظفين.")),
+        Off(K.CommunicationAnnouncements, "communication", FeatureApps.All, new(
             "Announcements & broadcast", "الإعلانات والرسائل الجماعية",
             "Gym announcements and coach broadcast messages.",
-            "إعلانات النادي ورسائل المدرب الجماعية."),
-        Off(K.GamificationMemberLeaderboard, "gamification", FeatureApps.Trainee | Staff,
+            "إعلانات النادي ورسائل المدرب الجماعية.")),
+        Off(K.GamificationMemberLeaderboard, "gamification", FeatureApps.Trainee | Staff, new(
             "Member leaderboards", "لوحات صدارة الأعضاء",
             "Attendance, weight-loss and consistency leaderboards.",
-            "لوحات صدارة للحضور وفقدان الوزن والالتزام."),
-        Off(K.CoachLeaderboard, "coach", FeatureApps.Trainer | Staff,
+            "لوحات صدارة للحضور وفقدان الوزن والالتزام.")),
+        Off(K.CoachLeaderboard, "coach", FeatureApps.Trainer | Staff, new(
             "Coach leaderboard", "لوحة صدارة المدربين",
             "Monthly coach scores and coach of the month.",
-            "نقاط المدربين الشهرية ومدرب الشهر."),
-        Off(K.CoachTestimonials, "coach", FeatureApps.Trainee | Staff,
+            "نقاط المدربين الشهرية ومدرب الشهر.")),
+        Off(K.CoachTestimonials, "coach", FeatureApps.Trainee | Staff, new(
             "Testimonials", "آراء العملاء",
             "Client testimonials and moderation.",
-            "آراء العملاء ومراجعتها."),
-        Off(K.Analytics, "analytics", Staff,
+            "آراء العملاء ومراجعتها.")),
+        Off(K.Analytics, "analytics", Staff, new(
             "Analytics", "التحليلات",
             "Gym analytics, peak hours, churn and the multi-gym owner view.",
-            "تحليلات النادي وأوقات الذروة ومعدل الانسحاب ولوحة المالك متعددة الفروع."),
-        Off(K.GymMemberRecords, "gym", FeatureApps.Trainer | Staff,
+            "تحليلات النادي وأوقات الذروة ومعدل الانسحاب ولوحة المالك متعددة الفروع.")),
+        Off(K.GymMemberRecords, "gym", FeatureApps.Trainer | Staff, new(
             "Member notes & onboarding", "ملاحظات العضو واستبيان البداية",
             "Coach and staff notes and the onboarding questionnaire.",
-            "ملاحظات المدرب والموظفين واستبيان بداية الاشتراك."),
-        Off(K.GymBranding, "gym", FeatureApps.All,
+            "ملاحظات المدرب والموظفين واستبيان بداية الاشتراك.")),
+        Off(K.GymBranding, "gym", FeatureApps.All, new(
             "Branding", "الهوية البصرية",
             "Custom logo, colors and white label.",
-            "شعار وألوان مخصصة وعلامة خاصة."),
-        Off(K.GymDataImport, "gym", FeatureApps.StaffWeb,
+            "شعار وألوان مخصصة وعلامة خاصة.")),
+        Off(K.GymDataImport, "gym", FeatureApps.StaffWeb, new(
             "Data import", "استيراد البيانات",
             "Import members, payments and packages from Excel, Odoo or Daftra.",
-            "استيراد الأعضاء والمدفوعات والباقات من إكسل أو أودو أو دفترة."),
-        Off(K.StaffCustomPermissions, "staff", Staff,
+            "استيراد الأعضاء والمدفوعات والباقات من إكسل أو أودو أو دفترة.")),
+        Off(K.StaffCustomPermissions, "staff", Staff, new(
             "Custom permissions", "صلاحيات مخصصة",
             "Editable permission matrix per staff role.",
-            "مصفوفة صلاحيات قابلة للتعديل لكل دور."),
-        Off(K.IntegrationsApiAccess, "integrations", FeatureApps.None,
+            "مصفوفة صلاحيات قابلة للتعديل لكل دور.")),
+        Off(K.IntegrationsApiAccess, "integrations", FeatureApps.None, new(
             "API access", "الوصول عبر API",
             "REST API for third-party integrations.",
-            "واجهة برمجية للتكامل مع أنظمة أخرى."),
+            "واجهة برمجية للتكامل مع أنظمة أخرى.")),
     };
 
     private static readonly Dictionary<string, FeatureDefinition> ByKey =
@@ -175,11 +175,9 @@ public static class FeatureRegistry
     public static IReadOnlyList<string> PtModuleDefaults { get; } =
         All.Where(d => d.InPtModule).Select(d => d.Key).ToList();
 
-    private static FeatureDefinition Pt(
-        string key, FeatureApps apps, string nameEn, string nameAr, string descEn, string descAr) =>
-        new(key, "pt", new FeatureText(nameEn, nameAr, descEn, descAr), apps, InPtModule: true);
+    private static FeatureDefinition Pt(string key, FeatureApps apps, FeatureText text) =>
+        new(key, "pt", text, apps, InPtModule: true);
 
-    private static FeatureDefinition Off(
-        string key, string module, FeatureApps apps, string nameEn, string nameAr, string descEn, string descAr) =>
-        new(key, module, new FeatureText(nameEn, nameAr, descEn, descAr), apps, InPtModule: false);
+    private static FeatureDefinition Off(string key, string module, FeatureApps apps, FeatureText text) =>
+        new(key, module, text, apps, InPtModule: false);
 }

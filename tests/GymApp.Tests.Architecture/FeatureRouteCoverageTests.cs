@@ -20,7 +20,7 @@ public class FeatureRouteCoverageTests
     public void Every_api_route_is_mapped_to_a_feature_or_always_on()
     {
         var unmapped = DiscoverRoutes()
-            .Where(r => !r.HasExplicitMetadata && FeatureRouteMap.Resolve(r.Method, r.Route) is null)
+            .Where(r => !r.HasExplicitMetadata && FeatureRouteMap.Resolve(new RouteRequest(r.Method, r.Route)) is null)
             .Select(r => $"{r.Method} {r.Route} ({r.File})")
             .ToList();
 

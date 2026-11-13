@@ -1,4 +1,3 @@
-using GymApp.Common.Application.Abstractions;
 using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
@@ -19,25 +18,22 @@ internal sealed class QuickLogSessionCommandHandler : ICommandHandler<QuickLogSe
 
     private const int DefaultDurationMinutes = 60;
 
+    private readonly QuickLogStateLoader _state;
     private readonly ISessionRepository _sessions;
-    private readonly ISessionPackageService _packages;
     private readonly IFeatureFlagService _featureFlags;
-    private readonly IDateTimeProvider _clock;
     private readonly IIntegrationEventPublisher _integrationEvents;
     private readonly ISchedulingUnitOfWork _unitOfWork;
 
     public QuickLogSessionCommandHandler(
+        QuickLogStateLoader state,
         ISessionRepository sessions,
-        ISessionPackageService packages,
         IFeatureFlagService featureFlags,
-        IDateTimeProvider clock,
         IIntegrationEventPublisher integrationEvents,
         ISchedulingUnitOfWork unitOfWork)
     {
+        _state = state;
         _sessions = sessions;
-        _packages = packages;
         _featureFlags = featureFlags;
-        _clock = clock;
         _integrationEvents = integrationEvents;
         _unitOfWork = unitOfWork;
     }
@@ -47,12 +43,7 @@ internal sealed class QuickLogSessionCommandHandler : ICommandHandler<QuickLogSe
         if (!await _featureFlags.IsEnabledAsync(request.GymId, FeatureKeys.PtDualSessionLogging, cancellationToken))
             return Result.Failure<QuickLogSessionResult>(FeatureFlagErrors.FeatureDisabled(FeatureKeys.PtDualSessionLogging));
 
-        var nowUtc = _clock.UtcNow;
-        var remaining = await _packages.GetRemainingWithTrainerAsync(
-            request.MemberId, request.TrainerId, request.GymId, cancellationToken);
-
-        var recent = await _sessions.FindRecentQuickLogAsync(
-            request.TrainerId, request.MemberId, nowUtc - DoubleTapWindow, cancellationToken);
+        var (nowUtc, remaining, recent) = await _state.LoadAsync(request, DoubleTapWindow, cancellationToken);
         if (recent is not null)
             return Result.Success(new QuickLogSessionResult(recent.Id, remaining ?? 0, AlreadyLogged: true));
 

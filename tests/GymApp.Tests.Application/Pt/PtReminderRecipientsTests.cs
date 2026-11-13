@@ -35,10 +35,9 @@ public class PtReminderRecipientsTests
         var notifier = new PtNotifier(
             Substitute.For<INotificationRepository>(),
             Substitute.For<INotificationPreferenceRepository>(),
-            _push,
+            new PtPushSender(_push, NullLogger<PtPushSender>.Instance),
             users,
-            Substitute.For<ICommunicationUnitOfWork>(),
-            NullLogger<PtNotifier>.Instance);
+            Substitute.For<ICommunicationUnitOfWork>());
 
         _sut = new SessionPackageMilestoneReachedIntegrationEventHandler(_flags, desk, notifier);
     }

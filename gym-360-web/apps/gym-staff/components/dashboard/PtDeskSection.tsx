@@ -43,7 +43,8 @@ export function PtDeskSection({ isEnabled, canSeeOwnerDashboard }: Props) {
   const { data: disputed = [] } = useSessionsForReview(showReview);
   const { data: dashboard } = usePtDashboard(30, showDashboard);
 
-  if (!showTrials && !showReview && !showDashboard) return null;
+  const showAny = [showTrials, showReview, showDashboard].some(Boolean);
+  if (!showAny) return null;
   const totals = dashboard?.totals;
 
   return (

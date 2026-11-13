@@ -12,17 +12,16 @@ public interface IFeatureFlagService
 }
 
 /// <summary>All resolved flags for one gym.</summary>
-/// <param name="LimitsPlanCode">
-/// When the gym's preset pins seat/storage limits to a subscription plan (pilot gyms use
-/// <c>business</c> limits), its code; otherwise null and the gym's own subscription plan applies.
-/// </param>
-public sealed record GymFeatureFlags(
-    Guid GymId,
-    string PresetCode,
-    IReadOnlyList<ResolvedFlag> Flags,
-    DateTime ResolvedAtUtc,
-    string? LimitsPlanCode = null)
+public sealed record GymFeatureFlags(Guid GymId, string PresetCode, IReadOnlyList<ResolvedFlag> Flags)
 {
+    public DateTime ResolvedAtUtc { get; init; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// When the gym's preset pins seat/storage limits to a subscription plan (pilot gyms use
+    /// <c>business</c> limits), its code; otherwise null and the gym's own subscription plan applies.
+    /// </summary>
+    public string? LimitsPlanCode { get; init; }
+
     public bool IsEnabled(string key) =>
         Flags.FirstOrDefault(f => string.Equals(f.Key, key, StringComparison.Ordinal))?.Enabled ?? false;
 

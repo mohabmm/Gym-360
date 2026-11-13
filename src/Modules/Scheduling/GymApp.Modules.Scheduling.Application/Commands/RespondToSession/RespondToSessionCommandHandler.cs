@@ -1,3 +1,4 @@
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Common.Application.Abstractions;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
@@ -33,9 +34,10 @@ internal sealed class RespondToSessionCommandHandler : ICommandHandler<RespondTo
         if (session is null)
             return Result.Failure(SchedulingErrors.SessionNotFound(request.SessionId));
 
+        var response = new MemberResponse(request.MemberId, _clock.UtcNow, request.Reason);
         var result = request.Confirmed
-            ? session.ConfirmByMember(request.MemberId, _clock.UtcNow)
-            : session.DisputeByMember(request.MemberId, request.Reason, _clock.UtcNow);
+            ? session.ConfirmByMember(response)
+            : session.DisputeByMember(response);
         if (result.IsFailure)
             return result;
 

@@ -38,7 +38,7 @@ public class FeatureRouteMapTests
     [InlineData("GET", "api/v1/owners/{ownerId:guid}/dashboard", FeatureKeys.Analytics)]
     public void Maps_route_to_its_module_flag(string method, string template, string expectedKey)
     {
-        FeatureRouteMap.Resolve(method, template)!.FeatureKey.Should().Be(expectedKey);
+        FeatureRouteMap.Resolve(new RouteRequest(method, template))!.FeatureKey.Should().Be(expectedKey);
     }
 
     [Theory]
@@ -57,12 +57,12 @@ public class FeatureRouteMapTests
     [InlineData("GET", "/health/live")]
     public void Core_routes_are_always_on(string method, string template)
     {
-        FeatureRouteMap.Resolve(method, template)!.IsAlwaysOn.Should().BeTrue();
+        FeatureRouteMap.Resolve(new RouteRequest(method, template))!.IsAlwaysOn.Should().BeTrue();
     }
 
     [Fact]
     public void Unknown_route_is_unmapped()
     {
-        FeatureRouteMap.Resolve("GET", "api/v1/something-new").Should().BeNull();
+        FeatureRouteMap.Resolve(new RouteRequest("GET", "api/v1/something-new")).Should().BeNull();
     }
 }

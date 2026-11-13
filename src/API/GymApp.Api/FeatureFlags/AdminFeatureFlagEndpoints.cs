@@ -26,6 +26,20 @@ internal sealed class AdminFeatureFlagEndpoints : IEndpoint
 
     internal sealed record ChangeResult(int AffectedGyms);
 
+    /// <summary>Query string of <c>GET gyms</c>.</summary>
+    internal sealed record GymListFilter(
+        [FromQuery] string? Search, [FromQuery] string? Preset, [FromQuery] int? Page, [FromQuery] int? PageSize);
+
+    /// <summary>Query string of <c>GET audit</c>.</summary>
+    internal sealed record AuditFilter(
+        [FromQuery] Guid? GymId, [FromQuery] string? FeatureKey, [FromQuery] int? Page, [FromQuery] int? PageSize);
+
+    /// <summary>Route values of the per-gym override endpoints.</summary>
+    internal sealed record OverrideRoute(Guid GymId, string FeatureKey);
+
+    /// <summary>The calling Super Admin and the admin service, shared by every write endpoint.</summary>
+    internal sealed record AdminCall(HttpContext Http, IFeatureFlagAdminService Service);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(Base)
@@ -36,54 +50,53 @@ internal sealed class AdminFeatureFlagEndpoints : IEndpoint
         group.MapGet("catalog", (IFeatureFlagAdminService svc) => ApiResults.Ok(svc.GetCatalog()))
             .WithSummary("List every feature flag defined in code");
 
-        group.MapGet("gyms", async (
-                [FromQuery] string? search, [FromQuery] string? preset, [FromQuery] int? page, [FromQuery] int? pageSize,
-                IFeatureFlagAdminService svc, CancellationToken ct) =>
-            ApiResults.Ok(await svc.ListGymsAsync(new GymListQuery(search, preset, page ?? 1, pageSize ?? 50), ct)))
+        group.MapGet("gyms", async ([AsParameters] GymListFilter filter, IFeatureFlagAdminService svc, CancellationToken ct) =>
+                ApiResults.Ok(await svc.ListGymsAsync(
+                    new GymListQuery(filter.Search, filter.Preset, filter.Page ?? 1, filter.PageSize ?? 50), ct)))
             .WithSummary("List gyms with their preset and override count");
 
         group.MapGet("gyms/{gymId:guid}", async (Guid gymId, IFeatureFlagAdminService svc, CancellationToken ct) =>
                 ToResult(await svc.GetGymAsync(gymId, ct)))
             .WithSummary("Get a gym's flags: effective value and source (preset or override)");
 
-        group.MapPut("gyms/{gymId:guid}/preset", async (
-                Guid gymId, SetPresetRequest request, HttpContext http, IFeatureFlagAdminService svc, CancellationToken ct) =>
-            ToChangeResult(await svc.SetGymPresetAsync(new[] { gymId }, request.PresetCode, Actor(http), ct)))
+        group.MapPut("gyms/{gymId:guid}/preset", async (Guid gymId, SetPresetRequest request, [AsParameters] AdminCall call) =>
+                ToChangeResult(await call.Service.SetGymPresetAsync(
+                    new[] { gymId }, request.PresetCode, Actor(call.Http), call.Http.RequestAborted)))
             .WithSummary("Set a gym's preset");
 
-        group.MapPut("gyms/preset", async (
-                BulkSetPresetRequest request, HttpContext http, IFeatureFlagAdminService svc, CancellationToken ct) =>
-            request.GymIds is { Count: > 0 }
-                ? ToChangeResult(await svc.SetGymPresetAsync(request.GymIds, request.PresetCode, Actor(http), ct))
-                : ApiResults.Problem("VALIDATION_ERROR", "Select at least one gym.", 400))
+        group.MapPut("gyms/preset", async (BulkSetPresetRequest request, [AsParameters] AdminCall call) =>
+                request.GymIds is { Count: > 0 }
+                    ? ToChangeResult(await call.Service.SetGymPresetAsync(
+                        request.GymIds, request.PresetCode, Actor(call.Http), call.Http.RequestAborted))
+                    : ApiResults.Problem("VALIDATION_ERROR", "Select at least one gym.", 400))
             .WithSummary("Apply a preset to several gyms (bulk)");
 
         group.MapPut("gyms/{gymId:guid}/overrides/{featureKey}", async (
-                Guid gymId, string featureKey, SetOverrideRequest request, HttpContext http,
-                IFeatureFlagAdminService svc, CancellationToken ct) =>
-            ToNoContent(await svc.SetOverrideAsync(
-                gymId, new FlagOverrideChange(featureKey, request.Enabled, request.Reason), Actor(http), ct)))
+                [AsParameters] OverrideRoute route, SetOverrideRequest request, [AsParameters] AdminCall call) =>
+                ToNoContent(await call.Service.SetOverrideAsync(
+                    route.GymId,
+                    new FlagOverrideChange(route.FeatureKey, request.Enabled, request.Reason),
+                    Actor(call.Http),
+                    call.Http.RequestAborted)))
             .WithSummary("Set a per-gym override");
 
-        group.MapDelete("gyms/{gymId:guid}/overrides/{featureKey}", async (
-                Guid gymId, string featureKey, HttpContext http, IFeatureFlagAdminService svc, CancellationToken ct) =>
-            ToNoContent(await svc.ClearOverrideAsync(gymId, featureKey, Actor(http), ct)))
+        group.MapDelete("gyms/{gymId:guid}/overrides/{featureKey}", async ([AsParameters] OverrideRoute route, [AsParameters] AdminCall call) =>
+                ToNoContent(await call.Service.ClearOverrideAsync(
+                    route.GymId, route.FeatureKey, Actor(call.Http), call.Http.RequestAborted)))
             .WithSummary("Clear an override (reset to preset)");
 
         group.MapGet("presets", async (IFeatureFlagAdminService svc, CancellationToken ct) =>
                 ApiResults.Ok(await svc.ListPresetsAsync(ct)))
             .WithSummary("List presets with their flag values and gym counts");
 
-        group.MapPut("presets/{presetCode}", async (
-                string presetCode, UpdatePresetRequest request, HttpContext http,
-                IFeatureFlagAdminService svc, CancellationToken ct) =>
-            ToChangeResult(await svc.UpdatePresetAsync(presetCode, request.Values, Actor(http), ct)))
+        group.MapPut("presets/{presetCode}", async (string presetCode, UpdatePresetRequest request, [AsParameters] AdminCall call) =>
+                ToChangeResult(await call.Service.UpdatePresetAsync(
+                    presetCode, request.Values, Actor(call.Http), call.Http.RequestAborted)))
             .WithSummary("Edit which flags a preset turns on");
 
-        group.MapGet("audit", async (
-                [FromQuery] Guid? gymId, [FromQuery] string? featureKey, [FromQuery] int? page, [FromQuery] int? pageSize,
-                IFeatureFlagAdminService svc, CancellationToken ct) =>
-            ApiResults.Ok(await svc.GetAuditAsync(new AuditQuery(gymId, featureKey, page ?? 1, pageSize ?? 50), ct)))
+        group.MapGet("audit", async ([AsParameters] AuditFilter filter, IFeatureFlagAdminService svc, CancellationToken ct) =>
+                ApiResults.Ok(await svc.GetAuditAsync(
+                    new AuditQuery(filter.GymId, filter.FeatureKey, filter.Page ?? 1, filter.PageSize ?? 50), ct)))
             .WithSummary("Read the feature-flag audit log");
     }
 

@@ -11,24 +11,21 @@ internal sealed class GetPlanFeaturesQueryHandler : IQueryHandler<GetPlanFeature
 {
     private readonly IGymSubscriptionRepository _subscriptionRepository;
     private readonly ISubscriptionPlanRepository _planRepository;
-    private readonly IPlanFeatureRepository _planFeatureRepository;
-    private readonly IFeatureRepository _featureRepository;
+    private readonly PlanFeatureCatalog _catalog;
     private readonly IGymFeatureOverrideRepository _overrideRepository;
     private readonly IGymPlanService _gymPlanService;
 
     public GetPlanFeaturesQueryHandler(
         IGymSubscriptionRepository subscriptionRepository,
         ISubscriptionPlanRepository planRepository,
-        IPlanFeatureRepository planFeatureRepository,
-        IFeatureRepository featureRepository,
+        PlanFeatureCatalog catalog,
         IGymFeatureOverrideRepository overrideRepository,
         IGymPlanService gymPlanService)
     {
         _gymPlanService = gymPlanService;
         _subscriptionRepository = subscriptionRepository;
         _planRepository = planRepository;
-        _planFeatureRepository = planFeatureRepository;
-        _featureRepository = featureRepository;
+        _catalog = catalog;
         _overrideRepository = overrideRepository;
     }
 
@@ -48,8 +45,7 @@ internal sealed class GetPlanFeaturesQueryHandler : IQueryHandler<GetPlanFeature
             return Result.Failure<PlanFeaturesResponse>(BillingErrors.PlanNotFound);
         }
 
-        var allFeatures = await _featureRepository.GetAllAsync(cancellationToken);
-        var planFeatures = await _planFeatureRepository.GetByPlanIdAsync(subscription.PlanId, cancellationToken);
+        var (allFeatures, planFeatures) = await _catalog.LoadAsync(subscription.PlanId, cancellationToken);
         var overrides = await _overrideRepository.GetByGymIdAsync(request.GymId, cancellationToken);
 
         var overrideDict = overrides.ToDictionary(o => o.FeatureId);

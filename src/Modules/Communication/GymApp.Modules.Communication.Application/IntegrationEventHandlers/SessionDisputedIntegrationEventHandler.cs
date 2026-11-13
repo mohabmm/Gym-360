@@ -38,7 +38,7 @@ internal sealed class SessionDisputedIntegrationEventHandler : INotificationHand
 
         await _notifier.SendAsync(
             new PtNotification(e.GymId, desk.Append(e.TrainerId).ToList(), NotificationType.SessionDisputed,
-                NotificationTexts.SessionDisputed(memberName), data),
+                PtNotificationTexts.SessionDisputed(memberName), data),
             cancellationToken);
     }
 }

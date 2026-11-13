@@ -71,8 +71,7 @@ public class FeatureResolverTests
         var flags = new GymFeatureFlags(
             Guid.NewGuid(),
             FeatureRegistry.PtModulePreset,
-            new[] { new ResolvedFlag("pt.packages", true, FlagSource.Preset, true) },
-            DateTime.UtcNow);
+            new[] { new ResolvedFlag("pt.packages", true, FlagSource.Preset, true) });
 
         flags.IsEnabled("pt.packages").Should().BeTrue();
         flags.IsEnabled("not.a.flag").Should().BeFalse();

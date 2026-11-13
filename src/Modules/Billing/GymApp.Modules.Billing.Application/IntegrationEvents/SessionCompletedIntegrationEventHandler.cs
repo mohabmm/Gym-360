@@ -33,9 +33,7 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
     {
         // Existing logic: deduct session from active package
         var package = await _packageRepository.GetActiveByMemberAndTrainerAsync(
-            notification.GymId,
-            notification.MemberId,
-            notification.TrainerId,
+            new PackageParticipants(notification.GymId, notification.MemberId, notification.TrainerId),
             cancellationToken);
 
         if (package is not null && package.Status == PackageStatus.Active)

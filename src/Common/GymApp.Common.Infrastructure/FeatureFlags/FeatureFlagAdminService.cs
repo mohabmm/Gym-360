@@ -3,7 +3,6 @@ using GymApp.Common.Domain;
 using GymApp.Common.Infrastructure.FeatureFlags.Persistence;
 using GymApp.Common.Infrastructure.Tenancy.Registry;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace GymApp.Common.Infrastructure.FeatureFlags;
@@ -14,25 +13,19 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
 
     private readonly FeatureFlagsDbContext _db;
     private readonly TenantRegistryDbContext _registry;
-    private readonly FeatureFlagCache _cache;
-    private readonly IFeatureFlagChangeNotifier _notifier;
+    private readonly FeatureFlagChangePublisher _publisher;
     private readonly FeatureFlagOptions _options;
-    private readonly ILogger<FeatureFlagAdminService> _logger;
 
     public FeatureFlagAdminService(
         FeatureFlagsDbContext db,
         TenantRegistryDbContext registry,
-        FeatureFlagCache cache,
-        IFeatureFlagChangeNotifier notifier,
-        IOptions<FeatureFlagOptions> options,
-        ILogger<FeatureFlagAdminService> logger)
+        FeatureFlagChangePublisher publisher,
+        IOptions<FeatureFlagOptions> options)
     {
         _db = db;
         _registry = registry;
-        _cache = cache;
-        _notifier = notifier;
+        _publisher = publisher;
         _options = options.Value;
-        _logger = logger;
     }
 
     public IReadOnlyList<FeatureCatalogItem> GetCatalog() =>
@@ -40,7 +33,7 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
 
     public async Task<FlagPage<GymFlagSummary>> ListGymsAsync(GymListQuery query, CancellationToken cancellationToken = default)
     {
-        var (page, pageSize) = Clamp(query.Page, query.PageSize);
+        var (page, pageSize) = Clamp(query);
         var gyms = await _registry.Gyms.AsNoTracking()
             .Select(g => new { g.GymId, g.Name, g.Status })
             .ToListAsync(cancellationToken);
@@ -110,7 +103,10 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
             if (row is not null && row.PresetCode == presetCode)
                 continue;
 
-            UpsertGymPreset(row, gymId, presetCode, actor);
+            row ??= AddGymPresetRow(gymId);
+            row.PresetCode = presetCode;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+            row.UpdatedBy = actor.UserId;
             _db.AuditLog.Add(Audit(actor, FlagChangeTypes.PresetAssigned, gymId) with
             {
                 PresetCode = presetCode,
@@ -135,7 +131,7 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
         var row = await _db.GymOverrides
             .FirstOrDefaultAsync(o => o.GymId == gymId && o.FeatureKey == change.FeatureKey, cancellationToken);
         var oldValue = row is null
-            ? await DescribeEffectiveAsync(gymId, change.FeatureKey, cancellationToken)
+            ? await DescribeEffectiveAsync(gymId, change, cancellationToken)
             : OverrideLabel(row.Enabled);
 
         if (row is null)
@@ -217,7 +213,7 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
 
         var changes = 0;
         foreach (var (key, enabled) in values)
-            changes += ApplyPresetValue(presetCode, rows.GetValueOrDefault(key), key, enabled, actor) ? 1 : 0;
+            changes += ApplyPresetValue(new PresetEdit(presetCode, key, enabled), rows.GetValueOrDefault(key), actor) ? 1 : 0;
 
         if (changes == 0)
             return Result.Success(0);
@@ -229,7 +225,7 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
 
     public async Task<FlagPage<FlagAuditEntry>> GetAuditAsync(AuditQuery query, CancellationToken cancellationToken = default)
     {
-        var (page, pageSize) = Clamp(query.Page, query.PageSize);
+        var (page, pageSize) = Clamp(query);
         var q = _db.AuditLog.AsNoTracking().AsQueryable();
         if (query.GymId.HasValue)
             q = q.Where(a => a.GymId == query.GymId);
@@ -256,61 +252,48 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
 
     // ---------------------------------------------------------------- helpers
 
-    private bool ApplyPresetValue(string presetCode, PresetFeatureRow? row, string key, bool enabled, AdminActor actor)
+    /// <summary>One flag value an admin sets on a preset.</summary>
+    private sealed record PresetEdit(string PresetCode, string FeatureKey, bool Enabled);
+
+    private bool ApplyPresetValue(PresetEdit edit, PresetFeatureRow? row, AdminActor actor)
     {
         var old = row?.Enabled ?? false;
-        if (row is not null && old == enabled)
+        if (row is not null && old == edit.Enabled)
             return false;
 
         if (row is null)
-            _db.PresetFeatures.Add(new PresetFeatureRow { PresetCode = presetCode, FeatureKey = key, Enabled = enabled });
+            _db.PresetFeatures.Add(new PresetFeatureRow { PresetCode = edit.PresetCode, FeatureKey = edit.FeatureKey, Enabled = edit.Enabled });
         else
-            row.Enabled = enabled;
+            row.Enabled = edit.Enabled;
 
         _db.AuditLog.Add(Audit(actor, FlagChangeTypes.PresetEdited, gymId: null) with
         {
-            PresetCode = presetCode,
-            FeatureKey = key,
+            PresetCode = edit.PresetCode,
+            FeatureKey = edit.FeatureKey,
             OldValue = PresetLabel(old),
-            NewValue = PresetLabel(enabled),
+            NewValue = PresetLabel(edit.Enabled),
         });
         return true;
     }
 
-    private void UpsertGymPreset(GymPresetRow? row, Guid gymId, string presetCode, AdminActor actor)
+    private GymPresetRow AddGymPresetRow(Guid gymId)
     {
-        if (row is null)
-        {
-            row = new GymPresetRow { GymId = gymId };
-            _db.GymPresets.Add(row);
-        }
-
-        row.PresetCode = presetCode;
-        row.UpdatedAtUtc = DateTime.UtcNow;
-        row.UpdatedBy = actor.UserId;
+        var row = new GymPresetRow { GymId = gymId };
+        _db.GymPresets.Add(row);
+        return row;
     }
 
     private async Task SaveAndPublishAsync(IReadOnlyCollection<Guid> gymIds, CancellationToken cancellationToken)
     {
         await _db.SaveChangesAsync(cancellationToken);
-        await _cache.InvalidateAsync(gymIds, cancellationToken);
-
-        try
-        {
-            await _notifier.NotifyGymsChangedAsync(gymIds, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            // Best effort: clients still refresh on resume / timer.
-            _logger.LogWarning(ex, "Feature-flag change notification failed");
-        }
+        await _publisher.PublishAsync(gymIds, cancellationToken);
     }
 
-    private async Task<string> DescribeEffectiveAsync(Guid gymId, string key, CancellationToken cancellationToken)
+    private async Task<string> DescribeEffectiveAsync(Guid gymId, FlagOverrideChange change, CancellationToken cancellationToken)
     {
         var presetCode = await GetGymPresetCodeAsync(gymId, cancellationToken);
         var values = await LoadPresetValuesAsync(presetCode, cancellationToken);
-        return PresetLabel(values.GetValueOrDefault(key));
+        return PresetLabel(values.GetValueOrDefault(change.FeatureKey));
     }
 
     private async Task<string> GetGymPresetCodeAsync(Guid gymId, CancellationToken cancellationToken) =>
@@ -393,31 +376,6 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
 
     private static string PresetLabel(bool enabled) => enabled ? "on (preset)" : "off (preset)";
 
-    private static (int Page, int PageSize) Clamp(int page, int pageSize) =>
-        (Math.Max(1, page), Math.Clamp(pageSize, 1, MaxPageSize));
-}
-
-internal static class FeatureCatalog
-{
-    public static FeatureCatalogItem ToItem(FeatureDefinition def) => new(
-        def.Key,
-        def.Module,
-        def.Kind == FeatureKind.Setting ? "setting" : "feature",
-        def.Text.NameEn,
-        def.Text.NameAr,
-        def.Text.DescriptionEn,
-        def.Text.DescriptionAr,
-        AppNames(def.Apps));
-
-    public static IReadOnlyList<string> AppNames(FeatureApps apps) =>
-        Enum.GetValues<FeatureApps>()
-            .Where(a => a is not FeatureApps.None and not FeatureApps.All && apps.HasFlag(a))
-            .Select(a => a switch
-            {
-                FeatureApps.Trainee => "trainee",
-                FeatureApps.Trainer => "trainer",
-                FeatureApps.StaffMobile => "staff_mobile",
-                _ => "staff_web",
-            })
-            .ToList();
+    private static (int Page, int PageSize) Clamp(IFlagPageRequest request) =>
+        (Math.Max(1, request.Page), Math.Clamp(request.PageSize, 1, MaxPageSize));
 }

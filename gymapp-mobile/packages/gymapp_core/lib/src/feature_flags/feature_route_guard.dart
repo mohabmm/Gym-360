@@ -12,12 +12,14 @@ class FeatureRouteGuard {
   String? flagFor(String location) {
     final path = Uri.parse(location).path;
     String? bestPrefix;
-    for (final prefix in routeFlags.keys) {
-      final matches = path == prefix || path.startsWith(prefix.endsWith('/') ? prefix : '$prefix/');
-      if (matches && (bestPrefix == null || prefix.length > bestPrefix.length)) bestPrefix = prefix;
+    for (final prefix in routeFlags.keys.where((p) => _matches(path, p))) {
+      if (prefix.length > (bestPrefix?.length ?? -1)) bestPrefix = prefix;
     }
     return bestPrefix == null ? null : routeFlags[bestPrefix];
   }
+
+  static bool _matches(String path, String prefix) =>
+      path == prefix || path.startsWith(prefix.endsWith('/') ? prefix : '$prefix/');
 
   /// `homePath` when [location] belongs to a disabled feature, otherwise null.
   String? redirect(String location, FeatureFlags flags) {

@@ -73,8 +73,8 @@ public sealed class FeatureFlagFunctionalTests : BaseFunctionalTest
         var admin = CreateAdminClient();
         var ptGym = await RegisterGymAsync();
         var otherGym = await RegisterGymAsync();
-        await SetPresetAsync(admin, ptGym, "pt_module");
-        await SetPresetAsync(admin, otherGym, "pt_module");
+        await SetPresetAsync(admin, new PresetAssignment(ptGym, "pt_module"));
+        await SetPresetAsync(admin, new PresetAssignment(otherGym, "pt_module"));
 
         var ptTrainee = TraineeOf(ptGym);
         var otherTrainee = TraineeOf(otherGym);
@@ -121,7 +121,7 @@ public sealed class FeatureFlagFunctionalTests : BaseFunctionalTest
     {
         var admin = CreateAdminClient();
         var gym = await RegisterGymAsync();
-        await SetPresetAsync(admin, gym, "pt_module");
+        await SetPresetAsync(admin, new PresetAssignment(gym, "pt_module"));
 
         var response = await TraineeOf(gym).GetAsync("api/v1/billing/me/packages");
 
@@ -134,11 +134,11 @@ public sealed class FeatureFlagFunctionalTests : BaseFunctionalTest
     {
         var admin = CreateAdminClient();
         var gym = await RegisterGymAsync();
-        await SetPresetAsync(admin, gym, "pt_module");
+        await SetPresetAsync(admin, new PresetAssignment(gym, "pt_module"));
         var trainee = TraineeOf(gym);
         (await MyFlagAsync(trainee, "classes")).Should().BeFalse();
 
-        await SetPresetAsync(admin, gym, "business");
+        await SetPresetAsync(admin, new PresetAssignment(gym, "business"));
 
         var flags = await ReadDataAsync(await trainee.GetAsync("api/v1/feature-flags/me"));
         flags.GetProperty("preset").GetString().Should().Be("business");
@@ -155,7 +155,7 @@ public sealed class FeatureFlagFunctionalTests : BaseFunctionalTest
         var b = await RegisterGymAsync();
         var c = await RegisterGymAsync();
         foreach (var gym in new[] { a, b, c })
-            await SetPresetAsync(admin, gym, "pt_module");
+            await SetPresetAsync(admin, new PresetAssignment(gym, "pt_module"));
 
         var bulk = await admin.PutAsJsonAsync($"{AdminBase}/gyms/preset", new { gymIds = new[] { a, b }, presetCode = "business" });
         (await ReadDataAsync(bulk)).GetProperty("affectedGyms").GetInt32().Should().Be(2);
@@ -200,9 +200,13 @@ public sealed class FeatureFlagFunctionalTests : BaseFunctionalTest
         return id;
     }
 
-    private static async Task SetPresetAsync(HttpClient admin, Guid gymId, string preset)
+    /// <summary>A preset to put a gym on.</summary>
+    private sealed record PresetAssignment(Guid GymId, string Preset);
+
+    private static async Task SetPresetAsync(HttpClient admin, PresetAssignment assignment)
     {
-        var response = await admin.PutAsJsonAsync($"{AdminBase}/gyms/{gymId}/preset", new { presetCode = preset });
+        var response = await admin.PutAsJsonAsync(
+            $"{AdminBase}/gyms/{assignment.GymId}/preset", new { presetCode = assignment.Preset });
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
     }
 

@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Common.Application.FeatureFlags;
 using GymApp.Modules.Billing.Application.Abstractions;
 using GymApp.Modules.Billing.Application.Commands.SessionPackages;
@@ -47,7 +48,7 @@ public class QuickAssignTrialTests
     [Fact]
     public async Task Second_trial_for_the_same_member_is_rejected()
     {
-        _packages.HasTrialAsync(GymId, Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _packages.HasTrialAsync(Arg.Is<PackageOwner>(o => o.GymId == GymId), Arg.Any<CancellationToken>()).Returns(true);
 
         var result = await _sut.Handle(Trial(), CancellationToken.None);
 

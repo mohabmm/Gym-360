@@ -24,20 +24,21 @@ internal sealed class MyFeatureFlagsEndpoint : IEndpoint
         int RefreshAfterSeconds,
         DateTime ResolvedAtUtc);
 
+    /// <summary>Services that resolve the caller's gym and its flags.</summary>
+    internal sealed record FlagReaders(ITenantContext Tenant, IFeatureFlagService Flags);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapGet("api/v1/feature-flags/me", async (
             [FromHeader(Name = "X-Gym-Id")] Guid? headerGymId,
             HttpContext httpContext,
-            ITenantContext tenant,
-            IFeatureFlagService flags,
-            CancellationToken cancellationToken) =>
+            [AsParameters] FlagReaders readers) =>
         {
-            var gymId = ResolveGymId(httpContext.User, tenant, headerGymId);
+            var gymId = ResolveGymId(httpContext.User, readers.Tenant, headerGymId);
             if (gymId is null)
                 return ApiResults.Problem("GYM_CONTEXT_REQUIRED", "No gym is selected for this user.", StatusCodes.Status400BadRequest);
 
-            var resolved = await flags.GetResolvedAsync(gymId.Value, cancellationToken);
+            var resolved = await readers.Flags.GetResolvedAsync(gymId.Value, httpContext.RequestAborted);
             return ApiResults.Ok(new MyFeatureFlagsResponse(
                 resolved.GymId,
                 resolved.PresetCode,

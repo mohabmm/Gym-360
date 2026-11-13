@@ -34,9 +34,17 @@ public sealed record AdminActor(Guid UserId, string? Email);
 
 public sealed record FlagOverrideChange(string FeatureKey, bool Enabled, string? Reason);
 
-public sealed record GymListQuery(string? Search, string? PresetCode, int Page = 1, int PageSize = 50);
+/// <summary>A paged admin list request.</summary>
+public interface IFlagPageRequest
+{
+    int Page { get; }
 
-public sealed record AuditQuery(Guid? GymId, string? FeatureKey, int Page = 1, int PageSize = 50);
+    int PageSize { get; }
+}
+
+public sealed record GymListQuery(string? Search, string? PresetCode, int Page = 1, int PageSize = 50) : IFlagPageRequest;
+
+public sealed record AuditQuery(Guid? GymId, string? FeatureKey, int Page = 1, int PageSize = 50) : IFlagPageRequest;
 
 public sealed record FlagPage<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
 

@@ -21,127 +21,141 @@ public sealed record RouteFeature(string? FeatureKey)
 /// matching rule wins; at equal length a method-specific rule beats an any-method rule.
 /// </para>
 /// </summary>
+/// <summary>An HTTP method and route template (as written in <c>MapGet("...")</c>) to look up.</summary>
+public sealed record RouteRequest(string Method, string Template);
+
 public static class FeatureRouteMap
 {
     private const string Any = "*";
 
-    private sealed record Rule(string Method, string[] Segments, bool Exact, RouteFeature Feature);
+    /// <summary>One map entry; a null <c>FeatureKey</c> means always on.</summary>
+    private sealed record Rule(string? FeatureKey, string Path, string Method = Any, bool Exact = false);
 
-    private static readonly List<Rule> Rules = new();
+    private sealed record CompiledRule(Rule Rule, string[] Segments, RouteFeature Feature);
+
+    private sealed record RouteQuery(string Method, string[] Segments);
+
+    private static readonly Rule[] Table =
+    {
+        // ---- Always-on core: auth, platform admin, notifications, flags, profiles, settings ----
+        new(null, "identity"),
+        new(null, "admin"),
+        new(null, "observability"),
+        new(null, "notifications"),
+        new(null, "communication/notifications"),
+        new(null, "communication/notification-preferences"),
+        new(null, "feature-flags"),
+        new(null, "billing/plan-features"),
+        new(null, "billing/my-subscription"),
+        new(null, "gyms", Exact: true),
+        new(null, "gyms/pending", Exact: true),
+        new(null, "gyms/{}", Exact: true),
+        new(null, "gyms/{}/members"),
+        new(null, "gyms/{}/staff"),
+        new(null, "gyms/{}/trainers"),
+        new(null, "gyms/{}/operating-hours"),
+        new(null, "gyms/{}/seasonal-hours"),
+        new(null, "gyms/{}/sections"),
+        new(null, "gyms/{}/session-policy"),
+        new(null, "gyms/{}/settings"),
+        new(null, "owners/{}/gyms"),
+        new(null, "gamification/trainers/{}/public-profile"),
+        // Apps read branding to theme themselves; only editing it is a feature.
+        new(null, "gyms/{}/branding", "GET", Exact: true),
+
+        // ---- PT module ----
+        new(K.PtPackages, "billing/package-templates"),
+        new(K.PtPackages, "billing/packages"),
+        new(K.PtPackages, "billing/me/packages"),
+        new(K.PtTrialEndAlerts, "billing/trials"),
+        new(K.PtDualSessionLogging, "scheduling/sessions", "GET", Exact: true),
+        new(K.PtDualSessionLogging, "scheduling/sessions/upcoming"),
+        new(K.PtDualSessionLogging, "scheduling/sessions/stats"),
+        new(K.PtDualSessionLogging, "scheduling/sessions/{}", "GET", Exact: true),
+        new(K.PtDualSessionLogging, "scheduling/sessions/{}/trainer-log"),
+        new(K.PtDualSessionLogging, "scheduling/sessions/{}/member-log"),
+        new(K.PtProgressMeasurements, "progress"),
+
+        // ---- PT later ----
+        new(K.PtCoachRatings, "gamification/trainer-ratings"),
+        new(K.PtCoachRatings, "gamification/trainers/{}/ratings"),
+
+        // ---- Everything else ----
+        new(K.GymMemberships, "billing/plans"),
+        new(K.GymMemberships, "billing/members/{}/balance"),
+        new(K.GymMemberships, "gyms/{}/members/{}/freeze"),
+        new(K.GymMemberships, "gyms/{}/members/{}/unfreeze"),
+        new(K.GymMemberRecords, "gyms/{}/members/{}/notes"),
+        new(K.GymMemberRecords, "gyms/{}/members/{}/onboarding"),
+        new(K.GymAttendance, "gyms/{}/check-in"),
+        new(K.GymAttendance, "gyms/{}/check-ins"),
+        new(K.GymAttendance, "gyms/{}/kiosk-pin"),
+        new(K.GymFinance, "billing/payments"),
+        new(K.GymFinance, "billing/me/payments"),
+        new(K.GymFinance, "billing/members/{}/payments"),
+        new(K.GymFinance, "billing/revenue"),
+        new(K.GymFinance, "billing/trainers"),
+        new(K.GymFinance, "gyms/{}/trainers/{}/rate"),
+        new(K.Classes, "gyms/{}/classes"),
+        new(K.CommunicationAnnouncements, "gyms/{}/announcements"),
+        new(K.CommunicationAnnouncements, "communication/broadcast"),
+        new(K.CommunicationChat, "communication/conversations"),
+        new(K.Analytics, "gyms/{}/analytics"),
+        new(K.Analytics, "owners/{}/dashboard"),
+        new(K.GymDataImport, "gyms/{}/imports"),
+        new(K.GymDataImport, "gyms/imports"),
+        new(K.GymBranding, "gyms/{}/branding"),
+        new(K.SchedulingBooking, "scheduling/availability"),
+        new(K.SchedulingBooking, "scheduling/available-slots"),
+        new(K.SchedulingBooking, "scheduling/sessions", "POST", Exact: true),
+        new(K.SchedulingBooking, "scheduling/sessions/recurring"),
+        new(K.SchedulingBooking, "scheduling/sessions/{}/cancel"),
+        new(K.SchedulingBooking, "scheduling/sessions/{}/no-show"),
+        new(K.SchedulingBooking, "scheduling/sessions/{}/confirm"),
+        new(K.SchedulingBooking, "scheduling/sessions/{}/start"),
+        new(K.SchedulingBooking, "scheduling/sessions/{}/complete"),
+        new(K.TrainingWorkouts, "scheduling/sessions/{}/exercise-logs"),
+        new(K.TrainingWorkouts, "training"),
+        new(K.TrainingPrograms, "training/programs"),
+        new(K.TrainingPrograms, "training/assignments/program"),
+        new(K.TrainingRemoteWorkout, "training/remote-workout"),
+        new(K.Nutrition, "nutrition"),
+        new(K.ProgressPhotos, "progress/photos"),
+        new(K.GamificationMemberLeaderboard, "gamification/leaderboards"),
+        new(K.CoachLeaderboard, "gamification/trainers/leaderboard"),
+        new(K.CoachLeaderboard, "gamification/trainers/coach-of-the-month"),
+        new(K.CoachLeaderboard, "gamification/trainer-monthly-scores"),
+        new(K.CoachTestimonials, "gamification/testimonials"),
+        new(K.CoachTestimonials, "gamification/trainers/{}/testimonials"),
+    };
+
+    private static readonly CompiledRule[] Rules = Table
+        .Select(r => new CompiledRule(
+            r,
+            r.Path.Split('/', StringSplitOptions.RemoveEmptyEntries),
+            r.FeatureKey is null ? RouteFeature.AlwaysOn : new RouteFeature(r.FeatureKey)))
+        .ToArray();
 
     static FeatureRouteMap()
     {
-        // ---- Always-on core: auth, platform admin, notifications, flags, profiles, settings ----
-        On("identity");
-        On("admin");
-        On("observability");
-        On("notifications");
-        On("communication/notifications");
-        On("communication/notification-preferences");
-        On("feature-flags");
-        On("billing/plan-features");
-        On("billing/my-subscription");
-        OnExact(Any, "gyms");
-        OnExact(Any, "gyms/pending");
-        OnExact(Any, "gyms/{}");
-        On("gyms/{}/members");
-        On("gyms/{}/staff");
-        On("gyms/{}/trainers");
-        On("gyms/{}/operating-hours");
-        On("gyms/{}/seasonal-hours");
-        On("gyms/{}/sections");
-        On("gyms/{}/session-policy");
-        On("gyms/{}/settings");
-        On("owners/{}/gyms");
-        On("gamification/trainers/{}/public-profile");
-        // Apps read branding to theme themselves; only editing it is a feature.
-        OnExact("GET", "gyms/{}/branding");
-
-        // ---- PT module ----
-        Flag(K.PtPackages, "billing/package-templates");
-        Flag(K.PtPackages, "billing/packages");
-        Flag(K.PtPackages, "billing/me/packages");
-        Flag(K.PtTrialEndAlerts, "billing/trials");
-        Flag(K.PtDualSessionLogging, "scheduling/sessions", exact: true, method: "GET");
-        Flag(K.PtDualSessionLogging, "scheduling/sessions/upcoming");
-        Flag(K.PtDualSessionLogging, "scheduling/sessions/stats");
-        Flag(K.PtDualSessionLogging, "scheduling/sessions/{}", exact: true, method: "GET");
-        Flag(K.PtDualSessionLogging, "scheduling/sessions/{}/trainer-log");
-        Flag(K.PtDualSessionLogging, "scheduling/sessions/{}/member-log");
-        Flag(K.PtProgressMeasurements, "progress");
-
-        // ---- PT later ----
-        Flag(K.PtCoachRatings, "gamification/trainer-ratings");
-        Flag(K.PtCoachRatings, "gamification/trainers/{}/ratings");
-
-        // ---- Everything else ----
-        Flag(K.GymMemberships, "billing/plans");
-        Flag(K.GymMemberships, "billing/members/{}/balance");
-        Flag(K.GymMemberships, "gyms/{}/members/{}/freeze");
-        Flag(K.GymMemberships, "gyms/{}/members/{}/unfreeze");
-        Flag(K.GymMemberRecords, "gyms/{}/members/{}/notes");
-        Flag(K.GymMemberRecords, "gyms/{}/members/{}/onboarding");
-        Flag(K.GymAttendance, "gyms/{}/check-in");
-        Flag(K.GymAttendance, "gyms/{}/check-ins");
-        Flag(K.GymAttendance, "gyms/{}/kiosk-pin");
-        Flag(K.GymFinance, "billing/payments");
-        Flag(K.GymFinance, "billing/me/payments");
-        Flag(K.GymFinance, "billing/members/{}/payments");
-        Flag(K.GymFinance, "billing/revenue");
-        Flag(K.GymFinance, "billing/trainers");
-        Flag(K.GymFinance, "gyms/{}/trainers/{}/rate");
-        Flag(K.Classes, "gyms/{}/classes");
-        Flag(K.CommunicationAnnouncements, "gyms/{}/announcements");
-        Flag(K.CommunicationAnnouncements, "communication/broadcast");
-        Flag(K.CommunicationChat, "communication/conversations");
-        Flag(K.Analytics, "gyms/{}/analytics");
-        Flag(K.Analytics, "owners/{}/dashboard");
-        Flag(K.GymDataImport, "gyms/{}/imports");
-        Flag(K.GymDataImport, "gyms/imports");
-        Flag(K.GymBranding, "gyms/{}/branding");
-        Flag(K.SchedulingBooking, "scheduling/availability");
-        Flag(K.SchedulingBooking, "scheduling/available-slots");
-        Flag(K.SchedulingBooking, "scheduling/sessions", exact: true, method: "POST");
-        Flag(K.SchedulingBooking, "scheduling/sessions/recurring");
-        Flag(K.SchedulingBooking, "scheduling/sessions/{}/cancel");
-        Flag(K.SchedulingBooking, "scheduling/sessions/{}/no-show");
-        Flag(K.SchedulingBooking, "scheduling/sessions/{}/confirm");
-        Flag(K.SchedulingBooking, "scheduling/sessions/{}/start");
-        Flag(K.SchedulingBooking, "scheduling/sessions/{}/complete");
-        Flag(K.TrainingWorkouts, "scheduling/sessions/{}/exercise-logs");
-        Flag(K.TrainingWorkouts, "training");
-        Flag(K.TrainingPrograms, "training/programs");
-        Flag(K.TrainingPrograms, "training/assignments/program");
-        Flag(K.TrainingRemoteWorkout, "training/remote-workout");
-        Flag(K.Nutrition, "nutrition");
-        Flag(K.ProgressPhotos, "progress/photos");
-        Flag(K.GamificationMemberLeaderboard, "gamification/leaderboards");
-        Flag(K.CoachLeaderboard, "gamification/trainers/leaderboard");
-        Flag(K.CoachLeaderboard, "gamification/trainers/coach-of-the-month");
-        Flag(K.CoachLeaderboard, "gamification/trainer-monthly-scores");
-        Flag(K.CoachTestimonials, "gamification/testimonials");
-        Flag(K.CoachTestimonials, "gamification/trainers/{}/testimonials");
-
-        foreach (var rule in Rules.Where(r => r.Feature.FeatureKey is not null))
-        {
-            if (!FeatureRegistry.IsKnown(rule.Feature.FeatureKey!))
-                throw new InvalidOperationException($"FeatureRouteMap uses unknown flag '{rule.Feature.FeatureKey}'.");
-        }
+        var unknown = Table.FirstOrDefault(r => r.FeatureKey is not null && !FeatureRegistry.IsKnown(r.FeatureKey));
+        if (unknown is not null)
+            throw new InvalidOperationException($"FeatureRouteMap uses unknown flag '{unknown.FeatureKey}'.");
     }
 
     /// <summary>
-    /// Feature owning <paramref name="routeTemplate"/> (as written in <c>MapGet("...")</c>), or
-    /// null when no rule matches (an architecture test keeps that from happening). Routes outside
-    /// <c>api/v1/</c> (health, hubs) are always on.
+    /// Feature owning the route, or null when no rule matches (an architecture test keeps that
+    /// from happening). Routes outside <c>api/v1/</c> (health, hubs) are always on.
     /// </summary>
-    public static RouteFeature? Resolve(string httpMethod, string routeTemplate)
+    public static RouteFeature? Resolve(RouteRequest request)
     {
-        var segments = Normalize(routeTemplate);
+        var segments = Normalize(request.Template);
         if (segments is null)
             return RouteFeature.AlwaysOn;
 
-        Rule? best = null;
-        foreach (var rule in Rules.Where(r => Matches(r, httpMethod, segments)))
+        var query = new RouteQuery(request.Method, segments);
+        CompiledRule? best = null;
+        foreach (var rule in Rules.Where(r => Matches(r, query)))
         {
             if (best is null || IsBetter(rule, best))
                 best = rule;
@@ -150,34 +164,30 @@ public static class FeatureRouteMap
         return best?.Feature;
     }
 
-    private static bool IsBetter(Rule candidate, Rule current)
+    private static bool IsBetter(CompiledRule candidate, CompiledRule current)
     {
         if (candidate.Segments.Length != current.Segments.Length)
             return candidate.Segments.Length > current.Segments.Length;
-        if (candidate.Exact != current.Exact)
-            return candidate.Exact;
-        return candidate.Method != Any && current.Method == Any;
+        if (candidate.Rule.Exact != current.Rule.Exact)
+            return candidate.Rule.Exact;
+        return candidate.Rule.Method != Any && current.Rule.Method == Any;
     }
 
-    private static bool Matches(Rule rule, string method, string[] segments)
+    private static bool Matches(CompiledRule rule, RouteQuery query)
     {
-        if (rule.Method != Any && !string.Equals(rule.Method, method, StringComparison.OrdinalIgnoreCase))
+        if (rule.Rule.Method != Any && !string.Equals(rule.Rule.Method, query.Method, StringComparison.OrdinalIgnoreCase))
             return false;
-        if (rule.Exact ? segments.Length != rule.Segments.Length : segments.Length < rule.Segments.Length)
+        var lengthOk = rule.Rule.Exact
+            ? query.Segments.Length == rule.Segments.Length
+            : query.Segments.Length >= rule.Segments.Length;
+        if (!lengthOk)
             return false;
 
-        for (var i = 0; i < rule.Segments.Length; i++)
-        {
-            var expected = rule.Segments[i];
-            var actual = segments[i];
-            var matches = expected == "{}"
-                ? actual.StartsWith('{')
-                : string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase);
-            if (!matches)
-                return false;
-        }
-
-        return true;
+        return rule.Segments
+            .Zip(query.Segments)
+            .All(pair => pair.First == "{}"
+                ? pair.Second.StartsWith('{')
+                : string.Equals(pair.First, pair.Second, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Segments after <c>api/v1/</c>, or null when the route is outside the versioned API.</summary>
@@ -190,15 +200,4 @@ public static class FeatureRouteMap
 
         return trimmed[prefix.Length..].Split('/', StringSplitOptions.RemoveEmptyEntries);
     }
-
-    private static string[] Split(string path) => path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-    private static void On(string prefix) =>
-        Rules.Add(new Rule(Any, Split(prefix), Exact: false, RouteFeature.AlwaysOn));
-
-    private static void OnExact(string method, string path) =>
-        Rules.Add(new Rule(method, Split(path), Exact: true, RouteFeature.AlwaysOn));
-
-    private static void Flag(string key, string path, bool exact = false, string method = Any) =>
-        Rules.Add(new Rule(method, Split(path), exact, new RouteFeature(key)));
 }

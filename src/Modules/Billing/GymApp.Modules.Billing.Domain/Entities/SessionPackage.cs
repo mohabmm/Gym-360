@@ -60,11 +60,18 @@ public sealed class SessionPackage : Entity
         };
     }
 
-    public Result UseSession(Guid sessionId)
+    public Result UseSession(Guid sessionId) => CountSession(sessionId, PackageUsageType.Completed);
+
+    public Result RecordLateCancelUsage(Guid sessionId) => CountSession(sessionId, PackageUsageType.LateCancelled);
+
+    /// <summary>
+    /// Deducts one session for <paramref name="sessionId"/>. Idempotent per usage type: at-least-once
+    /// outbox delivery may re-invoke this for a session already counted, and a repeat is a no-op
+    /// success so the package is never double-deducted.
+    /// </summary>
+    private Result CountSession(Guid sessionId, PackageUsageType usageType)
     {
-        // Idempotency: at-least-once outbox delivery may re-invoke this for a session already
-        // counted. Treat a repeat as a no-op success so the package is never double-deducted.
-        if (_usageHistory.Any(u => u.SessionId == sessionId && u.UsageType == PackageUsageType.Completed))
+        if (_usageHistory.Any(u => u.SessionId == sessionId && u.UsageType == usageType))
             return Result.Success();
 
         if (Status == PackageStatus.Exhausted)
@@ -74,27 +81,7 @@ public sealed class SessionPackage : Entity
             return Result.Failure(Errors.BillingErrors.PackageExpired);
 
         RemainingSessions--;
-        _usageHistory.Add(PackageUsage.Create(Id, sessionId, PackageUsageType.Completed));
-
-        CheckAndRaiseEvents();
-
-        return Result.Success();
-    }
-
-    public Result RecordLateCancelUsage(Guid sessionId)
-    {
-        // Idempotency: see UseSession — a repeated late-cancel for the same session is a no-op.
-        if (_usageHistory.Any(u => u.SessionId == sessionId && u.UsageType == PackageUsageType.LateCancelled))
-            return Result.Success();
-
-        if (Status == PackageStatus.Exhausted)
-            return Result.Failure(Errors.BillingErrors.PackageExhausted);
-
-        if (Status == PackageStatus.Expired)
-            return Result.Failure(Errors.BillingErrors.PackageExpired);
-
-        RemainingSessions--;
-        _usageHistory.Add(PackageUsage.Create(Id, sessionId, PackageUsageType.LateCancelled));
+        _usageHistory.Add(PackageUsage.Create(Id, sessionId, usageType));
 
         CheckAndRaiseEvents();
 

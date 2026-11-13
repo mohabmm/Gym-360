@@ -49,13 +49,14 @@ def data(code, payload):
 
 
 def get(path, token, gym_id=None):
-    return req_h("GET", path, None, token, gym_id)
+    return req_h("GET", path, None, (token, gym_id))
 
 
-def req_h(method, path, body, token, gym_id=None):
-    """prov.req plus the X-Gym-Id header."""
+def req_h(method, path, body, auth):
+    """prov.req plus the X-Gym-Id header. `auth` is a token or a (token, gym_id) pair."""
     import urllib.request
     import urllib.error
+    token, gym_id = auth if isinstance(auth, tuple) else (auth, None)
     url = f"{prov.API}{path}"
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
     if gym_id:
@@ -182,11 +183,11 @@ def quick_assign(s, sessions, is_trial, price=None):
             "sessionCount": sessions, "assignedBy": s["desk_id"], "isTrial": is_trial}
     if price:
         body.update(totalPrice=price, paymentMethod="Cash")
-    return req_h("POST", "/billing/packages/quick-assign", body, s["desk"], s["gym"])
+    return req_h("POST", "/billing/packages/quick-assign", body, (s["desk"], s["gym"]))
 
 
 def quick_log(s):
-    code, p = req_h("POST", "/scheduling/sessions/quick-log", {"memberId": s["trainee_id"]}, s["coach"], s["gym"])
+    code, p = req_h("POST", "/scheduling/sessions/quick-log", {"memberId": s["trainee_id"]}, (s["coach"], s["gym"]))
     return code, data(code, p) or {}, p
 
 
@@ -196,24 +197,29 @@ def has_notification(token, gym, kind):
 
 
 def not_converted(s):
-    code, p = get("/billing/trials/not-converted", s["desk"], s["gym"])
+    code, p = get("/billing/trials/not-converted", (s["desk"], s["gym"]))
     return {t["memberId"] for t in (data(code, p) or [])} if code == 200 else set()
 
 
 def remaining(s):
-    code, p = get("/billing/me/packages", s["trainee"], s["gym"])
+    code, p = get("/billing/me/packages", (s["trainee"], s["gym"]))
     return sum(x.get("remainingSessions", 0) for x in items_of(data(code, p)) if x.get("status") == "Active")
 
 
 def coach_row(s):
     now = datetime.now(timezone.utc)
     q = urllib.parse.urlencode({"from": (now - timedelta(days=1)).isoformat(), "to": (now + timedelta(days=1)).isoformat()})
-    code, p = get(f"/billing/pt-dashboard?{q}", s["owner"], s["gym"])
+    code, p = get(f"/billing/pt-dashboard?{q}", (s["owner"], s["gym"]))
     rows = (data(code, p) or {}).get("coaches") or []
     return next((r for r in rows if r.get("trainerId") == s["coach_id"]), None)
 
 
-def journey(s):
+def expect_reminder(token_key, s, kind, label):
+    check(f"{label} reaches the {token_key}", eventually(lambda: has_notification(s[token_key], s["gym"], kind)))
+
+
+def journey_trial(s):
+    """Free trial: assign, one-tap log, measurements, trainee confirms, last-session alert."""
     code, _ = quick_assign(s, 2, True)
     check("desk assigns a free 2-session trial with a coach", code == 201, code)
     code, _ = quick_assign(s, 1, True)
@@ -221,27 +227,29 @@ def journey(s):
 
     code, first, raw = quick_log(s)
     check("coach one-tap logs session 1 (1 left)", code == 200 and first.get("remainingSessions") == 1, raw)
-    code2, again, _ = quick_log(s)
-    check("double tap within 5 min does not log twice", code2 == 200 and again.get("alreadyLogged") is True, again)
+    code, again, _ = quick_log(s)
+    check("double tap within 5 min does not log twice", (code, again.get("alreadyLogged")) == (200, True), again)
 
     code, p = req_h("POST", "/progress/body-metrics/client", {
         "clientId": s["trainee_id"], "gymId": s["gym"], "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        "weight": 92.5, "weightUnit": "kg", "bodyFatPercentage": 24}, s["coach"], s["gym"])
+        "weight": 92.5, "weightUnit": "kg", "bodyFatPercentage": 24}, (s["coach"], s["gym"]))
     check("coach records measurements from session 1", code == 201, p)
 
     sid = first.get("sessionId")
     code, p = get(f"/scheduling/sessions?memberId={s['trainee_id']}&memberConfirmation=Pending&page=1&pageSize=20", s["trainee"], s["gym"])
     check("trainee sees the session waiting for confirmation", sid in [x.get("id") for x in items_of(data(code, p))], p)
-    code, p = req_h("POST", f"/scheduling/sessions/{sid}/member-confirm", None, s["trainee"], s["gym"])
+    code, p = req_h("POST", f"/scheduling/sessions/{sid}/member-confirm", None, (s["trainee"], s["gym"]))
     check("trainee confirms the session", code == 204, p)
     code, p = get(f"/progress/body-metrics?gymId={s['gym']}", s["trainee"], s["gym"])
-    check("trainee sees progress (92.5 kg)", code == 200 and any(m.get("weight") == 92.5 for m in (data(code, p) or [])), p)
+    weights = [m.get("weight") for m in (data(code, p) or [])]
+    check("trainee sees progress (92.5 kg)", 92.5 in weights, p)
 
-    check("last-trial-session alert reaches the coach",
-          eventually(lambda: has_notification(s["coach"], s["gym"], "trial_last_session")))
-    check("last-trial-session alert reaches the desk",
-          eventually(lambda: has_notification(s["desk"], s["gym"], "trial_last_session")))
+    expect_reminder("coach", s, "trial_last_session", "last-trial-session alert")
+    expect_reminder("desk", s, "trial_last_session", "last-trial-session alert")
 
+
+def journey_conversion(s):
+    """Trial finishes, shows as not converted, trainee buys a package, 3-left / 1-left reminders."""
     age_quick_logs(s)
     code, d, raw = quick_log(s)
     check("coach logs session 2 (trial finished, 0 left)", code == 200 and d.get("remainingSessions") == 0, raw)
@@ -257,30 +265,42 @@ def journey(s):
         age_quick_logs(s)
         quick_log(s)
     check("remaining sessions counter shows 1 after 3 logs", eventually(lambda: remaining(s) == 1, 30), remaining(s))
-    check("3-left reminder reaches the trainee", eventually(lambda: has_notification(s["trainee"], s["gym"], "renewal_3_left")))
-    check("1-left reminder reaches the trainee", eventually(lambda: has_notification(s["trainee"], s["gym"], "renewal_1_left")))
+    expect_reminder("trainee", s, "renewal_3_left", "3-left reminder")
+    expect_reminder("trainee", s, "renewal_1_left", "1-left reminder")
     check("1-left reminder reaches the coach", has_notification(s["coach"], s["gym"], "renewal_1_left"))
 
+
+def journey_dashboard(s):
+    """Owner PT dashboard numbers after the trial and the paid package."""
     check("owner dashboard counts all 5 sessions",
           eventually(lambda: (coach_row(s) or {}).get("sessionsLogged") == 5))
     row = coach_row(s) or {}
-    check("owner dashboard: 1 trial finished, 1 converted, 100%",
-          row.get("trialsFinished") == 1 and row.get("trialsConverted") == 1 and row.get("conversionRate") == 100, row)
-    check("owner dashboard: 1 new paid package, 0 renewals",
-          row.get("newPaidPackages") == 1 and row.get("renewals") == 0, row)
+    trials = (row.get("trialsFinished"), row.get("trialsConverted"), row.get("conversionRate"))
+    check("owner dashboard: 1 trial finished, 1 converted, 100%", trials == (1, 1, 100), row)
+    packages = (row.get("newPaidPackages"), row.get("renewals"))
+    check("owner dashboard: 1 new paid package, 0 renewals", packages == (1, 0), row)
 
-    # Dispute -> desk reverse gives the session back.
+
+def journey_dispute(s):
+    """Dispute -> desk reverse gives the session back."""
     age_quick_logs(s)
-    code, d, raw = quick_log(s)
+    _, d, _ = quick_log(s)
     sid = d.get("sessionId")
     eventually(lambda: remaining(s) == 0, 30)
-    code, p = req_h("POST", f"/scheduling/sessions/{sid}/member-dispute", {"reason": "Not me"}, s["trainee"], s["gym"])
+    code, p = req_h("POST", f"/scheduling/sessions/{sid}/member-dispute", {"reason": "Not me"}, (s["trainee"], s["gym"]))
     check("trainee disputes a session", code == 204, p)
     code, p = get("/scheduling/sessions/review", s["desk"], s["gym"])
     check("desk sees the disputed session", sid in [x.get("id") for x in (data(code, p) or [])], p)
-    code, p = req_h("POST", f"/scheduling/sessions/{sid}/reverse", None, s["desk"], s["gym"])
+    code, p = req_h("POST", f"/scheduling/sessions/{sid}/reverse", None, (s["desk"], s["gym"]))
     check("desk reverses it", code == 204, p)
     check("session is given back to the package", eventually(lambda: remaining(s) == 1, 30), remaining(s))
+
+
+def journey(s):
+    journey_trial(s)
+    journey_conversion(s)
+    journey_dashboard(s)
+    journey_dispute(s)
 
 
 # ---------------------------------------------------------------- flags
@@ -290,18 +310,18 @@ def my_flags(token, gym):
     return data(code, p) or {}
 
 
-def flags(s):
-    admin, gym = s["admin"], s["gym"]
-    code, p = req_h("PUT", f"/admin/feature-flags/gyms/{gym}/preset", {"presetCode": "pt_module"}, admin)
-    check("super admin sets the pilot gym to pt_module", code == 200, p)
+def enabled_flags(token, gym):
+    return set(my_flags(token, gym).get("enabled") or [])
 
-    me = my_flags(s["trainee"], gym)
-    enabled = set(me.get("enabled") or [])
-    pt = {"pt.trial_sessions", "pt.progress_measurements", "pt.trial_end_alerts", "pt.packages",
-          "pt.dual_session_logging", "pt.renewal_reminders", "pt.owner_dashboard"}
-    check("/feature-flags/me = exactly the 7 PT features", enabled == pt, sorted(enabled))
 
-    blocked = {
+PT_FEATURES = {"pt.trial_sessions", "pt.progress_measurements", "pt.trial_end_alerts", "pt.packages",
+               "pt.dual_session_logging", "pt.renewal_reminders", "pt.owner_dashboard"}
+
+
+def blocked_calls(s):
+    """One call per OFF feature: flag key -> (method, path, token)."""
+    gym = s["gym"]
+    return {
         "classes": ("GET", f"/gyms/{gym}/classes?page=1&pageSize=5", s["desk"]),
         "gym.attendance": ("GET", f"/gyms/{gym}/check-ins?page=1&pageSize=5", s["desk"]),
         "gym.finance": ("GET", "/billing/revenue", s["owner"]),
@@ -311,45 +331,79 @@ def flags(s):
         "training.workouts": ("GET", "/training/workouts?page=1&pageSize=5", s["coach"]),
         "analytics": ("GET", f"/gyms/{gym}/analytics", s["owner"]),
     }
-    for key, (m, path, tok) in blocked.items():
-        code, p = req_h(m, path, None, tok, gym)
-        check(f"OFF feature {key} → 403 FEATURE_DISABLED:{key}", code == 403 and first_code(p) == f"FEATURE_DISABLED:{key}",
-              f"{code} {first_code(p)}")
+
+
+def set_preset(s, preset):
+    return req_h("PUT", f"/admin/feature-flags/gyms/{s['gym']}/preset", {"presetCode": preset}, s["admin"])
+
+
+def flags_pt_module(s):
+    """pt_module turns on exactly the PT features; everything else answers FEATURE_DISABLED."""
+    gym = s["gym"]
+    code, p = set_preset(s, "pt_module")
+    check("super admin sets the pilot gym to pt_module", code == 200, p)
+    enabled = enabled_flags(s["trainee"], gym)
+    check("/feature-flags/me = exactly the 7 PT features", enabled == PT_FEATURES, sorted(enabled))
+
+    for key, (m, path, tok) in blocked_calls(s).items():
+        code, p = req_h(m, path, None, (tok, gym))
+        got = (code, first_code(p))
+        check(f"OFF feature {key} → 403 FEATURE_DISABLED:{key}", got == (403, f"FEATURE_DISABLED:{key}"), f"{code} {first_code(p)}")
 
     for role in ("owner", "desk", "coach", "trainee"):
         code, _ = get("/admin/feature-flags/gyms", s[role])
         check(f"Super Admin flag API refuses {role} (403)", code == 403, code)
 
-    # Other gyms (existing staging gyms) must not change when we override this one.
-    code, p = get("/admin/feature-flags/gyms?page=1&pageSize=200", admin)
-    others = [g for g in items_of(data(code, p)) if g["gymId"] != gym]
-    before = {g["gymId"]: (g["presetCode"], g["overrideCount"]) for g in others}
+
+def other_gyms(s):
+    """Preset and override count of every gym except the pilot gym."""
+    code, p = get("/admin/feature-flags/gyms?page=1&pageSize=200", s["admin"])
+    return {g["gymId"]: (g["presetCode"], g["overrideCount"]) for g in items_of(data(code, p)) if g["gymId"] != s["gym"]}
+
+
+def is_override_audit(a):
+    values = (str(a.get("oldValue", "")), str(a.get("newValue", "")))
+    return (a.get("changeType"), a.get("featureKey")) == ("override_set", "classes") \
+        and values[0].startswith("off") and values[1].startswith("on") and bool(a.get("actorEmail"))
+
+
+def flags_override(s):
+    """One override turns classes on for the pilot gym only, is audited, and can be reset."""
+    admin, gym = s["admin"], s["gym"]
+    before = other_gyms(s)
 
     code, p = req_h("PUT", f"/admin/feature-flags/gyms/{gym}/overrides/classes", {"enabled": True, "reason": "staging e2e"}, admin)
     check("super admin turns classes ON for the pilot gym", code in (200, 204), code)
-    check("pilot gym's apps see classes after a refresh", "classes" in (my_flags(s["trainee"], gym).get("enabled") or []))
-    code, p = req_h("GET", f"/gyms/{gym}/classes?page=1&pageSize=5", None, s["desk"], gym)
+    check("pilot gym's apps see classes after a refresh", "classes" in enabled_flags(s["trainee"], gym))
+    code, p = req_h("GET", f"/gyms/{gym}/classes?page=1&pageSize=5", None, (s["desk"], gym))
     check("classes API now answers for the pilot gym", code == 200, f"{code} {first_code(p)}")
-    code, p = get("/admin/feature-flags/gyms?page=1&pageSize=200", admin)
-    after = {g["gymId"]: (g["presetCode"], g["overrideCount"]) for g in items_of(data(code, p)) if g["gymId"] != gym}
+    after = other_gyms(s)
     check("other gyms are unchanged", before == after, f"{before} vs {after}")
     code, p = get(f"/admin/feature-flags/audit?gymId={gym}&featureKey=classes&page=1&pageSize=10", admin)
     audit = items_of(data(code, p))
-    check("audit log records the override (old → new)",
-          any(a.get("changeType") == "override_set" and a.get("featureKey") == "classes"
-              and str(a.get("oldValue", "")).startswith("off") and str(a.get("newValue", "")).startswith("on")
-              and a.get("actorEmail") for a in audit), audit[:1])
+    check("audit log records the override (old → new)", any(is_override_audit(a) for a in audit), audit[:1])
 
     code, _ = req_h("DELETE", f"/admin/feature-flags/gyms/{gym}/overrides/classes", None, admin)
-    check("reset to preset removes the override", code in (200, 204) and "classes" not in (my_flags(s["trainee"], gym).get("enabled") or []), code)
+    reset = code in (200, 204) and "classes" not in enabled_flags(s["trainee"], gym)
+    check("reset to preset removes the override", reset, code)
 
-    code, p = req_h("PUT", f"/admin/feature-flags/gyms/{gym}/preset", {"presetCode": "business"}, admin)
-    biz = set(my_flags(s["trainee"], gym).get("enabled") or [])
+
+def flags_business(s):
+    """Preset business turns everything on; then back to pt_module."""
+    gym = s["gym"]
+    code, _ = set_preset(s, "business")
+    biz = enabled_flags(s["trainee"], gym)
     code_c, _ = get(f"/gyms/{gym}/classes?page=1&pageSize=5", s["desk"], gym)
-    check("preset business shows all features", code == 200 and {"classes", "gym.finance", "nutrition", "analytics"} <= biz
-          and code_c == 200, f"{len(biz)} enabled")
-    code, _ = req_h("PUT", f"/admin/feature-flags/gyms/{gym}/preset", {"presetCode": "pt_module"}, admin)
-    check("back to pt_module", code == 200 and "classes" not in (my_flags(s["trainee"], gym).get("enabled") or []))
+    all_on = {"classes", "gym.finance", "nutrition", "analytics"} <= biz
+    check("preset business shows all features", (code, code_c, all_on) == (200, 200, True), f"{len(biz)} enabled")
+    code, _ = set_preset(s, "pt_module")
+    check("back to pt_module", code == 200 and "classes" not in enabled_flags(s["trainee"], gym))
+
+
+def flags(s):
+    flags_pt_module(s)
+    flags_override(s)
+    flags_business(s)
 
 
 def main():

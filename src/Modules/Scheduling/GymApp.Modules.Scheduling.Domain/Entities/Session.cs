@@ -94,27 +94,27 @@ public sealed class Session : Entity
     }
 
     /// <summary>Trainee confirms the coach's log.</summary>
-    public Result ConfirmByMember(Guid memberId, DateTime nowUtc)
+    public Result ConfirmByMember(MemberResponse response)
     {
-        var check = EnsureAwaitingMember(memberId);
+        var check = EnsureAwaitingMember(response.MemberId);
         if (check.IsFailure)
             return check;
 
         MemberConfirmation = MemberConfirmationStatus.Confirmed;
-        MemberRespondedAt = nowUtc;
+        MemberRespondedAt = response.AtUtc;
         return Result.Success();
     }
 
     /// <summary>Trainee says the session did not happen; the desk reviews it.</summary>
-    public Result DisputeByMember(Guid memberId, string? reason, DateTime nowUtc)
+    public Result DisputeByMember(MemberResponse response)
     {
-        var check = EnsureAwaitingMember(memberId);
+        var check = EnsureAwaitingMember(response.MemberId);
         if (check.IsFailure)
             return check;
 
         MemberConfirmation = MemberConfirmationStatus.Disputed;
-        MemberRespondedAt = nowUtc;
-        DisputeReason = reason;
+        MemberRespondedAt = response.AtUtc;
+        DisputeReason = response.Reason;
         return Result.Success();
     }
 

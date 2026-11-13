@@ -69,7 +69,7 @@ public sealed class FeatureFlagEnforcementMiddleware
         if (endpoint is not RouteEndpoint route || route.RoutePattern.RawText is not { } template)
             return null;
 
-        return FeatureRouteMap.Resolve(context.Request.Method, template)?.FeatureKey;
+        return FeatureRouteMap.Resolve(new RouteRequest(context.Request.Method, template))?.FeatureKey;
     }
 
     private static bool IsPlatformAdmin(ClaimsPrincipal user) =>

@@ -71,7 +71,7 @@ internal sealed class FeatureFlagService : IFeatureFlagService
         // Keys come from code, not the DB, so a flag defined in code is always resolved (OFF by default).
         var flags = FeatureResolver.Resolve(FeatureRegistry.All.Select(d => d.Key), presetValues, overrides);
 
-        return new GymFeatureFlags(gymId, presetCode, flags, DateTime.UtcNow, limitsPlanCode);
+        return new GymFeatureFlags(gymId, presetCode, flags) { LimitsPlanCode = limitsPlanCode };
     }
 }
 

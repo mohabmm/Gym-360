@@ -32,6 +32,7 @@ public static class SchedulingModuleRegistration
 
         services.AddScoped<ITrainerAvailabilityRepository, TrainerAvailabilityRepository>();
         services.AddScoped<ISessionRepository, SessionRepository>();
+        services.AddScoped<GymApp.Modules.Scheduling.Application.Commands.QuickLogSession.QuickLogStateLoader>();
 
         services.AddScoped<ISchedulingQueryService, SchedulingQueryService>();
         services.AddScoped<IGymSessionPolicyService, GymSessionPolicyService>();

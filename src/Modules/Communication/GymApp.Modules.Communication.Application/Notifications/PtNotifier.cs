@@ -18,25 +18,22 @@ internal sealed class PtNotifier
 {
     private readonly INotificationRepository _notifications;
     private readonly INotificationPreferenceRepository _preferences;
-    private readonly IPushNotificationService _push;
+    private readonly PtPushSender _push;
     private readonly IUserDisplayLookup _users;
     private readonly ICommunicationUnitOfWork _unitOfWork;
-    private readonly ILogger<PtNotifier> _logger;
 
     public PtNotifier(
         INotificationRepository notifications,
         INotificationPreferenceRepository preferences,
-        IPushNotificationService push,
+        PtPushSender push,
         IUserDisplayLookup users,
-        ICommunicationUnitOfWork unitOfWork,
-        ILogger<PtNotifier> logger)
+        ICommunicationUnitOfWork unitOfWork)
     {
         _notifications = notifications;
         _preferences = preferences;
         _push = push;
         _users = users;
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
     public async Task<string> DisplayNameAsync(Guid userId, CancellationToken cancellationToken)
@@ -57,30 +54,48 @@ internal sealed class PtNotifier
             if (preference is not null && !preference.IsEnabled(notification.Type))
                 continue;
 
-            await _notifications.AddAsync(Notification.CreateLocalized(
-                new NotificationDetails
-                {
-                    UserId = userId,
-                    Type = notification.Type,
-                    GymId = notification.GymId,
-                    Data = notification.Data,
-                },
-                notification.Text), cancellationToken);
+            await _notifications.AddAsync(ToNotification(notification, userId), cancellationToken);
 
             if (preference is null || preference.IsPushEnabled(notification.Type))
                 pushTo.Add(userId);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _push.SendAsync(notification, pushTo, cancellationToken);
+    }
 
-        foreach (var userId in pushTo)
+    private static Notification ToNotification(PtNotification notification, Guid userId) =>
+        Notification.CreateLocalized(
+            new NotificationDetails
+            {
+                UserId = userId,
+                Type = notification.Type,
+                GymId = notification.GymId,
+                Data = notification.Data,
+            },
+            notification.Text);
+}
+
+/// <summary>FCM push for PT notifications (Arabic text). A failed push is logged and never fails the event.</summary>
+internal sealed class PtPushSender
+{
+    private readonly IPushNotificationService _push;
+    private readonly ILogger<PtPushSender> _logger;
+
+    public PtPushSender(IPushNotificationService push, ILogger<PtPushSender> logger)
+    {
+        _push = push;
+        _logger = logger;
+    }
+
+    public async Task SendAsync(PtNotification notification, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+    {
+        var content = new PushContent(notification.Text.TitleAr, notification.Text.BodyAr, notification.Data);
+        foreach (var userId in userIds)
         {
             try
             {
-                await _push.SendAsync(
-                    userId,
-                    new PushContent(notification.Text.TitleAr, notification.Text.BodyAr, notification.Data),
-                    cancellationToken);
+                await _push.SendAsync(userId, content, cancellationToken);
             }
             catch (Exception ex)
             {

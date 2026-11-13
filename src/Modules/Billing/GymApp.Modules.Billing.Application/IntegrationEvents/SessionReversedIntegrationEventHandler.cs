@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Modules.Billing.Application.Abstractions;
 using GymApp.Modules.Billing.Domain.Repositories;
 using GymApp.Modules.Scheduling.IntegrationEvents;
@@ -25,7 +26,7 @@ internal sealed class SessionReversedIntegrationEventHandler : INotificationHand
     public async Task Handle(SessionReversedIntegrationEvent notification, CancellationToken cancellationToken)
     {
         var package = await _packageRepository.FindByUsageSessionAsync(
-            notification.GymId, notification.SessionId, cancellationToken);
+            new PackageSessionRef(notification.GymId, notification.SessionId), cancellationToken);
         if (package is null)
             return;
 

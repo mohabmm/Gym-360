@@ -8,21 +8,9 @@ import { useFlagGyms, useFlagPresets, useSetGymPreset } from '@/lib/hooks';
 import { useFlagsText } from '@/lib/feature-flags-text';
 import { FLAGS_BASE, useConfirmedAction } from './flags-shell';
 
-/** Gyms list: name, preset, number of overrides, search, and bulk "apply preset". */
-export function GymsTable() {
-  const { t, presetName } = useFlagsText();
-  const [search, setSearch] = useState('');
-  const [presetFilter, setPresetFilter] = useState('');
+/** Selected gym ids, with toggle-one and select-all. */
+function useGymSelection(gyms: readonly GymFlagSummary[]) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkPreset, setBulkPreset] = useState('');
-  const { data, isLoading, isError } = useFlagGyms(search, presetFilter);
-  const { data: presetsData } = useFlagPresets();
-  const setPreset = useSetGymPreset();
-  const { ask, dialog } = useConfirmedAction();
-
-  const gyms = useMemo(() => data?.data?.items ?? [], [data]);
-  const presets: FeaturePreset[] = presetsData?.data ?? [];
-  const nameOf = (code: string) => presetName(presets.find((p) => p.code === code), code);
   const allSelected = gyms.length > 0 && gyms.every((g) => selected.has(g.gymId));
 
   const toggle = (id: string) =>
@@ -32,38 +20,32 @@ export function GymsTable() {
       else next.add(id);
       return next;
     });
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(gyms.map((g) => g.gymId)));
+  const clear = () => setSelected(new Set());
 
-  const applyBulk = () => {
-    if (!bulkPreset || selected.size === 0) return;
-    const gymIds = [...selected];
-    ask({
-      title: t.confirmPresetTitle,
-      description: t.confirmPresetBody(gymIds.length, nameOf(bulkPreset)),
-      run: async () => {
-        await setPreset.mutateAsync({ gymIds, presetCode: bulkPreset });
-        setSelected(new Set());
-      },
-    });
-  };
+  return { selected, allSelected, toggle, toggleAll, clear };
+}
+
+/** Gyms list: name, preset, number of overrides, search, and bulk "apply preset". */
+export function GymsTable() {
+  const { t, presetName } = useFlagsText();
+  const [search, setSearch] = useState('');
+  const [presetFilter, setPresetFilter] = useState('');
+  const { data, isLoading, isError } = useFlagGyms(search, presetFilter);
+  const { data: presetsData } = useFlagPresets();
+
+  const gyms = useMemo(() => data?.data?.items ?? [], [data]);
+  const presets: FeaturePreset[] = presetsData?.data ?? [];
+  const nameOf = (code: string) => presetName(presets.find((p) => p.code === code), code);
+  const selection = useGymSelection(gyms);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput value={search} onChange={setSearch} placeholder={t.searchGyms} className="w-72" />
         <PresetSelect value={presetFilter} onChange={setPresetFilter} presets={presets} placeholder={t.allPresets} />
-        {selected.size > 0 && (
-          <div className="ms-auto flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-            <span className="text-sm font-medium">{t.selected(selected.size)}</span>
-            <PresetSelect value={bulkPreset} onChange={setBulkPreset} presets={presets} placeholder={t.choosePreset} />
-            <button
-              type="button"
-              onClick={applyBulk}
-              disabled={!bulkPreset}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
-            >
-              <Layers className="h-4 w-4" /> {t.applyPreset}
-            </button>
-          </div>
+        {selection.selected.size > 0 && (
+          <BulkPresetBar gymIds={[...selection.selected]} presets={presets} nameOf={nameOf} onApplied={selection.clear} />
         )}
       </div>
 
@@ -72,12 +54,7 @@ export function GymsTable() {
           <thead className="bg-muted/50 text-muted-foreground">
             <tr>
               <th className="w-10 px-4 py-3 text-start">
-                <input
-                  type="checkbox"
-                  aria-label={t.applyPreset}
-                  checked={allSelected}
-                  onChange={() => setSelected(allSelected ? new Set() : new Set(gyms.map((g) => g.gymId)))}
-                />
+                <input type="checkbox" aria-label={t.applyPreset} checked={selection.allSelected} onChange={selection.toggleAll} />
               </th>
               <th className="px-4 py-3 text-start font-medium">{t.gym}</th>
               <th className="px-4 py-3 text-start font-medium">{t.status}</th>
@@ -88,7 +65,7 @@ export function GymsTable() {
           <tbody>
             {gyms.map((gym) => (
               <GymRow key={gym.gymId} gym={gym} presetLabel={nameOf(gym.presetCode)}
-                checked={selected.has(gym.gymId)} onToggle={() => toggle(gym.gymId)} />
+                checked={selection.selected.has(gym.gymId)} onToggle={() => selection.toggle(gym.gymId)} />
             ))}
           </tbody>
         </table>
@@ -96,6 +73,46 @@ export function GymsTable() {
           <p className="px-4 py-8 text-center text-sm text-muted-foreground">{isError ? t.loadError : t.empty}</p>
         )}
       </div>
+    </div>
+  );
+}
+
+/** "N selected · preset · Apply preset", with a confirmation dialog. */
+function BulkPresetBar({ gymIds, presets, nameOf, onApplied }: {
+  gymIds: string[];
+  presets: FeaturePreset[];
+  nameOf: (code: string) => string;
+  onApplied: () => void;
+}) {
+  const { t } = useFlagsText();
+  const [bulkPreset, setBulkPreset] = useState('');
+  const setPreset = useSetGymPreset();
+  const { ask, dialog } = useConfirmedAction();
+
+  const applyBulk = () => {
+    if (!bulkPreset) return;
+    ask({
+      title: t.confirmPresetTitle,
+      description: t.confirmPresetBody(gymIds.length, nameOf(bulkPreset)),
+      run: async () => {
+        await setPreset.mutateAsync({ gymIds, presetCode: bulkPreset });
+        onApplied();
+      },
+    });
+  };
+
+  return (
+    <div className="ms-auto flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+      <span className="text-sm font-medium">{t.selected(gymIds.length)}</span>
+      <PresetSelect value={bulkPreset} onChange={setBulkPreset} presets={presets} placeholder={t.choosePreset} />
+      <button
+        type="button"
+        onClick={applyBulk}
+        disabled={!bulkPreset}
+        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+      >
+        <Layers className="h-4 w-4" /> {t.applyPreset}
+      </button>
       {dialog}
     </div>
   );

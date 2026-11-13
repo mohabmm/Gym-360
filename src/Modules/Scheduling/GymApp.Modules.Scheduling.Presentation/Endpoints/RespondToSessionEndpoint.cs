@@ -11,11 +11,14 @@ internal sealed class RespondToSessionEndpoint : IEndpoint
 {
     internal sealed record DisputeRequest(string? Reason);
 
+    /// <summary>The trainee's answer for one session.</summary>
+    private sealed record SessionAnswer(Guid SessionId, bool Confirmed, string? Reason);
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("api/v1/scheduling/sessions/{sessionId:guid}/member-confirm", (
                 Guid sessionId, HttpContext httpContext, ISender sender) =>
-            RespondAsync(sessionId, confirmed: true, reason: null, httpContext, sender))
+            RespondAsync(new SessionAnswer(sessionId, Confirmed: true, Reason: null), httpContext, sender))
         .RequireAuthorization("trainee")
         .RequireFeature(FeatureKeys.PtDualSessionLogging)
         .WithTags("Scheduling")
@@ -25,7 +28,7 @@ internal sealed class RespondToSessionEndpoint : IEndpoint
 
         app.MapPost("api/v1/scheduling/sessions/{sessionId:guid}/member-dispute", (
                 Guid sessionId, DisputeRequest? request, HttpContext httpContext, ISender sender) =>
-            RespondAsync(sessionId, confirmed: false, request?.Reason, httpContext, sender))
+            RespondAsync(new SessionAnswer(sessionId, Confirmed: false, request?.Reason), httpContext, sender))
         .RequireAuthorization("trainee")
         .RequireFeature(FeatureKeys.PtDualSessionLogging)
         .WithTags("Scheduling")
@@ -35,13 +38,12 @@ internal sealed class RespondToSessionEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
     }
 
-    private static async Task<IResult> RespondAsync(
-        Guid sessionId, bool confirmed, string? reason, HttpContext httpContext, ISender sender)
+    private static async Task<IResult> RespondAsync(SessionAnswer answer, HttpContext httpContext, ISender sender)
     {
         if (!UserContext.TryGetUserId(httpContext, out var memberId))
             return Results.Unauthorized();
 
-        var result = await sender.Send(new RespondToSessionCommand(sessionId, memberId, confirmed, reason));
+        var result = await sender.Send(new RespondToSessionCommand(answer.SessionId, memberId, answer.Confirmed, answer.Reason));
         return result.IsSuccess ? Results.NoContent() : ApiResults.Problem(result.Error);
     }
 }

@@ -47,6 +47,22 @@ const idWhenTab = (active: TrainerTab, tab: TrainerTab, id: string) => (active =
 const profileErrorMessage = (e: unknown) =>
   (e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message;
 
+/** Tabs whose feature is on; a tab whose feature was just turned off falls back to Profile. */
+function useTrainerTabs(isEnabled: (key: string) => boolean) {
+  const tabs = visibleTrainerTabs(isEnabled);
+  const [selectedTab, setActiveTab] = useState<TrainerTab>('Profile');
+  const activeTab: TrainerTab = tabs.includes(selectedTab) ? selectedTab : 'Profile';
+  return { tabs, activeTab, setActiveTab };
+}
+
+function TrainerLoading() {
+  return (
+    <div className="text-center py-20">
+      <p className="text-sm text-muted-foreground">Loading trainer…</p>
+    </div>
+  );
+}
+
 function TrainerNotFound() {
   return (
     <div className="text-center py-20">
@@ -67,10 +83,7 @@ export default function TrainerDetailPage() {
   const { trainer, isLoading } = useResolvedTrainer(trainerId);
 
   const { isEnabled } = useStaffFlags();
-  const tabs = visibleTrainerTabs(isEnabled);
-  const [selectedTab, setActiveTab] = useState<TrainerTab>('Profile');
-  // A tab whose feature was just turned off falls back to Profile.
-  const activeTab: TrainerTab = tabs.includes(selectedTab) ? selectedTab : 'Profile';
+  const { tabs, activeTab, setActiveTab } = useTrainerTabs(isEnabled);
   const [editRateOpen, setEditRateOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
@@ -87,13 +100,7 @@ export default function TrainerDetailPage() {
   const updateProfileMutation = useUpdateTrainerProfile(resolvedTrainerId);
   const setRateMutation = useSetTrainerRate(gymId, trainerId, () => setEditRateOpen(false));
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-sm text-muted-foreground">Loading trainer…</p>
-      </div>
-    );
-  }
+  if (isLoading) return <TrainerLoading />;
 
   if (!trainer) return <TrainerNotFound />;
 

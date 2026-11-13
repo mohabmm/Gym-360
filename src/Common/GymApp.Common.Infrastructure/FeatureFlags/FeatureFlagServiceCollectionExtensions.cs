@@ -20,6 +20,7 @@ public static class FeatureFlagServiceCollectionExtensions
                 sql => sql.MigrationsHistoryTable("__EFMigrationsHistory", FeatureFlagsDbContext.SchemaName)));
 
         services.AddScoped<FeatureFlagCache>();
+        services.AddScoped<FeatureFlagChangePublisher>();
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
         services.AddScoped<IFeatureFlagAdminService, FeatureFlagAdminService>();
 

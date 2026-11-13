@@ -62,36 +62,18 @@ internal sealed class ProcessExpiredSessionPackagesJob : IJob
         var sp = scope.ServiceProvider;
 
         if (gym is not null)
-        {
-            var accessor = sp.GetRequiredService<ITenantContextAccessor>();
-            accessor.Set(gym.GymId, gym.SchemaPrefix, isOwnerScope: false);
-        }
+            sp.GetRequiredService<ITenantContextAccessor>().Set(gym.GymId, gym.SchemaPrefix, isOwnerScope: false);
 
         var dbContext = sp.GetRequiredService<BillingDbContext>();
-        var flags = sp.GetRequiredService<IFeatureFlagService>();
-        var now = DateTime.UtcNow;
-
-        var candidates = await dbContext.SessionPackages
-            .Where(p => p.Status == PackageStatus.Active
-                        && p.ExpiresAt != null
-                        && p.ExpiresAt < now)
-            .ToListAsync(ct);
-
-        // pt.auto_expiry is a per-gym setting, default OFF: while it is off, sessions never
-        // expire automatically for that gym.
-        var expiredPackages = new List<SessionPackage>();
-        foreach (var gymPackages in candidates.GroupBy(p => p.GymId))
-        {
-            if (await flags.IsEnabledAsync(gymPackages.Key, FeatureKeys.PtAutoExpiry, ct))
-                expiredPackages.AddRange(gymPackages);
-        }
+        var expiredPackages = await FindExpiredAsync(dbContext, sp.GetRequiredService<IFeatureFlagService>(), ct);
+        var prefix = gym?.SchemaPrefix ?? "soft";
 
         foreach (var package in expiredPackages)
         {
             package.Expire();
             _logger.LogInformation(
                 "ProcessExpiredSessionPackagesJob[{Prefix}]: Session package {PackageId} for member {MemberId} expired.",
-                gym?.SchemaPrefix ?? "soft", package.Id, package.MemberId);
+                prefix, package.Id, package.MemberId);
         }
 
         if (expiredPackages.Count > 0)
@@ -99,6 +81,30 @@ internal sealed class ProcessExpiredSessionPackagesJob : IJob
 
         _logger.LogInformation(
             "ProcessExpiredSessionPackagesJob[{Prefix}]: Completed. Packages expired: {Count}.",
-            gym?.SchemaPrefix ?? "soft", expiredPackages.Count);
+            prefix, expiredPackages.Count);
+    }
+
+    /// <summary>
+    /// Active packages past their expiry date in gyms that have pt.auto_expiry on. The setting is
+    /// per gym and default OFF: while it is off, sessions never expire automatically for that gym.
+    /// </summary>
+    private static async Task<List<SessionPackage>> FindExpiredAsync(
+        BillingDbContext dbContext, IFeatureFlagService flags, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var candidates = await dbContext.SessionPackages
+            .Where(p => p.Status == PackageStatus.Active
+                        && p.ExpiresAt != null
+                        && p.ExpiresAt < now)
+            .ToListAsync(ct);
+
+        var expired = new List<SessionPackage>();
+        foreach (var gymPackages in candidates.GroupBy(p => p.GymId))
+        {
+            if (await flags.IsEnabledAsync(gymPackages.Key, FeatureKeys.PtAutoExpiry, ct))
+                expired.AddRange(gymPackages);
+        }
+
+        return expired;
     }
 }

@@ -34,27 +34,51 @@ const KPI_COLS: Record<number, string> = { 2: 'md:grid-cols-2', 3: 'md:grid-cols
 const PAIR_COLS: Record<number, string> = { 2: 'lg:grid-cols-2' };
 const TRIO_COLS: Record<number, string> = { 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3' };
 
-export default function DashboardPage() {
+/** Who is signed in, from the session (with friendly fallbacks). */
+function useStaffIdentity() {
   const { data: session } = useSession();
-  const userName = session?.user?.name ?? 'there';
-  const gymName = session?.user?.gymName ?? 'your gym';
-  const subRole = session?.user?.staffSubRole ?? 'owner';
-  const greeting = greetingFor(new Date().getHours());
-  const { isEnabled } = useStaffFlags();
+  const user = session?.user;
+  const subRole = user?.staffSubRole ?? 'owner';
+  return {
+    userName: user?.name ?? 'there',
+    gymName: user?.gymName ?? 'your gym',
+    canSeeOwnerDashboard: subRole === 'owner' || subRole === 'manager',
+  };
+}
 
-  const finance = isEnabled(K.GYM_FINANCE);
-  const attendance = isEnabled(K.GYM_ATTENDANCE);
-  const classesOn = isEnabled(K.CLASSES);
-  const coachBoard = isEnabled(K.COACH_LEADERBOARD);
-
+/** Dashboard data. Each query only runs when its feature is on for the gym. */
+function useDashboardData(isEnabled: (key: string) => boolean) {
+  const on = {
+    finance: isEnabled(K.GYM_FINANCE),
+    attendance: isEnabled(K.GYM_ATTENDANCE),
+    classes: isEnabled(K.CLASSES),
+    coachBoard: isEnabled(K.COACH_LEADERBOARD),
+  };
   const { data: members = [] } = useMembers();
   const { data: trainers = [] } = useTrainers();
-  const { data: classes = [] } = useClasses(classesOn);
-  const { data: checkIns = [] } = useCheckIns(attendance);
-  const { data: revenueData } = useRevenue(finance);
-  const { data: trainerRankings = [] } = useTrainerRankings(coachBoard);
-  const monthlyRevenue = revenueData?.monthlyRevenue ?? [];
-  const recentPayments = revenueData?.recentPayments ?? [];
+  const { data: classes = [] } = useClasses(on.classes);
+  const { data: checkIns = [] } = useCheckIns(on.attendance);
+  const { data: revenueData } = useRevenue(on.finance);
+  const { data: trainerRankings = [] } = useTrainerRankings(on.coachBoard);
+  return {
+    on,
+    members,
+    trainers,
+    classes,
+    checkIns,
+    trainerRankings,
+    monthlyRevenue: revenueData?.monthlyRevenue ?? [],
+    recentPayments: revenueData?.recentPayments ?? [],
+  };
+}
+
+export default function DashboardPage() {
+  const { userName, gymName, canSeeOwnerDashboard } = useStaffIdentity();
+  const greeting = greetingFor(new Date().getHours());
+  const { isEnabled } = useStaffFlags();
+  const { on, members, trainers, classes, checkIns, trainerRankings, monthlyRevenue, recentPayments } = useDashboardData(isEnabled);
+  const { finance, attendance, coachBoard } = on;
+  const classesOn = on.classes;
 
   const now = new Date();
   const revenue = revenueStats(monthlyRevenue);
@@ -79,7 +103,7 @@ export default function DashboardPage() {
         ]}
       />
 
-      <PtDeskSection isEnabled={isEnabled} canSeeOwnerDashboard={subRole === 'owner' || subRole === 'manager'} />
+      <PtDeskSection isEnabled={isEnabled} canSeeOwnerDashboard={canSeeOwnerDashboard} />
 
       <Row
         cols={PAIR_COLS}

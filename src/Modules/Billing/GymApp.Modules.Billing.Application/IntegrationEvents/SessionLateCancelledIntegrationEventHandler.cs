@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Common.Application.Messaging;
 using GymApp.Modules.Billing.Application.Abstractions;
 using GymApp.Modules.Billing.Domain.Enums;
@@ -27,9 +28,7 @@ internal sealed class SessionLateCancelledIntegrationEventHandler
     public async Task Handle(SessionLateCancelledIntegrationEvent notification, CancellationToken cancellationToken)
     {
         var package = await _packageRepository.GetActiveByMemberAndTrainerAsync(
-            notification.GymId,
-            notification.MemberId,
-            notification.TrainerId,
+            new PackageParticipants(notification.GymId, notification.MemberId, notification.TrainerId),
             cancellationToken);
 
         if (package is null || package.Status != PackageStatus.Active)
