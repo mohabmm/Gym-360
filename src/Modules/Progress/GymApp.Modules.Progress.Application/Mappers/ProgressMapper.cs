@@ -70,4 +70,7 @@ internal static class ProgressMapper
             photo.IsSharedWithTrainer,
             photo.Notes,
             photo.CreatedAt);
+
+    public static ProgressGoalDto ToDto(ProgressGoal goal) =>
+        new(goal.Goal.ToString(), goal.TargetWeight, goal.SetBy, goal.UpdatedAt);
 }

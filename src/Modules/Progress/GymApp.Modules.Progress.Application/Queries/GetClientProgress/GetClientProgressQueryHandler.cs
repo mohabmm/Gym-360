@@ -1,11 +1,13 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
+using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Progress.Application.DTOs;
 using GymApp.Modules.Progress.Application.Mappers;
 using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Domain.Repositories;
 using GymApp.Modules.Progress.Domain.ValueObjects;
 using GymApp.Modules.Progress.Application.Queries.Shared;
+using GymApp.Modules.Progress.Application.Services;
 
 namespace GymApp.Modules.Progress.Application.Queries.GetClientProgress;
 
@@ -14,21 +16,30 @@ internal sealed class GetClientProgressQueryHandler : IQueryHandler<GetClientPro
     private readonly IBodyMetricEntryRepository _metricRepository;
     private readonly IProgressPhotoRepository _photoRepository;
     private readonly IStreakRepository _streakRepository;
+    private readonly ITrainerAssignmentLookup _assignments;
 
     public GetClientProgressQueryHandler(
         IBodyMetricEntryRepository metricRepository,
         IProgressPhotoRepository photoRepository,
-        IStreakRepository streakRepository)
+        IStreakRepository streakRepository,
+        ITrainerAssignmentLookup assignments)
     {
         _metricRepository = metricRepository;
         _photoRepository = photoRepository;
         _streakRepository = streakRepository;
+        _assignments = assignments;
     }
 
     public async Task<Result<ClientProgressResponse>> Handle(
         GetClientProgressQuery request,
         CancellationToken cancellationToken)
     {
+        // A coach sees only clients with an active package with them.
+        var subject = new ProgressSubject(request.ClientId, request.GymId, request.TrainerId);
+        var denied = await ProgressAccess.CheckCoachAsync(_assignments, subject, cancellationToken);
+        if (denied != Error.None)
+            return Result.Failure<ClientProgressResponse>(denied);
+
         var allMetrics = await _metricRepository.GetByUserAsync(
             request.ClientId, request.GymId, new DateRange(DateOnly.MinValue, DateOnly.FromDateTime(DateTime.UtcNow)), cancellationToken);
 

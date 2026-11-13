@@ -21,6 +21,11 @@ internal sealed class LogBodyMetricEndpoint : IEndpoint
         string? Source,
         string? Notes);
 
+    // A member can't mark their own entry as coach-measured: the coach's entries set the
+    // day-one baseline (pt.progress_measurements). Only an InBody scan is accepted as-is.
+    internal static string MemberSource(string? requested) =>
+        string.Equals(requested, "InBodyScan", StringComparison.OrdinalIgnoreCase) ? "InBodyScan" : "SelfReported";
+
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
         app.MapPost("api/v1/progress/body-metrics", async (
@@ -43,7 +48,7 @@ internal sealed class LogBodyMetricEndpoint : IEndpoint
                 request.WeightUnit,
                 request.BodyFatPercentage,
                 request.Measurements,
-                request.Source ?? "SelfReported",
+                MemberSource(request.Source),
                 userId,
                 request.Notes);
 

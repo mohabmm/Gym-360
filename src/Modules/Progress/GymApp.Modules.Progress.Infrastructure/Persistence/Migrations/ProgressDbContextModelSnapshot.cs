@@ -42,6 +42,9 @@ namespace GymApp.Modules.Progress.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ProcessedOnUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -52,13 +55,15 @@ namespace GymApp.Modules.Progress.Infrastructure.Persistence.Migrations
                     b.HasIndex("ProcessedOnUtc")
                         .HasFilter("[ProcessedOnUtc] IS NULL");
 
-                    b.ToTable("outbox_messages", "progress");
+                    b.ToTable("outbox_messages", "outbox", t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
                 });
 
             modelBuilder.Entity("GymApp.Modules.Progress.Domain.Entities.BodyMetricEntry", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal?>("BodyFatPercentage")
@@ -113,10 +118,44 @@ namespace GymApp.Modules.Progress.Infrastructure.Persistence.Migrations
                     b.ToTable("body_metric_entries", "progress");
                 });
 
+            modelBuilder.Entity("GymApp.Modules.Progress.Domain.Entities.ProgressGoal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Goal")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("GymId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SetBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("TargetWeight")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("decimal(8,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "GymId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_progress_goals_user_gym");
+
+                    b.ToTable("progress_goals", "progress");
+                });
+
             modelBuilder.Entity("GymApp.Modules.Progress.Domain.Entities.ProgressPhoto", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Angle")
@@ -169,7 +208,6 @@ namespace GymApp.Modules.Progress.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("GymApp.Modules.Progress.Domain.Entities.Streak", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("CurrentStreak")
