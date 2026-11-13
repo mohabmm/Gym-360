@@ -5,7 +5,10 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/error_text.dart';
 import '../../../../core/providers.dart';
+import '../../../../core/permissions.dart';
+import '../../../../core/staff_created_account.dart';
 import '../../../trainers/presentation/providers/trainers_provider.dart';
+import '../../../trainers/presentation/screens/add_trainer_screen.dart';
 import '../providers/members_provider.dart';
 import '../widgets/assign_trainer_form.dart';
 
@@ -58,6 +61,14 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Opens Add Trainer; when a coach is created, refreshes the list and selects them.
+  Future<void> _addCoach() async {
+    final trainerId = await pushAddTrainer(context);
+    if (trainerId == null || !mounted) return;
+    ref.invalidate(trainersProvider);
+    setState(() => _assignment.trainerId = trainerId);
   }
 
   /// Creates the member (or re-links an existing one). Null when staff cancelled.
@@ -177,6 +188,9 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     final trainersAsync = ref.watch(trainersProvider);
     final trainers = assignableTrainers(trainersAsync.valueOrNull ?? const <UserModel>[]);
     final canSubmit = trainersAsync.hasValue && trainers.isNotEmpty;
+    // Adding a coach also approves them, so it follows approveTrainer (owner + manager).
+    final canAddCoach =
+        ref.watch(authProvider).valueOrNull?.hasPermission(StaffPermission.approveTrainer) ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(isArabic ? 'اضافة عضو' : 'Add Member')),
@@ -197,6 +211,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
                     isArabic: isArabic,
                     onChanged: () => setState(() {}),
                     onRetry: () => ref.invalidate(trainersProvider),
+                    onAddCoach: canAddCoach ? _addCoach : null,
                   ),
                 ],
               ),
@@ -264,11 +279,19 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
           keyboardType: TextInputType.number,
           validator: _optionalNationalId,
         ),
+        const SizedBox(height: 12),
+        Text(
+          isArabic
+              ? 'كلمة المرور الاولى للعضو الجديد: $kStaffCreatedAccountPassword'
+              : "A new member's first password: $kStaffCreatedAccountPassword",
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ];
 }
 
 /// "Coach and sessions" part of the form: required, so every new member starts with a
-/// coach and a session count chosen by the desk.
+/// coach and a session count chosen by the desk. [onAddCoach] (null without permission)
+/// lets the desk create a coach on the spot instead of hitting a dead end.
 class _CoachSection extends StatelessWidget {
   final AsyncValue<List<UserModel>> trainersAsync;
   final List<UserModel> trainers;
@@ -276,6 +299,7 @@ class _CoachSection extends StatelessWidget {
   final bool isArabic;
   final VoidCallback onChanged;
   final VoidCallback onRetry;
+  final VoidCallback? onAddCoach;
 
   const _CoachSection({
     required this.trainersAsync,
@@ -284,6 +308,7 @@ class _CoachSection extends StatelessWidget {
     required this.isArabic,
     required this.onChanged,
     required this.onRetry,
+    this.onAddCoach,
   });
 
   @override
@@ -310,14 +335,47 @@ class _CoachSection extends StatelessWidget {
         onRetry: onRetry,
       );
     }
-    if (trainers.isEmpty) {
-      return Text(noCoachesText(isArabic), style: TextStyle(color: theme.colorScheme.error));
-    }
-    return AssignTrainerFields(
-      draft: draft,
-      trainers: trainers,
-      isArabic: isArabic,
-      onChanged: onChanged,
+    if (trainers.isEmpty) return _noCoaches(theme);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Re-keyed when the roster changes so a just-added coach shows as selected.
+        KeyedSubtree(
+          key: ValueKey(trainers.map((t) => t.id).join(',')),
+          child: AssignTrainerFields(
+            draft: draft,
+            trainers: trainers,
+            isArabic: isArabic,
+            onChanged: onChanged,
+          ),
+        ),
+        if (onAddCoach != null)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: onAddCoach,
+              icon: const Icon(Icons.person_add_alt_1, size: 18),
+              label: Text(isArabic ? 'مدرب جديد' : 'New coach'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _noCoaches(ThemeData theme) {
+    final message = Text(noCoachesText(isArabic), style: TextStyle(color: theme.colorScheme.error));
+    if (onAddCoach == null) return message;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        message,
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: onAddCoach,
+          icon: const Icon(Icons.person_add_alt_1),
+          label: Text(isArabic ? 'اضافة مدرب' : 'Add coach'),
+        ),
+      ],
     );
   }
 }

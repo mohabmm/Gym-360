@@ -58,6 +58,19 @@ public class CreateMemberByStaffCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_NewMember_GetsFixedDefaultPassword()
+    {
+        _userRepository.GetByPhoneAsync(Arg.Any<PhoneNumber>(), Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+        _userRepository.GetByEmailAsync(Arg.Any<Email>(), Arg.Any<CancellationToken>())
+            .Returns((User?)null);
+
+        await _sut.Handle(Command(), CancellationToken.None);
+
+        _passwordHasher.Received(1).Hash("12345678");
+    }
+
+    [Fact]
     public async Task Handle_PhoneBelongsToExistingTrainee_RejectsWithoutCreatingOrMerging()
     {
         // The reported bug: staff-create used to silently return the existing trainee,

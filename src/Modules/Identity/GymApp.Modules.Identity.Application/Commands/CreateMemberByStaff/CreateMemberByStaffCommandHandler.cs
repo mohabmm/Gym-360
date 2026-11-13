@@ -63,11 +63,9 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
                 : UserErrors.EmailReservedForOtherRole);
         }
 
-        // Staff-created members get a known default password matching the seed
-        // convention so trainees can log in immediately. Production should swap
-        // for OTP/SMS issuance.
-        const string defaultPassword = "123456";
-        var passwordHash = _passwordHasher.Hash(defaultPassword);
+        // Staff-created members get the shared default password so they can log in
+        // immediately, then change it.
+        var passwordHash = _passwordHasher.Hash(StaffCreatedAccount.DefaultPassword);
 
         var user = DomainEntities.User.Create(
             new NewUserDetails

@@ -5,10 +5,10 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/error_text.dart';
 import '../../../../core/providers.dart';
+import '../../../../core/router.dart';
+import '../../../../core/staff_created_account.dart';
 import '../providers/trainers_provider.dart';
 
-/// Starting password the backend gives a staff-created trainer.
-const String trainerInitialPassword = '123456';
 
 /// Shown when the phone/email already belongs to a trainer on this gym's roster.
 const String trainerAlreadyAddedMessage = 'The trainer is already added to this gym.';
@@ -31,20 +31,30 @@ class NewTrainer {
       };
 }
 
+/// The trainer's user id, and their first password — null when they already had an
+/// account (the backend leaves an existing trainer's password unchanged).
+typedef CreatedTrainer = ({String userId, String? initialPassword});
+
 /// Creates the trainer's account (or reuses the one behind the phone/email),
 /// then adds them to this gym's roster. Same two calls as the staff web app.
-Future<void> createTrainerForGym(ApiClient apiClient, {required String gymId, required NewTrainer trainer}) async {
+Future<CreatedTrainer> createTrainerForGym(ApiClient apiClient,
+    {required String gymId, required NewTrainer trainer}) async {
   final created = await apiClient.post<Map<String, dynamic>>(
     ApiEndpoints.identityStaffCreateTrainer,
     data: trainer.toJson(),
     parser: (data) => data as Map<String, dynamic>,
   );
+  final userId = created['userId'] as String;
   await apiClient.post<void>(
     ApiEndpoints.gymTrainers(GymId(gymId)),
-    data: {'trainerId': created['userId']},
+    data: {'trainerId': userId},
     parser: (_) {},
   );
+  return (userId: userId, initialPassword: created['initialPassword'] as String?);
 }
+
+/// Opens Add Trainer and returns the new coach's user id, or null if staff backed out.
+Future<String?> pushAddTrainer(BuildContext context) => context.push<String>(RoutePaths.addTrainer);
 
 class AddTrainerScreen extends ConsumerStatefulWidget {
   const AddTrainerScreen({super.key});
@@ -77,7 +87,7 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
     setState(() => _loading = true);
     final phone = _phoneController.text.trim();
     try {
-      await createTrainerForGym(
+      final created = await createTrainerForGym(
         ref.read(apiClientProvider),
         gymId: ref.read(currentGymIdProvider),
         trainer: NewTrainer(
@@ -89,8 +99,9 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
       );
       ref.invalidate(trainersProvider);
       if (!mounted) return;
-      await _showLoginDetails(phone);
-      if (mounted) context.pop();
+      await _showLoginDetails(phone, created.initialPassword);
+      // Hand the id back so a caller (e.g. Add Member) can select the new coach.
+      if (mounted) context.pop(created.userId);
     } catch (e) {
       if (mounted) _showError(e);
     } finally {
@@ -107,28 +118,14 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> _showLoginDetails(String phone) {
+  Future<void> _showLoginDetails(String phone, String? initialPassword) {
     final isArabic = _isArabic;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(isArabic ? 'تمت اضافة المدرب' : 'Trainer added'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(isArabic
-                ? 'يسجل المدرب الدخول في تطبيق المدرب بهذه البيانات، ثم يغير كلمة المرور:'
-                : 'The trainer signs in to the Trainer app with these details, then changes the password:'),
-            const SizedBox(height: 12),
-            _LoginLine(label: isArabic ? 'الهاتف' : 'Phone', value: phone),
-            _LoginLine(
-              label: isArabic ? 'كلمة المرور' : 'Password',
-              value: trainerInitialPassword,
-            ),
-          ],
-        ),
+        content: _LoginDetails(phone: phone, initialPassword: initialPassword, isArabic: isArabic),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(ctx),
@@ -199,8 +196,8 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
                   const SizedBox(height: 12),
                   Text(
                     isArabic
-                        ? 'كلمة المرور الاولى للمدرب: $trainerInitialPassword'
-                        : "Trainer's first password: $trainerInitialPassword",
+                        ? 'كلمة المرور الاولى للمدرب الجديد: $kStaffCreatedAccountPassword'
+                        : "A new trainer's first password: $kStaffCreatedAccountPassword",
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -217,6 +214,36 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Login details after adding: phone + first password for a new account, or a note
+/// that an existing trainer keeps signing in with their own password.
+class _LoginDetails extends StatelessWidget {
+  final String phone;
+  final String? initialPassword;
+  final bool isArabic;
+  const _LoginDetails({required this.phone, required this.initialPassword, required this.isArabic});
+
+  @override
+  Widget build(BuildContext context) {
+    final password = initialPassword;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(password == null
+            ? (isArabic
+                ? 'هذا المدرب لديه حساب بالفعل. يسجل الدخول في تطبيق المدرب بكلمة المرور الحالية الخاصة به:'
+                : 'This trainer already has an account. They sign in to the Trainer app with their current password:')
+            : (isArabic
+                ? 'يسجل المدرب الدخول في تطبيق المدرب بهذه البيانات، ثم يغير كلمة المرور:'
+                : 'The trainer signs in to the Trainer app with these details, then changes the password:')),
+        const SizedBox(height: 12),
+        _LoginLine(label: isArabic ? 'الهاتف' : 'Phone', value: phone),
+        if (password != null) _LoginLine(label: isArabic ? 'كلمة المرور' : 'Password', value: password),
+      ],
     );
   }
 }
