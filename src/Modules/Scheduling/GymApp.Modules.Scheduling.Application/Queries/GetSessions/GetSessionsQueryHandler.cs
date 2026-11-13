@@ -27,32 +27,7 @@ internal sealed class GetSessionsQueryHandler
         var to = request.To ?? today.AddMonths(1);
         var range = new GymDateRange(request.GymId, from, to);
 
-        IReadOnlyList<Domain.Entities.Session> sessions;
-
-        if (request.TrainerId.HasValue)
-        {
-            sessions = await _sessionRepository.GetByTrainerAsync(
-                request.TrainerId.Value, range, cancellationToken);
-        }
-        else if (request.MemberId.HasValue)
-        {
-            sessions = await _sessionRepository.GetByMemberAsync(
-                request.MemberId.Value, range, cancellationToken);
-        }
-        else
-        {
-            // Get all sessions for the gym — use trainer-based query with broader range
-            // In a real implementation, the repository would have a GetByGymAsync method
-            sessions = await _sessionRepository.GetByTrainerAsync(
-                Guid.Empty, range, cancellationToken);
-        }
-
-        // Filter by status if provided
-        if (!string.IsNullOrWhiteSpace(request.Status) &&
-            Enum.TryParse<SessionStatus>(request.Status, true, out var statusFilter))
-        {
-            sessions = sessions.Where(s => s.Status == statusFilter).ToList();
-        }
+        var sessions = Filter(await LoadAsync(request, range, cancellationToken), request);
 
         var totalCount = sessions.Count;
         var page = Math.Max(1, request.Page);
@@ -71,6 +46,41 @@ internal sealed class GetSessionsQueryHandler
             pagedSessions, page, pageSize, totalCount, totalPages));
     }
 
+    private Task<IReadOnlyList<Domain.Entities.Session>> LoadAsync(
+        GetSessionsQuery request, GymDateRange range, CancellationToken cancellationToken)
+    {
+        if (request.TrainerId.HasValue)
+            return _sessionRepository.GetByTrainerAsync(request.TrainerId.Value, range, cancellationToken);
+
+        if (request.MemberId.HasValue)
+            return _sessionRepository.GetByMemberAsync(request.MemberId.Value, range, cancellationToken);
+
+        // Get all sessions for the gym — use trainer-based query with broader range
+        // In a real implementation, the repository would have a GetByGymAsync method
+        return _sessionRepository.GetByTrainerAsync(Guid.Empty, range, cancellationToken);
+    }
+
+    /// <summary>
+    /// Optional status filter, and the pt.dual_session_logging confirmation filter
+    /// (e.g. ?memberConfirmation=Pending for the trainee's "confirm" list).
+    /// </summary>
+    private static IReadOnlyList<Domain.Entities.Session> Filter(
+        IReadOnlyList<Domain.Entities.Session> sessions, GetSessionsQuery request)
+    {
+        IEnumerable<Domain.Entities.Session> filtered = sessions;
+        if (TryParse<SessionStatus>(request.Status, out var status))
+            filtered = filtered.Where(s => s.Status == status);
+        if (TryParse<MemberConfirmationStatus>(request.MemberConfirmation, out var confirmation))
+            filtered = filtered.Where(s => s.MemberConfirmation == confirmation);
+        return filtered.ToList();
+    }
+
+    private static bool TryParse<TEnum>(string? value, out TEnum result) where TEnum : struct, Enum
+    {
+        result = default;
+        return !string.IsNullOrWhiteSpace(value) && Enum.TryParse(value, true, out result);
+    }
+
     private static SessionDto MapToDto(Domain.Entities.Session session) =>
         new(
             session.Id,
@@ -83,5 +93,7 @@ internal sealed class GetSessionsQueryHandler
             session.Focus,
             session.Status.ToString(),
             session.IsRecurring,
-            session.CreatedAt);
+            session.CreatedAt,
+            session.MemberConfirmation.ToString(),
+            session.IsQuickLog);
 }

@@ -43,6 +43,10 @@ import '../features/staff/presentation/screens/staff_list_screen.dart';
 import '../features/trainers/presentation/screens/pending_trainer_approval_screen.dart';
 import '../features/trainers/presentation/screens/trainer_detail_screen.dart';
 import '../features/trainers/presentation/screens/trainer_list_screen.dart';
+import '../features/pt/presentation/screens/not_converted_trials_screen.dart';
+import '../features/pt/presentation/screens/pt_dashboard_screen.dart';
+import '../features/pt/presentation/screens/session_review_screen.dart';
+import 'feature_flags.dart';
 import 'permissions.dart';
 import 'providers.dart';
 
@@ -88,10 +92,17 @@ abstract class RoutePaths {
   static const String sessionPolicies = '/settings/policies';
   static const String kioskPin = '/settings/kiosk-pin';
   static const String testingMode = '/settings/testing-mode';
+
+  // PT module
+  static const String ptTrials = '/pt/trials';
+  static const String ptReview = '/pt/review';
+  static const String ptDashboard = '/pt/dashboard';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
+  // Rebuilding on flag changes re-runs the redirect, closing a disabled screen.
+  final flags = ref.watch(featureFlagsProvider);
 
   return GoRouter(
     initialLocation: RoutePaths.dashboard,
@@ -103,12 +114,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoginPage = state.matchedLocation == RoutePaths.login;
       final isKioskPage = state.matchedLocation == RoutePaths.kiosk;
 
-      // Allow kiosk if authenticated
-      if (isKioskPage && isLoggedIn) return null;
+      // Allow kiosk if authenticated (and attendance is on for this gym)
+      if (isKioskPage && isLoggedIn)
+        return staffRouteGuard.redirect(state.uri.toString(), flags);
 
       if (!isLoggedIn && !isLoginPage) return RoutePaths.login;
       if (isLoggedIn && isLoginPage) return RoutePaths.dashboard;
-      return null;
+      // Disabled features: redirect to the dashboard (covers deep links too).
+      return staffRouteGuard.redirect(state.uri.toString(), flags);
     },
     routes: [
       // Login
@@ -159,8 +172,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           // as an id, routing to the trainer-detail screen.
           GoRoute(
             path: RoutePaths.pendingTrainers,
-            builder: (context, state) =>
-                const PendingTrainerApprovalScreen(),
+            builder: (context, state) => const PendingTrainerApprovalScreen(),
           ),
           GoRoute(
             path: RoutePaths.trainerDetail,
@@ -250,8 +262,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RoutePaths.moderateTestimonials,
-            builder: (context, state) =>
-                const ModerateTestimonialsScreen(),
+            builder: (context, state) => const ModerateTestimonialsScreen(),
           ),
           GoRoute(
             path: RoutePaths.memberLeaderboard,
@@ -309,6 +320,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: RoutePaths.testingMode,
             builder: (context, state) => const TestingModeScreen(),
           ),
+          GoRoute(
+            path: RoutePaths.ptTrials,
+            builder: (context, state) => const NotConvertedTrialsScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.ptReview,
+            builder: (context, state) => const SessionReviewScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.ptDashboard,
+            builder: (context, state) => const PtDashboardScreen(),
+          ),
         ],
       ),
 
@@ -334,17 +357,51 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
 
-  static const _mainRoutes = [
-    RoutePaths.dashboard,
-    RoutePaths.members,
-    RoutePaths.trainers,
-    RoutePaths.classes,
+  // Main tabs: route, owning flag (null = always on), icons, labels.
+  static const _allTabs =
+      <(String, String?, IconData, IconData, String, String)>[
+    (
+      RoutePaths.dashboard,
+      null,
+      Icons.dashboard_outlined,
+      Icons.dashboard,
+      'الرئيسية',
+      'Dashboard'
+    ),
+    (
+      RoutePaths.members,
+      null,
+      Icons.people_outline,
+      Icons.people,
+      'الاعضاء',
+      'Members'
+    ),
+    (
+      RoutePaths.trainers,
+      null,
+      Icons.fitness_center_outlined,
+      Icons.fitness_center,
+      'المدربين',
+      'Trainers'
+    ),
+    (
+      RoutePaths.classes,
+      FeatureFlagKeys.classes,
+      Icons.event_outlined,
+      Icons.event,
+      'الحصص',
+      'Classes'
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final isSuspended = ref.watch(gymSuspendedProvider);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final flags = ref.watch(featureFlagsProvider);
+    final tabs =
+        _allTabs.where((t) => t.$2 == null || flags.isEnabled(t.$2!)).toList();
+    final mainRoutes = [for (final t in tabs) t.$1];
 
     // Update index based on current route. Match each tab to its route
     // prefix so pushed sub-screens (e.g. /members/:id) still highlight the
@@ -356,9 +413,9 @@ class _MainShellState extends ConsumerState<MainShell> {
     final currentLocation = configuration.isEmpty
         ? GoRouterState.of(context).matchedLocation
         : configuration.last.matchedLocation;
-    int matchedIndex = _mainRoutes.length; // default: More
-    for (int i = 0; i < _mainRoutes.length; i++) {
-      final route = _mainRoutes[i];
+    int matchedIndex = mainRoutes.length; // default: More
+    for (int i = 0; i < mainRoutes.length; i++) {
+      final route = mainRoutes[i];
       final isDashboard = route == RoutePaths.dashboard;
       if (isDashboard) {
         if (currentLocation == route) {
@@ -388,34 +445,20 @@ class _MainShellState extends ConsumerState<MainShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
-          if (index < _mainRoutes.length) {
-            context.go(_mainRoutes[index]);
+          if (index < mainRoutes.length) {
+            context.go(mainRoutes[index]);
           } else {
             _showMoreMenu(context, isArabic);
           }
           setState(() => _currentIndex = index);
         },
         destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.dashboard_outlined),
-            selectedIcon: const Icon(Icons.dashboard),
-            label: isArabic ? 'الرئيسية' : 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.people_outline),
-            selectedIcon: const Icon(Icons.people),
-            label: isArabic ? 'الاعضاء' : 'Members',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.fitness_center_outlined),
-            selectedIcon: const Icon(Icons.fitness_center),
-            label: isArabic ? 'المدربين' : 'Trainers',
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.event_outlined),
-            selectedIcon: const Icon(Icons.event),
-            label: isArabic ? 'الحصص' : 'Classes',
-          ),
+          for (final t in tabs)
+            NavigationDestination(
+              icon: Icon(t.$3),
+              selectedIcon: Icon(t.$4),
+              label: isArabic ? t.$5 : t.$6,
+            ),
           NavigationDestination(
             icon: const Icon(Icons.more_horiz),
             selectedIcon: const Icon(Icons.more_horiz),
@@ -428,6 +471,10 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   void _showMoreMenu(BuildContext context, bool isArabic) {
     final role = ref.read(staffRoleProvider) ?? '';
+    final flags = ref.read(featureFlagsProvider);
+    bool on(String key) => flags.isEnabled(key);
+    final isOwnerOrManager =
+        role.toLowerCase() == 'owner' || role.toLowerCase() == 'manager';
 
     showModalBottomSheet(
       context: context,
@@ -438,7 +485,8 @@ class _MainShellState extends ConsumerState<MainShell> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.viewExercises))
+                      role, StaffPermission.viewExercises) &&
+                  on(FeatureFlagKeys.trainingWorkouts))
                 _MoreMenuItem(
                   icon: Icons.sports_gymnastics,
                   label: isArabic ? 'التمارين' : 'Exercises',
@@ -448,7 +496,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.viewRevenue))
+                      role, StaffPermission.viewRevenue) &&
+                  on(FeatureFlagKeys.gymFinance))
                 _MoreMenuItem(
                   icon: Icons.monetization_on_outlined,
                   label: isArabic ? 'لوحة الايرادات' : 'Revenue Dashboard',
@@ -458,7 +507,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.recordPayment))
+                      role, StaffPermission.recordPayment) &&
+                  on(FeatureFlagKeys.gymFinance))
                 _MoreMenuItem(
                   icon: Icons.attach_money,
                   label: isArabic ? 'تسجيل دفع' : 'Record Payment',
@@ -468,7 +518,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.viewPayments))
+                      role, StaffPermission.viewPayments) &&
+                  on(FeatureFlagKeys.ptPackages))
                 _MoreMenuItem(
                   icon: Icons.card_membership_outlined,
                   label: isArabic ? 'الباقات النشطة' : 'Active Packages',
@@ -478,7 +529,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.assignPackage))
+                      role, StaffPermission.assignPackage) &&
+                  on(FeatureFlagKeys.ptPackages))
                 _MoreMenuItem(
                   icon: Icons.assignment_outlined,
                   label: isArabic ? 'تعيين باقة' : 'Assign Package',
@@ -488,7 +540,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.managePackageTemplates))
+                      role, StaffPermission.managePackageTemplates) &&
+                  on(FeatureFlagKeys.ptPackages))
                 _MoreMenuItem(
                   icon: Icons.layers_outlined,
                   label: isArabic ? 'قوالب الباقات' : 'Package Templates',
@@ -498,7 +551,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.viewAnnouncements))
+                      role, StaffPermission.viewAnnouncements) &&
+                  on(FeatureFlagKeys.communicationAnnouncements))
                 _MoreMenuItem(
                   icon: Icons.campaign_outlined,
                   label: isArabic ? 'الاعلانات' : 'Announcements',
@@ -508,7 +562,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.viewCheckInLog))
+                      role, StaffPermission.viewCheckInLog) &&
+                  on(FeatureFlagKeys.gymAttendance))
                 _MoreMenuItem(
                   icon: Icons.qr_code_scanner,
                   label: isArabic ? 'تسجيل الحضور' : 'Check-in',
@@ -518,7 +573,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.viewLeaderboards))
+                      role, StaffPermission.viewLeaderboards) &&
+                  on(FeatureFlagKeys.coachLeaderboard))
                 _MoreMenuItem(
                   icon: Icons.leaderboard_outlined,
                   label: isArabic ? 'لوحة المدربين' : 'Coach Leaderboard',
@@ -528,7 +584,8 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.viewLeaderboards))
+                      role, StaffPermission.viewLeaderboards) &&
+                  on(FeatureFlagKeys.gamificationMemberLeaderboard))
                 _MoreMenuItem(
                   icon: Icons.emoji_events_outlined,
                   label: isArabic ? 'ترتيب الاعضاء' : 'Member Leaderboard',
@@ -538,13 +595,45 @@ class _MainShellState extends ConsumerState<MainShell> {
                   },
                 ),
               if (StaffPermissions.hasPermission(
-                  role, StaffPermission.moderateTestimonials))
+                      role, StaffPermission.moderateTestimonials) &&
+                  on(FeatureFlagKeys.coachTestimonials))
                 _MoreMenuItem(
                   icon: Icons.reviews_outlined,
-                  label: isArabic ? 'مراجعة آراء العملاء' : 'Moderate Testimonials',
+                  label: isArabic
+                      ? 'مراجعة آراء العملاء'
+                      : 'Moderate Testimonials',
                   onTap: () {
                     Navigator.pop(context);
                     context.push(RoutePaths.moderateTestimonials);
+                  },
+                ),
+              if (on(FeatureFlagKeys.ptTrialEndAlerts))
+                _MoreMenuItem(
+                  icon: Icons.hourglass_bottom,
+                  label: isArabic
+                      ? 'أنهوا التجربة ولم يشتركوا'
+                      : 'Finished trials',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.ptTrials);
+                  },
+                ),
+              if (on(FeatureFlagKeys.ptDualSessionLogging))
+                _MoreMenuItem(
+                  icon: Icons.fact_check_outlined,
+                  label: isArabic ? 'حصص للمراجعة' : 'Sessions to review',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.ptReview);
+                  },
+                ),
+              if (isOwnerOrManager && on(FeatureFlagKeys.ptOwnerDashboard))
+                _MoreMenuItem(
+                  icon: Icons.insights_outlined,
+                  label: isArabic ? 'لوحة التدريب الشخصي' : 'PT dashboard',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.ptDashboard);
                   },
                 ),
               if (StaffPermissions.hasPermission(

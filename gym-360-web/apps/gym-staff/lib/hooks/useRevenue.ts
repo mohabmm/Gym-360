@@ -7,9 +7,10 @@ export interface RevenueSummary {
   recentPayments: PaymentListItem[];
 }
 
-export function useRevenue() {
+export function useRevenue(enabled = true) {
   return useQuery<RevenueSummary>({
     queryKey: ['revenue'],
+    enabled,
     queryFn: async () => {
       const [revenueRes, paymentsRes] = await Promise.all([
         apiClient.get('/billing/revenue'),

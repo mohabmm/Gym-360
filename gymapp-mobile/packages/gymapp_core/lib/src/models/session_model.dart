@@ -32,6 +32,9 @@ class SessionModel with _$SessionModel {
     required String status,
     @Default(false) bool isRecurring,
     required DateTime createdAt,
+    // pt.dual_session_logging: None | Pending | Confirmed | Disputed | Reversed
+    @Default('None') String memberConfirmation,
+    @Default(false) bool isQuickLog,
   }) = _SessionModel;
 
   factory SessionModel.fromJson(Map<String, dynamic> json) =>

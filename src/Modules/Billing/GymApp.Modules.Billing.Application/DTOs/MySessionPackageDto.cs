@@ -18,4 +18,5 @@ public sealed record MySessionPackageDto(
     MoneyDto TotalPrice,
     DateTime AssignedAt,
     DateTime? ExpiresAt,
-    DateTime? LastUsedAt);
+    DateTime? LastUsedAt,
+    bool IsTrial = false);

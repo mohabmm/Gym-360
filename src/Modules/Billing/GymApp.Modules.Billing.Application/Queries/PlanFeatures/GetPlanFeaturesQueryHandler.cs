@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Application.DTOs;
@@ -10,21 +11,21 @@ internal sealed class GetPlanFeaturesQueryHandler : IQueryHandler<GetPlanFeature
 {
     private readonly IGymSubscriptionRepository _subscriptionRepository;
     private readonly ISubscriptionPlanRepository _planRepository;
-    private readonly IPlanFeatureRepository _planFeatureRepository;
-    private readonly IFeatureRepository _featureRepository;
+    private readonly PlanFeatureCatalog _catalog;
     private readonly IGymFeatureOverrideRepository _overrideRepository;
+    private readonly IGymPlanService _gymPlanService;
 
     public GetPlanFeaturesQueryHandler(
         IGymSubscriptionRepository subscriptionRepository,
         ISubscriptionPlanRepository planRepository,
-        IPlanFeatureRepository planFeatureRepository,
-        IFeatureRepository featureRepository,
-        IGymFeatureOverrideRepository overrideRepository)
+        PlanFeatureCatalog catalog,
+        IGymFeatureOverrideRepository overrideRepository,
+        IGymPlanService gymPlanService)
     {
+        _gymPlanService = gymPlanService;
         _subscriptionRepository = subscriptionRepository;
         _planRepository = planRepository;
-        _planFeatureRepository = planFeatureRepository;
-        _featureRepository = featureRepository;
+        _catalog = catalog;
         _overrideRepository = overrideRepository;
     }
 
@@ -44,30 +45,30 @@ internal sealed class GetPlanFeaturesQueryHandler : IQueryHandler<GetPlanFeature
             return Result.Failure<PlanFeaturesResponse>(BillingErrors.PlanNotFound);
         }
 
-        var allFeatures = await _featureRepository.GetAllAsync(cancellationToken);
-        var planFeatures = await _planFeatureRepository.GetByPlanIdAsync(subscription.PlanId, cancellationToken);
+        var (allFeatures, planFeatures) = await _catalog.LoadAsync(subscription.PlanId, cancellationToken);
         var overrides = await _overrideRepository.GetByGymIdAsync(request.GymId, cancellationToken);
 
         var overrideDict = overrides.ToDictionary(o => o.FeatureId);
         var planFeatureDict = planFeatures.ToDictionary(pf => pf.FeatureId);
 
+        // On/off comes from the per-gym feature flags (IGymPlanService routes legacy codes
+        // through IFeatureFlagService), so older app builds that still read this endpoint
+        // hide the same modules as the new /feature-flags/me endpoint.
+        var enabledCodes = (await _gymPlanService.GetEnabledFeaturesAsync(request.GymId, cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+
         var featureItems = allFeatures
             .Where(f => f.IsActive)
             .Select(f =>
             {
-                var hasOverride = overrideDict.TryGetValue(f.Id, out var gymOverride);
+                var hasOverride = overrideDict.ContainsKey(f.Id);
                 var hasPlanFeature = planFeatureDict.TryGetValue(f.Id, out var planFeature);
-
-                bool isEnabled = hasOverride
-                    ? gymOverride!.OverrideValue
-                    : hasPlanFeature && planFeature!.IsEnabled;
-
                 int? limitValue = hasPlanFeature ? planFeature!.LimitValue : null;
 
                 return new PlanFeatureItemDto(
                     f.Code,
                     f.Name,
-                    isEnabled,
+                    enabledCodes.Contains(f.Code),
                     limitValue,
                     hasOverride);
             })
@@ -77,9 +78,9 @@ internal sealed class GetPlanFeaturesQueryHandler : IQueryHandler<GetPlanFeature
             request.GymId,
             plan.Code,
             plan.Name,
-            plan.MemberLimit,
-            plan.TrainerLimit,
-            plan.StaffLimit,
+            await _gymPlanService.GetMemberLimitAsync(request.GymId, cancellationToken),
+            await _gymPlanService.GetTrainerLimitAsync(request.GymId, cancellationToken),
+            await _gymPlanService.GetStaffLimitAsync(request.GymId, cancellationToken),
             featureItems);
 
         return Result.Success(response);

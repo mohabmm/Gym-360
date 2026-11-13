@@ -1,3 +1,6 @@
+using GymApp.Api.Hubs;
+using GymApp.Common.Application.FeatureFlags;
+using GymApp.Common.Infrastructure.FeatureFlags;
 using GymApp.Common.Application.Abstractions;
 using GymApp.Common.Application.Behaviors;
 using GymApp.Common.Application.Messaging;
@@ -74,6 +77,10 @@ public static class InfrastructureExtensions
         // --- Tenancy ---
         // Default mode = Soft (legacy schema names). Switch to Hard for per-Gym isolation.
         builder.Services.AddTenancy(builder.Configuration);
+
+        // --- Feature flags (global, cross-tenant) ---
+        builder.Services.AddFeatureFlags(builder.Configuration);
+        builder.Services.AddSingleton<IFeatureFlagChangeNotifier, SignalRFeatureFlagChangeNotifier>();
 
         // --- Redis ---
         var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";

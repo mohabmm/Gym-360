@@ -10,3 +10,4 @@ export * from './notification';
 export * from './subscription';
 export * from './gamification';
 export * from './analytics';
+export * from './feature-flags';

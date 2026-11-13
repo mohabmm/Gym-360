@@ -165,7 +165,8 @@ class ActivityEntry {
 // ---------------------------------------------------------------------------
 // Dashboard Provider
 // ---------------------------------------------------------------------------
-final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async {
+final dashboardProvider =
+    FutureProvider.autoDispose<DashboardData>((ref) async {
   final apiClient = ref.watch(apiClientProvider);
   final gymId = ref.watch(currentGymIdProvider);
   if (gymId.isEmpty) {
@@ -223,7 +224,8 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async 
     },
   ).catchError((Object _) => <PaymentModel>[]);
 
-  final results = await Future.wait([analyticsFuture, peakHoursFuture, paymentsFuture]);
+  final results =
+      await Future.wait([analyticsFuture, peakHoursFuture, paymentsFuture]);
   final analyticsData = results[0] as Map<String, dynamic>;
   final peakHours = results[1] as List<PeakHourEntry>;
   final payments = results[2] as List<PaymentModel>;
@@ -252,19 +254,16 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async 
     memberTrend: analyticsData['memberTrend'] as String?,
     revenueTrend: analyticsData['revenueTrend'] as String?,
     revenueChart: (analyticsData['revenueChart'] as List<dynamic>?)
-            ?.map((e) =>
-                RevenueDataPoint.fromJson(e as Map<String, dynamic>))
+            ?.map((e) => RevenueDataPoint.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
     peakHours: peakHours,
     topClasses: (analyticsData['topClasses'] as List<dynamic>?)
-            ?.map(
-                (e) => TopClassEntry.fromJson(e as Map<String, dynamic>))
+            ?.map((e) => TopClassEntry.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
     atRiskMembers: (analyticsData['atRiskMembers'] as List<dynamic>?)
-            ?.map(
-                (e) => AtRiskMember.fromJson(e as Map<String, dynamic>))
+            ?.map((e) => AtRiskMember.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
     coachOfMonth: analyticsData['coachOfMonth'] != null
@@ -273,8 +272,7 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async 
           )
         : null,
     recentActivity: (analyticsData['recentActivity'] as List<dynamic>?)
-            ?.map(
-                (e) => ActivityEntry.fromJson(e as Map<String, dynamic>))
+            ?.map((e) => ActivityEntry.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
   );

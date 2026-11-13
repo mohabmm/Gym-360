@@ -13,9 +13,11 @@ function isAdminPlus(token: JWT): boolean {
   return ADMIN_PLUS_ROLES.includes(token.adminRole);
 }
 
-// Settings: super_admin only
+// Settings and feature flags: super_admin only
+const SUPER_ADMIN_PATHS = ['/settings', '/feature-flags'];
+
 function isSettingsDenied(path: string, token: JWT): boolean {
-  return path.startsWith('/settings') && token.adminRole !== 'super_admin';
+  return SUPER_ADMIN_PATHS.some((p) => path.startsWith(p)) && token.adminRole !== 'super_admin';
 }
 
 // Plans, Subscriptions, Onboarding, Content: admin+ only

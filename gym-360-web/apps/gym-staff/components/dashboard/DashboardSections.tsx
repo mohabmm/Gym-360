@@ -40,10 +40,13 @@ const QUICK_ACTIONS = [
   { href: '/announcements', label: 'Send Announcement', Icon: Megaphone },
 ];
 
-export function QuickActions() {
+/** Quick links; `isAllowed` drops actions whose feature is OFF for the gym. */
+export function QuickActions({ isAllowed = () => true }: { isAllowed?: (href: string) => boolean }) {
+  const actions = QUICK_ACTIONS.filter((a) => isAllowed(a.href));
+  if (actions.length < 2) return null;
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {QUICK_ACTIONS.map(({ href, label, Icon }) => (
+      {actions.map(({ href, label, Icon }) => (
         <Link key={href} href={href} className="flex flex-col items-center gap-2 rounded-xl border bg-card p-4 shadow-sm hover:shadow-md hover:border-primary/30 transition-all">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-5 w-5" /></div>
           <span className="text-sm font-medium">{label}</span>

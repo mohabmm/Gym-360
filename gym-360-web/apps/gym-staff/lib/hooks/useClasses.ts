@@ -42,12 +42,12 @@ function normaliseClass(c: any): GymClass {
   };
 }
 
-export function useClasses() {
+export function useClasses(enabled = true) {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;
   return useQuery<GymClass[]>({
     queryKey: ['classes', gymId],
-    enabled: !!gymId,
+    enabled: enabled && !!gymId,
     queryFn: async () => {
       const res = await apiClient.get(`/gyms/${gymId}/classes`, { params: { page: 1, pageSize: 100 } });
       const raw: unknown[] = res.data.data?.items ?? res.data.data ?? [];

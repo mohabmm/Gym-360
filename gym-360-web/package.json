@@ -14,7 +14,8 @@
     "dev:admin": "turbo dev --filter=admin",
     "dev:gym-staff": "turbo dev --filter=gym-staff",
     "build:admin": "turbo build --filter=admin",
-    "build:gym-staff": "turbo build --filter=gym-staff"
+    "build:gym-staff": "turbo build --filter=gym-staff",
+    "test:unit": "playwright test -c playwright.unit.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

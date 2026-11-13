@@ -1,3 +1,4 @@
+using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Enums;
@@ -14,12 +15,15 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
     private readonly ISessionPackageRepository _packageRepository;
     private readonly ITrainerEarningsRepository _earningsRepository;
     private readonly IBillingUnitOfWork _unitOfWork;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public SessionCompletedIntegrationEventHandler(
         ISessionPackageRepository packageRepository,
         ITrainerEarningsRepository earningsRepository,
-        IBillingUnitOfWork unitOfWork)
+        IBillingUnitOfWork unitOfWork,
+        IIntegrationEventPublisher integrationEvents)
     {
+        _integrationEvents = integrationEvents;
         _packageRepository = packageRepository;
         _earningsRepository = earningsRepository;
         _unitOfWork = unitOfWork;
@@ -29,15 +33,14 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
     {
         // Existing logic: deduct session from active package
         var package = await _packageRepository.GetActiveByMemberAndTrainerAsync(
-            notification.GymId,
-            notification.MemberId,
-            notification.TrainerId,
+            new PackageParticipants(notification.GymId, notification.MemberId, notification.TrainerId),
             cancellationToken);
 
         if (package is not null && package.Status == PackageStatus.Active)
         {
             package.UseSession(notification.SessionId);
             _packageRepository.Update(package);
+            PackageMilestonePublisher.Enqueue(_integrationEvents, package);
         }
 
         // New logic: record trainer earnings at configured rate

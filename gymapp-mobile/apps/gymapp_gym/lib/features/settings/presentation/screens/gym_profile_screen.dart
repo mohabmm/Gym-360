@@ -17,6 +17,8 @@ class GymProfileScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final apiClient = ref.read(apiClientProvider);
     final auth = ref.watch(authProvider).valueOrNull;
+    final flags = ref.watch(featureFlagsProvider);
+    bool on(String key) => flags.isEnabled(key);
     bool can(StaffPermission permission) =>
         auth?.hasPermission(permission) ?? false;
 
@@ -114,7 +116,8 @@ class GymProfileScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              if (can(StaffPermission.editBranding))
+              if (can(StaffPermission.editBranding) &&
+                  on(FeatureFlagKeys.gymBranding))
                 _SettingsTile(
                   icon: Icons.palette_outlined,
                   title: isArabic ? 'العلامة التجارية' : 'Branding',
@@ -126,7 +129,8 @@ class GymProfileScreen extends ConsumerWidget {
                   title: isArabic ? 'مرافق الصالة' : 'Gym Amenities',
                   onTap: () => context.push(RoutePaths.amenities),
                 ),
-              if (can(StaffPermission.editSessionPolicies))
+              if (can(StaffPermission.editSessionPolicies) &&
+                  on(FeatureFlagKeys.schedulingBooking))
                 _SettingsTile(
                   icon: Icons.policy_outlined,
                   title: isArabic ? 'سياسات الحصص' : 'Session Policies',
@@ -149,13 +153,15 @@ class GymProfileScreen extends ConsumerWidget {
                 title: isArabic ? 'اعدادات الاشعارات' : 'Notification Settings',
                 onTap: () => context.push(RoutePaths.notificationSettings),
               ),
-              if (can(StaffPermission.editGymProfile))
+              if (can(StaffPermission.editGymProfile) &&
+                  on(FeatureFlagKeys.gymAttendance))
                 _SettingsTile(
                   icon: Icons.lock_outline,
                   title: isArabic ? 'رقم PIN الكيوسك' : 'Kiosk PIN',
                   onTap: () => context.push(RoutePaths.kioskPin),
                 ),
-              if (can(StaffPermission.editGymProfile))
+              if (can(StaffPermission.editGymProfile) &&
+                  on(FeatureFlagKeys.schedulingBooking))
                 _SettingsTile(
                   icon: Icons.bug_report_outlined,
                   title: isArabic ? 'وضع الاختبار' : 'Testing Mode',

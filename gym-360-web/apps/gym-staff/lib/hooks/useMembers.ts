@@ -285,6 +285,8 @@ function invalidateAfterQuickAssign(qc: QueryClient, gymId: string | undefined, 
  */
 export interface QuickAssignInput {
   memberId: string; trainerId: string; sessionCount: number; totalPrice?: number; paymentMethod?: string;
+  /** pt.trial_sessions: a free 1–3 session trial (one per trainee). */
+  isTrial?: boolean;
 }
 
 function requireGymAndUser({ gymId, userId }: GymScope) {
@@ -307,6 +309,7 @@ export function useQuickAssignTrainer() {
         totalPrice: data.totalPrice,
         paymentMethod: data.paymentMethod,
         assignedBy: userId,
+        ...(data.isTrial ? { isTrial: true } : {}),
       });
       return res.data;
     },

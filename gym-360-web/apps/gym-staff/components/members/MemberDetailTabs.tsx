@@ -1,10 +1,21 @@
-import { StatusBadge, formatCurrency, formatDate } from '@gym360/ui';
+import { StatusBadge, formatCurrency, formatDate, FEATURE_FLAG_KEYS as K } from '@gym360/ui';
 import type { MemberListItem, PaymentListItem } from '@gym360/ui';
 import type { MemberPackage } from '@/lib/hooks/useMembers';
 import { UnderlineTabs } from '@/components/UnderlineTabs';
 
 export const MEMBER_TABS = ['Profile', 'Payments', 'Sessions', 'Progress'] as const;
 export type MemberTab = (typeof MEMBER_TABS)[number];
+
+/** Flag that owns each tab; Profile is always on. Progress here is the photos/workout view (mobile has PT measurements). */
+const TAB_FLAGS: Partial<Record<MemberTab, readonly string[]>> = {
+  Payments: [K.GYM_FINANCE],
+  Sessions: [K.PT_PACKAGES, K.PT_TRIAL_SESSIONS],
+  Progress: [K.PROGRESS_PHOTOS, K.TRAINING_WORKOUTS],
+};
+
+export function visibleMemberTabs(isEnabled: (key: string) => boolean): MemberTab[] {
+  return MEMBER_TABS.filter((tab) => TAB_FLAGS[tab]?.some(isEnabled) ?? true);
+}
 
 const spaced = (v: string | undefined) => (v ?? '').replace(/_/g, ' ');
 
@@ -141,8 +152,14 @@ function ProgressTab() {
   );
 }
 
-export function MemberTabBar({ active, onChange }: { active: MemberTab; onChange: (tab: MemberTab) => void }) {
-  return <UnderlineTabs tabs={MEMBER_TABS} active={active} onChange={onChange} />;
+interface MemberTabBarProps {
+  tabs: readonly MemberTab[];
+  active: MemberTab;
+  onChange: (tab: MemberTab) => void;
+}
+
+export function MemberTabBar({ tabs, active, onChange }: MemberTabBarProps) {
+  return <UnderlineTabs tabs={tabs} active={active} onChange={onChange} />;
 }
 
 interface MemberTabContentProps extends SessionsTabProps {

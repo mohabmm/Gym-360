@@ -42,6 +42,8 @@ public static class CommunicationModuleRegistration
 
         // Services
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<GymApp.Modules.Communication.Application.Notifications.PtNotifier>();
+        services.AddScoped<GymApp.Modules.Communication.Application.Notifications.PtPushSender>();
         services.AddScoped<IFcmTokenStore, FcmTokenStore>();
         services.AddHttpClient<IPushNotificationService, PushNotificationService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Communication.Application.Services.UserDataProvider>();

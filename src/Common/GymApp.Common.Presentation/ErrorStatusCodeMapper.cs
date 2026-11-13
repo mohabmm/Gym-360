@@ -47,7 +47,8 @@ public static class ErrorStatusCodeMapper
     {
         var code = error.Code;
 
-        if (code.StartsWith("PLAN.", StringComparison.Ordinal))
+        if (code.StartsWith("PLAN.", StringComparison.Ordinal)
+            || code.StartsWith("FEATURE_DISABLED:", StringComparison.Ordinal))
             return StatusCodes.Status403Forbidden;
 
         if (ExactCodes.TryGetValue(code, out var exact))

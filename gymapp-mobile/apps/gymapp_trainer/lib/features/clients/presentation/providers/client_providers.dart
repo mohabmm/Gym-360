@@ -61,9 +61,8 @@ class ClientNote {
         content: json['content'] as String,
         // Defensive: a null/malformed timestamp on one note must not crash the
         // whole notes list. Fall back to now rather than throwing.
-        createdAt:
-            DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
-                DateTime.now(),
+        createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ??
+            DateTime.now(),
       );
 }
 
@@ -128,6 +127,8 @@ final clientRosterProvider =
 final clientDetailProvider =
     FutureProvider.autoDispose.family<ClientDetailData, String>(
   (ref, clientId) async {
+    // Skip modules that are off for this gym (no 403 round-trips, no hidden data).
+    final flags = ref.read(featureFlagsProvider);
     final apiClient = ref.watch(apiClientProvider);
     final gymId = ref.watch(activeGymIdProvider);
     if (gymId == null) {
@@ -177,26 +178,28 @@ final clientDetailProvider =
 
     // Fetch workout assignments for this client.
     List<WorkoutAssignmentModel> workouts = <WorkoutAssignmentModel>[];
-    try {
-      workouts = await apiClient.get<List<WorkoutAssignmentModel>>(
-        ApiEndpoints.workoutAssignments,
-        queryParameters: {'clientId': clientId, 'page': 1, 'pageSize': 50},
-        parser: (data) {
-          final List<dynamic> list;
-          if (data is List) {
-            list = data;
-          } else if (data is Map<String, dynamic> && data['items'] is List) {
-            list = data['items'] as List<dynamic>;
-          } else {
-            return <WorkoutAssignmentModel>[];
-          }
-          return list
-              .map((e) =>
-                  WorkoutAssignmentModel.fromJson(e as Map<String, dynamic>))
-              .toList();
-        },
-      );
-    } catch (_) {}
+    if (flags.isEnabled(FeatureFlagKeys.trainingWorkouts)) {
+      try {
+        workouts = await apiClient.get<List<WorkoutAssignmentModel>>(
+          ApiEndpoints.workoutAssignments,
+          queryParameters: {'clientId': clientId, 'page': 1, 'pageSize': 50},
+          parser: (data) {
+            final List<dynamic> list;
+            if (data is List) {
+              list = data;
+            } else if (data is Map<String, dynamic> && data['items'] is List) {
+              list = data['items'] as List<dynamic>;
+            } else {
+              return <WorkoutAssignmentModel>[];
+            }
+            return list
+                .map((e) =>
+                    WorkoutAssignmentModel.fromJson(e as Map<String, dynamic>))
+                .toList();
+          },
+        );
+      } catch (_) {}
+    }
 
     // Fetch progress data. BE `/progress/clients/{clientId}` requires
     // trainerId + gymId query params and returns a ClientProgressResponse
@@ -231,14 +234,16 @@ final clientDetailProvider =
 
     // Fetch remote workout status
     RemoteWorkoutStatusModel? remoteStatus;
-    try {
-      remoteStatus = await apiClient.get<RemoteWorkoutStatusModel>(
-        ApiEndpoints.remoteWorkoutStatus,
-        queryParameters: {'clientId': clientId, 'gymId': gymId},
-        parser: (data) =>
-            RemoteWorkoutStatusModel.fromJson(data as Map<String, dynamic>),
-      );
-    } catch (_) {}
+    if (flags.isEnabled(FeatureFlagKeys.trainingRemoteWorkout)) {
+      try {
+        remoteStatus = await apiClient.get<RemoteWorkoutStatusModel>(
+          ApiEndpoints.remoteWorkoutStatus,
+          queryParameters: {'clientId': clientId, 'gymId': gymId},
+          parser: (data) =>
+              RemoteWorkoutStatusModel.fromJson(data as Map<String, dynamic>),
+        );
+      } catch (_) {}
+    }
 
     // Fetch active package via generic packages endpoint filtered by memberId.
     SessionPackageModel? activePackage;
@@ -273,19 +278,21 @@ final clientDetailProvider =
 
     // Fetch member notes
     List<ClientNote> notes = <ClientNote>[];
-    try {
-      notes = await apiClient.get<List<ClientNote>>(
-        ApiEndpoints.gymMemberNotes(GymId(gymId), MemberId(clientId)),
-        parser: (data) {
-          if (data is List) {
-            return data
-                .map((e) => ClientNote.fromJson(e as Map<String, dynamic>))
-                .toList();
-          }
-          return <ClientNote>[];
-        },
-      );
-    } catch (_) {}
+    if (flags.isEnabled(FeatureFlagKeys.gymMemberRecords)) {
+      try {
+        notes = await apiClient.get<List<ClientNote>>(
+          ApiEndpoints.gymMemberNotes(GymId(gymId), MemberId(clientId)),
+          parser: (data) {
+            if (data is List) {
+              return data
+                  .map((e) => ClientNote.fromJson(e as Map<String, dynamic>))
+                  .toList();
+            }
+            return <ClientNote>[];
+          },
+        );
+      } catch (_) {}
+    }
 
     return ClientDetailData(
       user: user,

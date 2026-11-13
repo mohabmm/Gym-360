@@ -1,3 +1,4 @@
+using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Domain;
 using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
@@ -14,13 +15,19 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
 {
     private readonly INotificationRepository _notificationRepository;
     private readonly ICommunicationUnitOfWork _unitOfWork;
+    private readonly IFeatureFlagService _featureFlags;
+    private readonly PtNotifier _ptNotifier;
 
     public SessionCompletedIntegrationEventHandler(
         INotificationRepository notificationRepository,
-        ICommunicationUnitOfWork unitOfWork)
+        ICommunicationUnitOfWork unitOfWork,
+        IFeatureFlagService featureFlags,
+        PtNotifier ptNotifier)
     {
         _notificationRepository = notificationRepository;
         _unitOfWork = unitOfWork;
+        _featureFlags = featureFlags;
+        _ptNotifier = ptNotifier;
     }
 
     public async Task Handle(SessionCompletedIntegrationEvent notification, CancellationToken cancellationToken)
@@ -43,6 +50,19 @@ internal sealed class SessionCompletedIntegrationEventHandler : INotificationHan
             NotificationTexts.SessionCompletedForTrainer());
 
         await _notificationRepository.AddAsync(trainerNotif, cancellationToken);
+
+        // pt.dual_session_logging: ask the trainee to confirm (in-app + push) instead of the
+        // plain "session completed" note.
+        if (await _featureFlags.IsEnabledAsync(notification.GymId, FeatureKeys.PtDualSessionLogging, cancellationToken))
+        {
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            var confirmData = new Dictionary<string, string>(data) { ["type"] = "session_confirm" };
+            await _ptNotifier.SendAsync(
+                new PtNotification(notification.GymId, new[] { notification.MemberId }, NotificationType.SessionConfirmation,
+                    PtNotificationTexts.SessionConfirmRequest(), confirmData),
+                cancellationToken);
+            return;
+        }
 
         // Notify member
         var memberNotif = Notification.CreateLocalized(

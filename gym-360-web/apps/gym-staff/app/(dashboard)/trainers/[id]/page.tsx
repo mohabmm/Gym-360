@@ -14,11 +14,13 @@ import {
   useTrainerSessions,
   useUpdateTrainerProfile,
 } from '@/lib/hooks/useTrainers';
+import { useStaffFlags } from '@/lib/feature-flags';
 import { useTrainerRate, useTrainerEarnings, useSetTrainerRate } from '@/lib/hooks/useTrainerEarnings';
 import { EditProfileModalForm, EditRateModal } from '@/components/trainers/TrainerModals';
 import { TrainerHeaderCard, TrainerKpis } from '@/components/trainers/TrainerHeaderCard';
 import {
   TrainerTabBar,
+  visibleTrainerTabs,
   TrainerProfileTab,
   TrainerMembersTab,
   TrainerSessionsTab,
@@ -45,6 +47,22 @@ const idWhenTab = (active: TrainerTab, tab: TrainerTab, id: string) => (active =
 const profileErrorMessage = (e: unknown) =>
   (e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message;
 
+/** Tabs whose feature is on; a tab whose feature was just turned off falls back to Profile. */
+function useTrainerTabs(isEnabled: (key: string) => boolean) {
+  const tabs = visibleTrainerTabs(isEnabled);
+  const [selectedTab, setActiveTab] = useState<TrainerTab>('Profile');
+  const activeTab: TrainerTab = tabs.includes(selectedTab) ? selectedTab : 'Profile';
+  return { tabs, activeTab, setActiveTab };
+}
+
+function TrainerLoading() {
+  return (
+    <div className="text-center py-20">
+      <p className="text-sm text-muted-foreground">Loading trainer…</p>
+    </div>
+  );
+}
+
 function TrainerNotFound() {
   return (
     <div className="text-center py-20">
@@ -64,11 +82,12 @@ export default function TrainerDetailPage() {
 
   const { trainer, isLoading } = useResolvedTrainer(trainerId);
 
-  const [activeTab, setActiveTab] = useState<TrainerTab>('Profile');
+  const { isEnabled } = useStaffFlags();
+  const { tabs, activeTab, setActiveTab } = useTrainerTabs(isEnabled);
   const [editRateOpen, setEditRateOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
-  const { data: rateData, isLoading: rateLoading } = useTrainerRate(gymId, trainerId);
+  const { data: rateData, isLoading: rateLoading } = useTrainerRate(gymId, trainerId, tabs.includes('Earnings'));
   const { data: earningsData, isLoading: earningsLoading } = useTrainerEarnings(gymId, trainerId, activeTab === 'Earnings');
 
   const resolvedTrainerId = trainer?.id ?? trainerId;
@@ -81,13 +100,7 @@ export default function TrainerDetailPage() {
   const updateProfileMutation = useUpdateTrainerProfile(resolvedTrainerId);
   const setRateMutation = useSetTrainerRate(gymId, trainerId, () => setEditRateOpen(false));
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-20">
-        <p className="text-sm text-muted-foreground">Loading trainer…</p>
-      </div>
-    );
-  }
+  if (isLoading) return <TrainerLoading />;
 
   if (!trainer) return <TrainerNotFound />;
 
@@ -151,10 +164,10 @@ export default function TrainerDetailPage() {
       <TrainerHeaderCard trainer={trainer} />
 
       {/* KPIs */}
-      <TrainerKpis trainer={trainer} rateLoading={rateLoading} currentRate={currentRate} />
+      <TrainerKpis trainer={trainer} rateLoading={rateLoading} currentRate={currentRate} isEnabled={isEnabled} />
 
       {/* Tabs */}
-      <TrainerTabBar active={activeTab} onChange={setActiveTab} />
+      <TrainerTabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Tab Content */}
       {tabContent[activeTab]()}

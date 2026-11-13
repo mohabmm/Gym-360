@@ -10,6 +10,7 @@ internal sealed class SessionPackageReadModel
     public Guid Id { get; set; }
     public Guid GymId { get; set; }
     public Guid MemberId { get; set; }
+    public Guid TrainerId { get; set; }
     public string Status { get; set; } = default!;
     public int TotalSessions { get; set; }
     public int RemainingSessions { get; set; }

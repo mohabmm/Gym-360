@@ -16,4 +16,5 @@ public sealed record SessionPackageDto(
     DateTime? ExpiresAt,
     List<PackageUsageDto> UsageHistory,
     Guid AssignedBy,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool IsTrial = false);

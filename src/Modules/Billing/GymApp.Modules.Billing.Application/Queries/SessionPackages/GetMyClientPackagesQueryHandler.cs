@@ -39,7 +39,8 @@ internal sealed class GetMyClientPackagesQueryHandler : IQueryHandler<GetMyClien
                 u.UsedAt,
                 u.UsageType.ToString())).ToList(),
             p.AssignedBy,
-            p.CreatedAt)).ToList();
+            p.CreatedAt,
+            p.IsTrial)).ToList();
 
         return Result.Success(dtos);
     }

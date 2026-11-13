@@ -3,46 +3,11 @@
 import { type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { SidebarNav, type NavSection, LocaleToggle, ThemeToggle, GymSwitcher, type GymOption } from '@gym360/ui';
-import {
-  LayoutDashboard, Users, Dumbbell, CalendarDays, BookOpen,
-  CreditCard, Trophy, Megaphone, BarChart3, DoorOpen, UserCog, Settings,
-  FileSpreadsheet, Lock,
-} from 'lucide-react';
-
-const navSections: NavSection[] = [
-  {
-    label: 'Main',
-    items: [
-      { label: 'Dashboard', href: '/', icon: <LayoutDashboard className="h-5 w-5" /> },
-      { label: 'Members', href: '/members', icon: <Users className="h-5 w-5" /> },
-      { label: 'Trainers', href: '/trainers', icon: <Dumbbell className="h-5 w-5" /> },
-      { label: 'Classes', href: '/classes', icon: <CalendarDays className="h-5 w-5" /> },
-      { label: 'Exercises', href: '/exercises', icon: <BookOpen className="h-5 w-5" /> },
-    ],
-  },
-  {
-    label: 'Management',
-    items: [
-      { label: 'Messages', href: '/messages', icon: <Megaphone className="h-5 w-5" /> },
-      { label: 'Billing', href: '/billing', icon: <CreditCard className="h-5 w-5" /> },
-      { label: 'My Subscription', href: '/subscription', icon: <CreditCard className="h-5 w-5" /> },
-      { label: 'Gamification', href: '/gamification', icon: <Trophy className="h-5 w-5" /> },
-      { label: 'Announcements', href: '/announcements', icon: <Megaphone className="h-5 w-5" /> },
-      { label: 'Analytics', href: '/analytics', icon: <BarChart3 className="h-5 w-5" /> },
-      { label: 'Check-Ins', href: '/check-ins', icon: <DoorOpen className="h-5 w-5" /> },
-    ],
-  },
-  {
-    label: 'Settings',
-    items: [
-      { label: 'Staff', href: '/staff', icon: <UserCog className="h-5 w-5" /> },
-      { label: 'Data Import', href: '/data-import', icon: <FileSpreadsheet className="h-5 w-5" /> },
-      { label: 'Kiosk PIN', href: '/kiosk-pin', icon: <Lock className="h-5 w-5" /> },
-      { label: 'Settings', href: '/settings', icon: <Settings className="h-5 w-5" /> },
-    ],
-  },
-];
+import { SidebarNav, LocaleToggle, ThemeToggle, GymSwitcher, getFeatureFlagService, type GymOption } from '@gym360/ui';
+import { staffNavSections } from '@/components/StaffNav';
+import { FeatureRouteGuard } from '@/components/FeatureRouteGuard';
+import { useStaffFlags } from '@/lib/feature-flags';
+import { usePtText } from '@/lib/pt-text';
 
 function logoWords(gymName: string): { top: string; bottom: string } {
   const words = (gymName || 'Gym').trim().split(/\s+/).filter(Boolean);
@@ -91,6 +56,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { data: session, update } = useSession();
 
   const handleSignOut = async () => {
+    getFeatureFlagService().clear();
     await signOut({ redirect: false });
     router.push('/login');
   };
@@ -140,6 +106,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const gymName = session?.user?.gymName || (switcherGyms[0]?.name ?? '');
   const userName = session?.user?.name ?? 'Staff';
   const staffSubRole = session?.user?.staffSubRole ?? 'owner';
+  const { isEnabled } = useStaffFlags();
+  const navSections = staffNavSections(usePtText(), staffSubRole, isEnabled);
 
   return (
     <div className="flex min-h-screen">
@@ -165,7 +133,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <LocaleToggle onAfterChange={() => router.refresh()} />
           <ThemeToggle />
         </div>
-        <div className="p-6 max-w-[1400px] mx-auto">{children}</div>
+        <div className="p-6 max-w-[1400px] mx-auto">
+          <FeatureRouteGuard>{children}</FeatureRouteGuard>
+        </div>
       </main>
     </div>
   );

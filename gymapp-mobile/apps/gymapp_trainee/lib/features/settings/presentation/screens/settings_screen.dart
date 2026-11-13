@@ -108,8 +108,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           // Notifications
-          _SectionHeader(
-              label: isArabic ? 'الإشعارات' : 'Notifications'),
+          _SectionHeader(label: isArabic ? 'الإشعارات' : 'Notifications'),
           const _NotificationPreferencesSection(),
 
           // PDPL Data Privacy
@@ -267,8 +266,7 @@ class SettingsScreen extends ConsumerWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(
-            isArabic ? 'تنزيل بياناتك' : 'Download Your Data'),
+        title: Text(isArabic ? 'تنزيل بياناتك' : 'Download Your Data'),
         content: Text(isArabic
             ? 'سيتم إرسال نسخة من بياناتك إلى بريدك الإلكتروني. هل تريد المتابعة؟'
             : 'A copy of your data will be sent to your email. Continue?'),
@@ -308,8 +306,7 @@ class SettingsScreen extends ConsumerWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(
-            isArabic ? 'حذف الحساب' : 'Delete Account',
+        title: Text(isArabic ? 'حذف الحساب' : 'Delete Account',
             style: const TextStyle(color: Colors.red)),
         content: Text(isArabic
             ? 'هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بياناتك نهائياً. هل أنت متأكد؟'
@@ -320,8 +317,7 @@ class SettingsScreen extends ConsumerWidget {
               child: Text(isArabic ? 'إلغاء' : 'Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style:
-                TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text(isArabic ? 'حذف نهائياً' : 'Delete Forever'),
           ),
         ],
@@ -386,8 +382,7 @@ class _RadioSheet<T> extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Text(
                 title,
                 style: Theme.of(context)
@@ -450,9 +445,8 @@ class _NotificationPreferencesSectionState
     if (_prefs == null) {
       return ListTile(
         leading: const Icon(Icons.notifications_outlined),
-        title: Text(isArabic
-            ? 'تفضيلات الإشعارات'
-            : 'Notification Preferences'),
+        title:
+            Text(isArabic ? 'تفضيلات الإشعارات' : 'Notification Preferences'),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => _loadAndShow(context, isArabic),
       );
@@ -468,9 +462,8 @@ class _NotificationPreferencesSectionState
     final gymId = authState?.currentGymId;
     if (userId == null) {
       messenger.showSnackBar(SnackBar(
-        content: Text(isArabic
-            ? 'يرجى تسجيل الدخول أولاً'
-            : 'Sign in required'),
+        content:
+            Text(isArabic ? 'يرجى تسجيل الدخول أولاً' : 'Sign in required'),
       ));
       return;
     }
@@ -482,8 +475,8 @@ class _NotificationPreferencesSectionState
           'userId': userId,
           if (gymId != null) 'gymId': gymId,
         },
-        parser: (data) => _parsePrefsFromBackend(
-            data as Map<String, dynamic>, userId),
+        parser: (data) =>
+            _parsePrefsFromBackend(data as Map<String, dynamic>, userId),
       );
       if (!context.mounted) return;
       await showModalBottomSheet(
@@ -502,9 +495,8 @@ class _NotificationPreferencesSectionState
       );
     } catch (e) {
       messenger.showSnackBar(SnackBar(
-        content: Text(isArabic
-            ? 'تعذّر تحميل التفضيلات'
-            : 'Could not load preferences'),
+        content: Text(
+            isArabic ? 'تعذّر تحميل التفضيلات' : 'Could not load preferences'),
       ));
     }
   }
@@ -537,8 +529,11 @@ class _NotificationPreferencesSectionState
 
   static Map<String, dynamic> _prefsToBackendJson(
       NotificationPreferenceModel prefs, String userId, String? gymId) {
-    Map<String, dynamic> pref(String type, bool enabled) =>
-        {'notificationType': type, 'pushEnabled': enabled, 'inAppEnabled': enabled};
+    Map<String, dynamic> pref(String type, bool enabled) => {
+          'notificationType': type,
+          'pushEnabled': enabled,
+          'inAppEnabled': enabled
+        };
 
     return {
       if (gymId != null) 'gymId': gymId,
@@ -575,6 +570,11 @@ class _NotificationPreferencesSheet extends StatefulWidget {
 
 class _NotificationPreferencesSheetState
     extends State<_NotificationPreferencesSheet> {
+  // Preference rows for modules that are off in this gym are not shown.
+  bool _flag(String key) => ProviderScope.containerOf(context, listen: false)
+      .read(featureFlagsProvider)
+      .isEnabled(key);
+
   late NotificationPreferenceModel _prefs = widget.initial;
   bool _saving = false;
 
@@ -613,36 +613,38 @@ class _NotificationPreferencesSheetState
             SwitchListTile(
               title: Text(isArabic ? 'تذكيرات الجلسات' : 'Session Reminders'),
               value: _prefs.sessionReminders,
-              onChanged: (v) =>
-                  _update(_prefs.copyWith(sessionReminders: v)),
+              onChanged: (v) => _update(_prefs.copyWith(sessionReminders: v)),
             ),
-            SwitchListTile(
-              title: Text(isArabic ? 'تذكيرات التمارين' : 'Workout Reminders'),
-              value: _prefs.workoutReminders,
-              onChanged: (v) =>
-                  _update(_prefs.copyWith(workoutReminders: v)),
-            ),
+            if (_flag(FeatureFlagKeys.trainingWorkouts))
+              SwitchListTile(
+                title:
+                    Text(isArabic ? 'تذكيرات التمارين' : 'Workout Reminders'),
+                value: _prefs.workoutReminders,
+                onChanged: (v) => _update(_prefs.copyWith(workoutReminders: v)),
+              ),
             SwitchListTile(
               title: Text(isArabic ? 'تذكيرات التقدم' : 'Progress Reminders'),
               value: _prefs.progressReminders,
-              onChanged: (v) =>
-                  _update(_prefs.copyWith(progressReminders: v)),
+              onChanged: (v) => _update(_prefs.copyWith(progressReminders: v)),
             ),
-            SwitchListTile(
-              title: Text(isArabic ? 'الإعلانات' : 'Announcements'),
-              value: _prefs.announcements,
-              onChanged: (v) => _update(_prefs.copyWith(announcements: v)),
-            ),
-            SwitchListTile(
-              title: Text(isArabic ? 'الرسائل' : 'Chat Messages'),
-              value: _prefs.chatMessages,
-              onChanged: (v) => _update(_prefs.copyWith(chatMessages: v)),
-            ),
-            SwitchListTile(
-              title: Text(isArabic ? 'تنبيهات الانتهاء' : 'Expiry Warnings'),
-              value: _prefs.expiryWarnings,
-              onChanged: (v) => _update(_prefs.copyWith(expiryWarnings: v)),
-            ),
+            if (_flag(FeatureFlagKeys.communicationAnnouncements))
+              SwitchListTile(
+                title: Text(isArabic ? 'الإعلانات' : 'Announcements'),
+                value: _prefs.announcements,
+                onChanged: (v) => _update(_prefs.copyWith(announcements: v)),
+              ),
+            if (_flag(FeatureFlagKeys.communicationChat))
+              SwitchListTile(
+                title: Text(isArabic ? 'الرسائل' : 'Chat Messages'),
+                value: _prefs.chatMessages,
+                onChanged: (v) => _update(_prefs.copyWith(chatMessages: v)),
+              ),
+            if (_flag(FeatureFlagKeys.gymMemberships))
+              SwitchListTile(
+                title: Text(isArabic ? 'تنبيهات الانتهاء' : 'Expiry Warnings'),
+                value: _prefs.expiryWarnings,
+                onChanged: (v) => _update(_prefs.copyWith(expiryWarnings: v)),
+              ),
             SwitchListTile(
               title: Text(isArabic ? 'العروض' : 'Promotions'),
               value: _prefs.promotions,
@@ -733,7 +735,8 @@ class _ConsentSettingsSheetState extends ConsumerState<_ConsentSettingsSheet> {
       await repo.updateConsent(
         option.type,
         value,
-        consentText: widget.isArabic ? option.descriptionAr : option.descriptionEn,
+        consentText:
+            widget.isArabic ? option.descriptionAr : option.descriptionEn,
       );
     } catch (e) {
       if (mounted) {
@@ -804,13 +807,10 @@ class _ConsentSettingsSheetState extends ConsumerState<_ConsentSettingsSheet> {
                     contentPadding: EdgeInsets.zero,
                     title: Text(isArabic ? option.labelAr : option.labelEn),
                     subtitle: Text(
-                      isArabic
-                          ? option.descriptionAr
-                          : option.descriptionEn,
+                      isArabic ? option.descriptionAr : option.descriptionEn,
                     ),
                     value: isGranted,
-                    onChanged:
-                        isBusy ? null : (v) => _toggle(option, v),
+                    onChanged: isBusy ? null : (v) => _toggle(option, v),
                   );
                 },
               ),

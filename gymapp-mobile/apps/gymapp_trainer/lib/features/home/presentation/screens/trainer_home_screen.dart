@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
+
+import '../../../sessions/presentation/pt/pt_coach_widgets.dart';
+import '../../../revenue/presentation/providers/revenue_providers.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/providers.dart';
@@ -17,10 +20,12 @@ class TrainerHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isArabic =
-        Localizations.localeOf(context).languageCode == 'ar';
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final auth = ref.watch(authProvider);
     final dashboard = ref.watch(trainerDashboardProvider);
+    final flags = ref.watch(featureFlagsProvider);
+    final booking = flags.isEnabled(FeatureFlagKeys.schedulingBooking);
+    final ptClients = flags.isEnabled(FeatureFlagKeys.ptPackages);
     final firstName = auth.user?.firstName ?? '';
     final lastName = auth.user?.lastName ?? '';
     final fullName = '$firstName $lastName'.trim();
@@ -35,6 +40,7 @@ class TrainerHomeScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(trainerDashboardProvider);
+          ref.invalidate(allClientPackagesProvider);
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -53,11 +59,12 @@ class TrainerHomeScreen extends ConsumerWidget {
                 style: theme.textTheme.titleLarge,
               ),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.chat_bubble_outline_rounded),
-                  tooltip: isArabic ? 'الرسائل' : 'Messages',
-                  onPressed: () => context.push(AppRoutes.chatList),
-                ),
+                if (flags.isEnabled(FeatureFlagKeys.communicationChat))
+                  IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    tooltip: isArabic ? 'الرسائل' : 'Messages',
+                    onPressed: () => context.push(AppRoutes.chatList),
+                  ),
                 const NotificationBell(),
                 const SizedBox(width: 4),
               ],
@@ -74,66 +81,77 @@ class TrainerHomeScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   dashboard.when(
                     data: (data) =>
-                        _StatsRow(data: data, isArabic: isArabic),
+                        _StatsRow(data: data, isArabic: isArabic, flags: flags),
                     loading: () => const _StatsSkeleton(),
                     error: (_, __) => const SizedBox.shrink(),
                   ),
-                  const SizedBox(height: 24),
-                  SectionHeader(
-                    title:
-                        isArabic ? 'جدول اليوم' : "Today's Schedule",
-                    actionText: isArabic ? 'عرض الكل' : 'View All',
-                    onAction: () => context.go(AppRoutes.schedule),
-                  ),
-                  dashboard.when(
-                    data: (data) {
-                      if (data.todaySessions.isEmpty) {
-                        return EmptyState(
-                          icon: Icons.event_available,
-                          title: isArabic
-                              ? 'لا توجد جلسات اليوم'
-                              : 'No sessions today',
-                          subtitle: isArabic
-                              ? 'استمتع بيوم اجازتك!'
-                              : 'Enjoy your day off!',
+                  // PT gyms: the coach's clients with sessions left and one-tap logging.
+                  if (ptClients) ...[
+                    const SizedBox(height: 24),
+                    SectionHeader(
+                      title: isArabic ? 'عملائي' : 'My clients',
+                      actionText: isArabic ? 'عرض الكل' : 'View All',
+                      onAction: () => context.go(AppRoutes.clients),
+                    ),
+                    const PtClientsPanel(),
+                  ],
+                  if (booking) ...[
+                    const SizedBox(height: 24),
+                    SectionHeader(
+                      title: isArabic ? 'جدول اليوم' : "Today's Schedule",
+                      actionText: isArabic ? 'عرض الكل' : 'View All',
+                      onAction: () => context.go(AppRoutes.schedule),
+                    ),
+                    dashboard.when(
+                      data: (data) {
+                        if (data.todaySessions.isEmpty) {
+                          return EmptyState(
+                            icon: Icons.event_available,
+                            title: isArabic
+                                ? 'لا توجد جلسات اليوم'
+                                : 'No sessions today',
+                            subtitle: isArabic
+                                ? 'استمتع بيوم اجازتك!'
+                                : 'Enjoy your day off!',
+                          );
+                        }
+                        final names = ref.watch(clientNameByIdProvider);
+                        return Column(
+                          children: data.todaySessions
+                              .map((session) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: _SessionCard(
+                                      session: session,
+                                      isArabic: isArabic,
+                                      memberName: names[session.memberId],
+                                    ),
+                                  ))
+                              .toList(),
                         );
-                      }
-                      final names = ref.watch(clientNameByIdProvider);
-                      return Column(
-                        children: data.todaySessions
-                            .map((session) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: _SessionCard(
-                                    session: session,
-                                    isArabic: isArabic,
-                                    memberName: names[session.memberId],
-                                  ),
-                                ))
-                            .toList(),
-                      );
-                    },
-                    loading: () => Column(
-                      children: List.generate(
-                        3,
-                        (_) => const Padding(
-                          padding: EdgeInsets.only(bottom: 8),
-                          child: ShimmerCard(height: 80),
+                      },
+                      loading: () => Column(
+                        children: List.generate(
+                          3,
+                          (_) => const Padding(
+                            padding: EdgeInsets.only(bottom: 8),
+                            child: ShimmerCard(height: 80),
+                          ),
                         ),
                       ),
+                      error: (e, _) => AppErrorWidget(
+                        message: e.toString(),
+                        onRetry: () => ref.invalidate(trainerDashboardProvider),
+                      ),
                     ),
-                    error: (e, _) => AppErrorWidget(
-                      message: e.toString(),
-                      onRetry: () =>
-                          ref.invalidate(trainerDashboardProvider),
+                  ],
+                  if (_QuickActionsGrid.hasActions(flags)) ...[
+                    const SizedBox(height: 24),
+                    SectionHeader(
+                      title: isArabic ? 'اجراءات سريعة' : 'Quick Actions',
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  SectionHeader(
-                    title:
-                        isArabic ? 'اجراءات سريعة' : 'Quick Actions',
-                  ),
-                  const SizedBox(height: 8),
-                  _QuickActionsGrid(isArabic: isArabic),
+                    const SizedBox(height: 8),
+                    _QuickActionsGrid(isArabic: isArabic),
+                  ],
                   const SizedBox(height: 24),
                   dashboard.when(
                     data: (data) =>
@@ -165,9 +183,7 @@ class _GreetingHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final greeting = _greeting(isArabic);
-    final welcome = isArabic
-        ? 'كابتن $fullName'
-        : 'Coach $fullName';
+    final welcome = isArabic ? 'كابتن $fullName' : 'Coach $fullName';
 
     return AppCard.gradient(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -255,33 +271,39 @@ class _StatsSkeleton extends StatelessWidget {
 class _StatsRow extends StatelessWidget {
   final TrainerDashboardData data;
   final bool isArabic;
+  final FeatureFlags flags;
 
-  const _StatsRow({required this.data, required this.isArabic});
+  const _StatsRow(
+      {required this.data, required this.isArabic, required this.flags});
 
   @override
   Widget build(BuildContext context) {
+    final showBookings = flags.isEnabled(FeatureFlagKeys.schedulingBooking);
+    final showMessages = flags.isEnabled(FeatureFlagKeys.communicationChat);
     return Row(
       children: [
-        Expanded(
-          child: StatCard(
-            label: isArabic ? 'حجوزات معلقة' : 'Pending',
-            value: '${data.pendingBookings}',
-            icon: Icons.pending_actions,
-            iconColor: AppColors.warning,
-            onTap: () => context.push(AppRoutes.bookingRequests),
+        if (showBookings)
+          Expanded(
+            child: StatCard(
+              label: isArabic ? 'حجوزات معلقة' : 'Pending',
+              value: '${data.pendingBookings}',
+              icon: Icons.pending_actions,
+              iconColor: AppColors.warning,
+              onTap: () => context.push(AppRoutes.bookingRequests),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: StatCard(
-            label: isArabic ? 'رسائل' : 'Messages',
-            value: '${data.unreadMessages}',
-            icon: Icons.chat_bubble_outline,
-            iconColor: AppColors.info,
-            onTap: () => context.push(AppRoutes.chatList),
+        if (showBookings) const SizedBox(width: 12),
+        if (showMessages)
+          Expanded(
+            child: StatCard(
+              label: isArabic ? 'رسائل' : 'Messages',
+              value: '${data.unreadMessages}',
+              icon: Icons.chat_bubble_outline,
+              iconColor: AppColors.info,
+              onTap: () => context.push(AppRoutes.chatList),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
+        if (showMessages) const SizedBox(width: 12),
         Expanded(
           child: StatCard(
             label: isArabic ? 'عملاء' : 'Clients',
@@ -320,7 +342,8 @@ class _SessionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final timeStr = DateFormat('hh:mm a', isArabic ? 'ar' : 'en').format(session.scheduledAt);
+    final timeStr = DateFormat('hh:mm a', isArabic ? 'ar' : 'en')
+        .format(session.scheduledAt);
     // Trigger BE testing-mode fetch so the local mirror stays fresh; the value
     // we evaluate against is still the synced [testModeProvider].
     ref.watch(serverTestingModeProvider);
@@ -329,15 +352,13 @@ class _SessionCard extends ConsumerWidget {
     final isNext = session.scheduledAt.isAfter(DateTime.now()) && canStart;
 
     return AppCard(
-      onTap: canStart
-          ? () => context.push('/sessions/${session.id}/live')
-          : null,
+      onTap:
+          canStart ? () => context.push('/sessions/${session.id}/live') : null,
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isNext
                   ? theme.colorScheme.primary.withOpacity(0.1)
@@ -349,9 +370,8 @@ class _SessionCard extends ConsumerWidget {
                 Text(
                   timeStr,
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: isNext
-                        ? theme.colorScheme.primary
-                        : AppColors.grey600,
+                    color:
+                        isNext ? theme.colorScheme.primary : AppColors.grey600,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -380,8 +400,7 @@ class _SessionCard extends ConsumerWidget {
                 Text(
                   sessionTypeLabel(session.sessionType, isArabic),
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -391,8 +410,7 @@ class _SessionCard extends ConsumerWidget {
           ),
           if (isNext)
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 gradient: AppColors.primaryGradient,
                 borderRadius: BorderRadius.circular(999),
@@ -478,6 +496,13 @@ class _QuickActionsGrid extends ConsumerWidget {
 
   const _QuickActionsGrid({required this.isArabic});
 
+  /// Whether any quick action is available (otherwise the section is not shown).
+  static bool hasActions(FeatureFlags flags) => [
+        FeatureFlagKeys.schedulingBooking,
+        FeatureFlagKeys.trainingWorkouts,
+        FeatureFlagKeys.communicationChat,
+      ].any(flags.isEnabled);
+
   /// Pick the best session to "start" right now:
   ///  1. An in-progress session (resume it)
   ///  2. The next confirmed session today
@@ -489,12 +514,16 @@ class _QuickActionsGrid extends ConsumerWidget {
   }) {
     bool isScheduled(String s) {
       final l = s.toLowerCase();
-      return l == 'confirmed' || l == 'scheduled' || (testMode && l == 'pending');
+      return l == 'confirmed' ||
+          l == 'scheduled' ||
+          (testMode && l == 'pending');
     }
+
     bool isInProgress(String s) {
       final l = s.toLowerCase();
       return l == 'inprogress' || l == 'in_progress';
     }
+
     final active = todaySessions.where((s) => isInProgress(s.status)).toList();
     if (active.isNotEmpty) {
       active.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
@@ -514,34 +543,40 @@ class _QuickActionsGrid extends ConsumerWidget {
       orElse: () => const <SessionModel>[],
     );
 
+    final flags = ref.watch(featureFlagsProvider);
     final actions = [
-      _QuickAction(
-        icon: Icons.play_circle_outline,
-        label: isArabic ? 'بدء جلسة' : 'Start Session',
-        onTap: () {
-          final target = _nextStartableSession(todaySessions, testMode: testMode);
-          if (target != null) {
-            context.push('/sessions/${target.id}/live');
-          } else {
-            context.go(AppRoutes.schedule);
-          }
-        },
-      ),
-      _QuickAction(
-        icon: Icons.fitness_center,
-        label: isArabic ? 'بناء تمرين' : 'Build Workout',
-        onTap: () => context.push(AppRoutes.workoutBuilder),
-      ),
-      _QuickAction(
-        icon: Icons.calendar_month,
-        label: isArabic ? 'الجدول' : 'Schedule',
-        onTap: () => context.go(AppRoutes.schedule),
-      ),
-      _QuickAction(
-        icon: Icons.chat_outlined,
-        label: isArabic ? 'محادثة' : 'Chat',
-        onTap: () => context.push(AppRoutes.chatList),
-      ),
+      if (flags.isEnabled(FeatureFlagKeys.schedulingBooking))
+        _QuickAction(
+          icon: Icons.play_circle_outline,
+          label: isArabic ? 'بدء جلسة' : 'Start Session',
+          onTap: () {
+            final target =
+                _nextStartableSession(todaySessions, testMode: testMode);
+            if (target != null) {
+              context.push('/sessions/${target.id}/live');
+            } else {
+              context.go(AppRoutes.schedule);
+            }
+          },
+        ),
+      if (flags.isEnabled(FeatureFlagKeys.trainingWorkouts))
+        _QuickAction(
+          icon: Icons.fitness_center,
+          label: isArabic ? 'بناء تمرين' : 'Build Workout',
+          onTap: () => context.push(AppRoutes.workoutBuilder),
+        ),
+      if (flags.isEnabled(FeatureFlagKeys.schedulingBooking))
+        _QuickAction(
+          icon: Icons.calendar_month,
+          label: isArabic ? 'الجدول' : 'Schedule',
+          onTap: () => context.go(AppRoutes.schedule),
+        ),
+      if (flags.isEnabled(FeatureFlagKeys.communicationChat))
+        _QuickAction(
+          icon: Icons.chat_outlined,
+          label: isArabic ? 'محادثة' : 'Chat',
+          onTap: () => context.push(AppRoutes.chatList),
+        ),
     ];
 
     final columns = context.gridColumns(phone: 4, tablet: 4, largeTablet: 6);
@@ -552,9 +587,7 @@ class _QuickActionsGrid extends ConsumerWidget {
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
       childAspectRatio: 0.85,
-      children: actions
-          .map((a) => _QuickActionTile(action: a))
-          .toList(),
+      children: actions.map((a) => _QuickActionTile(action: a)).toList(),
     );
   }
 }

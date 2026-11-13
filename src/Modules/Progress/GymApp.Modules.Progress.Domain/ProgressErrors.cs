@@ -31,4 +31,8 @@ public static class ProgressErrors
     public static readonly Error InvalidWeight = new(
         "Progress.InvalidWeight",
         "Weight must be greater than zero.");
+
+    public static readonly Error NotClientOfTrainer = new(
+        "Progress.NotClientOfTrainer.Forbidden",
+        "You can record measurements only for your own clients.");
 }

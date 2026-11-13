@@ -17,15 +17,18 @@ internal sealed class LogBodyMetricForClientCommandHandler : ICommandHandler<Log
     private readonly IBodyMetricEntryRepository _repository;
     private readonly IProgressUnitOfWork _unitOfWork;
     private readonly IGymPlanService _planService;
+    private readonly ITrainerAssignmentLookup _assignments;
 
     public LogBodyMetricForClientCommandHandler(
         IBodyMetricEntryRepository repository,
         IProgressUnitOfWork unitOfWork,
-        IGymPlanService planService)
+        IGymPlanService planService,
+        ITrainerAssignmentLookup assignments)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _planService = planService;
+        _assignments = assignments;
     }
 
     public async Task<Result<Guid>> Handle(LogBodyMetricForClientCommand request, CancellationToken cancellationToken)
@@ -39,6 +42,12 @@ internal sealed class LogBodyMetricForClientCommandHandler : ICommandHandler<Log
             return Result.Failure<Guid>(
                 PlanErrors.FeatureNotAvailable("progress_tracking", currentPlan, "Pro"));
         }
+
+        // pt.progress_measurements: a coach records measurements only for trainees with an
+        // active package (trial included, so from session 1) with them.
+        var clients = await _assignments.GetClientsForTrainerAsync(request.TrainerId, request.GymId, cancellationToken);
+        if (!clients.Contains(request.ClientId))
+            return Result.Failure<Guid>(ProgressErrors.NotClientOfTrainer);
 
         if (!Enum.TryParse<WeightUnit>(request.WeightUnit, true, out var weightUnit))
             weightUnit = WeightUnit.Kg;

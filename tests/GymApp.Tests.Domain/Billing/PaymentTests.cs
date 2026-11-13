@@ -150,8 +150,10 @@ public sealed class SessionPackageTests
 
         pkg.UseSession(Guid.NewGuid()); // 3 remaining
 
-        pkg.GetDomainEvents().Should().ContainSingle()
-            .Which.Should().BeOfType<SessionPackageLowDomainEvent>();
+        // The legacy low event plus the PT renewal milestone (exactly 3 left).
+        pkg.GetDomainEvents().Should().ContainSingle(e => e is SessionPackageLowDomainEvent);
+        pkg.GetDomainEvents().OfType<SessionPackageMilestoneReachedDomainEvent>()
+            .Should().ContainSingle(e => e.Milestone == PackageMilestone.RenewalThreeLeft);
     }
 
     [Fact]

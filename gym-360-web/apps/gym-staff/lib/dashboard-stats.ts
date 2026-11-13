@@ -57,9 +57,10 @@ export interface AttentionItem {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** "Needs Attention" rows driven by live counts; rows with a zero count are omitted. */
-export function attentionItems(pendingTrainers: number, members: MemberListItem[]): AttentionItem[] {
-  const expiredMembers = countWhere(members, (m) => m.status === 'expired');
-  const frozenMembers = countWhere(members, (m) => m.status === 'frozen');
+/** `includeMemberships` = gym.memberships ON; PT gyms have no membership expiry/freeze to chase. */
+export function attentionItems(pendingTrainers: number, members: MemberListItem[], includeMemberships = true): AttentionItem[] {
+  const expiredMembers = includeMemberships ? countWhere(members, (m) => m.status === 'expired') : 0;
+  const frozenMembers = includeMemberships ? countWhere(members, (m) => m.status === 'frozen') : 0;
   const candidates: [number, AttentionItem][] = [
     [pendingTrainers, { color: 'bg-amber-500', title: 'Trainer Pending Approval', subtitle: `${plural(pendingTrainers, 'trainer')} awaiting review` }],
     [expiredMembers, { color: 'bg-red-500', title: 'Expired Memberships', subtitle: `${plural(expiredMembers, 'member')} with expired memberships` }],

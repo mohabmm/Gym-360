@@ -22,6 +22,8 @@ class SessionPackageModel with _$SessionPackageModel {
     @Default(0) double price,
     @Default('EGP') String currency,
     @Default('Active') String status,
+    // pt.trial_sessions: free trial package.
+    @Default(false) bool isTrial,
     DateTime? startDate,
     DateTime? expiryDate,
     DateTime? createdAt,

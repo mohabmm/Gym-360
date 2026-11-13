@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Modal } from '@gym360/ui';
+import { Modal, FEATURE_FLAG_KEYS as K } from '@gym360/ui';
+import { useStaffFlags } from '@/lib/feature-flags';
+import { usePtText, type PtText } from '@/lib/pt-text';
 import type { TrainerListItem } from '@gym360/ui';
 import { useQuickAssignTrainer } from '@/lib/hooks/useMembers';
 
 const SESSION_COUNT_OPTIONS = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40];
+/** pt.trial_sessions: one free trial per trainee, 1–3 sessions. */
+const TRIAL_SESSION_OPTIONS = [1, 2, 3];
 
 const INPUT_CLASS = 'w-full h-9 rounded-lg border border-input bg-background px-3 text-sm';
 
@@ -13,9 +17,27 @@ interface AssignForm {
   sessionCount: number;
   totalPrice: string;
   paymentMethod: string;
+  isTrial: boolean;
 }
 
-const EMPTY_FORM: AssignForm = { trainerId: '', sessionCount: 4, totalPrice: '', paymentMethod: 'Cash' };
+const EMPTY_FORM: AssignForm = { trainerId: '', sessionCount: 4, totalPrice: '', paymentMethod: 'Cash', isTrial: false };
+
+function TrialToggle({ form, set, t }: { form: AssignForm; set: (p: Partial<AssignForm>) => void; t: PtText }) {
+  return (
+    <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
+      <input
+        type="checkbox"
+        className="mt-1"
+        checked={form.isTrial}
+        onChange={(e) => set({ isTrial: e.target.checked, sessionCount: e.target.checked ? 1 : 4, totalPrice: '' })}
+      />
+      <span>
+        <span className="block text-sm font-medium">{t.freeTrial}</span>
+        <span className="block text-xs text-muted-foreground">{t.trialHint}</span>
+      </span>
+    </label>
+  );
+}
 
 // Blank price means a free assignment (undefined); otherwise the parsed number.
 function parsePrice(raw: string): number | undefined {
@@ -43,13 +65,21 @@ export function AssignTrainerModal({ open, onClose, memberId, trainers }: Props)
   const quickAssign = useQuickAssignTrainer();
   const [form, setForm] = useState<AssignForm>(EMPTY_FORM);
   const set = (patch: Partial<AssignForm>) => setForm({ ...form, ...patch });
+  const t = usePtText();
+  const { isEnabled } = useStaffFlags();
+  const trialsEnabled = isEnabled(K.PT_TRIAL_SESSIONS);
+  // Paid packages need pt.packages; with only trials ON the desk can still start a free trial.
+  const packagesEnabled = isEnabled(K.PT_PACKAGES);
+  const showTrial = trialsEnabled && (form.isTrial || !packagesEnabled);
+  const sessionCount = showTrial && !TRIAL_SESSION_OPTIONS.includes(form.sessionCount) ? 1 : form.sessionCount;
 
   const handleConfirm = () => {
     if (!form.trainerId) {
       toast.error('Pick a trainer first.');
       return;
     }
-    const priceNum = parsePrice(form.totalPrice);
+    const isTrial = showTrial;
+    const priceNum = isTrial ? undefined : parsePrice(form.totalPrice);
     if (isInvalidPrice(priceNum)) {
       toast.error('Price must be a non-negative number.');
       return;
@@ -58,15 +88,16 @@ export function AssignTrainerModal({ open, onClose, memberId, trainers }: Props)
       {
         memberId,
         trainerId: form.trainerId,
-        sessionCount: form.sessionCount,
+        sessionCount,
         totalPrice: priceNum,
         // Only attach a payment row when there's an actual price; free
         // assignments stay package-only.
         paymentMethod: priceNum && priceNum > 0 ? form.paymentMethod : undefined,
+        isTrial,
       },
       {
         onSuccess: () => {
-          toast.success(`Assigned ${form.sessionCount} sessions.`);
+          toast.success(isTrial ? t.freeTrial : `Assigned ${sessionCount} sessions.`);
           onClose();
           setForm(EMPTY_FORM);
         },
@@ -123,19 +154,22 @@ export function AssignTrainerModal({ open, onClose, memberId, trainers }: Props)
             <p className="text-xs text-muted-foreground mt-1">No trainers approved at this gym yet.</p>
           )}
         </div>
+        {trialsEnabled && packagesEnabled && <TrialToggle form={form} set={set} t={t} />}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Sessions</label>
+          <label className="block text-sm font-medium mb-1.5">{showTrial ? t.trialSessions : 'Sessions'}</label>
           <select
-            value={form.sessionCount}
+            value={sessionCount}
             onChange={(e) => set({ sessionCount: Number(e.target.value) })}
             className={INPUT_CLASS}
           >
-            {SESSION_COUNT_OPTIONS.map((n) => (
+            {(showTrial ? TRIAL_SESSION_OPTIONS : SESSION_COUNT_OPTIONS).map((n) => (
               <option key={n} value={n}>{n} sessions</option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground mt-1">Multiples of 4.</p>
+          {!showTrial && <p className="text-xs text-muted-foreground mt-1">Multiples of 4.</p>}
         </div>
+        {!showTrial && (
+        <>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1.5">Total price (EGP)</label>
@@ -167,6 +201,8 @@ export function AssignTrainerModal({ open, onClose, memberId, trainers }: Props)
         <p className="text-xs text-muted-foreground">
           Total package price for all sessions. Leave blank for a free assignment. Setting a price records a Payment in the same transaction.
         </p>
+        </>
+        )}
       </div>
     </Modal>
   );

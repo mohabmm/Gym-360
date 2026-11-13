@@ -1,3 +1,4 @@
+using GymApp.Common.Infrastructure.FeatureFlags;
 using GymApp.Api.Seed;
 using GymApp.Common.Application.Tenancy;
 using GymApp.Common.Infrastructure.Tenancy;
@@ -71,6 +72,7 @@ public static class DatabaseInitializer
 
             await PatchRegistryGymCodeAsync();
             await BackfillDurableOutboxAsync();
+            await PatchPtModuleColumnsAsync();
 
             var hardMode = IsHardMode;
             if (hardMode)
@@ -84,6 +86,8 @@ public static class DatabaseInitializer
                     await MigrateContextAsync(_sp, ctxType, "soft");
             }
 
+            await SeedFeatureFlagsAsync();
+
             await RunIdentityDevSeederAsync();
 
             if (hardMode)
@@ -92,6 +96,21 @@ public static class DatabaseInitializer
                 await RunSoftModeSeedersAsync();
 
             await BackfillExerciseNamesForAllAsync(hardMode);
+        }
+
+        // Feature flags: sync the code registry, presets, and assign unassigned gyms to the
+        // default preset (pt_module). Runs after the registry + per-gym migrations so every
+        // gym exists. Failure is logged, never fatal: unresolved gyms fall back to pt_module.
+        private async Task SeedFeatureFlagsAsync()
+        {
+            try
+            {
+                await FeatureFlagSeeder.SeedAsync(_sp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "FeatureFlagSeeder failed");
+            }
         }
 
         private async Task MigrateContextAsync(IServiceProvider innerSp, Type ctxType, string label)
@@ -218,6 +237,25 @@ IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Durable-outbox backfill failed; per-gym writes may 500 on the outbox INSERT.");
+            }
+        }
+
+        // Step 1a'' — PT module columns (Validation_1_PrivateSessions). Per-gym tables are
+        // created from the EF model, never migrated, so existing g{N}_billing.session_packages
+        // and g{N}_scheduling.sessions tables need the new columns added here. Additive and
+        // idempotent (adds a column only if missing, with a default); no data is changed.
+        // The legacy billing/scheduling schemas get the same columns from the EF migrations.
+        private async Task PatchPtModuleColumnsAsync()
+        {
+            try
+            {
+                var registry = _sp.GetRequiredService<TenantRegistryDbContext>();
+                await registry.Database.ExecuteSqlRawAsync(PtSchemaPatch.Sql);
+                _logger.LogInformation("PT module column patch ensured across existing schemas.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "PT module column patch failed; trial/quick-log features will error for affected gyms.");
             }
         }
 

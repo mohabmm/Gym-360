@@ -6,18 +6,16 @@ import { SidebarNav, type NavSection, LocaleToggle, ThemeToggle } from '@gym360/
 import Image from 'next/image';
 import {
   LayoutDashboard, Building2, Users, CreditCard, Layers, BarChart3, TrendingDown,
-  BookOpen, Settings, UserPlus, FileBarChart, HeadphonesIcon,
+  BookOpen, Settings, UserPlus, FileBarChart, HeadphonesIcon, ToggleRight,
 } from 'lucide-react';
+import { useFlagsText } from '@/lib/feature-flags-text';
 import { usePendingGyms } from '@/lib/hooks';
 import { signOut, useSession } from 'next-auth/react';
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const { data: pendingData } = usePendingGyms();
-  const { data: session } = useSession();
-  const pendingCount = pendingData?.data?.length ?? 0;
-
-  const navSections: NavSection[] = [
+/** Sidebar sections. `flagsLabel` is set only for Super Admins: other roles get no Feature flags item. */
+function buildNav(pendingCount: number, flagsLabel: string | null): NavSection[] {
+  const flagsItem = flagsLabel ? [{ label: flagsLabel, href: '/feature-flags', icon: <ToggleRight className="h-4 w-4" /> }] : [];
+  return [
     {
       label: 'Main',
       items: [
@@ -27,6 +25,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         { label: 'Users', href: '/users', icon: <Users className="h-4 w-4" /> },
         { label: 'Subscriptions', href: '/subscriptions', icon: <CreditCard className="h-4 w-4" /> },
         { label: 'Plans & Features', href: '/plans', icon: <Layers className="h-4 w-4" /> },
+        ...flagsItem,
       ],
     },
     {
@@ -46,42 +45,41 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       ],
     },
   ];
+}
+
+function Logo() {
+  return (
+    <div className="flex items-center gap-2">
+      <Image src="/logo.svg" alt="Gym 360" width={28} height={28} priority className="h-7 w-7 shrink-0" />
+      <div className="flex items-center gap-2">
+        <span className="font-heading font-bold text-white">Gym 360</span>
+        <span className="text-[10px] font-medium bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
+          Admin
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const { data: pendingData } = usePendingGyms();
+  const { data: session } = useSession();
+  const { t: flagsText } = useFlagsText();
+  const user = session?.user;
+  // Feature flags are Super Admin only (routes are guarded too).
+  const isSuperAdmin = user?.adminRole === 'super_admin';
+  const navSections = buildNav(pendingData?.data?.length ?? 0, isSuperAdmin ? flagsText.navLabel : null);
 
   return (
     <div className="flex h-screen overflow-hidden">
       <SidebarNav
         sections={navSections}
         variant="admin"
-        logo={
-          <div className="flex items-center gap-2">
-            <Image
-              src="/logo.svg"
-              alt="Gym 360"
-              width={28}
-              height={28}
-              priority
-              className="h-7 w-7 shrink-0"
-            />
-            <div className="flex items-center gap-2">
-              <span className="font-heading font-bold text-white">Gym 360</span>
-              <span className="text-[10px] font-medium bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
-                Admin
-              </span>
-            </div>
-          </div>
-        }
-        logoCollapsed={
-          <Image
-            src="/logo.svg"
-            alt="Gym 360"
-            width={28}
-            height={28}
-            priority
-            className="h-7 w-7"
-          />
-        }
-        userName={session?.user?.name ?? 'Admin'}
-        userRole={session?.user?.adminRole ?? 'admin'}
+        logo={<Logo />}
+        logoCollapsed={<Image src="/logo.svg" alt="Gym 360" width={28} height={28} priority className="h-7 w-7" />}
+        userName={user?.name ?? 'Admin'}
+        userRole={user?.adminRole ?? 'admin'}
         onSignOut={() => {
           void signOut({ callbackUrl: '/login' });
         }}

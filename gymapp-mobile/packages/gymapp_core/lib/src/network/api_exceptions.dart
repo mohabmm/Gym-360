@@ -40,6 +40,19 @@ class ForbiddenException extends ApiException {
   }) : super(message: message, statusCode: 403, errorCode: 'FORBIDDEN');
 }
 
+/// `403 FEATURE_DISABLED:<key>` — the feature is OFF for this gym. Screens should
+/// treat it as "not available" (the flags refresh hides the feature), never show it raw.
+class FeatureDisabledException extends ApiException {
+  final String featureKey;
+
+  const FeatureDisabledException({required this.featureKey})
+      : super(
+          message: 'This feature is not available for your gym.',
+          statusCode: 403,
+          errorCode: 'FEATURE_DISABLED',
+        );
+}
+
 class NotFoundException extends ApiException {
   const NotFoundException({
     String message = 'Resource not found',

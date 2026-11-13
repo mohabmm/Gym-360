@@ -8,6 +8,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'core/feature_flags.dart';
 import 'core/providers.dart';
 import 'core/router.dart';
 
@@ -29,8 +30,9 @@ Future<void> main() async {
           telemetryServiceProvider.overrideWithValue(telemetry),
           // Override the core placeholder with the actual billing API implementation
           planFeaturesProvider.overrideWith(_loadPlanFeatures),
+          featureFlagServiceProvider.overrideWith(createTraineeFeatureFlagService),
         ],
-        child: const GymAppTrainee(),
+        child: const TraineeFeatureFlagsSync(child: GymAppTrainee()),
       ),
     );
   });
@@ -62,6 +64,7 @@ Future<void> _initializePlatform() async {
     Hive.openBox(StorageKeys.userBox),
     Hive.openBox(StorageKeys.gymBox),
     Hive.openBox(StorageKeys.planFeaturesBox),
+    Hive.openBox(HiveFeatureFlagCache.boxName),
     Hive.openBox(StorageKeys.settingsBox),
     Hive.openBox(StorageKeys.exerciseCacheBox),
     Hive.openBox(StorageKeys.workoutCacheBox),

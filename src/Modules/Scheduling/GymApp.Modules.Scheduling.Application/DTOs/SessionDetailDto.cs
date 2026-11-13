@@ -17,4 +17,7 @@ public sealed record SessionDetailDto(
     DateTime CreatedAt,
     TrainerLogDto? TrainerLog,
     MemberLogDto? MemberLog,
-    IReadOnlyList<SessionExerciseLogDto> ExerciseLogs);
+    IReadOnlyList<SessionExerciseLogDto> ExerciseLogs,
+    string MemberConfirmation = "None",
+    bool IsQuickLog = false,
+    string? DisputeReason = null);

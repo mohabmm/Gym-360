@@ -45,6 +45,12 @@
           "GymApp.Common.Domain": "[1.0.0, )"
         }
       },
+      "gymapp.modules.billing.integrationevents": {
+        "type": "Project",
+        "dependencies": {
+          "GymApp.Common.Domain": "[1.0.0, )"
+        }
+      },
       "gymapp.modules.billing.shared": {
         "type": "Project"
       },

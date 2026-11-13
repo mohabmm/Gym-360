@@ -1015,6 +1015,7 @@
           "FluentValidation.DependencyInjectionExtensions": "[11.9.0, )",
           "GymApp.Common.Application": "[1.0.0, )",
           "GymApp.Modules.Billing.Domain": "[1.0.0, )",
+          "GymApp.Modules.Billing.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gyms.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Gyms.Shared": "[1.0.0, )",

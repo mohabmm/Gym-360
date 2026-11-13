@@ -1,3 +1,4 @@
+using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Domain;
 using GymApp.Modules.Communication.Application.Notifications;
 using GymApp.Modules.Communication.Domain.Entities;
@@ -12,19 +13,26 @@ namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
 internal sealed class SessionBookedIntegrationEventHandler : INotificationHandler<SessionBookedIntegrationEvent>
 {
+    private readonly IFeatureFlagService _featureFlags;
     private readonly INotificationRepository _notificationRepository;
     private readonly ICommunicationUnitOfWork _unitOfWork;
 
     public SessionBookedIntegrationEventHandler(
+        IFeatureFlagService featureFlags,
         INotificationRepository notificationRepository,
         ICommunicationUnitOfWork unitOfWork)
     {
+        _featureFlags = featureFlags;
         _notificationRepository = notificationRepository;
         _unitOfWork = unitOfWork;
     }
 
     public async Task Handle(SessionBookedIntegrationEvent notification, CancellationToken cancellationToken)
     {
+        // Notifications of disabled features never run for that gym.
+        if (!await _featureFlags.IsEnabledAsync(notification.GymId, FeatureKeys.SchedulingBooking, cancellationToken))
+            return;
+
         var data = new Dictionary<string, string>
         {
             ["sessionId"] = notification.SessionId.ToString(),

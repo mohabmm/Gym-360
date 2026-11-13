@@ -63,7 +63,7 @@ public sealed class SessionCompletedPackageDeductionIntegrationTests : BaseInteg
     {
         using var scope = Factory.Services.CreateScope();
         var repo = scope.ServiceProvider.GetRequiredService<ISessionPackageRepository>();
-        var pkg = await repo.GetActiveByMemberAndTrainerAsync(_gymId, _memberId, _trainerId);
+        var pkg = await repo.GetActiveByMemberAndTrainerAsync(new PackageParticipants(_gymId, _memberId, _trainerId));
         pkg.Should().NotBeNull();
         return pkg!;
     }

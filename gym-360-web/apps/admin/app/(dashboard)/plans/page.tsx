@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { PageHeader, ConfirmModal } from '@gym360/ui';
 import { usePlans, useFeatures, usePlanFeatureMatrix, usePlanChangeLogs } from '@/lib/hooks';
 import { buildFeatureMatrix } from '@/lib/plans';
@@ -54,6 +55,12 @@ export default function PlansPage() {
         description="Manage subscription plans, features, and the feature matrix"
         actions={<DeployHeaderButton pendingChanges={deploy.pendingChanges} onDeploy={deploy.openDeployModal} />}
       />
+
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+        Which features a gym sees is now managed per gym under{' '}
+        <Link href="/feature-flags" className="font-medium underline">Feature Flags</Link> (presets and overrides).
+        Plans here only set seat and storage limits. / يتم التحكم في ميزات كل نادٍ من صفحة «التحكم في الميزات»، والخطط هنا للحدود فقط.
+      </div>
 
       <DeployBar pendingChanges={deploy.pendingChanges} onDeploy={deploy.openDeployModal} />
 

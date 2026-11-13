@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Application.IntegrationEvents;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Domain.Errors;
@@ -10,11 +11,14 @@ internal sealed class UseSessionFromPackageCommandHandler : ICommandHandler<UseS
 {
     private readonly ISessionPackageRepository _packageRepository;
     private readonly IBillingUnitOfWork _unitOfWork;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public UseSessionFromPackageCommandHandler(
         ISessionPackageRepository packageRepository,
-        IBillingUnitOfWork unitOfWork)
+        IBillingUnitOfWork unitOfWork,
+        IIntegrationEventPublisher integrationEvents)
     {
+        _integrationEvents = integrationEvents;
         _packageRepository = packageRepository;
         _unitOfWork = unitOfWork;
     }
@@ -40,6 +44,7 @@ internal sealed class UseSessionFromPackageCommandHandler : ICommandHandler<UseS
         }
 
         _packageRepository.Update(package);
+        PackageMilestonePublisher.Enqueue(_integrationEvents, package);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gymapp_core/gymapp_core.dart' show TelemetryNavigatorObserver;
+import 'package:gymapp_core/gymapp_core.dart'
+    show FeatureFlagKeys, FeatureFlags, TelemetryNavigatorObserver, featureFlagsProvider;
+
+import 'feature_flags.dart';
 
 import 'providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -12,6 +15,7 @@ import '../features/clients/presentation/screens/client_roster_screen.dart';
 import '../features/clients/presentation/screens/client_detail_screen.dart';
 import '../features/clients/presentation/screens/onboarding_form_screen.dart';
 import '../features/clients/presentation/screens/client_notes_screen.dart';
+import '../features/clients/presentation/screens/record_measurements_screen.dart';
 import '../features/clients/presentation/screens/assign_workout_screen.dart';
 import '../features/workouts/presentation/screens/workout_builder_screen.dart';
 import '../features/workouts/presentation/screens/template_library_screen.dart';
@@ -50,6 +54,7 @@ class AppRoutes {
   static const String clientDetail = '/clients/:clientId';
   static const String clientOnboarding = '/clients/:clientId/onboarding';
   static const String clientNotes = '/clients/:clientId/notes';
+  static const String clientMeasurements = '/clients/:clientId/measurements';
   static const String assignWorkout = '/clients/:clientId/assign-workout';
   static const String workouts = '/workouts';
   static const String workoutBuilder = '/workouts/builder';
@@ -134,7 +139,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
       }
 
-      return null;
+      // Disabled features: redirect to home (covers deep links too).
+      return trainerFeatureRedirect(state.uri.toString(), ref.read(featureFlagsProvider));
     },
     routes: [
       // Auth routes (no shell)
@@ -205,6 +211,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           final clientId = state.pathParameters['clientId']!;
           return ClientDetailScreen(clientId: clientId);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.clientMeasurements,
+        builder: (context, state) =>
+            RecordMeasurementsScreen(clientId: state.pathParameters['clientId']!),
       ),
       GoRoute(
         path: AppRoutes.clientOnboarding,
@@ -351,9 +362,31 @@ final routerProvider = Provider<GoRouter>((ref) {
   // than refreshListenable which can miss state transitions in some Riverpod
   // versions.
   ref.listen<AuthState>(authProvider, (_, __) => router.refresh());
+  // Re-run the redirect when flags change so an open disabled screen closes.
+  ref.listen<FeatureFlags>(featureFlagsProvider, (_, __) => router.refresh());
 
   return router;
 });
+
+/// More-menu entries: icon, title, subtitle, route, owning flag.
+List<(IconData, String, String, String, String?)> _moreItems(bool ar) => [
+      (Icons.inventory_2_outlined, ar ? 'الباقات' : 'Packages', ar ? 'عرض باقات العملاء' : 'View client packages',
+          AppRoutes.clientPackages, FeatureFlagKeys.ptPackages),
+      (Icons.monetization_on_outlined, ar ? 'الارباح' : 'Earnings', ar ? 'عرض الارباح والجلسات' : 'View earnings & sessions',
+          AppRoutes.earningsDashboard, FeatureFlagKeys.gymFinance),
+      (Icons.chat_outlined, ar ? 'المحادثات' : 'Chat', ar ? 'محادثات العملاء' : 'Client conversations',
+          AppRoutes.chatList, FeatureFlagKeys.communicationChat),
+      (Icons.star_outline, ar ? 'تقييمي' : 'My Ratings', ar ? 'التقييمات والشارات' : 'Ratings & badges',
+          AppRoutes.myRatings, FeatureFlagKeys.ptCoachRatings),
+      (Icons.restaurant_outlined, ar ? 'خطط التغذية' : 'Meal Plans', ar ? 'بناء خطط تغذية للعملاء' : 'Build client meal plans',
+          AppRoutes.mealPlanBuilder, FeatureFlagKeys.nutrition),
+      (Icons.campaign_outlined, ar ? 'رسالة جماعية' : 'Broadcast', ar ? 'ارسال رسالة لجميع العملاء' : 'Message all clients',
+          AppRoutes.broadcast, FeatureFlagKeys.communicationAnnouncements),
+      (Icons.fitness_center_outlined, ar ? 'تفقد الشكل' : 'Form Check', ar ? 'مراجعة فيديوهات التمرين' : 'Review exercise videos',
+          AppRoutes.formCheck, FeatureFlagKeys.progressPhotos),
+      (Icons.notifications_outlined, ar ? 'الإشعارات' : 'Notifications', ar ? 'تنبيهات العملاء والباقات' : 'Client and package alerts',
+          AppRoutes.notifications, null),
+    ];
 
 /// The "More" tab menu screen.
 class MoreMenuScreen extends ConsumerWidget {
@@ -361,9 +394,9 @@ class MoreMenuScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final isArabic =
         Localizations.localeOf(context).languageCode == 'ar';
+    final flags = ref.watch(featureFlagsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -372,48 +405,14 @@ class MoreMenuScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
         children: [
-          _MoreMenuItem(
-            icon: Icons.monetization_on_outlined,
-            title: isArabic ? 'الارباح' : 'Earnings',
-            subtitle: isArabic ? 'عرض الارباح والجلسات' : 'View earnings & sessions',
-            onTap: () => context.push(AppRoutes.earningsDashboard),
-          ),
-          _MoreMenuItem(
-            icon: Icons.chat_outlined,
-            title: isArabic ? 'المحادثات' : 'Chat',
-            subtitle: isArabic ? 'محادثات العملاء' : 'Client conversations',
-            onTap: () => context.push(AppRoutes.chatList),
-          ),
-          _MoreMenuItem(
-            icon: Icons.inventory_2_outlined,
-            title: isArabic ? 'الباقات' : 'Packages',
-            subtitle: isArabic ? 'عرض باقات العملاء' : 'View client packages',
-            onTap: () => context.push(AppRoutes.clientPackages),
-          ),
-          _MoreMenuItem(
-            icon: Icons.star_outline,
-            title: isArabic ? 'تقييمي' : 'My Ratings',
-            subtitle: isArabic ? 'التقييمات والشارات' : 'Ratings & badges',
-            onTap: () => context.push(AppRoutes.myRatings),
-          ),
-          _MoreMenuItem(
-            icon: Icons.restaurant_outlined,
-            title: isArabic ? 'خطط التغذية' : 'Meal Plans',
-            subtitle: isArabic ? 'بناء خطط تغذية للعملاء' : 'Build client meal plans',
-            onTap: () => context.push(AppRoutes.mealPlanBuilder),
-          ),
-          _MoreMenuItem(
-            icon: Icons.campaign_outlined,
-            title: isArabic ? 'رسالة جماعية' : 'Broadcast',
-            subtitle: isArabic ? 'ارسال رسالة لجميع العملاء' : 'Message all clients',
-            onTap: () => context.push(AppRoutes.broadcast),
-          ),
-          _MoreMenuItem(
-            icon: Icons.fitness_center_outlined,
-            title: isArabic ? 'تفقد الشكل' : 'Form Check',
-            subtitle: isArabic ? 'مراجعة فيديوهات التمرين' : 'Review exercise videos',
-            onTap: () => context.push(AppRoutes.formCheck),
-          ),
+          // Only features that are on for this gym are listed.
+          for (final item in _moreItems(isArabic).where((i) => i.$5 == null || flags.isEnabled(i.$5!)))
+            _MoreMenuItem(
+              icon: item.$1,
+              title: item.$2,
+              subtitle: item.$3,
+              onTap: () => context.push(item.$4),
+            ),
           const Divider(height: 32),
           _MoreMenuItem(
             icon: Icons.person_outline,

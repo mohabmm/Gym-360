@@ -54,6 +54,9 @@ public sealed class IntegrationTestWebAppFactory
                 ["ConnectionStrings:Redis"] = _redisContainer.GetConnectionString(),
                 // Pin tenancy to Soft mode for integration tests.
                 ["Tenancy:Mode"] = "Soft",
+                // Existing suites exercise every module: gyms default to the all-on preset.
+                // Feature-flag tests assign presets explicitly.
+                ["FeatureFlags:DefaultPreset"] = "business",
                 // Jwt:SecretKey is set via env var in the ctor — Program.cs validates
                 // it before Build(), so an in-memory override here is too late.
             });
@@ -96,6 +99,8 @@ public sealed class IntegrationTestWebAppFactory
             typeof(GymApp.Modules.Billing.Infrastructure.Data.BillingDbContext),
             typeof(GymApp.Modules.Gamification.Infrastructure.Data.GamificationDbContext),
             typeof(GymApp.Common.Infrastructure.Outbox.OutboxDbContext),
+            typeof(GymApp.Common.Infrastructure.FeatureFlags.Persistence.FeatureFlagsDbContext),
+            typeof(GymApp.Common.Infrastructure.Tenancy.Registry.TenantRegistryDbContext),
         };
 
 
@@ -110,12 +115,18 @@ public sealed class IntegrationTestWebAppFactory
             .GetService<GymApp.Modules.Identity.Application.Abstractions.IIdentityUnitOfWork>();
         if (identityUow is DbContext identityDbContext)
             await identityDbContext.Database.EnsureCreatedAsync();
+
+        await GymApp.Common.Infrastructure.FeatureFlags.FeatureFlagSeeder.SeedAsync(Services);
     }
 
-    private static Task EnsureSchemaAsync(DbContext dbContext) =>
-        dbContext is GymApp.Common.Infrastructure.Outbox.OutboxDbContext
-            ? EnsureOutboxTablesAsync(dbContext)
-            : dbContext.Database.EnsureCreatedAsync();
+    private static Task EnsureSchemaAsync(DbContext dbContext) => dbContext switch
+    {
+        // Has real migrations (and the startup initializer may already have applied them).
+        GymApp.Common.Infrastructure.FeatureFlags.Persistence.FeatureFlagsDbContext => dbContext.Database.MigrateAsync(),
+        GymApp.Common.Infrastructure.Outbox.OutboxDbContext => EnsureOutboxTablesAsync(dbContext),
+        GymApp.Common.Infrastructure.Tenancy.Registry.TenantRegistryDbContext => EnsureRegistryTablesAsync(dbContext),
+        _ => dbContext.Database.EnsureCreatedAsync(),
+    };
 
     // EnsureCreatedAsync() no-ops once an earlier context created the
     // shared database, so the outbox schema/table is never made and
@@ -124,6 +135,19 @@ public sealed class IntegrationTestWebAppFactory
     // OutboxDbContext's model is OutboxMessage only, so per-context
     // CreateTablesAsync() creates exactly outbox.outbox_messages with
     // no cross-context model-merge risk.
+    // The startup initializer may already have created gyms_registry (EnsureCreated on a
+    // fresh DB); "object already exists" (2714) means there is nothing to do.
+    private static async Task EnsureRegistryTablesAsync(DbContext dbContext)
+    {
+        try
+        {
+            await EnsureOutboxTablesAsync(dbContext);
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2714)
+        {
+        }
+    }
+
     private static async Task EnsureOutboxTablesAsync(DbContext dbContext)
     {
         var creator = dbContext.GetService<IRelationalDatabaseCreator>();

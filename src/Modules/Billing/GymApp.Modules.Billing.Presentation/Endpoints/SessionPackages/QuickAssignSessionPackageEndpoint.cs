@@ -17,7 +17,8 @@ internal sealed class QuickAssignSessionPackageEndpoint : IEndpoint
         Guid AssignedBy,
         decimal? TotalPrice,
         string? PaymentMethod,
-        DateTime? ExpiresAt);
+        DateTime? ExpiresAt,
+        bool? IsTrial);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -33,7 +34,8 @@ internal sealed class QuickAssignSessionPackageEndpoint : IEndpoint
                 request.AssignedBy,
                 request.TotalPrice,
                 request.PaymentMethod,
-                request.ExpiresAt);
+                request.ExpiresAt,
+                request.IsTrial ?? false);
 
             var result = await sender.Send(command);
 
@@ -47,7 +49,7 @@ internal sealed class QuickAssignSessionPackageEndpoint : IEndpoint
         // themselves a free package.
         .RequireAuthorization("gym_staff")
         .WithTags("Billing")
-        .WithSummary("Quick-assign a trainer to a member with a session count (multiple of 4).")
+        .WithSummary("Quick-assign a trainer to a member with a session count (multiple of 4), or a free 1–3 session trial.")
         .WithDescription("Creates an Active SessionPackage with the given SessionCount (multiples of 4, 4..40), no template required. Used by the staff app/web 'Assign Trainer' flow on the member detail screen. TotalPrice is the lump-sum package price (per-session is derived); leave null for free assignments.")
         .Produces<ApiResponse<Guid>>(201)
         .Produces<ApiResponse<object>>(400)

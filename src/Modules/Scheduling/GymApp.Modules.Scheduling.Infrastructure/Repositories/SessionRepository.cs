@@ -74,6 +74,30 @@ internal sealed class SessionRepository : ISessionRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<Session?> FindRecentQuickLogAsync(
+        Guid trainerId,
+        Guid memberId,
+        DateTime sinceUtc,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.Sessions
+            .Where(s => s.TrainerId == trainerId
+                        && s.MemberId == memberId
+                        && s.IsQuickLog
+                        && s.CreatedAt >= sinceUtc)
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Session>> GetByMemberConfirmationAsync(
+        Guid gymId,
+        MemberConfirmationStatus status,
+        CancellationToken cancellationToken = default) =>
+        await _dbContext.Sessions
+            .AsNoTracking()
+            .Where(s => s.GymId == gymId && s.MemberConfirmation == status)
+            .OrderByDescending(s => s.ScheduledDate)
+            .ThenByDescending(s => s.ScheduledTime)
+            .ToListAsync(cancellationToken);
+
     public async Task AddAsync(
         Session session,
         CancellationToken cancellationToken = default)

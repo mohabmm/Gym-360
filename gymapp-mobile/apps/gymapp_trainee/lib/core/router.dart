@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart'
-    show TelemetryNavigatorObserver, UserModel;
+    show FeatureFlagKeys, TelemetryNavigatorObserver, UserModel, featureFlagsProvider;
+
+import 'feature_flags.dart';
 
 import 'providers.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -21,6 +23,7 @@ import '../features/progress/presentation/screens/log_weight_screen.dart';
 import '../features/progress/presentation/screens/log_measurements_screen.dart';
 import '../features/progress/presentation/screens/progress_photos_screen.dart';
 import '../features/scheduling/presentation/screens/upcoming_sessions_screen.dart';
+import '../features/scheduling/presentation/screens/pt_sessions_screen.dart';
 import '../features/scheduling/presentation/screens/book_session_screen.dart';
 import '../features/scheduling/presentation/screens/session_feedback_screen.dart';
 import '../features/scheduling/presentation/screens/session_detail_screen.dart';
@@ -90,6 +93,8 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
     ref.listen(authProvider, (_, __) => notifyListeners());
+    // Re-run the redirect when flags change so an open disabled screen closes.
+    ref.listen(featureFlagsProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -128,7 +133,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.home;
       }
 
-      return null;
+      // Disabled features: redirect to home (covers deep links too).
+      return traineeRouteGuard.redirect(state.uri.toString(), ref.read(featureFlagsProvider));
     },
     routes: [
       // Auth routes (no shell)
@@ -224,7 +230,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.schedule,
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: UpcomingSessionsScreen(),
+              child: _ScheduleTab(),
             ),
             routes: [
               GoRoute(
@@ -319,22 +325,35 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
+/// PT gyms (no self-booking) get the focused PT sessions screen; gyms with
+/// booking keep the full schedule.
+class _ScheduleTab extends ConsumerWidget {
+  const _ScheduleTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final booking = ref.watch(featureFlagsProvider).isEnabled(FeatureFlagKeys.schedulingBooking);
+    return booking ? const UpcomingSessionsScreen() : const PtSessionsScreen();
+  }
+}
+
 /// Placeholder for the More tab - it's defined inline here since it's
 /// a navigation hub rather than a feature screen.
-/// A "More" menu entry: icon, Arabic label, English label, route.
-typedef _MoreDestination = (IconData, String, String, String);
+/// A "More" menu entry: icon, Arabic label, English label, route, owning flag (null = always on).
+typedef _MoreDestination = (IconData, String, String, String, String?);
 
 const List<_MoreDestination> _moreFeatures = [
-  (Icons.qr_code, 'تسجيل الحضور', 'Check-in', AppRoutes.checkin),
-  (Icons.card_membership, 'العضوية', 'Membership', AppRoutes.membership),
-  (Icons.restaurant_outlined, 'التغذية', 'Nutrition', AppRoutes.nutrition),
-  (Icons.chat_outlined, 'المحادثة', 'Chat', AppRoutes.chat),
-  (Icons.campaign_outlined, 'الإعلانات', 'Announcements', AppRoutes.announcements),
-  (Icons.leaderboard_outlined, 'المتصدرين', 'Leaderboard', AppRoutes.leaderboard),
+  (Icons.card_membership, 'باقاتي', 'My packages', AppRoutes.membership, FeatureFlagKeys.ptPackages),
+  (Icons.qr_code, 'تسجيل الحضور', 'Check-in', AppRoutes.checkin, FeatureFlagKeys.gymAttendance),
+  (Icons.restaurant_outlined, 'التغذية', 'Nutrition', AppRoutes.nutrition, FeatureFlagKeys.nutrition),
+  (Icons.chat_outlined, 'المحادثة', 'Chat', AppRoutes.chat, FeatureFlagKeys.communicationChat),
+  (Icons.campaign_outlined, 'الإعلانات', 'Announcements', AppRoutes.announcements, FeatureFlagKeys.communicationAnnouncements),
+  (Icons.leaderboard_outlined, 'المتصدرين', 'Leaderboard', AppRoutes.leaderboard, FeatureFlagKeys.gamificationMemberLeaderboard),
+  (Icons.notifications_outlined, 'الإشعارات', 'Notifications', AppRoutes.notifications, null),
 ];
 
 const _MoreDestination _moreSettings =
-    (Icons.settings_outlined, 'الإعدادات', 'Settings', AppRoutes.settings);
+    (Icons.settings_outlined, 'الإعدادات', 'Settings', AppRoutes.settings, null);
 
 class _MoreScreen extends ConsumerWidget {
   const _MoreScreen();
@@ -344,9 +363,12 @@ class _MoreScreen extends ConsumerWidget {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final authState = ref.watch(authProvider);
     final user = authState.valueOrNull?.user;
+    final flags = ref.watch(featureFlagsProvider);
+    // Only features that are on for this gym are listed (no greyed-out entries).
+    final visible = _moreFeatures.where((d) => d.$5 == null || flags.isEnabled(d.$5!)).toList();
 
     Widget tile(_MoreDestination d) {
-      final (icon, ar, en, route) = d;
+      final (icon, ar, en, route, _) = d;
       return _MoreTile(
         icon: icon,
         label: isArabic ? ar : en,
@@ -364,8 +386,8 @@ class _MoreScreen extends ConsumerWidget {
           // User card
           if (user != null) _MoreUserCard(user: user, isArabic: isArabic),
           const Divider(),
-          ..._moreFeatures.map(tile),
-          const Divider(),
+          ...visible.map(tile),
+          if (visible.isNotEmpty) const Divider(),
           tile(_moreSettings),
         ],
       ),

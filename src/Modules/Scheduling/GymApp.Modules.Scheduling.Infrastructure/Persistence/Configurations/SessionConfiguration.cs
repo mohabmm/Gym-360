@@ -60,6 +60,19 @@ internal sealed class SessionConfiguration : IEntityTypeConfiguration<Session>
         builder.Property(e => e.CreatedAt)
             .IsRequired();
 
+        builder.Property(e => e.IsQuickLog)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(e => e.MemberConfirmation)
+            .IsRequired()
+            .HasDefaultValue(MemberConfirmationStatus.None);
+
+        builder.Property(e => e.MemberRespondedAt);
+
+        builder.Property(e => e.DisputeReason)
+            .HasMaxLength(500);
+
         builder.HasOne(e => e.TrainerLog)
             .WithOne()
             .HasForeignKey<TrainerLog>(t => t.SessionId)

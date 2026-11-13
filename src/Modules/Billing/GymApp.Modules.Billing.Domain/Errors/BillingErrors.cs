@@ -22,6 +22,9 @@ public static class BillingErrors
     public static readonly Error PaymentAlreadyVoided = new(
         "Billing.PaymentAlreadyVoided", "The payment has already been voided.");
 
+    public static readonly Error TrialAlreadyUsed = new(
+        "Billing.Trial.AlreadyExists", "This trainee already had a free trial.");
+
     public static readonly Error PackageExhausted = new(
         "Billing.PackageExhausted", "The session package has no remaining sessions.");
 

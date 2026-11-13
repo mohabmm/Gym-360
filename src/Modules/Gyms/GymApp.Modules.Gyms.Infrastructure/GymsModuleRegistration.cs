@@ -59,6 +59,7 @@ public static class GymsModuleRegistration
         services.AddScoped<IGymMemberDirectory, GymMemberDirectory>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Gyms.Application.Services.UserDataProvider>();
         services.AddScoped<IStaffSubRoleResolver, StaffSubRoleResolver>();
+        services.AddScoped<IGymDeskLookup, GymDeskLookup>();
 
         // Module-internal Application collaborators extracted from command handlers.
         services.AddScoped<GymApp.Modules.Gyms.Application.Services.GymSeatLimitChecker>();

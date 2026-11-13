@@ -15,20 +15,26 @@ class MembershipScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.valueOrNull?.user;
     final memberships = user?.gymMemberships ?? [];
+    // Membership card and payment history belong to modules that PT gyms keep off.
+    final flags = ref.watch(featureFlagsProvider);
+    final showMembership = flags.isEnabled(FeatureFlagKeys.gymMemberships);
+    final showPayments = flags.isEnabled(FeatureFlagKeys.gymFinance);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isArabic ? 'عضويتي' : 'My Membership'),
+        title: Text(showMembership
+            ? (isArabic ? 'عضويتي' : 'My Membership')
+            : (isArabic ? 'باقاتي' : 'My packages')),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(activePackagesProvider);
-          ref.invalidate(paymentHistoryProvider);
+          if (showPayments) ref.invalidate(paymentHistoryProvider);
         },
         child: CustomScrollView(
           slivers: [
             // Current gym membership
-            if (memberships.isNotEmpty)
+            if (showMembership && memberships.isNotEmpty)
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => _MembershipCard(
@@ -67,8 +73,7 @@ class MembershipScreen extends ConsumerWidget {
                             isArabic
                                 ? 'لا توجد باقات نشطة'
                                 : 'No active packages',
-                            style:
-                                Theme.of(context).textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
                       );
@@ -89,67 +94,66 @@ class MembershipScreen extends ConsumerWidget {
                       child: Center(child: CircularProgressIndicator()),
                     ),
                   ),
-                  error: (e, _) => const SliverToBoxAdapter(
-                      child: SizedBox.shrink()),
+                  error: (e, _) =>
+                      const SliverToBoxAdapter(child: SizedBox.shrink()),
                 );
               },
             ),
 
             // Payment history
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Text(
-                  isArabic ? 'سجل المدفوعات' : 'Payment History',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
+            if (showPayments)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: Text(
+                    isArabic ? 'سجل المدفوعات' : 'Payment History',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
-            ),
 
-            Consumer(
-              builder: (context, ref, _) {
-                final paymentsAsync = ref.watch(paymentHistoryProvider);
-                return paymentsAsync.when(
-                  data: (payments) {
-                    if (payments.isEmpty) {
-                      return SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          child: Text(
-                            isArabic
-                                ? 'لا توجد مدفوعات'
-                                : 'No payments',
-                            style:
-                                Theme.of(context).textTheme.bodyMedium,
+            if (showPayments)
+              Consumer(
+                builder: (context, ref, _) {
+                  final paymentsAsync = ref.watch(paymentHistoryProvider);
+                  return paymentsAsync.when(
+                    data: (payments) {
+                      if (payments.isEmpty) {
+                        return SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            child: Text(
+                              isArabic ? 'لا توجد مدفوعات' : 'No payments',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                           ),
+                        );
+                      }
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (ctx, i) => _PaymentTile(
+                            payment: payments[i],
+                            isArabic: isArabic,
+                          ),
+                          childCount: payments.length,
                         ),
                       );
-                    }
-                    return SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => _PaymentTile(
-                          payment: payments[i],
-                          isArabic: isArabic,
-                        ),
-                        childCount: payments.length,
+                    },
+                    loading: () => const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
                       ),
-                    );
-                  },
-                  loading: () => const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
                     ),
-                  ),
-                  error: (e, _) => const SliverToBoxAdapter(
-                      child: SizedBox.shrink()),
-                );
-              },
-            ),
+                    error: (e, _) =>
+                        const SliverToBoxAdapter(child: SizedBox.shrink()),
+                  );
+                },
+              ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
@@ -163,8 +167,7 @@ class _MembershipCard extends StatelessWidget {
   final GymMembershipModel membership;
   final bool isArabic;
 
-  const _MembershipCard(
-      {required this.membership, required this.isArabic});
+  const _MembershipCard({required this.membership, required this.isArabic});
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +191,9 @@ class _MembershipCard extends StatelessWidget {
 
     final subtitle = membership.membershipType ??
         (membership.section != null
-            ? (isArabic ? 'قسم: ${membership.section}' : 'Section: ${membership.section}')
+            ? (isArabic
+                ? 'قسم: ${membership.section}'
+                : 'Section: ${membership.section}')
             : null);
 
     return AppCard(
@@ -210,8 +215,8 @@ class _MembershipCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -241,8 +246,7 @@ class _MembershipCard extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .bodyMedium
-                    ?.copyWith(
-                        color: Theme.of(context).colorScheme.primary),
+                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
               ),
             ],
             if (membership.endDate != null) ...[
@@ -300,8 +304,7 @@ class _PackageTile extends StatelessWidget {
             Text(
               package.packageName ??
                   (isArabic ? 'باقة جلسات' : 'Session Package'),
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 6),
             Row(
@@ -347,21 +350,26 @@ class _PaymentTile extends StatelessWidget {
         : '-';
 
     final method = payment.method;
-    final hasMethod = method.trim().isNotEmpty && method.toLowerCase() != 'none';
-    final subtitleText = hasMethod ? '$dateStr • ${_methodLabel(method, isArabic)}' : dateStr;
+    final hasMethod =
+        method.trim().isNotEmpty && method.toLowerCase() != 'none';
+    final subtitleText =
+        hasMethod ? '$dateStr • ${_methodLabel(method, isArabic)}' : dateStr;
 
     return ListTile(
       leading: Icon(
         Icons.receipt_outlined,
-        color: payment.status.toLowerCase() == 'voided' ? Colors.red : Colors.green,
+        color: payment.status.toLowerCase() == 'voided'
+            ? Colors.red
+            : Colors.green,
       ),
       title: Text(_purposeLabel(payment.purpose, isArabic)),
       subtitle: Text(subtitleText),
       trailing: Text(
         '${payment.amount.toStringAsFixed(0)} ${payment.currency}',
         style: TextStyle(
-          color:
-              payment.status.toLowerCase() == 'voided' ? Colors.red : Colors.green,
+          color: payment.status.toLowerCase() == 'voided'
+              ? Colors.red
+              : Colors.green,
           fontWeight: FontWeight.w600,
         ),
       ),

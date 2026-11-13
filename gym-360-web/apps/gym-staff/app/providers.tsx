@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, type MutableRefObject, type ReactNode } fr
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { SessionProvider, useSession, signOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
-import { useSignalR, useInvalidateQueries, SuspensionOverlay, configureApiClient } from '@gym360/ui';
+import { useSignalR, useInvalidateQueries, SuspensionOverlay, configureApiClient, FEATURE_FLAGS_QUERY_KEY } from '@gym360/ui';
 import { Toaster } from 'sonner';
 
 type SessionStatus = ReturnType<typeof useSession>['status'];
@@ -104,8 +104,10 @@ function SignalRProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    // Plan deploys and Super Admin flag changes both arrive as config_updated.
     const handleConfigUpdate = () => {
       invalidate(['plan-features']);
+      invalidate([FEATURE_FLAGS_QUERY_KEY]);
     };
 
     const handleGymSuspended = () => {

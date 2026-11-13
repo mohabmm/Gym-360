@@ -4,6 +4,7 @@ using GymApp.Common.Infrastructure.Authentication;
 using GymApp.Common.Infrastructure.Tenancy;
 using GymApp.Modules.Identity.Domain.Entities;
 using GymApp.Modules.Identity.Domain.Enums;
+using GymApp.Modules.Identity.Domain.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -66,8 +67,9 @@ internal sealed class IdentityJwtTokenService : Application.Contracts.IJwtTokenS
         // table when this is a staff token with a resolved gym. Surfaced as `staffSubRole`
         // claim for fine-grained authorization (e.g. gym_owner_or_manager policy).
         var staffSubRole = await ResolveStaffSubRoleForUserAsync(user, gymId, schemaPrefix, cancellationToken);
+        var adminRole = await ResolveAdminRoleClaimAsync(user, cancellationToken);
 
-        return IssueAccessToken(user, new TenantClaims(gymId, schemaPrefix, staffSubRole));
+        return IssueAccessToken(user, new TenantClaims(gymId, schemaPrefix, staffSubRole), adminRole);
     }
 
     public async Task<string> GenerateAccessTokenForGymAsync(
@@ -82,17 +84,43 @@ internal sealed class IdentityJwtTokenService : Application.Contracts.IJwtTokenS
 
         // Resolve gym-side StaffRole sub-role (Owner/Manager/Receptionist) for staff tokens.
         var staffSubRole = await ResolveStaffSubRoleForUserAsync(user, gymId, schemaPrefix, cancellationToken);
+        var adminRole = await ResolveAdminRoleClaimAsync(user, cancellationToken);
 
-        return IssueAccessToken(user, new TenantClaims(gymId, schemaPrefix, staffSubRole));
+        return IssueAccessToken(user, new TenantClaims(gymId, schemaPrefix, staffSubRole), adminRole);
     }
 
     /// <summary>Gym-scoped claims embedded in an access token (all null for gym-less tokens).</summary>
     private sealed record TenantClaims(Guid? GymId, string? SchemaPrefix, string? StaffSubRole);
 
-    private string IssueAccessToken(User user, TenantClaims tenant)
+    private static readonly Dictionary<AdminRole, string> AdminRoleClaims = new()
     {
-        string? adminRole = user.Role == UserRole.PlatformAdmin ? "super_admin" : null;
+        [AdminRole.SuperAdmin] = "super_admin",
+        [AdminRole.Admin] = "admin",
+        [AdminRole.Support] = "support",
+        [AdminRole.Analyst] = "analyst",
+    };
 
+    /// <summary>
+    /// The platform admin's real role from <c>identity.platform_admins</c> (super_admin, admin,
+    /// support, analyst). A PlatformAdmin user without a platform_admins row is the bootstrap
+    /// account and keeps super_admin. Non-admins get no adminRole claim.
+    /// </summary>
+    private async Task<string?> ResolveAdminRoleClaimAsync(User user, CancellationToken cancellationToken)
+    {
+        if (user.Role != UserRole.PlatformAdmin)
+            return null;
+
+        using var scope = _scopeFactory.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        var roles = await users.GetAdminRolesForUsersAsync(new[] { user.Id }, cancellationToken);
+
+        return roles.TryGetValue(user.Id, out var role)
+            ? AdminRoleClaims.GetValueOrDefault(role, "analyst")
+            : AdminRoleClaims[AdminRole.SuperAdmin];
+    }
+
+    private string IssueAccessToken(User user, TenantClaims tenant, string? adminRole)
+    {
         return _jwtTokenService.GenerateAccessToken(
             new Common.Infrastructure.Authentication.AccessTokenClaims(user.Id, user.Email.Value, user.Role.ToRoleClaim())
             {

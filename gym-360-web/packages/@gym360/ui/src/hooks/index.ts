@@ -5,3 +5,5 @@ export { useApiQuery, useApiMutation, useInvalidateQueries } from './use-api';
 export { useAuthHelpers } from './use-auth';
 export { useLocale } from './use-locale';
 export { useTheme } from './use-theme';
+export { useFeatureFlags, FEATURE_FLAGS_QUERY_KEY, type FeatureFlagsResult } from './use-feature-flags';
+export { useDocumentLocale } from './use-document-locale';

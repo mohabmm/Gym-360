@@ -61,4 +61,22 @@ internal sealed class SessionPackageService : ISessionPackageService
         var bookable = totalRemaining - pendingBookings;
         return bookable < 0 ? 0 : bookable;
     }
+
+    public async Task<int?> GetRemainingWithTrainerAsync(
+        Guid memberId,
+        Guid trainerId,
+        Guid gymId,
+        CancellationToken cancellationToken = default)
+    {
+        var remaining = await _dbContext.SessionPackages
+            .AsNoTracking()
+            .Where(p => p.MemberId == memberId
+                        && p.TrainerId == trainerId
+                        && p.GymId == gymId
+                        && p.Status == "Active")
+            .Select(p => p.RemainingSessions)
+            .ToListAsync(cancellationToken);
+
+        return remaining.Count == 0 ? null : remaining.Sum();
+    }
 }

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@gym360/ui';
 import { toast } from 'sonner';
 import { useGym, useUpdateGym, useUpdateBranding, type GymProfile } from '@/lib/hooks/useGym';
+import { useStaffFlags } from '@/lib/feature-flags';
+import { FEATURE_FLAG_KEYS as K } from '@gym360/ui';
 import { apiErrorMessage } from '@/lib/api-error';
 import { BrandingSection } from '@/components/settings/BrandingSection';
 import { EMPTY_PROFILE, GymProfileSection, type GymProfileForm } from '@/components/settings/GymProfileSection';
@@ -33,6 +35,7 @@ export default function SettingsPage() {
   const { data: gym } = useGym();
   const updateGym = useUpdateGym();
   const updateBranding = useUpdateBranding();
+  const showBranding = useStaffFlags().isEnabled(K.GYM_BRANDING);
   const [profile, setProfile] = useState<GymProfileForm>(EMPTY_PROFILE);
   const [primaryColor, setPrimaryColor] = useState('#C41E3A');
   const [accentColor, setAccentColor] = useState('#D4AF37');
@@ -97,6 +100,7 @@ export default function SettingsPage() {
       <PageHeader title="Settings" description="Manage your gym profile and preferences" />
       <GymProfileSection profile={profile} onChange={updateField} onSave={handleSave} />
       <OperatingHoursSection />
+      {showBranding && (
       <BrandingSection
         gymName={profile.name}
         primaryColor={primaryColor}
@@ -104,6 +108,7 @@ export default function SettingsPage() {
         onPrimaryColorChange={onColorChange(setPrimaryColor)}
         onAccentColorChange={onColorChange(setAccentColor)}
       />
+      )}
       <AmenitiesSection />
       <SocialMediaSection />
       <NotificationsSection />
