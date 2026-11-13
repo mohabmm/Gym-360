@@ -24,10 +24,11 @@ const response = (enabled: string[], gymId = 'g1'): MyFeatureFlags => ({
 });
 
 test.describe('fail-safe defaults', () => {
-  test('defaults are exactly the 7 PT features, never all on', () => {
+  test('defaults are exactly the 10 PT features, never all on', () => {
     const snap = defaultsSnapshot('g1');
     expect([...snap.enabled].sort()).toEqual([...PT_MODULE_DEFAULTS].sort());
-    expect(snap.enabled.size).toBe(7);
+    expect(snap.enabled.size).toBe(10);
+    expect(snap.enabled.has(K.PT_PACKAGE_INTEREST)).toBe(true);
     expect(snap.enabled.has(K.GYM_FINANCE)).toBe(false);
     expect(snap.enabled.has(K.PT_AUTO_EXPIRY)).toBe(false);
   });

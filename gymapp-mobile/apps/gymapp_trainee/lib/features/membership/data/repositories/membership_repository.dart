@@ -12,6 +12,10 @@ class MembershipRepository {
   Future<List<SessionPackageModel>> getActivePackages() =>
       _remoteDataSource.getActivePackages();
 
+  /// Every package (active, used up, expired) — used to spot a finished trial.
+  Future<List<SessionPackageModel>> getAllPackages() =>
+      _remoteDataSource.getActivePackages(status: 'All');
+
   /// Paginated payment history. Exposes [PaginatedResult] so callers can
   /// drive infinite-scroll / paging UIs; legacy callers that only need the
   /// first page should use [getPayments].

@@ -106,6 +106,19 @@ final notConvertedTrialsProvider =
       );
 });
 
+/// pt.package_interest — trainees who tapped "I'm interested", oldest first (desk follow-up list).
+final pendingInterestsProvider =
+    FutureProvider.autoDispose<List<PackageInterestLead>>((ref) async {
+  return ref.watch(apiClientProvider).get<List<PackageInterestLead>>(
+        ApiEndpoints.packageInterest,
+        queryParameters: {'state': 'pending'},
+        parser: (data) => (data as List)
+            .map((e) => PackageInterestLead.fromJson(
+                Map<String, dynamic>.from(e as Map)))
+            .toList(),
+      );
+});
+
 /// Sessions the trainee disputed ("not me") waiting for the desk.
 final disputedSessionsProvider =
     FutureProvider.autoDispose<List<SessionModel>>((ref) async {

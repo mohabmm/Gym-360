@@ -7,6 +7,7 @@ import '../../../../core/providers.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
 import '../../../home/presentation/providers/trainer_dashboard_provider.dart';
 import '../../../revenue/presentation/providers/revenue_providers.dart';
+import 'trial_recap_widgets.dart';
 
 bool _isArabic(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar';
 
@@ -170,6 +171,8 @@ class ClientPackageTile extends StatelessWidget {
               ],
             ),
           ),
+          // Last free session: the coach can already send the plan.
+          if (package.isTrial && left <= 1) SendPlanButton(package: package, clientName: name),
           if (left > 0)
             FeatureFlagGate(
               flag: FeatureFlagKeys.ptDualSessionLogging,

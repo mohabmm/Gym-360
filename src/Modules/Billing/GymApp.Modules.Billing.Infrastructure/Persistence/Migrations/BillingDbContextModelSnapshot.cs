@@ -248,6 +248,52 @@ namespace GymApp.Modules.Billing.Infrastructure.Persistence.Migrations
                     b.ToTable("membership_plans", "billing");
                 });
 
+            modelBuilder.Entity("GymApp.Modules.Billing.Domain.Entities.PackageInterest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DismissedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DismissedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GymId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("RecommendedSessions")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("SourcePackageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TrainerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GymId", "MemberId");
+
+                    b.ToTable("package_interests", "billing");
+                });
+
             modelBuilder.Entity("GymApp.Modules.Billing.Domain.Entities.PackageUsage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -466,6 +512,16 @@ namespace GymApp.Modules.Billing.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RecapNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("RecapSentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RecommendedSessions")
+                        .HasColumnType("int");
 
                     b.Property<int>("RemainingSessions")
                         .HasColumnType("int");

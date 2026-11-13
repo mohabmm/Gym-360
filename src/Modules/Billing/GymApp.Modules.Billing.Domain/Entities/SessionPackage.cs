@@ -38,6 +38,15 @@ public sealed class SessionPackage : Entity
     /// <summary>Sessions counted against the package and not reversed.</summary>
     public int UsedSessions => TotalSessions - RemainingSessions;
 
+    /// <summary>pt.trial_recap: the coach's plan note for the trainee (trial packages only).</summary>
+    public string? RecapNote { get; private set; }
+
+    /// <summary>pt.trial_recap: package size the coach recommends; the desk sets the price.</summary>
+    public int? RecommendedSessions { get; private set; }
+
+    /// <summary>pt.trial_recap: when the coach last sent the recap.</summary>
+    public DateTime? RecapSentAt { get; private set; }
+
     public static SessionPackage Create(SessionPackageDetails details)
     {
         return new SessionPackage
@@ -91,6 +100,38 @@ public sealed class SessionPackage : Entity
     public void Expire()
     {
         Status = PackageStatus.Expired;
+    }
+
+    /// <summary>
+    /// pt.trial_recap: the trial's coach sends (or re-sends; the latest wins) the trainee a plan.
+    /// </summary>
+    public Result SendRecap(Guid trainerId, TrialRecap recap)
+    {
+        if (!IsTrial)
+            return Result.Failure(Errors.BillingErrors.TrialRecapNotATrial);
+
+        if (trainerId != TrainerId)
+            return Result.Failure(Errors.BillingErrors.TrialRecapForbidden);
+
+        RecapNote = recap.Note;
+        RecommendedSessions = recap.RecommendedSessions;
+        RecapSentAt = recap.SentAtUtc;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// pt.trial_followups: marks a post-trial reminder (day 3 / day 12) as due. Raises the
+    /// milestone once; returns false when it was already sent or this is not a finished trial.
+    /// </summary>
+    public bool TryMarkFollowUp(PackageMilestone followUp)
+    {
+        if (!IsTrial || Status != PackageStatus.Exhausted
+            || followUp is not (PackageMilestone.TrialFollowUpDay3 or PackageMilestone.TrialLastChanceDay12)
+            || !MarkMilestone(followUp))
+            return false;
+
+        RaiseDomainEvent(new SessionPackageMilestoneReachedDomainEvent(Id, GymId, MemberId, TrainerId, followUp, RemainingSessions));
+        return true;
     }
 
     /// <summary>

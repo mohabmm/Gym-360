@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { FEATURE_FLAG_KEYS as K } from '@gym360/ui';
-import { AlertTriangle, Gift, LineChart } from 'lucide-react';
-import { useNotConvertedTrials, usePtDashboard, useSessionsForReview } from '@/lib/hooks/usePt';
+import { AlertTriangle, Gift, LineChart, ThumbsUp } from 'lucide-react';
+import { useNotConvertedTrials, usePendingInterests, usePtDashboard, useSessionsForReview } from '@/lib/hooks/usePt';
 import { usePtText } from '@/lib/pt-text';
 
 interface DeskCardProps {
@@ -33,24 +33,29 @@ interface Props {
   canSeeOwnerDashboard: boolean;
 }
 
-/** PT home for the desk/owner: not-converted trials, disputed sessions and the 30-day PT summary. */
+/** PT home for the desk/owner: interested trainees, not-converted trials, disputed sessions and the 30-day PT summary. */
 export function PtDeskSection({ isEnabled, canSeeOwnerDashboard }: Props) {
   const t = usePtText();
+  const showInterests = isEnabled(K.PT_PACKAGE_INTEREST);
   const showTrials = isEnabled(K.PT_TRIAL_END_ALERTS);
   const showReview = isEnabled(K.PT_DUAL_SESSION_LOGGING);
   const showDashboard = canSeeOwnerDashboard && isEnabled(K.PT_OWNER_DASHBOARD);
+  const { data: interests = [] } = usePendingInterests(showInterests);
   const { data: trials = [] } = useNotConvertedTrials(showTrials);
   const { data: disputed = [] } = useSessionsForReview(showReview);
   const { data: dashboard } = usePtDashboard(30, showDashboard);
 
-  const showAny = [showTrials, showReview, showDashboard].some(Boolean);
+  const showAny = [showInterests, showTrials, showReview, showDashboard].some(Boolean);
   if (!showAny) return null;
   const totals = dashboard?.totals;
 
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">{t.deskTitle}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {showInterests && (
+          <DeskCard href="/pt/interests" icon={<ThumbsUp className="h-5 w-5" />} title={t.navInterests} value={String(interests.length)} hint={t.interestsDescription} />
+        )}
         {showTrials && (
           <DeskCard href="/pt/trials" icon={<Gift className="h-5 w-5" />} title={t.navTrials} value={String(trials.length)} hint={t.trialsDescription} />
         )}

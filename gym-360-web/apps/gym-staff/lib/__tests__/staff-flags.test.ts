@@ -8,7 +8,7 @@ const all = () => true;
 
 const OFF_IN_PT = ['/classes', '/exercises', '/messages', '/billing', '/gamification', '/announcements', '/analytics', '/check-ins', '/kiosk-pin', '/data-import'];
 const ALWAYS_ON = ['/', '/members', '/members/abc', '/trainers', '/trainers/abc', '/staff', '/settings', '/subscription'];
-const PT_PAGES = ['/pt/trials', '/pt/review', '/pt/dashboard'];
+const PT_PAGES = ['/pt/trials', '/pt/review', '/pt/dashboard', '/pt/interests'];
 
 test('pt_module: every OFF-module route is blocked', () => {
   for (const path of OFF_IN_PT) expect(isPathEnabled(path, STAFF_ROUTE_RULES, pt), path).toBe(false);
@@ -26,6 +26,10 @@ test('one override turns on exactly its route', () => {
   const withClasses = (k: string) => pt(k) || k === K.CLASSES;
   expect(isPathEnabled('/classes', STAFF_ROUTE_RULES, withClasses)).toBe(true);
   expect(isPathEnabled('/billing', STAFF_ROUTE_RULES, withClasses)).toBe(false);
+});
+
+test('interest list follows pt.package_interest', () => {
+  expect(isPathEnabled('/pt/interests', STAFF_ROUTE_RULES, (k) => k !== K.PT_PACKAGE_INTEREST && pt(k))).toBe(false);
 });
 
 test('deep sub-routes inherit their module flag', () => {

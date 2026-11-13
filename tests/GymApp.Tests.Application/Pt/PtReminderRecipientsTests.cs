@@ -65,12 +65,42 @@ public class PtReminderRecipientsTests
         (await PushedToAsync(Event(Milestones.RenewalOneLeft, 1))).Should().BeEquivalentTo(new[] { Member, Coach, Desk });
     }
 
-    [Theory]
-    [InlineData(Milestones.TrialLastSession, 1)]
-    [InlineData(Milestones.TrialFinished, 0)]
-    public async Task Trial_alerts_reach_coach_and_desk(string milestone, int remaining)
+    [Fact]
+    public async Task Last_free_session_reaches_coach_and_desk()
     {
-        (await PushedToAsync(Event(milestone, remaining, trial: true))).Should().BeEquivalentTo(new[] { Coach, Desk });
+        (await PushedToAsync(Event(Milestones.TrialLastSession, 1, trial: true))).Should().BeEquivalentTo(new[] { Coach, Desk });
+    }
+
+    [Fact]
+    public async Task Trial_finished_reaches_coach_desk_and_trainee()
+    {
+        (await PushedToAsync(Event(Milestones.TrialFinished, 0, trial: true))).Should().BeEquivalentTo(new[] { Coach, Desk, Member });
+    }
+
+    [Fact]
+    public async Task Trial_finished_skips_the_trainee_when_follow_ups_are_off()
+    {
+        _flags.IsEnabledAsync(Gym, FeatureKeys.PtTrialFollowUps, Arg.Any<CancellationToken>()).Returns(false);
+
+        (await PushedToAsync(Event(Milestones.TrialFinished, 0, trial: true))).Should().BeEquivalentTo(new[] { Coach, Desk });
+    }
+
+    [Theory]
+    [InlineData(Milestones.TrialFollowUpDay3)]
+    [InlineData(Milestones.TrialLastChanceDay12)]
+    public async Task Follow_up_reminders_reach_only_the_trainee(string milestone)
+    {
+        (await PushedToAsync(Event(milestone, 0, trial: true))).Should().BeEquivalentTo(new[] { Member });
+    }
+
+    [Theory]
+    [InlineData(Milestones.TrialFollowUpDay3)]
+    [InlineData(Milestones.TrialLastChanceDay12)]
+    public async Task Follow_up_reminders_flag_off_sends_nothing(string milestone)
+    {
+        _flags.IsEnabledAsync(Gym, FeatureKeys.PtTrialFollowUps, Arg.Any<CancellationToken>()).Returns(false);
+
+        (await PushedToAsync(Event(milestone, 0, trial: true))).Should().BeEmpty();
     }
 
     [Fact]
@@ -82,9 +112,10 @@ public class PtReminderRecipientsTests
     }
 
     [Fact]
-    public async Task Trial_alerts_flag_off_sends_nothing()
+    public async Task Trial_alerts_and_follow_ups_off_sends_nothing()
     {
         _flags.IsEnabledAsync(Gym, FeatureKeys.PtTrialEndAlerts, Arg.Any<CancellationToken>()).Returns(false);
+        _flags.IsEnabledAsync(Gym, FeatureKeys.PtTrialFollowUps, Arg.Any<CancellationToken>()).Returns(false);
 
         (await PushedToAsync(Event(Milestones.TrialFinished, 0, trial: true))).Should().BeEmpty();
     }

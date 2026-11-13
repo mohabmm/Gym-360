@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../sessions/presentation/pt/pt_coach_widgets.dart';
+import '../../../sessions/presentation/pt/trial_recap_widgets.dart';
 import '../../../revenue/presentation/providers/revenue_providers.dart';
 import 'package:intl/intl.dart';
 
@@ -94,6 +95,10 @@ class TrainerHomeScreen extends ConsumerWidget {
                       onAction: () => context.go(AppRoutes.clients),
                     ),
                     const PtClientsPanel(),
+                    if (flags.isEnabled(FeatureFlagKeys.ptTrialRecap)) ...[
+                      const SizedBox(height: 8),
+                      const FinishedTrialsPanel(),
+                    ],
                   ],
                   if (booking) ...[
                     const SizedBox(height: 24),

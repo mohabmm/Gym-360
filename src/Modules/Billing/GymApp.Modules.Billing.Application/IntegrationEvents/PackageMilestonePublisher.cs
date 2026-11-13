@@ -36,6 +36,8 @@ internal static class PackageMilestonePublisher
         PackageMilestone.RenewalThreeLeft => Milestones.RenewalThreeLeft,
         PackageMilestone.RenewalOneLeft => Milestones.RenewalOneLeft,
         PackageMilestone.TrialLastSession => Milestones.TrialLastSession,
+        PackageMilestone.TrialFollowUpDay3 => Milestones.TrialFollowUpDay3,
+        PackageMilestone.TrialLastChanceDay12 => Milestones.TrialLastChanceDay12,
         _ => Milestones.TrialFinished,
     };
 }

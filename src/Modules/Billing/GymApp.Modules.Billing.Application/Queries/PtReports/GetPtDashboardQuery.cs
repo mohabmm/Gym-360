@@ -19,7 +19,9 @@ public sealed record PtDashboardTotals(
     int NewPaidPackages,
     int SessionsLogged,
     int ActiveTrials,
-    int NotConvertedTrials);
+    int NotConvertedTrials,
+    // pt.package_interest: leads waiting for the desk (0 when the flag is off).
+    int PendingInterests = 0);
 
 public sealed record PtCoachRowDto(
     Guid TrainerId,

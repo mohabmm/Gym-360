@@ -16,6 +16,12 @@ public enum PackageMilestone
 
     /// <summary>Trial: all free sessions used.</summary>
     TrialFinished = 3,
+
+    /// <summary>Trial finished 3 days ago and the trainee has not subscribed (pt.trial_followups).</summary>
+    TrialFollowUpDay3 = 4,
+
+    /// <summary>Trial finished 12 days ago and the trainee has not subscribed: last nudge (pt.trial_followups).</summary>
+    TrialLastChanceDay12 = 5,
 }
 
 public sealed record SessionPackageMilestoneReachedDomainEvent(

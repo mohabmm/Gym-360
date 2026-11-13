@@ -3,6 +3,7 @@ using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Application.Services;
+using GymApp.Modules.Billing.Domain.Entities;
 using GymApp.Modules.Billing.Domain.Enums;
 using GymApp.Modules.Billing.Domain.Repositories;
 using GymApp.Modules.Identity.Shared;
@@ -12,17 +13,20 @@ namespace GymApp.Modules.Billing.Application.Queries.PtReports;
 internal sealed class GetPtDashboardQueryHandler : IQueryHandler<GetPtDashboardQuery, PtDashboardDto>
 {
     private readonly ISessionPackageRepository _packages;
+    private readonly IPackageInterestRepository _interests;
     private readonly IUserDisplayLookup _users;
     private readonly IFeatureFlagService _featureFlags;
     private readonly IDateTimeProvider _clock;
 
     public GetPtDashboardQueryHandler(
         ISessionPackageRepository packages,
+        IPackageInterestRepository interests,
         IUserDisplayLookup users,
         IFeatureFlagService featureFlags,
         IDateTimeProvider clock)
     {
         _packages = packages;
+        _interests = interests;
         _users = users;
         _featureFlags = featureFlags;
         _clock = clock;
@@ -48,7 +52,8 @@ internal sealed class GetPtDashboardQueryHandler : IQueryHandler<GetPtDashboardQ
             coaches.Sum(c => c.NewPaidPackages),
             coaches.Sum(c => c.SessionsLogged),
             packages.Count(p => p.IsTrial && p.Status == PackageStatus.Active),
-            PtMetricsCalculator.NotConverted(facts, _clock.UtcNow).Count);
+            PtMetricsCalculator.NotConverted(facts, _clock.UtcNow).Count,
+            await PendingInterestsAsync(request.GymId, packages, cancellationToken));
 
         var rows = coaches
             .Select(c => new PtCoachRowDto(
@@ -63,5 +68,16 @@ internal sealed class GetPtDashboardQueryHandler : IQueryHandler<GetPtDashboardQ
             .ToList();
 
         return Result.Success(new PtDashboardDto(request.FromUtc, request.ToUtc, totals, rows));
+    }
+
+    private async Task<int> PendingInterestsAsync(
+        Guid gymId, IReadOnlyList<SessionPackage> packages, CancellationToken cancellationToken)
+    {
+        if (!await _featureFlags.IsEnabledAsync(gymId, FeatureKeys.PtPackageInterest, cancellationToken))
+            return 0;
+
+        var interests = await _interests.GetByGymAsync(gymId, cancellationToken);
+        return interests.Count(i => i.IsPendingGiven(
+            packages.Where(p => !p.IsTrial && p.MemberId == i.MemberId).Select(p => p.CreatedAt)));
     }
 }

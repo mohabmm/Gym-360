@@ -8,8 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GymApp.Tests.Integration.Pt;
 
 /// <summary>
-/// The startup patch must add the PT columns to existing per-gym tables (which are never
-/// EF-migrated), keep existing rows, and be safe to run on every deploy.
+/// The startup patch must add the PT columns and tables to existing per-gym schemas (which are
+/// never EF-migrated), keep existing rows, and be safe to run on every deploy.
 /// </summary>
 public sealed class PtSchemaPatchTests : BaseIntegrationTest
 {
@@ -36,7 +36,9 @@ INSERT INTO [{prefix}_scheduling].[sessions] VALUES (NEWID(), N'old session');")
         await db.ExecuteSqlRawAsync(PtSchemaPatch.Sql); // second deploy: no-op
 
         var packageColumns = await ColumnsAsync(db, $"{prefix}_billing", "session_packages");
-        packageColumns.Should().Contain(new[] { "IsTrial", "ExhaustedAt", "MilestonesSent", "Name" });
+        packageColumns.Should().Contain(new[] { "IsTrial", "ExhaustedAt", "MilestonesSent", "RecapNote", "RecommendedSessions", "RecapSentAt", "Name" });
+        (await ColumnsAsync(db, $"{prefix}_billing", "package_interests"))
+            .Should().Contain(new[] { "Id", "GymId", "MemberId", "TrainerId", "SourcePackageId", "Source", "Status", "CreatedAt" });
         var sessionColumns = await ColumnsAsync(db, $"{prefix}_scheduling", "sessions");
         sessionColumns.Should().Contain(new[] { "IsQuickLog", "MemberConfirmation", "MemberRespondedAt", "DisputeReason", "Focus" });
 

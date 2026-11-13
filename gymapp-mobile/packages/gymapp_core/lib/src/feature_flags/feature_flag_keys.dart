@@ -8,6 +8,9 @@ abstract final class FeatureFlagKeys {
   static const ptDualSessionLogging = 'pt.dual_session_logging';
   static const ptRenewalReminders = 'pt.renewal_reminders';
   static const ptOwnerDashboard = 'pt.owner_dashboard';
+  static const ptTrialRecap = 'pt.trial_recap';
+  static const ptPackageInterest = 'pt.package_interest';
+  static const ptTrialFollowUps = 'pt.trial_followups';
 
   // PT later phase — OFF in pt_module.
   static const ptMonthlyReport = 'pt.monthly_report';
@@ -52,5 +55,8 @@ abstract final class FeatureFlagKeys {
     ptDualSessionLogging,
     ptRenewalReminders,
     ptOwnerDashboard,
+    ptTrialRecap,
+    ptPackageInterest,
+    ptTrialFollowUps,
   };
 }
