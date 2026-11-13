@@ -83,7 +83,7 @@ internal static class MemberAccess
     /// carries no gym claim; TenantResolutionMiddleware has already verified they own the
     /// route's gym (and 404s otherwise), so that case is accepted here.
     /// </summary>
-    private static bool IsScopedToGym(ClaimsPrincipal user, Guid gymId)
+    public static bool IsScopedToGym(ClaimsPrincipal user, Guid gymId)
     {
         var gymClaim = user.FindFirstValue("gymId");
         if (!string.IsNullOrEmpty(gymClaim))
@@ -110,6 +110,6 @@ internal static class MemberAccess
             return await next(context);
         });
 
-    private static Guid? RouteGuid(HttpContext http, string key) =>
+    public static Guid? RouteGuid(HttpContext http, string key) =>
         Guid.TryParse(http.Request.RouteValues[key]?.ToString(), out var value) ? value : null;
 }

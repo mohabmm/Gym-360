@@ -32,7 +32,9 @@ internal sealed class AddTrainerEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(200)
         .Produces<ApiResponse<object>>(400)
         .Produces<ApiResponse<object>>(401)
+        .Produces<ApiResponse<object>>(403)
         .Produces<ApiResponse<object>>(404)
-        .RequireAuthorization();
+        .RequireAuthorization()
+        .RequireTrainerRosterAccess(TrainerRosterAction.Add);
     }
 }
