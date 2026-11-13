@@ -48,7 +48,8 @@ void main() {
   test('creates the trainer account, then adds them to the gym', () async {
     final api = _FakeApi();
     await createTrainerForGym(api,
-        gymId: 'g-1', firstName: 'Omar', lastName: 'Ali', phone: '01012345678', email: '');
+        gymId: 'g-1',
+        trainer: const NewTrainer(firstName: 'Omar', lastName: 'Ali', phone: '01012345678', email: ''));
 
     expect(api.calls.map((c) => c.path), [
       ApiEndpoints.identityStaffCreateTrainer,

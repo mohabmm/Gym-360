@@ -13,24 +13,30 @@ const String trainerInitialPassword = '123456';
 /// Shown when the phone/email already belongs to a trainer on this gym's roster.
 const String trainerAlreadyAddedMessage = 'The trainer is already added to this gym.';
 
+/// The details staff enter for a new trainer.
+class NewTrainer {
+  final String firstName;
+  final String lastName;
+  final String phone;
+  final String? email;
+
+  const NewTrainer({required this.firstName, required this.lastName, required this.phone, this.email});
+
+  /// Body for staff-create-trainer; a blank email is sent as null.
+  Map<String, dynamic> toJson() => {
+        'firstName': firstName,
+        'lastName': lastName,
+        'phone': phone,
+        'email': (email == null || email!.isEmpty) ? null : email,
+      };
+}
+
 /// Creates the trainer's account (or reuses the one behind the phone/email),
 /// then adds them to this gym's roster. Same two calls as the staff web app.
-Future<void> createTrainerForGym(
-  ApiClient apiClient, {
-  required String gymId,
-  required String firstName,
-  required String lastName,
-  required String phone,
-  String? email,
-}) async {
+Future<void> createTrainerForGym(ApiClient apiClient, {required String gymId, required NewTrainer trainer}) async {
   final created = await apiClient.post<Map<String, dynamic>>(
     ApiEndpoints.identityStaffCreateTrainer,
-    data: {
-      'firstName': firstName,
-      'lastName': lastName,
-      'phone': phone,
-      'email': (email == null || email.isEmpty) ? null : email,
-    },
+    data: trainer.toJson(),
     parser: (data) => data as Map<String, dynamic>,
   );
   await apiClient.post<void>(
@@ -74,10 +80,12 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
       await createTrainerForGym(
         ref.read(apiClientProvider),
         gymId: ref.read(currentGymIdProvider),
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        phone: phone,
-        email: _emailController.text.trim(),
+        trainer: NewTrainer(
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          phone: phone,
+          email: _emailController.text.trim(),
+        ),
       );
       ref.invalidate(trainersProvider);
       if (!mounted) return;
