@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
+import 'package:gymapp_gym/core/staff_created_account.dart';
 import 'package:gymapp_gym/features/trainers/presentation/screens/add_trainer_screen.dart';
 
 class _Call {
@@ -11,9 +12,11 @@ class _Call {
   _Call(this.path, this.data);
 }
 
-/// Records POSTs; answers the create-trainer call with a user id.
+/// Records POSTs; answers the create-trainer call with a user id and [initialPassword].
 class _FakeApi implements ApiClient {
   final calls = <_Call>[];
+  final String? initialPassword;
+  _FakeApi({this.initialPassword = '12345678'});
 
   @override
   Future<T> post<T>(
@@ -24,7 +27,9 @@ class _FakeApi implements ApiClient {
     dynamic cancelToken,
   }) async {
     calls.add(_Call(path, data));
-    return parser(path == ApiEndpoints.identityStaffCreateTrainer ? {'userId': 'u-1'} : null);
+    return parser(path == ApiEndpoints.identityStaffCreateTrainer
+        ? {'userId': 'u-1', 'initialPassword': initialPassword}
+        : null);
   }
 
   @override
@@ -47,7 +52,7 @@ Widget _app(Locale locale) => ProviderScope(
 void main() {
   test('creates the trainer account, then adds them to the gym', () async {
     final api = _FakeApi();
-    await createTrainerForGym(api,
+    final created = await createTrainerForGym(api,
         gymId: 'g-1',
         trainer: const NewTrainer(firstName: 'Omar', lastName: 'Ali', phone: '01012345678', email: ''));
 
@@ -62,6 +67,20 @@ void main() {
       'email': null,
     });
     expect(api.calls.last.data, {'trainerId': 'u-1'});
+    expect(created.userId, 'u-1');
+    expect(created.initialPassword, '12345678');
+  });
+
+  test('an existing trainer comes back without a password (theirs is unchanged)', () async {
+    final created = await createTrainerForGym(_FakeApi(initialPassword: null),
+        gymId: 'g-1', trainer: const NewTrainer(firstName: 'Omar', lastName: 'Ali', phone: '01012345678'));
+
+    expect(created.userId, 'u-1');
+    expect(created.initialPassword, isNull);
+  });
+
+  test('the default first password is 12345678', () {
+    expect(kStaffCreatedAccountPassword, '12345678');
   });
 
   testWidgets('empty form shows Arabic required errors and sends nothing', (tester) async {

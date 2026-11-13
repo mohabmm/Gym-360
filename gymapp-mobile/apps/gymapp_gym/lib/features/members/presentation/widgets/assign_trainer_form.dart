@@ -142,7 +142,8 @@ class AssignTrainerFields extends StatelessWidget {
 
   Widget _trainerPicker() => DropdownButtonFormField<String>(
         key: const ValueKey('assign-trainer'),
-        initialValue: draft.trainerId,
+        // Never hand the dropdown a value missing from its items (Flutter asserts).
+        initialValue: trainers.any((t) => t.id == draft.trainerId) ? draft.trainerId : null,
         isExpanded: true,
         decoration: InputDecoration(labelText: isArabic ? 'المدرب' : 'Coach'),
         hint: Text(isArabic ? 'اختر المدرب' : 'Pick a coach'),

@@ -16,7 +16,8 @@ internal sealed class CreateTrainerByStaffEndpoint : IEndpoint
         string Phone,
         string? Email);
 
-    internal sealed record Response(Guid UserId, string InitialPassword);
+    /// <param name="InitialPassword">Null when the trainer already had an account (password unchanged).</param>
+    internal sealed record Response(Guid UserId, string? InitialPassword);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -36,12 +37,12 @@ internal sealed class CreateTrainerByStaffEndpoint : IEndpoint
             var result = await sender.Send(command);
 
             return result.IsSuccess
-                ? ApiResults.Created(new Response(result.Value, "123456"))
+                ? ApiResults.Created(new Response(result.Value.UserId, result.Value.InitialPassword))
                 : ApiResults.Problem(result.Error);
         })
         .WithTags("Identity")
         .WithSummary("Create a trainer user account (staff-driven)")
-        .WithDescription("Creates a User with role=Trainer on behalf of a gym staff member. The trainer's initial password is hardcoded to `123456` and returned as `initialPassword` in the response — staff should display it once and instruct the trainer to change it on first login. If a user with the provided phone or email already exists, that user's Id is returned (and password reset to `123456`) so the caller can enroll them in a new gym. Does not return auth tokens.")
+        .WithDescription("Creates a User with role=Trainer on behalf of a gym staff member. A new trainer's initial password is `12345678`, returned as `initialPassword` — staff should display it once and instruct the trainer to change it on first login. If an existing trainer has the provided phone or email, that user's Id is returned with `initialPassword: null` so the caller can enroll them in a new gym; their password is NOT changed. Does not return auth tokens.")
         .Produces<ApiResponse<Response>>(StatusCodes.Status201Created)
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)

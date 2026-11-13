@@ -88,7 +88,10 @@ function extractUserId(payload: any): string | null {
   return payload?.userId ?? payload?.id ?? payload ?? null;
 }
 
-async function createTrainerUser(data: CreateTrainerInput): Promise<string> {
+/** The trainer's id, and their first password — null when they already had an account. */
+export interface CreatedTrainer { userId: string; initialPassword: string | null }
+
+async function createTrainerUser(data: CreateTrainerInput): Promise<CreatedTrainer> {
   const [firstName, ...rest] = data.name.trim().split(/\s+/);
   const lastName = rest.join(' ') || firstName;
   const userRes = await apiClient.post('/identity/users/staff-create-trainer', {
@@ -97,19 +100,21 @@ async function createTrainerUser(data: CreateTrainerInput): Promise<string> {
     phone: data.phone,
     email: data.email || null,
   });
-  const userId = extractUserId(userRes.data?.data);
+  const payload = userRes.data?.data;
+  const userId = extractUserId(payload);
   if (!userId) {
     throw new Error('Identity service did not return a user id.');
   }
-  return userId;
+  return { userId, initialPassword: payload?.initialPassword ?? null };
 }
 
 const trainersKey = ({ gymId }: GymScope) => ['trainers', gymId];
 
 export function useCreateTrainer() {
-  return useGymMutation(async (data: CreateTrainerInput, { gymId }) => {
-    const userId = await createTrainerUser(data);
-    return postData(`/gyms/${gymId}/trainers`, { trainerId: userId });
+  return useGymMutation(async (data: CreateTrainerInput, { gymId }): Promise<CreatedTrainer> => {
+    const created = await createTrainerUser(data);
+    await postData(`/gyms/${gymId}/trainers`, { trainerId: created.userId });
+    return created;
   }, trainersKey);
 }
 

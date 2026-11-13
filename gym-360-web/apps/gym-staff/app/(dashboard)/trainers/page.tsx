@@ -68,8 +68,13 @@ export default function TrainersPage() {
     createTrainer.mutate(
       { name, email: newTrainer.email || undefined, phone: newTrainer.phone },
       {
-        onSuccess: () => {
-          toast.success(`${name} added.`);
+        onSuccess: ({ initialPassword }) => {
+          toast.success(`${name} added.`, {
+            description: initialPassword
+              ? `Login: ${newTrainer.phone} / password ${initialPassword}`
+              : 'Already has an account — signs in with their current password.',
+            duration: 15000,
+          });
           setNewTrainer({ name: '', nameAr: '', email: '', phone: '', specializations: '' });
           setShowAddTrainer(false);
         },
@@ -219,8 +224,8 @@ export default function TrainersPage() {
             <input value={newTrainer.specializations} onChange={(e) => setNewTrainer({ ...newTrainer, specializations: e.target.value })} placeholder="Strength, Hypertrophy, Boxing" className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
           </label>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            <p className="font-semibold">Default login password: <span className="font-mono">12345678</span></p>
-            <p className="mt-1">Share with the trainer privately. They should change it on first login.</p>
+            <p className="font-semibold">New trainer login password: <span className="font-mono">12345678</span></p>
+            <p className="mt-1">Share with the trainer privately. They should change it on first login. A trainer who already has an account keeps their own password.</p>
           </div>
         </div>
       </Modal>

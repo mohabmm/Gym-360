@@ -4,6 +4,7 @@ using GymApp.Common.Presentation;
 using GymApp.Modules.Gyms.Application.Commands.AddMember;
 using GymApp.Modules.Gyms.Application.Contracts;
 using GymApp.Modules.Identity.Application.Commands.CreateMemberByStaff;
+using GymApp.Modules.Identity.Application.Common;
 using GymApp.Modules.Identity.Application.Commands.LinkMemberToGym;
 using GymApp.Modules.Identity.Domain.Enums;
 using MediatR;
@@ -71,11 +72,11 @@ internal sealed class StaffCreateMemberEndpoint : IEndpoint
             if (linkResult.IsFailure)
                 return ApiResults.Problem(linkResult.Error);
 
-            return ApiResults.Created(new Response(userId, "123456", memberNumber));
+            return ApiResults.Created(new Response(userId, StaffCreatedAccount.DefaultPassword, memberNumber));
         })
         .WithTags("Identity")
         .WithSummary("Create a member user account (staff-driven) and link to gym")
-        .WithDescription("Creates a NEW User with role=Trainee on behalf of a gym staff member, registers a unique MemberNumber for the gym, and links the user to the staff's gym. Initial password is `123456` (returned as `initialPassword`). Returns 409 if the phone/email already belongs to a member — use `staff-lookup` + `staff-link-existing` to re-link a returning member instead. Requires staff JWT with a gym claim.")
+        .WithDescription("Creates a NEW User with role=Trainee on behalf of a gym staff member, registers a unique MemberNumber for the gym, and links the user to the staff's gym. Initial password is `12345678` (returned as `initialPassword`). Returns 409 if the phone/email already belongs to a member — use `staff-lookup` + `staff-link-existing` to re-link a returning member instead. Requires staff JWT with a gym claim.")
         .Produces<ApiResponse<Response>>(StatusCodes.Status201Created)
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)

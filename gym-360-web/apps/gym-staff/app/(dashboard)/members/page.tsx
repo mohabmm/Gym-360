@@ -275,6 +275,7 @@ export default function MembersPage() {
             <span className="text-sm font-medium">National ID</span>
             <input inputMode="numeric" maxLength={14} value={newMember.nationalId} onChange={(e) => setNewMember({ ...newMember, nationalId: e.target.value.replace(/\D/g, '') })} placeholder="14 digits (optional)" className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
           </label>
+          <p className="text-xs text-muted-foreground">New member login password: <span className="font-mono">12345678</span></p>
           <label className="block">
             <span className="text-sm font-medium">Floor</span>
             <select value={newMember.section} onChange={(e) => setNewMember({ ...newMember, section: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm">
