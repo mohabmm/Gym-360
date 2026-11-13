@@ -39,7 +39,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
         (
           'التقدم',
           'Progress',
-          (d) => _ProgressTab(data: d, isArabic: isArabic)
+          (_) => _ProgressTab(clientId: widget.clientId, isArabic: isArabic)
         ),
       if (on(FeatureFlagKeys.ptDualSessionLogging))
         (
@@ -501,45 +501,52 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-class _ProgressTab extends StatelessWidget {
-  final ClientDetailData data;
+/// pt.progress_measurements: the client's progress since day one (same view as the member's).
+class _ProgressTab extends ConsumerWidget {
+  final String clientId;
   final bool isArabic;
 
-  const _ProgressTab({required this.data, required this.isArabic});
+  const _ProgressTab({required this.clientId, required this.isArabic});
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (data.bodyMetrics.isEmpty) {
-      return EmptyState(
-        icon: Icons.trending_up,
-        title: isArabic ? 'لا توجد بيانات تقدم' : 'No progress data yet',
-        subtitle: isArabic
-            ? 'سيظهر تقدم العميل هنا'
-            : "Client's progress will appear here",
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: data.bodyMetrics.length,
-      itemBuilder: (context, index) {
-        final metric = data.bodyMetrics[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: const Icon(Icons.monitor_weight_outlined),
-            title: Text(
-              '${(metric.weight ?? 0).toStringAsFixed(1)} ${metric.weightUnit ?? 'kg'}',
-              style: theme.textTheme.titleSmall,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final coachId = ref.watch(authProvider).user?.id ?? '';
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(clientJourneyProvider(clientId).future),
+      child: ref.watch(clientJourneyProvider(clientId)).when(
+            data: (journey) => ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                ProgressJourneyView(
+                  journey: journey,
+                  isArabic: isArabic,
+                  viewer: CoachViewer(coachId: coachId),
+                  onEditGoal: () => _editGoal(context, ref, journey),
+                  onRecordMeasurements: () => context.push(measurementsRoute(clientId)),
+                ),
+              ],
             ),
-            subtitle: Text(
-              DateFormat('dd/MM/yyyy').format(metric.createdAt),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => AppErrorWidget(
+              message: "Couldn't load this client's progress",
+              messageAr: 'تعذر تحميل تقدم العميل',
+              onRetry: () => ref.invalidate(clientJourneyProvider(clientId)),
             ),
           ),
-        );
-      },
     );
+  }
+
+  Future<void> _editGoal(BuildContext context, WidgetRef ref, ProgressJourney journey) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final selection = await showGoalPicker(context, strings: ProgressJourneyStrings(isArabic), current: journey.goal);
+    if (selection == null) return;
+    try {
+      await setClientGoal(ref, clientId, selection);
+    } on ApiException catch (_) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(isArabic ? 'تعذر حفظ الهدف، حاول مرة أخرى' : "Couldn't save the goal. Try again."),
+      ));
+    }
   }
 }
 

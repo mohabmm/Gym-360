@@ -34,5 +34,13 @@ public static class ProgressErrors
 
     public static readonly Error NotClientOfTrainer = new(
         "Progress.NotClientOfTrainer.Forbidden",
-        "You can record measurements only for your own clients.");
+        "You can view or record progress only for your own clients.");
+
+    public static readonly Error InvalidTargetWeight = new(
+        "Progress.InvalidTargetWeight",
+        "Target weight must be greater than zero and at most 500 kg.");
+
+    public static readonly Error InvalidGoal = new(
+        "Progress.InvalidGoal",
+        "Goal must be LoseFat, BuildMuscle or GeneralFitness.");
 }

@@ -73,6 +73,7 @@ public static class DatabaseInitializer
             await PatchRegistryGymCodeAsync();
             await BackfillDurableOutboxAsync();
             await PatchPtModuleColumnsAsync();
+            await PatchProgressGoalsTableAsync();
 
             var hardMode = IsHardMode;
             if (hardMode)
@@ -256,6 +257,23 @@ IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
             catch (Exception ex)
             {
                 _logger.LogError(ex, "PT module column patch failed; trial/quick-log features will error for affected gyms.");
+            }
+        }
+
+        // Step 1a''' — progress_goals table (pt.progress_measurements). Same reason as above:
+        // existing g{N}_progress schemas are never migrated, so the new table is created here.
+        // Idempotent (creates only if missing); no data is changed.
+        private async Task PatchProgressGoalsTableAsync()
+        {
+            try
+            {
+                var registry = _sp.GetRequiredService<TenantRegistryDbContext>();
+                await registry.Database.ExecuteSqlRawAsync(ProgressGoalsSchemaPatch.Sql);
+                _logger.LogInformation("progress_goals table ensured across existing progress schemas.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "progress_goals patch failed; member goals will error for affected gyms.");
             }
         }
 

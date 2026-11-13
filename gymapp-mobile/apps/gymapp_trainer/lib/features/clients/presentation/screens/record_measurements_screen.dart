@@ -45,6 +45,8 @@ class _RecordMeasurementsScreenState extends ConsumerState<RecordMeasurementsScr
     for (final f in [..._bodyFields, ..._measurementFields]) f.key: TextEditingController(),
   };
   final _notes = TextEditingController();
+  final _target = TextEditingController();
+  ProgressGoalType? _goal;
   bool _saving = false;
 
   @override
@@ -53,6 +55,7 @@ class _RecordMeasurementsScreenState extends ConsumerState<RecordMeasurementsScr
       c.dispose();
     }
     _notes.dispose();
+    _target.dispose();
     super.dispose();
   }
 
@@ -81,7 +84,9 @@ class _RecordMeasurementsScreenState extends ConsumerState<RecordMeasurementsScr
         'measurements': measurements.values.any((v) => v != null) ? measurements : null,
         'notes': _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       });
+      await _saveGoalIfChosen();
       ref.invalidate(clientDetailProvider(widget.clientId));
+      ref.invalidate(clientJourneyProvider(widget.clientId));
       messenger.showSnackBar(SnackBar(content: Text(isArabic ? 'تم حفظ القياسات' : 'Measurements saved')));
       router.pop();
     } on FeatureDisabledException {
@@ -98,10 +103,24 @@ class _RecordMeasurementsScreenState extends ConsumerState<RecordMeasurementsScr
     }
   }
 
+  /// First session: the goal picked above the measurements (the measurements are already saved,
+  /// so a failure here is not fatal; the goal can be set later from the Progress tab).
+  Future<void> _saveGoalIfChosen() async {
+    final goal = _goal;
+    if (goal == null) return;
+    final target = TargetWeightInput.parse(_target.text);
+    try {
+      await setClientGoal(ref, widget.clientId, GoalSelection(goal, target.isInRange ? target.kg : null));
+    } on ApiException catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final pagePad = context.responsivePagePadding;
+    // Ask for the goal only while the client has none (normally the first session).
+    final journey = ref.watch(clientJourneyProvider(widget.clientId));
+    final needsGoal = journey.hasValue && journey.value!.goal == null;
 
     Widget field(_Field f) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -119,6 +138,15 @@ class _RecordMeasurementsScreenState extends ConsumerState<RecordMeasurementsScr
       body: ListView(
         padding: EdgeInsets.fromLTRB(pagePad, 16, pagePad, 32),
         children: [
+          if (needsGoal) ...[
+            _FirstSessionGoal(
+              strings: ProgressJourneyStrings(isArabic),
+              goal: _goal,
+              target: _target,
+              onGoal: (g) => setState(() => _goal = g),
+            ),
+            const SizedBox(height: 16),
+          ],
           ..._bodyFields.map(field),
           const SizedBox(height: 4),
           Text(isArabic ? 'المقاسات (سم)' : 'Measurements (cm)', style: Theme.of(context).textTheme.titleSmall),
@@ -138,6 +166,49 @@ class _RecordMeasurementsScreenState extends ConsumerState<RecordMeasurementsScr
                 : Text(isArabic ? 'حفظ' : 'Save'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Goal chips + optional target weight, shown on the first measurement.
+class _FirstSessionGoal extends StatelessWidget {
+  final ProgressJourneyStrings strings;
+  final ProgressGoalType? goal;
+  final TextEditingController target;
+  final ValueChanged<ProgressGoalType> onGoal;
+
+  const _FirstSessionGoal({required this.strings, required this.goal, required this.target, required this.onGoal});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(strings.goalTitle, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final g in ProgressGoalType.values)
+                  ChoiceChip(label: Text(strings.goal(g)), selected: goal == g, onSelected: (_) => onGoal(g)),
+              ],
+            ),
+            if (goal != null) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: target,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                decoration: InputDecoration(labelText: strings.targetWeight, helperText: strings.targetOptional),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -20,6 +20,7 @@ public sealed class ProgressDbContext : DbContext, IProgressUnitOfWork
     public DbSet<BodyMetricEntry> BodyMetricEntries => Set<BodyMetricEntry>();
     public DbSet<ProgressPhoto> ProgressPhotos => Set<ProgressPhoto>();
     public DbSet<Streak> Streaks => Set<Streak>();
+    public DbSet<ProgressGoal> ProgressGoals => Set<ProgressGoal>();
 
     internal DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 

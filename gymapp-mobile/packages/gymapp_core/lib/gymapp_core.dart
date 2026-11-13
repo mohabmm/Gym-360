@@ -61,6 +61,15 @@ export 'src/feature_flags/feature_flag_gate.dart';
 export 'src/feature_flags/feature_route_guard.dart';
 export 'src/feature_flags/feature_flag_signals.dart';
 
+// Progress journey (pt.progress_measurements)
+export 'src/progress_journey/progress_journey_model.dart';
+export 'src/progress_journey/progress_metric.dart';
+export 'src/progress_journey/progress_journey.dart';
+export 'src/progress_journey/progress_journey_strings.dart';
+export 'src/progress_journey/widgets/progress_journey_view.dart';
+export 'src/progress_journey/widgets/since_day_one_card.dart';
+export 'src/progress_journey/widgets/goal_picker_sheet.dart';
+
 // Network
 export 'src/network/api_base_url.dart';
 export 'src/network/api_client.dart';

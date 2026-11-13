@@ -152,6 +152,13 @@ class ApiEndpoints {
   static const String streaks = '$basePrefix/progress/streaks';
   static String clientProgress(ClientId clientId) =>
       '$basePrefix/progress/clients/$clientId';
+  // pt.progress_measurements: progress since day one + goal
+  static const String progressJourney = '$basePrefix/progress/journey';
+  static const String progressGoal = '$basePrefix/progress/goal';
+  static String clientProgressJourney(ClientId clientId) =>
+      '$basePrefix/progress/clients/$clientId/journey';
+  static String clientProgressGoal(ClientId clientId) =>
+      '$basePrefix/progress/clients/$clientId/goal';
 
   // Scheduling
   static const String sessions = '$basePrefix/scheduling/sessions';

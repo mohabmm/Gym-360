@@ -33,6 +33,7 @@ public static class ProgressModuleRegistration
         services.AddScoped<IBodyMetricEntryRepository, BodyMetricEntryRepository>();
         services.AddScoped<IProgressPhotoRepository, ProgressPhotoRepository>();
         services.AddScoped<IStreakRepository, StreakRepository>();
+        services.AddScoped<IProgressGoalRepository, ProgressGoalRepository>();
 
         services.AddScoped<IProgressQueryService, ProgressQueryService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Progress.Application.Services.UserDataProvider>();

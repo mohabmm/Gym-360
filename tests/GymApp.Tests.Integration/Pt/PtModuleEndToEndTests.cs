@@ -1,12 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using GymApp.Common.Application.FeatureFlags;
-using GymApp.Common.Application.Tenancy;
-using GymApp.Common.Infrastructure.Tenancy.Registry;
-using GymApp.Modules.Gyms.Domain.Entities;
-using GymApp.Modules.Gyms.Domain.ValueObjects;
-using GymApp.Modules.Gyms.Infrastructure.Data;
 using GymApp.Modules.Scheduling.Infrastructure.Persistence;
 using GymApp.Tests.Integration.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -132,46 +126,8 @@ public sealed class PtModuleEndToEndTests : BaseIntegrationTest
 
     // ------------------------------------------------------------------ helpers
 
-    private async Task RegisterPtGymAsync()
-    {
-        using var scope = Factory.Services.CreateScope();
-
-        // A real, approved gym with the trainee as an active member (trainee /me endpoints check membership).
-        var gymsDb = scope.ServiceProvider.GetRequiredService<GymsDbContext>();
-        var gym = Gym.Create(
-            Guid.NewGuid(),
-            new GymDetails
-            {
-                Name = "PT Pilot Gym",
-                Description = null,
-                Address = new Address("Street", "Cairo", "Cairo", "Egypt", "11111"),
-                ContactInfo = new ContactInfo("pt@test.com", "+201234567890"),
-                GymCode = GymCode.Generate(),
-            });
-        gym.Approve();
-        gym.AddMember(new MemberId(_traineeId));
-        gymsDb.Gyms.Add(gym);
-        await gymsDb.SaveChangesAsync();
-        _gymId = gym.Id;
-
-        var registry = scope.ServiceProvider.GetRequiredService<TenantRegistryDbContext>();
-        var suffix = _gymId.ToString("N")[..8];
-        registry.Gyms.Add(new GymRegistration
-        {
-            GymId = _gymId,
-            OwnerId = Guid.NewGuid(),
-            Name = $"PT Gym {suffix}",
-            Slug = $"pt-{suffix}",
-            SchemaPrefix = $"g{Random.Shared.Next(100000, 999999)}",
-            Status = "Active",
-            CreatedAt = DateTime.UtcNow,
-        });
-        await registry.SaveChangesAsync();
-
-        var admin = scope.ServiceProvider.GetRequiredService<IFeatureFlagAdminService>();
-        (await admin.SetGymPresetAsync(new[] { _gymId }, FeatureRegistry.PtModulePreset, new AdminActor(Guid.NewGuid(), "test")))
-            .IsSuccess.Should().BeTrue();
-    }
+    private async Task RegisterPtGymAsync() =>
+        _gymId = await PtTestGym.RegisterAsync(Factory.Services, _traineeId);
 
     private Task<HttpResponseMessage> QuickAssignAsync(HttpClient desk, int sessions, bool isTrial, decimal? price = null) =>
         desk.PostAsJsonAsync("api/v1/billing/packages/quick-assign", new
@@ -206,13 +162,7 @@ public sealed class PtModuleEndToEndTests : BaseIntegrationTest
             $"UPDATE [scheduling].[sessions] SET CreatedAt = DATEADD(minute, -10, CreatedAt) WHERE TrainerId = {_coachId} AND MemberId = {_traineeId}");
     }
 
-    private static async Task<JsonElement> DataAsync(HttpClient client, string url)
-    {
-        var response = await client.GetAsync(url);
-        var body = await response.Content.ReadAsStringAsync();
-        response.IsSuccessStatusCode.Should().BeTrue($"{url} → {(int)response.StatusCode} {body}");
-        return JsonDocument.Parse(body).RootElement.GetProperty("data").Clone();
-    }
+    private static Task<JsonElement> DataAsync(HttpClient client, string url) => PtTestGym.DataAsync(client, url);
 
     private async Task<HashSet<Guid>> NotConvertedAsync(HttpClient desk)
     {

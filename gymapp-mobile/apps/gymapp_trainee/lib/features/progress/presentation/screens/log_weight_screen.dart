@@ -123,8 +123,7 @@ class _LogWeightScreenState extends ConsumerState<LogWeightScreen> {
         'loggedBy': userId,
         if (_notesController.text.isNotEmpty) 'notes': _notesController.text,
       });
-      ref.invalidate(progressDashboardDetailProvider);
-      ref.invalidate(bodyMetricsProvider);
+      refreshProgress(ref);
       // Keep the Home weight tile and leaderboard in sync with the new value.
       ref.invalidate(progressDashboardProvider);
       ref.invalidate(leaderboardProvider);

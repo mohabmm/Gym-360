@@ -14,6 +14,7 @@ import '../../../communication/presentation/widgets/notification_bell.dart';
 import '../../../scheduling/presentation/providers/scheduling_providers.dart';
 import '../../../scheduling/presentation/widgets/pt_session_widgets.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
+import '../../../progress/presentation/providers/progress_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -41,6 +42,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(upcomingSessionsListProvider);
           ref.invalidate(progressDashboardProvider);
           ref.invalidate(todaysWaterProvider);
+          ref.invalidate(progressJourneyProvider);
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -58,6 +60,7 @@ class HomeScreen extends ConsumerWidget {
             // so a PT gym sees packages, sessions to confirm and progress, with no gaps.
             ...section(pagePad, FeatureFlagKeys.ptPackages, const PackageSummaryCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptDualSessionLogging, const ConfirmSessionsCard()),
+            ...section(pagePad, FeatureFlagKeys.ptProgressMeasurements, const _SinceDayOneSection()),
             ...section(pagePad, FeatureFlagKeys.trainingWorkouts, const TodaysWorkoutCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.schedulingBooking, const NextSessionCard()),
             SliverToBoxAdapter(
@@ -261,7 +264,6 @@ class _StatsRow extends ConsumerWidget {
     final flags = ref.watch(featureFlagsProvider);
     final cards = <Widget>[
       if (flags.isEnabled(FeatureFlagKeys.gamificationStreaks)) const _StreakStat(),
-      if (flags.isEnabled(FeatureFlagKeys.ptProgressMeasurements)) const _WeightStat(),
       if (flags.isEnabled(FeatureFlagKeys.nutrition)) const _WaterStat(),
     ];
     if (cards.isEmpty) return const SizedBox.shrink();
@@ -307,35 +309,20 @@ class _StreakStat extends ConsumerWidget {
   }
 }
 
-class _WeightStat extends ConsumerWidget {
-  const _WeightStat();
+/// pt.progress_measurements: "Since day one" change; renders nothing until there are two check-ins.
+class _SinceDayOneSection extends ConsumerWidget {
+  const _SinceDayOneSection();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final label = isArabic ? 'الوزن' : 'Weight';
-    return ref.watch(progressDashboardProvider).when(
-          data: (progress) {
-            final weight = progress.latestMetrics?.weight;
-            final change = progress.weightChangeFromFirst;
-            return StatCard(
-              label: label,
-              value: weight != null ? '${weight.toStringAsFixed(1)} kg' : '-',
-              icon: Icons.monitor_weight_outlined,
-              iconColor: AppColors.info,
-              trend: change != null ? '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}' : null,
-              trendUp: (change ?? 0) > 0,
-              onTap: () => context.push(AppRoutes.progress),
-            );
-          },
-          loading: () => const ShimmerStatCard(),
-          error: (_, __) => StatCard(
-            label: label,
-            value: '-',
-            icon: Icons.monitor_weight_outlined,
-            iconColor: AppColors.info,
-            onTap: () => context.push(AppRoutes.progress),
+    return ref.watch(progressJourneyProvider).maybeWhen(
+          data: (journey) => SinceDayOneCard(
+            journey: journey,
+            isArabic: isArabic,
+            onTap: () => context.go(AppRoutes.progress),
           ),
+          orElse: () => const SizedBox.shrink(),
         );
   }
 }
