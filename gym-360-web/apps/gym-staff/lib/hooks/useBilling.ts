@@ -71,9 +71,10 @@ type RawPayment = {
   createdAt: string;
 };
 
-export function usePayments(pageSize = 50) {
+export function usePayments(pageSize = 50, enabled = true) {
   return useQuery<PaymentListItem[]>({
     queryKey: ['payments', pageSize],
+    enabled,
     queryFn: async () => {
       const res = await apiClient.get('/billing/payments', { params: { page: 1, pageSize } });
       const raw: RawPayment[] = res.data.data?.items ?? res.data.data ?? [];

@@ -10,7 +10,9 @@ import { Edit, Trash2, UserCheck } from 'lucide-react';
 import { useMember, useUpdateMember, useDeleteMember, useMemberPackages } from '@/lib/hooks/useMembers';
 import { useTrainers } from '@/lib/hooks/useTrainers';
 import { usePayments } from '@/lib/hooks/useBilling';
-import { MemberTabBar, MemberTabContent, type MemberTab } from '@/components/members/MemberDetailTabs';
+import { MemberTabBar, MemberTabContent, visibleMemberTabs, type MemberTab } from '@/components/members/MemberDetailTabs';
+import { useStaffFlags } from '@/lib/feature-flags';
+import { FEATURE_FLAG_KEYS as K } from '@gym360/ui';
 import { AssignTrainerModal } from '@/components/members/AssignTrainerModal';
 import { EditMemberModal, RemoveMemberModal, type EditMemberForm } from '@/components/members/MemberModals';
 
@@ -76,7 +78,9 @@ export default function MemberDetailPage() {
   const canRemove = isOwnerOrAdmin(session);
   const memberId = params.id as string;
   const { data: member, isLoading: memberLoading } = useMember(memberId);
-  const { data: payments = [] } = usePayments();
+  const { isEnabled } = useStaffFlags();
+  const tabs = visibleMemberTabs(isEnabled);
+  const { data: payments = [] } = usePayments(50, isEnabled(K.GYM_FINANCE));
   const updateMember = useUpdateMember();
   const deleteMember = useDeleteMember();
   const { data: trainers = [] } = useTrainers();
@@ -125,6 +129,9 @@ export default function MemberDetailPage() {
 
   if (!member) return <MemberNotFound />;
 
+  // A tab whose feature was just turned off falls back to Profile.
+  const shownTab: MemberTab = tabs.includes(activeTab) ? activeTab : 'Profile';
+
   const openEdit = () => {
     setEditForm({ name: member.name, nameAr: member.nameAr, email: member.email, phone: member.phone });
     setShowEditModal(true);
@@ -152,10 +159,10 @@ export default function MemberDetailPage() {
         <span className="text-sm text-muted-foreground">{member.section}</span>
       </div>
 
-      <MemberTabBar active={activeTab} onChange={setActiveTab} />
+      <MemberTabBar tabs={tabs} active={shownTab} onChange={setActiveTab} />
 
       <MemberTabContent
-        tab={activeTab}
+        tab={shownTab}
         member={member}
         payments={payments}
         packages={memberPackages}

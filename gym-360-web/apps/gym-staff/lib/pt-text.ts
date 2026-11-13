@@ -1,0 +1,103 @@
+'use client';
+
+import { useDocumentLocale, type Locale } from '@gym360/ui';
+
+/** Arabic + English labels for the PT desk pages and the flag-driven navigation. */
+const TEXT = {
+  en: {
+    navPt: 'Private training',
+    navTrials: 'Trials not converted',
+    navReview: 'Disputed sessions',
+    navDashboard: 'PT dashboard',
+    trialsTitle: 'Finished trials, not converted',
+    trialsDescription: 'Trainees who used all their free trial sessions and have not bought a package yet.',
+    trialsEmpty: 'No finished trials waiting. Nice work.',
+    member: 'Trainee',
+    coach: 'Coach',
+    finishedOn: 'Finished',
+    daysAgo: (n: number) => `${n} day${n === 1 ? '' : 's'} ago`,
+    windowClosed: 'Past 14-day window',
+    windowOpen: 'Within 14 days',
+    openProfile: 'Open profile',
+    reviewTitle: 'Disputed sessions',
+    reviewDescription: 'Sessions the trainee marked "not me". Reverse one to give the session back to the package.',
+    reviewEmpty: 'No disputed sessions.',
+    sessionDate: 'Session',
+    reverse: 'Reverse',
+    reverseConfirmTitle: 'Reverse this session?',
+    reverseConfirmBody: 'The session is cancelled and returned to the trainee’s package.',
+    reversed: 'Session reversed and returned to the package.',
+    dashTitle: 'PT dashboard',
+    dashDescription: 'Trial-to-paid conversion per coach, renewals and sessions logged.',
+    period: (d: number) => `Last ${d} days`,
+    conversion: 'Trial conversion',
+    trialsFinished: 'Trials finished',
+    trialsConverted: 'Converted',
+    renewals: 'Renewals',
+    newPackages: 'New paid packages',
+    sessionsLogged: 'Sessions logged',
+    activeTrials: 'Active trials',
+    notConverted: 'Not converted',
+    perCoach: 'Per coach',
+    noCoaches: 'No PT activity in this period.',
+    conversionNote: 'Converted = a paid package within 14 days after the trial ended, credited to the trial coach.',
+    deskTitle: 'Today at the desk',
+    freeTrial: 'Free trial',
+    trialSessions: 'Trial sessions',
+    trialHint: 'One free trial per trainee (1–3 sessions). The coach and desk are alerted at the last session.',
+    loadError: 'Could not load this right now. Try again in a moment.',
+  },
+  ar: {
+    navPt: 'التدريب الشخصي',
+    navTrials: 'تجارب لم تتحول',
+    navReview: 'حصص معترض عليها',
+    navDashboard: 'لوحة التدريب الشخصي',
+    trialsTitle: 'تجارب انتهت ولم تتحول لاشتراك',
+    trialsDescription: 'متدربون استخدموا كل حصصهم التجريبية المجانية ولم يشتروا باقة بعد.',
+    trialsEmpty: 'لا توجد تجارب منتهية في الانتظار.',
+    member: 'المتدرب',
+    coach: 'المدرب',
+    finishedOn: 'انتهت',
+    daysAgo: (n: number) => `منذ ${n} يوم`,
+    windowClosed: 'تجاوزت ١٤ يومًا',
+    windowOpen: 'خلال ١٤ يومًا',
+    openProfile: 'فتح الملف',
+    reviewTitle: 'حصص معترض عليها',
+    reviewDescription: 'حصص قال المتدرب إنها لم تتم. ألغِ الحصة لإرجاعها إلى الباقة.',
+    reviewEmpty: 'لا توجد حصص معترض عليها.',
+    sessionDate: 'الحصة',
+    reverse: 'إلغاء الحصة',
+    reverseConfirmTitle: 'إلغاء هذه الحصة؟',
+    reverseConfirmBody: 'سيتم إلغاء الحصة وإرجاعها إلى باقة المتدرب.',
+    reversed: 'تم إلغاء الحصة وإرجاعها إلى الباقة.',
+    dashTitle: 'لوحة التدريب الشخصي',
+    dashDescription: 'نسبة التحول من التجربة إلى الاشتراك لكل مدرب، والتجديدات، والحصص المسجلة.',
+    period: (d: number) => `آخر ${d} يوم`,
+    conversion: 'نسبة التحول',
+    trialsFinished: 'تجارب منتهية',
+    trialsConverted: 'تحولت',
+    renewals: 'تجديدات',
+    newPackages: 'باقات مدفوعة جديدة',
+    sessionsLogged: 'حصص مسجلة',
+    activeTrials: 'تجارب جارية',
+    notConverted: 'لم تتحول',
+    perCoach: 'لكل مدرب',
+    noCoaches: 'لا يوجد نشاط تدريب شخصي في هذه الفترة.',
+    conversionNote: 'التحول = شراء باقة مدفوعة خلال ١٤ يومًا من نهاية التجربة، ويُحتسب لمدرب التجربة.',
+    deskTitle: 'اليوم في الاستقبال',
+    freeTrial: 'حصص تجريبية مجانية',
+    trialSessions: 'عدد الحصص التجريبية',
+    trialHint: 'تجربة مجانية واحدة لكل متدرب (١–٣ حصص). يتم تنبيه المدرب والاستقبال عند آخر حصة.',
+    loadError: 'تعذر التحميل الآن. حاول مرة أخرى بعد قليل.',
+  },
+} as const;
+
+export type PtText = (typeof TEXT)['en'];
+
+export function ptText(locale: Locale): PtText {
+  return TEXT[locale] as PtText;
+}
+
+export function usePtText(): PtText {
+  return ptText(useDocumentLocale());
+}

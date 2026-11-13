@@ -14,11 +14,13 @@ import {
   useTrainerSessions,
   useUpdateTrainerProfile,
 } from '@/lib/hooks/useTrainers';
+import { useStaffFlags } from '@/lib/feature-flags';
 import { useTrainerRate, useTrainerEarnings, useSetTrainerRate } from '@/lib/hooks/useTrainerEarnings';
 import { EditProfileModalForm, EditRateModal } from '@/components/trainers/TrainerModals';
 import { TrainerHeaderCard, TrainerKpis } from '@/components/trainers/TrainerHeaderCard';
 import {
   TrainerTabBar,
+  visibleTrainerTabs,
   TrainerProfileTab,
   TrainerMembersTab,
   TrainerSessionsTab,
@@ -64,11 +66,15 @@ export default function TrainerDetailPage() {
 
   const { trainer, isLoading } = useResolvedTrainer(trainerId);
 
-  const [activeTab, setActiveTab] = useState<TrainerTab>('Profile');
+  const { isEnabled } = useStaffFlags();
+  const tabs = visibleTrainerTabs(isEnabled);
+  const [selectedTab, setActiveTab] = useState<TrainerTab>('Profile');
+  // A tab whose feature was just turned off falls back to Profile.
+  const activeTab: TrainerTab = tabs.includes(selectedTab) ? selectedTab : 'Profile';
   const [editRateOpen, setEditRateOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
 
-  const { data: rateData, isLoading: rateLoading } = useTrainerRate(gymId, trainerId);
+  const { data: rateData, isLoading: rateLoading } = useTrainerRate(gymId, trainerId, tabs.includes('Earnings'));
   const { data: earningsData, isLoading: earningsLoading } = useTrainerEarnings(gymId, trainerId, activeTab === 'Earnings');
 
   const resolvedTrainerId = trainer?.id ?? trainerId;
@@ -151,10 +157,10 @@ export default function TrainerDetailPage() {
       <TrainerHeaderCard trainer={trainer} />
 
       {/* KPIs */}
-      <TrainerKpis trainer={trainer} rateLoading={rateLoading} currentRate={currentRate} />
+      <TrainerKpis trainer={trainer} rateLoading={rateLoading} currentRate={currentRate} isEnabled={isEnabled} />
 
       {/* Tabs */}
-      <TrainerTabBar active={activeTab} onChange={setActiveTab} />
+      <TrainerTabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
       {/* Tab Content */}
       {tabContent[activeTab]()}

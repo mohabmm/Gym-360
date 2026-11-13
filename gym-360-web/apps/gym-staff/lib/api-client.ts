@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getSession } from 'next-auth/react';
+import { handleFeatureDisabledError } from '@gym360/ui';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080/api/v1';
 
@@ -35,6 +36,11 @@ apiClient.interceptors.response.use(
     const apiMsg = error?.response?.data?.errors?.[0]?.message;
     if (typeof apiMsg === 'string' && apiMsg) {
       error.message = apiMsg;
+    }
+    // 403 FEATURE_DISABLED:<key> → refresh the flags (the page/nav item disappears) and show a
+    // friendly message instead of the raw server text.
+    if (error.response?.status === 403) {
+      handleFeatureDisabledError(error);
     }
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       window.location.href = '/login';

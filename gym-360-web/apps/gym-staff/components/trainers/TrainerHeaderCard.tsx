@@ -1,4 +1,4 @@
-import { StatusBadge, KpiCard } from '@gym360/ui';
+import { StatusBadge, KpiCard, FEATURE_FLAG_KEYS as K } from '@gym360/ui';
 import type { TrainerListItem } from '@gym360/ui';
 import { Star, Users, DollarSign, Mail, Phone } from 'lucide-react';
 
@@ -66,33 +66,28 @@ export function TrainerHeaderCard({ trainer }: { trainer: TrainerListItem }) {
   );
 }
 
-export function TrainerKpis({ trainer, rateLoading, currentRate }: { trainer: TrainerListItem; rateLoading: boolean; currentRate: number | null }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-      <KpiCard
-        value={trainer.activeMemberCount.toString()}
-        label="Active Clients"
-        icon={<Users className="h-5 w-5" />}
-        variant="default"
-      />
-      <KpiCard
-        value={trainer.monthlyScore.toString()}
-        label="Monthly Score"
-        icon={<Star className="h-5 w-5" />}
-        variant="info"
-      />
-      <KpiCard
-        value={`${trainer.rating}/5`}
-        label="Average Rating"
-        icon={<Star className="h-5 w-5" />}
-        variant="success"
-      />
-      <KpiCard
-        value={rateLabel(rateLoading, currentRate)}
-        label="Session Rate"
-        icon={<DollarSign className="h-5 w-5" />}
-        variant="default"
-      />
-    </div>
-  );
+interface TrainerKpisProps {
+  trainer: TrainerListItem;
+  rateLoading: boolean;
+  currentRate: number | null;
+  isEnabled: (key: string) => boolean;
+}
+
+const KPI_COLS: Record<number, string> = { 2: 'sm:grid-cols-2', 3: 'sm:grid-cols-3', 4: 'sm:grid-cols-4' };
+
+/** KPI cards; score, rating and rate belong to coach.leaderboard, pt.coach_ratings and gym.finance. */
+export function TrainerKpis({ trainer, rateLoading, currentRate, isEnabled }: TrainerKpisProps) {
+  const cards = [
+    <KpiCard key="clients" value={trainer.activeMemberCount.toString()} label="Active Clients" icon={<Users className="h-5 w-5" />} variant="default" />,
+    isEnabled(K.COACH_LEADERBOARD) && (
+      <KpiCard key="score" value={trainer.monthlyScore.toString()} label="Monthly Score" icon={<Star className="h-5 w-5" />} variant="info" />
+    ),
+    isEnabled(K.PT_COACH_RATINGS) && (
+      <KpiCard key="rating" value={`${trainer.rating}/5`} label="Average Rating" icon={<Star className="h-5 w-5" />} variant="success" />
+    ),
+    isEnabled(K.GYM_FINANCE) && (
+      <KpiCard key="rate" value={rateLabel(rateLoading, currentRate)} label="Session Rate" icon={<DollarSign className="h-5 w-5" />} variant="default" />
+    ),
+  ].filter(Boolean);
+  return <div className={`grid grid-cols-1 gap-4 ${KPI_COLS[cards.length] ?? ''}`}>{cards}</div>;
 }

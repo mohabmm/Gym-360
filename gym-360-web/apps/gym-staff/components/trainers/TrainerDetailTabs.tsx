@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { StatusBadge } from '@gym360/ui';
+import { StatusBadge, FEATURE_FLAG_KEYS as K } from '@gym360/ui';
 import type { TrainerListItem } from '@gym360/ui';
 import { Star } from 'lucide-react';
 import type { TrainerClientItem, TrainerSessionItem } from '@/lib/hooks/useTrainers';
@@ -7,11 +7,28 @@ import type { TrainerClientItem, TrainerSessionItem } from '@/lib/hooks/useTrain
 export const TRAINER_TABS = ['Profile', 'Members', 'Sessions', 'Ratings', 'Earnings'] as const;
 export type TrainerTab = (typeof TRAINER_TABS)[number];
 
-export function TrainerTabBar({ active, onChange }: { active: TrainerTab; onChange: (tab: TrainerTab) => void }) {
+/** Flag that owns each tab; Profile and Members (coach assignment) are always on. */
+const TAB_FLAGS: Partial<Record<TrainerTab, readonly string[]>> = {
+  Sessions: [K.PT_DUAL_SESSION_LOGGING],
+  Ratings: [K.PT_COACH_RATINGS],
+  Earnings: [K.GYM_FINANCE],
+};
+
+export function visibleTrainerTabs(isEnabled: (key: string) => boolean): TrainerTab[] {
+  return TRAINER_TABS.filter((tab) => TAB_FLAGS[tab]?.some(isEnabled) ?? true);
+}
+
+interface TrainerTabBarProps {
+  tabs: readonly TrainerTab[];
+  active: TrainerTab;
+  onChange: (tab: TrainerTab) => void;
+}
+
+export function TrainerTabBar({ tabs, active, onChange }: TrainerTabBarProps) {
   return (
     <div className="border-b border-border">
       <div className="flex gap-1">
-        {TRAINER_TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => onChange(tab)}

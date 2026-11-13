@@ -17,12 +17,12 @@ export interface Testimonial {
   content: string; rating: number; status: 'pending' | 'approved' | 'rejected'; createdAt: string;
 }
 
-export function useMemberLeaderboard() {
+export function useMemberLeaderboard(enabled = true) {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;
   return useQuery<LeaderboardEntry[]>({
     queryKey: ['leaderboard', 'members', gymId],
-    enabled: !!gymId,
+    enabled: enabled && !!gymId,
     queryFn: async () => {
       const res = await apiClient.get('/gamification/leaderboards/Attendance', { params: { gymId } });
       const data = res.data.data;
@@ -41,12 +41,12 @@ export function useMemberLeaderboard() {
   });
 }
 
-export function useTrainerRankings() {
+export function useTrainerRankings(enabled = true) {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;
   return useQuery<TrainerRankingEntry[]>({
     queryKey: ['leaderboard', 'trainers', gymId],
-    enabled: !!gymId,
+    enabled: enabled && !!gymId,
     queryFn: async () => {
       const [rankRes, trainerRes] = await Promise.all([
         apiClient.get('/gamification/trainers/leaderboard', { params: { page: 1, pageSize: 20 } }),
@@ -76,12 +76,12 @@ export function useTrainerRankings() {
   });
 }
 
-export function useTestimonials() {
+export function useTestimonials(enabled = true) {
   const { data: session } = useSession();
   const gymId = session?.user?.gymId;
   return useQuery<Testimonial[]>({
     queryKey: ['testimonials', gymId],
-    enabled: !!gymId,
+    enabled: enabled && !!gymId,
     queryFn: async () => {
       // BE binds gymId from the query string (not the X-Gym-Id header); omitting it 400s.
       const res = await apiClient.get('/gamification/testimonials/pending', { params: { gymId, page: 1, pageSize: 50 } });

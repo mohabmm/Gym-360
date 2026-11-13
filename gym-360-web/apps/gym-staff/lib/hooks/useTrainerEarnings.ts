@@ -47,11 +47,11 @@ async function fetchTrainerEarnings(gymId: string, trainerId: string) {
   return res.data?.data as TrainerEarnings;
 }
 
-export function useTrainerRate(gymId: string, trainerId: string) {
+export function useTrainerRate(gymId: string, trainerId: string, enabled = true) {
   return useQuery({
     queryKey: ['trainer-rate', gymId, trainerId],
     queryFn: () => fetchTrainerRate(gymId, trainerId),
-    enabled: !!gymId && !!trainerId,
+    enabled: enabled && !!gymId && !!trainerId,
   });
 }
 
