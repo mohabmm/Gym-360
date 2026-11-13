@@ -35,6 +35,7 @@ void main() {
       RoutePaths.members,
       '/members/m1',
       RoutePaths.trainers,
+      RoutePaths.addTrainer,
       RoutePaths.assignPackage,
       RoutePaths.activePackages,
       RoutePaths.packageTemplates,

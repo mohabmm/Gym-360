@@ -37,6 +37,9 @@ class ApiEndpoints {
       '$basePrefix/identity/users/staff-lookup';
   static const String identityStaffLinkExisting =
       '$basePrefix/identity/users/staff-link-existing';
+  // Creates (or reuses) a Trainer user; initial password is 123456.
+  static const String identityStaffCreateTrainer =
+      '$basePrefix/identity/users/staff-create-trainer';
 
   // Gyms
   static const String gyms = '$basePrefix/gyms';

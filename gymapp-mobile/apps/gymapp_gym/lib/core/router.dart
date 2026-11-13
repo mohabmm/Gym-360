@@ -40,6 +40,7 @@ import '../features/settings/presentation/screens/session_policies_screen.dart';
 import '../features/staff/presentation/screens/add_staff_screen.dart';
 import '../features/staff/presentation/screens/permission_matrix_screen.dart';
 import '../features/staff/presentation/screens/staff_list_screen.dart';
+import '../features/trainers/presentation/screens/add_trainer_screen.dart';
 import '../features/trainers/presentation/screens/pending_trainer_approval_screen.dart';
 import '../features/trainers/presentation/screens/trainer_detail_screen.dart';
 import '../features/trainers/presentation/screens/trainer_list_screen.dart';
@@ -62,6 +63,7 @@ abstract class RoutePaths {
   static const String trainers = '/trainers';
   static const String trainerDetail = '/trainers/:id';
   static const String pendingTrainers = '/trainers/pending';
+  static const String addTrainer = '/trainers/add';
   static const String classes = '/classes';
   static const String classDetail = '/classes/:id';
   static const String createClass = '/classes/create';
@@ -169,12 +171,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: RoutePaths.trainers,
             builder: (context, state) => const TrainerListScreen(),
           ),
-          // `/trainers/pending` must come before `/trainers/:id`, otherwise
+          // `/trainers/pending` and `/trainers/add` must come before `/trainers/:id`, otherwise
           // go_router matches the dynamic route first and treats "pending"
           // as an id, routing to the trainer-detail screen.
           GoRoute(
             path: RoutePaths.pendingTrainers,
             builder: (context, state) => const PendingTrainerApprovalScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.addTrainer,
+            builder: (context, state) => const AddTrainerScreen(),
           ),
           GoRoute(
             path: RoutePaths.trainerDetail,
