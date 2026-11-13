@@ -88,6 +88,7 @@ class PermissionMatrixScreen extends ConsumerWidget {
         case StaffPermission.deleteMember: return 'حذف عضو';
         case StaffPermission.viewTrainers: return 'عرض المدربين';
         case StaffPermission.approveTrainer: return 'الموافقة على مدرب';
+        case StaffPermission.addTrainer: return 'اضافة مدرب';
         case StaffPermission.viewClasses: return 'عرض الحصص';
         case StaffPermission.createClass: return 'انشاء حصة';
         case StaffPermission.editClass: return 'تعديل حصة';
