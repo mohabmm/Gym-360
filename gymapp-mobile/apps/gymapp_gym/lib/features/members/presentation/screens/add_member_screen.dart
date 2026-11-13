@@ -188,9 +188,8 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
     final trainersAsync = ref.watch(trainersProvider);
     final trainers = assignableTrainers(trainersAsync.valueOrNull ?? const <UserModel>[]);
     final canSubmit = trainersAsync.hasValue && trainers.isNotEmpty;
-    // Adding a coach also approves them, so it follows approveTrainer (owner + manager).
     final canAddCoach =
-        ref.watch(authProvider).valueOrNull?.hasPermission(StaffPermission.approveTrainer) ?? false;
+        ref.watch(authProvider).valueOrNull?.hasPermission(StaffPermission.addTrainer) ?? false;
 
     return Scaffold(
       appBar: AppBar(title: Text(isArabic ? 'اضافة عضو' : 'Add Member')),

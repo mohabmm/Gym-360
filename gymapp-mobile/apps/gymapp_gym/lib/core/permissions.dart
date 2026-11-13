@@ -18,6 +18,8 @@ enum StaffPermission {
   // Trainers
   viewTrainers,
   approveTrainer,
+  /// Create a coach account at the desk (also used inline from Add Member).
+  addTrainer,
 
   // Classes
   viewClasses,
@@ -97,6 +99,7 @@ class StaffPermissions {
     StaffPermission.freezeMember,
     StaffPermission.viewTrainers,
     StaffPermission.approveTrainer,
+    StaffPermission.addTrainer,
     StaffPermission.viewClasses,
     StaffPermission.createClass,
     StaffPermission.editClass,
@@ -138,6 +141,9 @@ class StaffPermissions {
     StaffPermission.editMember,
     StaffPermission.freezeMember,
     StaffPermission.viewTrainers,
+    // The desk adds coaches (and can then assign them to members); approving
+    // trainer sign-ups stays manager+.
+    StaffPermission.addTrainer,
     StaffPermission.viewCheckInLog,
     StaffPermission.manualCheckIn,
     StaffPermission.kioskMode,

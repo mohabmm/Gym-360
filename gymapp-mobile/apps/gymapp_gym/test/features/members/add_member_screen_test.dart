@@ -114,8 +114,15 @@ void main() {
       expect(find.widgetWithText(OutlinedButton, 'Add coach'), findsOneWidget);
     });
 
-    testWidgets('a receptionist cannot add coaches, so sees only the message', (tester) async {
+    testWidgets('a receptionist can also add a coach from the form', (tester) async {
       await pump(tester, const [], role: 'receptionist');
+
+      expect(find.text(noCoachesText(false)), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Add coach'), findsOneWidget);
+    });
+
+    testWidgets('a role without add-coach permission sees only the message', (tester) async {
+      await pump(tester, const [], role: 'unknown');
 
       expect(find.text(noCoachesText(false)), findsOneWidget);
       expect(find.text('Add coach'), findsNothing);

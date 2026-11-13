@@ -15,12 +15,11 @@ class TrainerListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trainers = ref.watch(trainersProvider);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    // Adding a trainer directly also approves them, so it follows approveTrainer
-    // (owner + manager; receptionists only view trainers).
+    // Owner, manager and receptionist can all add a coach at the desk.
     final canAdd = ref
             .watch(authProvider)
             .valueOrNull
-            ?.hasPermission(StaffPermission.approveTrainer) ??
+            ?.hasPermission(StaffPermission.addTrainer) ??
         false;
 
     return Scaffold(
