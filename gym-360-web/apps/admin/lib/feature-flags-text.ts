@@ -1,29 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { DEFAULT_LOCALE, isLocale, type Locale } from '@gym360/ui';
-
-/**
- * Current locale from <html lang>, kept in sync when the header LocaleToggle switches it
- * (the toggle rewrites lang/dir on <html> without remounting client components).
- */
-function useDocumentLocale(): Locale {
-  const read = (): Locale => {
-    if (typeof document === 'undefined') return DEFAULT_LOCALE;
-    const lang = document.documentElement.lang;
-    return isLocale(lang) ? lang : DEFAULT_LOCALE;
-  };
-  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
-
-  useEffect(() => {
-    setLocale(read());
-    const observer = new MutationObserver(() => setLocale(read()));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-    return () => observer.disconnect();
-  }, []);
-
-  return locale;
-}
+import { useDocumentLocale, type Locale } from '@gym360/ui';
 
 /**
  * Arabic + English labels for the Feature Flags section. Arabic is the default locale

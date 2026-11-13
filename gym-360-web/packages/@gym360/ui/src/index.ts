@@ -23,6 +23,7 @@ export {
   isGymSuspendedError,
 } from './lib/api-client';
 export * from './lib/api-endpoints';
+export * from './lib/feature-flags';
 export {
   LOCALE_COOKIE,
   DEFAULT_LOCALE,

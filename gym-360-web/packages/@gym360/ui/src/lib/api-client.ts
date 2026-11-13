@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse, ApiError } from '../types/api-response';
+import { handleFeatureDisabledError } from './feature-flags/errors';
 
 let getAccessToken: (() => string | null) | undefined;
 let getActiveGymId: (() => string | null) | undefined;
@@ -50,6 +51,9 @@ apiClient.interceptors.response.use(
       }
       if (error.response?.status === 401) {
         onUnauthorized?.();
+      }
+      if (error.response?.status === 403) {
+        handleFeatureDisabledError(error);
       }
     }
     return Promise.reject(error);
