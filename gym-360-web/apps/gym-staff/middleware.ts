@@ -1,10 +1,10 @@
 import { withAuth } from 'next-auth/middleware';
 import { NextResponse } from 'next/server';
+import { isReceptionistPathAllowed } from './lib/receptionist-paths';
 
 type StaffToken = { role?: string; gymId?: unknown; staffSubRole?: string } | null;
 
 const STAFF_ROLES = ['gym_staff', 'gym_owner'];
-const RECEPTIONIST_PATHS = ['/', '/members', '/check-ins', '/billing', '/pt/trials', '/pt/review', '/pt/interests'];
 
 const isStaffRole = (token: StaffToken) => !!token?.role && STAFF_ROLES.includes(token.role);
 
@@ -12,9 +12,6 @@ const isStaffRole = (token: StaffToken) => !!token?.role && STAFF_ROLES.includes
 // /select-gym (the page handles the zero-owned-gyms case with a sign-out CTA).
 const ownerNeedsGym = (token: NonNullable<StaffToken>, path: string) =>
   token.role === 'gym_owner' && !token.gymId && path !== '/select-gym';
-
-const isReceptionistPathAllowed = (path: string) =>
-  RECEPTIONIST_PATHS.some((p) => path === p || path.startsWith(p + '/'));
 
 // Settings: managers can see settings but not billing (enforced in the page, not here).
 function resolveRedirect(token: StaffToken, path: string): string | null {
