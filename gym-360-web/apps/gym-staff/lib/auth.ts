@@ -223,6 +223,19 @@ function defaultSubRole(role: string): StaffSubRole {
   return role === 'gym_owner' ? 'owner' : 'receptionist';
 }
 
+const SUB_ROLES: readonly StaffSubRole[] = ['owner', 'manager', 'receptionist'];
+
+const asSubRole = (value: unknown): StaffSubRole | null => {
+  const v = typeof value === 'string' ? value.toLowerCase() : '';
+  return (SUB_ROLES as readonly string[]).includes(v) ? (v as StaffSubRole) : null;
+};
+
+// The API sends the sub-role as the `staffSubRole` claim ("Manager"); `staffRole` is the
+// coarse role ("staff"), so it must not be read as a sub-role.
+function resolveSubRole(user: any, payload: Record<string, any>, role: string): StaffSubRole {
+  return asSubRole(user.staffSubRole) ?? asSubRole(payload.staffSubRole) ?? asSubRole(payload.staffRole) ?? defaultSubRole(role);
+}
+
 // Tenant claims from the login response, falling back to the token payload.
 function tenantClaims(user: any, payload: Record<string, any>) {
   return {
@@ -253,7 +266,7 @@ function toStaffUser(accessToken: string, refreshToken: string, user: any): User
     accessToken,
     refreshToken,
     role,
-    staffSubRole: (user.staffSubRole ?? payload.staffRole ?? defaultSubRole(role)) as StaffSubRole,
+    staffSubRole: resolveSubRole(user, payload, role),
     gymName: user.gymName ?? '',
     ownedGyms: toOwnedGyms(user.ownedGyms),
     ...tenantClaims(user, payload),
