@@ -163,8 +163,7 @@ class _LogMeasurementsScreenState
         'loggedBy': userId,
       });
 
-      ref.invalidate(progressDashboardDetailProvider);
-      ref.invalidate(bodyMetricsProvider);
+      refreshProgress(ref);
       // Keep the Home weight tile and leaderboard in sync with the new value.
       ref.invalidate(progressDashboardProvider);
       ref.invalidate(leaderboardProvider);

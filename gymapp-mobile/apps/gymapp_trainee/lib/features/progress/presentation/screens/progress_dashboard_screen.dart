@@ -1,20 +1,20 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../providers/progress_providers.dart';
 
+/// pt.progress_measurements: the member's progress since day one (coach measurements are the
+/// baseline), plus the streak / check-in / photo sections when those features are on.
 class ProgressDashboardScreen extends ConsumerWidget {
   const ProgressDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final dashboardAsync = ref.watch(progressDashboardDetailProvider);
-    final metricsAsync = ref.watch(bodyMetricsProvider);
     final flags = ref.watch(featureFlagsProvider);
     final showStreaks = flags.isEnabled(FeatureFlagKeys.gamificationStreaks);
     final showCheckIns = flags.isEnabled(FeatureFlagKeys.gymAttendance);
@@ -33,130 +33,24 @@ class ProgressDashboardScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          ref.invalidate(progressDashboardDetailProvider);
-          ref.invalidate(bodyMetricsProvider);
+          refreshProgress(ref);
           if (showPhotos) ref.invalidate(progressPhotosProvider);
+          await ref.read(progressJourneyProvider.future);
         },
-        child: CustomScrollView(
-          slivers: [
-            // Streak card (from dashboard — no separate /progress/streaks endpoint)
-            if (showStreaks)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: dashboardAsync.when(
-                    data: (dashboard) => _StreakCard(
-                      currentStreak: dashboard.currentWorkoutStreak,
-                      longestStreak: dashboard.longestWorkoutStreak,
-                      isArabic: isArabic,
-                    ),
-                    loading: () => const ShimmerCard(height: 80),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            if (showStreaks || showCheckIns || showPhotos)
+              _ExtrasSection(
+                showStreaks: showStreaks,
+                showCheckIns: showCheckIns,
+                showPhotos: showPhotos,
+                isArabic: isArabic,
               ),
-
-            // Stats row
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: dashboardAsync.when(
-                  data: (dashboard) {
-                    final weight = dashboard.latestMetrics?.weight;
-                    final change = dashboard.weightChangeFromFirst;
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: StatCard(
-                            label: isArabic ? 'الوزن الحالي' : 'Current Weight',
-                            value: weight != null
-                                ? '${weight.toStringAsFixed(1)} kg'
-                                : '-',
-                            icon: Icons.monitor_weight_outlined,
-                            iconColor: Colors.blue,
-                            compact: true,
-                            trend: change != null
-                                ? '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)}'
-                                : null,
-                            trendUp: (change ?? 0) > 0,
-                          ),
-                        ),
-                        if (showCheckIns) const SizedBox(width: 8),
-                        if (showCheckIns)
-                          Expanded(
-                            child: StatCard(
-                              label:
-                                  isArabic ? 'أيام الحضور' : 'Check-In Streak',
-                              value: '${dashboard.currentCheckInStreak}',
-                              icon: Icons.event_available,
-                              iconColor: Colors.green,
-                              compact: true,
-                            ),
-                          ),
-                        if (showPhotos) const SizedBox(width: 8),
-                        if (showPhotos)
-                          Expanded(
-                            child: StatCard(
-                              label: isArabic ? 'الصور' : 'Photos',
-                              value: '${dashboard.photoCount}',
-                              icon: Icons.photo_library_outlined,
-                              iconColor: Colors.purple,
-                              compact: true,
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                  loading: () => const ShimmerCard(height: 80),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-
-            // Weight chart — derives its series from the body-metrics list
-            // (the /progress/dashboard DTO doesn't ship a trend array yet).
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: metricsAsync.when(
-                  data: (metrics) => _WeightChart(
-                    trend: _weightTrendFromMetrics(metrics),
-                    isArabic: isArabic,
-                  ),
-                  loading: () => const ShimmerCard(height: 200),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-              ),
-            ),
-
-            // Quick actions
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _ActionCard(
-                        icon: Icons.straighten,
-                        label: isArabic ? 'قياسات الجسم' : 'Measurements',
-                        onTap: () => context.push(AppRoutes.logMeasurements),
-                      ),
-                    ),
-                    if (showPhotos) const SizedBox(width: 12),
-                    if (showPhotos)
-                      Expanded(
-                        child: _ActionCard(
-                          icon: Icons.photo_camera,
-                          label: isArabic ? 'صور التقدم' : 'Progress Photos',
-                          onTap: () => context.push(AppRoutes.progressPhotos),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            const _JourneySection(),
+            const SizedBox(height: 12),
+            _QuickActions(showPhotos: showPhotos, isArabic: isArabic),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -164,18 +58,162 @@ class ProgressDashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Projects the body-metrics list to an ordered weight trend. Entries without
-/// a weight are skipped, and invalid dates fall back to `createdAt`.
-List<WeightTrendPoint> _weightTrendFromMetrics(
-    List<BodyMetricEntryModel> metrics) {
-  final points = <WeightTrendPoint>[];
-  for (final m in metrics) {
-    if (m.weight == null) continue;
-    final parsed = DateTime.tryParse(m.date) ?? m.createdAt;
-    points.add(WeightTrendPoint(date: parsed, weight: m.weight!));
+/// Day one → now: hero, chart, comparison and check-ins (shared with the coach app).
+class _JourneySection extends ConsumerWidget {
+  const _JourneySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final coach = ref.watch(assignedCoachProvider);
+    return ref.watch(progressJourneyProvider).when(
+          data: (journey) => ProgressJourneyView(
+            journey: journey,
+            isArabic: isArabic,
+            viewer: MemberViewer(coachId: coach.id, coachName: coach.name),
+            onEditGoal: () => _editGoal(context, ref, journey, isArabic),
+          ),
+          loading: () => const Column(children: [ShimmerCard(height: 160), ShimmerCard(height: 220)]),
+          error: (_, __) => AppErrorWidget(
+            message: "Couldn't load your progress",
+            messageAr: 'تعذر تحميل تقدمك',
+            onRetry: () => ref.invalidate(progressJourneyProvider),
+          ),
+        );
   }
-  points.sort((a, b) => a.date.compareTo(b.date));
-  return points;
+
+  Future<void> _editGoal(BuildContext context, WidgetRef ref, ProgressJourney journey, bool isArabic) async {
+    final selection = await showGoalPicker(
+      context,
+      strings: ProgressJourneyStrings(isArabic),
+      current: journey.goal,
+    );
+    final gymId = ref.read(authProvider).valueOrNull?.currentGymId;
+    if (selection == null || gymId == null) return;
+    try {
+      await ref.read(progressJourneyApiProvider).setGoal(GymId(gymId), selection);
+      refreshProgress(ref);
+    } on ApiException catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic ? 'تعذر حفظ الهدف، حاول مرة أخرى' : "Couldn't save the goal. Try again."),
+      ));
+    }
+  }
+}
+
+/// Streak card and check-in / photo counters (each behind its own flag).
+class _ExtrasSection extends ConsumerWidget {
+  final bool showStreaks;
+  final bool showCheckIns;
+  final bool showPhotos;
+  final bool isArabic;
+
+  const _ExtrasSection({
+    required this.showStreaks,
+    required this.showCheckIns,
+    required this.showPhotos,
+    required this.isArabic,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(progressDashboardDetailProvider).when(
+          data: (dashboard) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              children: [
+                if (showStreaks)
+                  _StreakCard(
+                    currentStreak: dashboard.currentWorkoutStreak,
+                    longestStreak: dashboard.longestWorkoutStreak,
+                    isArabic: isArabic,
+                  ),
+                if (showCheckIns || showPhotos) ...[
+                  if (showStreaks) const SizedBox(height: 8),
+                  _Counters(dashboard: dashboard, showCheckIns: showCheckIns, showPhotos: showPhotos, isArabic: isArabic),
+                ],
+              ],
+            ),
+          ),
+          loading: () => const ShimmerCard(height: 80),
+          error: (_, __) => const SizedBox.shrink(),
+        );
+  }
+}
+
+class _Counters extends StatelessWidget {
+  final ProgressDashboardModel dashboard;
+  final bool showCheckIns;
+  final bool showPhotos;
+  final bool isArabic;
+
+  const _Counters({
+    required this.dashboard,
+    required this.showCheckIns,
+    required this.showPhotos,
+    required this.isArabic,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (showCheckIns)
+          Expanded(
+            child: StatCard(
+              label: isArabic ? 'أيام الحضور' : 'Check-In Streak',
+              value: '${dashboard.currentCheckInStreak}',
+              icon: Icons.event_available,
+              iconColor: Colors.green,
+              compact: true,
+            ),
+          ),
+        if (showCheckIns && showPhotos) const SizedBox(width: 8),
+        if (showPhotos)
+          Expanded(
+            child: StatCard(
+              label: isArabic ? 'الصور' : 'Photos',
+              value: '${dashboard.photoCount}',
+              icon: Icons.photo_library_outlined,
+              iconColor: Colors.purple,
+              compact: true,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  final bool showPhotos;
+  final bool isArabic;
+
+  const _QuickActions({required this.showPhotos, required this.isArabic});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionCard(
+            icon: Icons.straighten,
+            label: isArabic ? 'سجّل قياساتك' : 'Log measurements',
+            onTap: () => context.push(AppRoutes.logMeasurements),
+          ),
+        ),
+        if (showPhotos) const SizedBox(width: 12),
+        if (showPhotos)
+          Expanded(
+            child: _ActionCard(
+              icon: Icons.photo_camera,
+              label: isArabic ? 'صور التقدم' : 'Progress Photos',
+              onTap: () => context.push(AppRoutes.progressPhotos),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _StreakCard extends StatelessWidget {
@@ -231,84 +269,6 @@ class _StreakCard extends StatelessWidget {
                       ),
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WeightChart extends StatelessWidget {
-  final List<WeightTrendPoint> trend;
-  final bool isArabic;
-
-  const _WeightChart({required this.trend, required this.isArabic});
-
-  @override
-  Widget build(BuildContext context) {
-    if (trend.isEmpty) {
-      return AppCard(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: Text(
-              isArabic ? 'لا توجد بيانات وزن بعد' : 'No weight data yet',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final spots = trend.asMap().entries.map((e) {
-      return FlSpot(e.key.toDouble(), e.value.weight);
-    }).toList();
-
-    final minY = trend.map((e) => e.weight).reduce((a, b) => a < b ? a : b) - 2;
-    final maxY = trend.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 2;
-
-    return AppCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isArabic ? 'منحنى الوزن' : 'Weight Trend',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 160,
-              child: LineChart(
-                LineChartData(
-                  minY: minY,
-                  maxY: maxY,
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      color: Theme.of(context).colorScheme.primary,
-                      barWidth: 2.5,
-                      dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.1),
-                      ),
-                    ),
-                  ],
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  titlesData: const FlTitlesData(show: false),
-                ),
-              ),
             ),
           ],
         ),

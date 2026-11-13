@@ -25,7 +25,6 @@ class ClientDetailData {
   final UserModel user;
   final List<SessionModel> sessions;
   final List<WorkoutAssignmentModel> workoutAssignments;
-  final List<BodyMetricEntryModel> bodyMetrics;
   final List<ProgressPhotoModel> progressPhotos;
   final StreakModel? streak;
   final SessionPackageModel? activePackage;
@@ -36,7 +35,6 @@ class ClientDetailData {
     required this.user,
     this.sessions = const [],
     this.workoutAssignments = const [],
-    this.bodyMetrics = const [],
     this.progressPhotos = const [],
     this.streak,
     this.activePackage,
@@ -201,37 +199,6 @@ final clientDetailProvider =
       } catch (_) {}
     }
 
-    // Fetch progress data. BE `/progress/clients/{clientId}` requires
-    // trainerId + gymId query params and returns a ClientProgressResponse
-    // object — recent body metrics live under `recentMetrics`, with the
-    // single most-recent metric under `latestMetrics`.
-    List<BodyMetricEntryModel> bodyMetrics = <BodyMetricEntryModel>[];
-    try {
-      final trainerId = ref.read(authProvider).user?.id;
-      if (trainerId != null) {
-        bodyMetrics = await apiClient.get<List<BodyMetricEntryModel>>(
-          ApiEndpoints.clientProgress(ClientId(clientId)),
-          queryParameters: {'trainerId': trainerId, 'gymId': gymId},
-          parser: (data) {
-            if (data is Map<String, dynamic>) {
-              final recent = data['recentMetrics'];
-              if (recent is List) {
-                return recent
-                    .map((e) => BodyMetricEntryModel.fromJson(
-                        e as Map<String, dynamic>))
-                    .toList();
-              }
-              final latest = data['latestMetrics'];
-              if (latest is Map<String, dynamic>) {
-                return [BodyMetricEntryModel.fromJson(latest)];
-              }
-            }
-            return <BodyMetricEntryModel>[];
-          },
-        );
-      }
-    } catch (_) {}
-
     // Fetch remote workout status
     RemoteWorkoutStatusModel? remoteStatus;
     if (flags.isEnabled(FeatureFlagKeys.trainingRemoteWorkout)) {
@@ -298,7 +265,6 @@ final clientDetailProvider =
       user: user,
       sessions: sessions,
       workoutAssignments: workouts,
-      bodyMetrics: bodyMetrics,
       remoteWorkoutStatus: remoteStatus,
       activePackage: activePackage,
       notes: notes,
@@ -323,3 +289,31 @@ final remoteWorkoutProvider = FutureProvider.autoDispose
     return null;
   }
 });
+
+/// pt.progress_measurements: the client's progress since day one + goal (own clients only;
+/// the API answers 403 otherwise).
+final clientJourneyProvider = FutureProvider.autoDispose.family<ProgressJourney, String>((ref, clientId) async {
+  final gymId = ref.watch(activeGymIdProvider);
+  if (gymId == null) {
+    throw ApiException(message: 'No active gym selected.', errorCode: 'NO_ACTIVE_GYM');
+  }
+  final model = await ref.watch(apiClientProvider).get<ProgressJourneyModel>(
+        ApiEndpoints.clientProgressJourney(ClientId(clientId)),
+        queryParameters: {'gymId': gymId},
+        parser: (data) => ProgressJourneyModel.fromJson(Map<String, dynamic>.from(data as Map)),
+      );
+  return ProgressJourney.from(model);
+});
+
+/// Sets the client's goal (coach) and refreshes their progress.
+Future<void> setClientGoal(WidgetRef ref, String clientId, GoalSelection selection) async {
+  final gymId = ref.read(activeGymIdProvider);
+  if (gymId == null) return;
+  await ref.read(apiClientProvider).put<Object?>(
+        ApiEndpoints.clientProgressGoal(ClientId(clientId)),
+        queryParameters: {'gymId': gymId},
+        data: {'goal': selection.goal.apiValue, 'targetWeight': selection.targetWeight},
+        parser: (data) => data,
+      );
+  ref.invalidate(clientJourneyProvider(clientId));
+}
