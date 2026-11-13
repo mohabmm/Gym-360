@@ -41,10 +41,20 @@ void main() {
       RoutePaths.ptTrials,
       RoutePaths.ptReview,
       RoutePaths.ptDashboard,
+      RoutePaths.ptInterests,
       RoutePaths.staff,
       RoutePaths.gymProfile,
     ]) {
       test(path, () => expect(staffRouteGuard.redirect(path, pt), isNull));
     }
+  });
+
+  test('interest list is closed when pt.package_interest is off', () {
+    final off = FeatureFlags(
+      values: {for (final k in FeatureFlagKeys.ptModuleDefaults) k: k != FeatureFlagKeys.ptPackageInterest},
+      preset: 'pt_module',
+      origin: FeatureFlagsOrigin.server,
+    );
+    expect(staffRouteGuard.redirect(RoutePaths.ptInterests, off), RoutePaths.dashboard);
   });
 }

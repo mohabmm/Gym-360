@@ -22,6 +22,13 @@ final activePackagesProvider =
   return repo.getActivePackages();
 });
 
+/// All of the trainee's packages, any status (finished-trial detection, pt.package_interest).
+final allPackagesProvider =
+    FutureProvider<List<SessionPackageModel>>((ref) async {
+  final repo = ref.watch(membershipRepositoryProvider);
+  return repo.getAllPackages();
+});
+
 final paymentHistoryProvider =
     FutureProvider<List<PaymentModel>>((ref) async {
   final repo = ref.watch(membershipRepositoryProvider);

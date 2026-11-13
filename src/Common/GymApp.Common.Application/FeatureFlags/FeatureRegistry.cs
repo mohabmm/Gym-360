@@ -47,6 +47,18 @@ public static class FeatureRegistry
             "PT owner dashboard", "لوحة المالك للتدريب الشخصي",
             "Trial-to-paid conversion per coach, renewals and sessions logged.",
             "نسبة التحويل من التجربة إلى الاشتراك لكل مدرب، والتجديدات، والحصص المسجلة.")),
+        Pt(K.PtTrialRecap, FeatureApps.Trainer | FeatureApps.Trainee, new(
+            "Trial recap", "ملخص الحصص التجريبية",
+            "After the trial the coach sends the trainee a short plan and a recommended session count (no price).",
+            "بعد التجربة يرسل المدرب للمتدرب خطة قصيرة وعدد الحصص المقترح (بدون سعر).")),
+        Pt(K.PtPackageInterest, FeatureApps.All, new(
+            "Package interest", "طلبات الاهتمام بالباقات",
+            "Trainee taps 'I'm interested'; the desk and coach get a lead to follow up and sell the package.",
+            "يضغط المتدرب 'مهتم' فيصل للاستقبال والمدرب طلب لمتابعته وبيع الباقة.")),
+        Pt(K.PtTrialFollowUps, FeatureApps.Trainee, new(
+            "Trial follow-ups", "متابعة ما بعد التجربة",
+            "Reminds the trainee when the trial ends, after 3 days and after 12 days if they have not subscribed.",
+            "تذكير المتدرب عند انتهاء التجربة وبعد ٣ أيام وبعد ١٢ يومًا إن لم يشترك.")),
 
         // ---- PT later phase (OFF) ----
         Off(K.PtMonthlyReport, "pt", FeatureApps.All, new(

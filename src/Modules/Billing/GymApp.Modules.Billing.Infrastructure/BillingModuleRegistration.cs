@@ -42,6 +42,7 @@ public static class BillingModuleRegistration
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<ISessionPackageTemplateRepository, SessionPackageTemplateRepository>();
         services.AddScoped<ISessionPackageRepository, SessionPackageRepository>();
+        services.AddScoped<IPackageInterestRepository, PackageInterestRepository>();
         services.AddScoped<ISubscriptionPlanRepository, SubscriptionPlanRepository>();
         services.AddScoped<IFeatureRepository, FeatureRepository>();
         services.AddScoped<IPlanFeatureRepository, PlanFeatureRepository>();
@@ -79,6 +80,14 @@ public static class BillingModuleRegistration
                 .ForJob(jobKey)
                 .WithIdentity($"{nameof(ProcessExpiredSessionPackagesJob)}-trigger")
                 .WithCronSchedule("0 0 2 * * ?")); // daily at 02:00 UTC
+
+            // pt.trial_followups: trainee push reminders, so run mid-morning Cairo time (09:00/10:00).
+            var followUpsKey = new JobKey(nameof(SendTrialFollowUpsJob));
+            q.AddJob<SendTrialFollowUpsJob>(opts => opts.WithIdentity(followUpsKey));
+            q.AddTrigger(opts => opts
+                .ForJob(followUpsKey)
+                .WithIdentity($"{nameof(SendTrialFollowUpsJob)}-trigger")
+                .WithCronSchedule("0 0 7 * * ?")); // daily at 07:00 UTC
         });
 
         return services;

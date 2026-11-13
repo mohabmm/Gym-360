@@ -12,6 +12,7 @@ import '../widgets/weekly_activity_chart.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../../../communication/presentation/widgets/notification_bell.dart';
 import '../../../scheduling/presentation/providers/scheduling_providers.dart';
+import '../../../scheduling/presentation/widgets/pt_conversion_widgets.dart';
 import '../../../scheduling/presentation/widgets/pt_session_widgets.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
 
@@ -37,6 +38,8 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(mySessionsAllProvider);
           ref.invalidate(activePackagesProvider);
+          ref.invalidate(allPackagesProvider);
+          ref.invalidate(myTrialRecapProvider);
           ref.invalidate(todaysWorkoutProvider);
           ref.invalidate(upcomingSessionsListProvider);
           ref.invalidate(progressDashboardProvider);
@@ -56,6 +59,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             // Every section belongs to a feature; disabled ones are not built at all,
             // so a PT gym sees packages, sessions to confirm and progress, with no gaps.
+            ...section(pagePad, FeatureFlagKeys.ptTrialSessions, const TrialConversionCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptPackages, const PackageSummaryCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptDualSessionLogging, const ConfirmSessionsCard()),
             ...section(pagePad, FeatureFlagKeys.trainingWorkouts, const TodaysWorkoutCard(), top: 4),

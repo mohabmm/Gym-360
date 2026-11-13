@@ -29,5 +29,11 @@ public sealed record SessionPackageMilestoneReachedIntegrationEvent(
 
         /// <summary>Trial: all free sessions used (pt.trial_end_alerts).</summary>
         public const string TrialFinished = "trial_finished";
+
+        /// <summary>Trial finished 3 days ago, not subscribed: trainee reminder (pt.trial_followups).</summary>
+        public const string TrialFollowUpDay3 = "trial_followup_day3";
+
+        /// <summary>Trial finished 12 days ago, not subscribed: last trainee reminder (pt.trial_followups).</summary>
+        public const string TrialLastChanceDay12 = "trial_last_chance_day12";
     }
 }

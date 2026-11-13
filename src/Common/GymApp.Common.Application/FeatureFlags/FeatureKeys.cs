@@ -15,6 +15,9 @@ public static class FeatureKeys
     public const string PtDualSessionLogging = "pt.dual_session_logging";
     public const string PtRenewalReminders = "pt.renewal_reminders";
     public const string PtOwnerDashboard = "pt.owner_dashboard";
+    public const string PtTrialRecap = "pt.trial_recap";
+    public const string PtPackageInterest = "pt.package_interest";
+    public const string PtTrialFollowUps = "pt.trial_followups";
 
     // --- PT, later phase: OFF in pt_module ---
     public const string PtMonthlyReport = "pt.monthly_report";

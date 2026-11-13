@@ -28,6 +28,9 @@ class PtDeskHome extends ConsumerWidget {
     final trials = flags.isEnabled(FeatureFlagKeys.ptTrialEndAlerts)
         ? ref.watch(notConvertedTrialsProvider)
         : null;
+    final interests = flags.isEnabled(FeatureFlagKeys.ptPackageInterest)
+        ? ref.watch(pendingInterestsProvider)
+        : null;
     final disputed = flags.isEnabled(FeatureFlagKeys.ptDualSessionLogging)
         ? ref.watch(disputedSessionsProvider)
         : null;
@@ -37,6 +40,7 @@ class PtDeskHome extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(notConvertedTrialsProvider);
+          ref.invalidate(pendingInterestsProvider);
           ref.invalidate(disputedSessionsProvider);
           ref.invalidate(ptDashboardProvider(30));
         },
@@ -51,6 +55,17 @@ class PtDeskHome extends ConsumerWidget {
                     ? 'اختر المتدرب ثم «تعيين مدرب»'
                     : 'Pick the trainee, then “Assign trainer”',
                 onTap: () => context.go('/members'),
+              ),
+            // Hottest leads first: trainees who asked for a package.
+            if (interests != null)
+              _ActionTile(
+                icon: Icons.thumb_up_alt_outlined,
+                title: ar ? 'مهتمون بالباقات' : 'Interested in a package',
+                subtitle: ar
+                    ? 'ضغطوا «مهتم» — تواصل معهم الآن'
+                    : 'They tapped “I’m interested” — contact them now',
+                count: interests.valueOrNull?.length,
+                onTap: () => context.push('/pt/interests'),
               ),
             if (trials != null)
               _ActionTile(

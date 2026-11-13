@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 type StaffToken = { role?: string; gymId?: unknown; staffSubRole?: string } | null;
 
 const STAFF_ROLES = ['gym_staff', 'gym_owner'];
-const RECEPTIONIST_PATHS = ['/', '/members', '/check-ins', '/billing', '/pt/trials', '/pt/review'];
+const RECEPTIONIST_PATHS = ['/', '/members', '/check-ins', '/billing', '/pt/trials', '/pt/review', '/pt/interests'];
 
 const isStaffRole = (token: StaffToken) => !!token?.role && STAFF_ROLES.includes(token.role);
 

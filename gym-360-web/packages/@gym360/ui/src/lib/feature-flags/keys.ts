@@ -8,6 +8,9 @@ export const FEATURE_FLAG_KEYS = {
   PT_DUAL_SESSION_LOGGING: 'pt.dual_session_logging',
   PT_RENEWAL_REMINDERS: 'pt.renewal_reminders',
   PT_OWNER_DASHBOARD: 'pt.owner_dashboard',
+  PT_TRIAL_RECAP: 'pt.trial_recap',
+  PT_PACKAGE_INTEREST: 'pt.package_interest',
+  PT_TRIAL_FOLLOWUPS: 'pt.trial_followups',
   // PT later phase — OFF in pt_module.
   PT_MONTHLY_REPORT: 'pt.monthly_report',
   PT_COACH_RATINGS: 'pt.coach_ratings',
@@ -56,4 +59,7 @@ export const PT_MODULE_DEFAULTS: readonly string[] = [
   K.PT_DUAL_SESSION_LOGGING,
   K.PT_RENEWAL_REMINDERS,
   K.PT_OWNER_DASHBOARD,
+  K.PT_TRIAL_RECAP,
+  K.PT_PACKAGE_INTEREST,
+  K.PT_TRIAL_FOLLOWUPS,
 ];

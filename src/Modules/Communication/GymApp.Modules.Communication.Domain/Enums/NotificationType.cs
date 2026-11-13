@@ -19,5 +19,14 @@ public enum NotificationType
     LeaderboardUpdate = 14,
     TrialAlert = 15,
     SessionConfirmation = 16,
-    SessionDisputed = 17
+    SessionDisputed = 17,
+
+    /// <summary>pt.trial_recap: the coach sent the trainee their post-trial plan.</summary>
+    TrialRecap = 18,
+
+    /// <summary>pt.package_interest: a trainee tapped "I'm interested" (desk + coach).</summary>
+    PackageInterest = 19,
+
+    /// <summary>pt.trial_followups: post-trial reminders to the trainee.</summary>
+    TrialFollowUp = 20
 }

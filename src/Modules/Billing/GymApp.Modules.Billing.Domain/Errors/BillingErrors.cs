@@ -25,6 +25,27 @@ public static class BillingErrors
     public static readonly Error TrialAlreadyUsed = new(
         "Billing.Trial.AlreadyExists", "This trainee already had a free trial.");
 
+    public static readonly Error TrialRecapNotATrial = new(
+        "Billing.TrialRecap.NotATrial", "A recap can only be sent for a free trial package.");
+
+    public static readonly Error TrialRecapForbidden = new(
+        "Billing.TrialRecap.Forbidden", "Only the trial's coach can send its recap.");
+
+    public static readonly Error TrialRecapInvalidNote = new(
+        "Billing.TrialRecap.InvalidNote", "The recap note is required and must be at most 500 characters.");
+
+    public static readonly Error TrialRecapInvalidSessions = new(
+        "Billing.TrialRecap.InvalidSessions", "Recommended sessions must be a multiple of 4 between 4 and 40.");
+
+    public static readonly Error TrialRecapNotFound = new(
+        "Billing.TrialRecapNotFound", "No trial recap has been sent yet.");
+
+    public static readonly Error PackageInterestNotFound = new(
+        "Billing.PackageInterestNotFound", "The specified package interest was not found.");
+
+    public static readonly Error PackageInterestNotOpen = new(
+        "Billing.PackageInterest.NotOpen", "This lead is already closed.");
+
     public static readonly Error PackageExhausted = new(
         "Billing.PackageExhausted", "The session package has no remaining sessions.");
 

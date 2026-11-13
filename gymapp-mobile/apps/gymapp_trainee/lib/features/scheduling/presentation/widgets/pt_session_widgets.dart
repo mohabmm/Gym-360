@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/providers.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
 import '../providers/scheduling_providers.dart';
+import 'pt_conversion_widgets.dart';
 
 /// Sessions the coach logged that wait for the trainee's confirmation (pt.dual_session_logging).
 final pendingConfirmationsProvider = Provider<List<SessionModel>>((ref) {
@@ -195,6 +196,11 @@ class _PackageRemaining extends StatelessWidget {
               Text(
                 isArabic ? 'اقتربت باقتك على الانتهاء، جدّدها من الاستقبال.' : 'Your package is almost used up — renew at the desk.',
                 style: theme.textTheme.bodySmall?.copyWith(color: AppColors.warning),
+              ),
+              const SizedBox(height: 8),
+              InterestButton(
+                packageId: package.id,
+                label: isArabic ? 'جدّد مع ${package.trainerName ?? 'مدربك'}' : 'Renew with ${package.trainerName ?? 'your coach'}',
               ),
             ],
           ],

@@ -83,6 +83,13 @@ internal sealed class SessionPackageConfiguration : IEntityTypeConfiguration<Ses
             .HasDefaultValue(0)
             .IsRequired();
 
+        builder.Property(sp => sp.RecapNote)
+            .HasMaxLength(500);
+
+        builder.Property(sp => sp.RecommendedSessions);
+
+        builder.Property(sp => sp.RecapSentAt);
+
         builder.Property(sp => sp.AssignedBy)
             .IsRequired();
 

@@ -51,6 +51,7 @@ export 'src/models/session_package_model.dart';
 export 'src/models/trainer_availability_model.dart';
 export 'src/models/weekly_availability_model.dart';
 export 'src/models/remote_workout_model.dart';
+export 'src/models/pt_conversion_models.dart';
 
 // Feature flags (per-gym presets + overrides)
 export 'src/feature_flags/feature_flag_keys.dart';

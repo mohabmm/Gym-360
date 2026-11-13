@@ -13,6 +13,9 @@ public class FeatureRegistryTests
         FeatureKeys.PtDualSessionLogging,
         FeatureKeys.PtRenewalReminders,
         FeatureKeys.PtOwnerDashboard,
+        FeatureKeys.PtTrialRecap,
+        FeatureKeys.PtPackageInterest,
+        FeatureKeys.PtTrialFollowUps,
     };
 
     [Fact]
@@ -22,7 +25,7 @@ public class FeatureRegistryTests
     }
 
     [Fact]
-    public void Pt_module_turns_on_exactly_the_seven_pt_features()
+    public void Pt_module_turns_on_exactly_the_ten_pt_features()
     {
         FeatureRegistry.PtModuleDefaults.Should().BeEquivalentTo(PtModuleOn);
     }

@@ -19,4 +19,5 @@ export const STAFF_ROUTE_RULES: readonly RouteFlagRule[] = [
   { prefix: '/pt/trials', flags: [K.PT_TRIAL_END_ALERTS] },
   { prefix: '/pt/review', flags: [K.PT_DUAL_SESSION_LOGGING] },
   { prefix: '/pt/dashboard', flags: [K.PT_OWNER_DASHBOARD] },
+  { prefix: '/pt/interests', flags: [K.PT_PACKAGE_INTEREST] },
 ];

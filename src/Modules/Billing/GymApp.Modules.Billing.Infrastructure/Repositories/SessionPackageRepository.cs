@@ -65,6 +65,16 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
             .Where(sp => sp.GymId == gymId)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<SessionPackage>> GetFinishedTrialsAsync(
+        DateTime finishedSinceUtc,
+        CancellationToken cancellationToken = default) =>
+        await _dbContext.SessionPackages
+            .Where(sp => sp.IsTrial
+                && sp.Status == PackageStatus.Exhausted
+                && sp.ExhaustedAt != null
+                && sp.ExhaustedAt >= finishedSinceUtc)
+            .ToListAsync(cancellationToken);
+
     public Task<bool> HasTrialAsync(PackageOwner owner, CancellationToken cancellationToken = default) =>
         _dbContext.SessionPackages
             .AsNoTracking()

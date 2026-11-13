@@ -23,6 +23,7 @@ public sealed class BillingDbContext : DbContext, IBillingUnitOfWork
     public DbSet<SessionPackageTemplate> SessionPackageTemplates => Set<SessionPackageTemplate>();
     public DbSet<SessionPackage> SessionPackages => Set<SessionPackage>();
     public DbSet<PackageUsage> PackageUsages => Set<PackageUsage>();
+    public DbSet<PackageInterest> PackageInterests => Set<PackageInterest>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<Feature> Features => Set<Feature>();
     public DbSet<PlanFeature> PlanFeatures => Set<PlanFeature>();

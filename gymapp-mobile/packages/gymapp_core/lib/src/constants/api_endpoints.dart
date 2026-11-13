@@ -287,6 +287,12 @@ class ApiEndpoints {
   static const String sessionsForReview = '$basePrefix/scheduling/sessions/review';
   static const String trialsNotConverted = '$basePrefix/billing/trials/not-converted';
   static const String ptDashboard = '$basePrefix/billing/pt-dashboard';
+  /// pt.trial_recap — coach POSTs { note, recommendedSessions }; trainee GETs their latest plan.
+  static String trialRecap(String packageId) => '$basePrefix/billing/trials/$packageId/recap';
+  static const String myTrialRecap = '$basePrefix/billing/trials/my-recap';
+  /// pt.package_interest — trainee POSTs { sourcePackageId }; desk GETs ?state=pending|converted|dismissed|all.
+  static const String packageInterest = '$basePrefix/billing/package-interest';
+  static String packageInterestDismiss(String id) => '$basePrefix/billing/package-interest/$id/dismiss';
   static const String bodyMetricsForClient = '$basePrefix/progress/body-metrics/client';
   // Trainer's view of all their clients' active packages.
   static const String myClientPackages =
