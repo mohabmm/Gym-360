@@ -4,19 +4,21 @@ namespace GymApp.Modules.Billing.Application.Commands.SessionPackages;
 
 internal sealed class QuickAssignSessionPackageCommandValidator : AbstractValidator<QuickAssignSessionPackageCommand>
 {
+    internal const int MinSessions = 1;
+    internal const int MaxSessions = 100;
+
     public QuickAssignSessionPackageCommandValidator()
     {
         RuleFor(x => x.GymId).NotEmpty();
         RuleFor(x => x.TrainerId).NotEmpty();
         RuleFor(x => x.MemberId).NotEmpty();
         RuleFor(x => x.AssignedBy).NotEmpty();
-        // Multiples of 4 only, range 4..40 (matches the staff-app dropdown).
-        // Higher / lower values must come from a real PackageTemplate via the
-        // existing /billing/packages/assign route.
+        // The desk picks any session count (free or paid) when adding a member
+        // or assigning a coach; larger bundles come from a PackageTemplate.
         RuleFor(x => x.SessionCount)
-            .Must(c => c >= 4 && c <= 40 && c % 4 == 0)
+            .InclusiveBetween(MinSessions, MaxSessions)
             .When(x => !x.IsTrial)
-            .WithMessage("SessionCount must be a multiple of 4 between 4 and 40.");
+            .WithMessage($"SessionCount must be between {MinSessions} and {MaxSessions}.");
         // Free trial: the desk picks 1–3 sessions; no price and no payment.
         RuleFor(x => x.SessionCount)
             .InclusiveBetween(1, 3)

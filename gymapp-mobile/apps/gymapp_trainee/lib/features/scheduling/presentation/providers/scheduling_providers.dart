@@ -45,6 +45,27 @@ final mySessionsAllProvider =
   );
 });
 
+/// True once the desk has assigned this member a coach and a number of sessions
+/// (an Active package with a coach), or the member already has session history
+/// (so a finished package keeps its history). Before that the member app shows
+/// no sessions at all. Null while loading.
+final hasCoachAssignedProvider = Provider<bool?>((ref) {
+  final packagesAsync = ref.watch(activePackagesProvider);
+  final allAsync = ref.watch(mySessionsAllProvider);
+  if (packagesAsync.isLoading || allAsync.isLoading) return null;
+  // A failed fetch must not hide a paying member's sessions; the screens show
+  // their own error/retry state and the backend still enforces packages.
+  if (packagesAsync.hasError || allAsync.hasError) return true;
+  return hasAssignedCoach(
+    packagesAsync.valueOrNull ?? const <SessionPackageModel>[],
+    allAsync.valueOrNull ?? const <SessionModel>[],
+  );
+});
+
+bool hasAssignedCoach(List<SessionPackageModel> packages, List<SessionModel> sessions) =>
+    sessions.isNotEmpty ||
+    packages.any((p) => p.status.toLowerCase() == 'active' && p.trainerId.isNotEmpty && p.totalSessions > 0);
+
 /// Bookable sessions across all Active packages.
 ///
 /// `BE.RemainingSessions` debits Completed + LateCancelled. Pending /

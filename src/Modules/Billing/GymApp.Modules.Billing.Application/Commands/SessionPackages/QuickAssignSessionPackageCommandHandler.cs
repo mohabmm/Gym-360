@@ -54,9 +54,7 @@ internal sealed class QuickAssignSessionPackageCommandHandler
             TrainerId = request.TrainerId,
             MemberId = request.MemberId,
             TemplateId = Guid.Empty,
-            Name = request.IsTrial
-                ? $"Trial: {request.SessionCount} free sessions"
-                : $"Custom: {request.SessionCount} sessions",
+            Name = PackageName(request, totalAmount),
             TotalSessions = request.SessionCount,
             PricePerSession = PricePerSession(totalAmount, request.SessionCount),
             TotalPrice = total,
@@ -75,6 +73,15 @@ internal sealed class QuickAssignSessionPackageCommandHandler
 
         return Result.Success(package.Id);
     }
+
+    // Free desk-assigned sessions are labelled as such so staff and the coach can tell them apart.
+    private static string PackageName(QuickAssignSessionPackageCommand request, decimal totalAmount) =>
+        (request.IsTrial, totalAmount > 0m) switch
+        {
+            (true, _) => $"Trial: {request.SessionCount} free sessions",
+            (false, false) => $"Free: {request.SessionCount} sessions",
+            _ => $"Custom: {request.SessionCount} sessions"
+        };
 
     /// <summary>
     /// Caller supplies the lump-sum package price; per-session is derived so trainer-earnings

@@ -22,6 +22,7 @@ import '../features/progress/presentation/screens/progress_dashboard_screen.dart
 import '../features/progress/presentation/screens/log_weight_screen.dart';
 import '../features/progress/presentation/screens/log_measurements_screen.dart';
 import '../features/progress/presentation/screens/progress_photos_screen.dart';
+import '../features/scheduling/presentation/widgets/awaiting_coach_view.dart';
 import '../features/scheduling/presentation/screens/upcoming_sessions_screen.dart';
 import '../features/scheduling/presentation/screens/pt_sessions_screen.dart';
 import '../features/scheduling/presentation/screens/book_session_screen.dart';
@@ -235,7 +236,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'book',
-                builder: (context, state) => const BookSessionScreen(),
+                builder: (context, state) => const CoachAssignedGate(child: BookSessionScreen()),
               ),
               GoRoute(
                 path: 'feedback/:sessionId',
@@ -333,7 +334,10 @@ class _ScheduleTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final booking = ref.watch(featureFlagsProvider).isEnabled(FeatureFlagKeys.schedulingBooking);
-    return booking ? const UpcomingSessionsScreen() : const PtSessionsScreen();
+    // No sessions UI until the desk assigns a coach and a number of sessions.
+    return CoachAssignedGate(
+      child: booking ? const UpcomingSessionsScreen() : const PtSessionsScreen(),
+    );
   }
 }
 
