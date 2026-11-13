@@ -49,8 +49,8 @@ internal sealed class QuickAssignSessionPackageEndpoint : IEndpoint
         // themselves a free package.
         .RequireAuthorization("gym_staff")
         .WithTags("Billing")
-        .WithSummary("Quick-assign a trainer to a member with a session count (multiple of 4), or a free 1–3 session trial.")
-        .WithDescription("Creates an Active SessionPackage with the given SessionCount (multiples of 4, 4..40), no template required. Used by the staff app/web 'Assign Trainer' flow on the member detail screen. TotalPrice is the lump-sum package price (per-session is derived); leave null for free assignments.")
+        .WithSummary("Quick-assign a trainer to a member with any session count (1–100, free or paid), or a free 1–3 session trial.")
+        .WithDescription("Creates an Active SessionPackage with the given SessionCount (1..100), no template required. Used by the staff app Add Member flow and the staff app/web 'Assign Trainer' flow on the member detail screen. TotalPrice is the lump-sum package price (per-session is derived); leave null for free assignments.")
         .Produces<ApiResponse<Guid>>(201)
         .Produces<ApiResponse<object>>(400)
         .Produces<ApiResponse<object>>(401)

@@ -4,7 +4,7 @@ namespace GymApp.Modules.Billing.Application.Commands.SessionPackages;
 
 /// <summary>
 /// Staff-driven "assign trainer to member" flow. Caller picks a trainer +
-/// session count (multiples of 4) without needing a pre-defined package
+/// any session count (1–100) without needing a pre-defined package
 /// template. Used by the staff web/mobile member detail screen so non-billing
 /// staff can attach a trainer in two clicks. TotalPrice is the lump-sum
 /// price for the whole package; per-session price is derived = TotalPrice /
