@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../core/permissions.dart';
+import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../providers/trainers_provider.dart';
 
@@ -13,6 +15,13 @@ class TrainerListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trainers = ref.watch(trainersProvider);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    // Adding a trainer directly also approves them, so it follows approveTrainer
+    // (owner + manager; receptionists only view trainers).
+    final canAdd = ref
+            .watch(authProvider)
+            .valueOrNull
+            ?.hasPermission(StaffPermission.approveTrainer) ??
+        false;
 
     return Scaffold(
       appBar: AppBar(
@@ -24,6 +33,13 @@ class TrainerListScreen extends ConsumerWidget {
           ),
         ],
       ),
+      floatingActionButton: canAdd
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push(RoutePaths.addTrainer),
+              icon: const Icon(Icons.person_add_alt_1),
+              label: Text(isArabic ? 'اضافة مدرب' : 'Add Trainer'),
+            )
+          : null,
       body: trainers.when(
         data: (items) {
           if (items.isEmpty) {
@@ -31,6 +47,8 @@ class TrainerListScreen extends ConsumerWidget {
               icon: Icons.fitness_center_outlined,
               title: isArabic ? 'لا يوجد مدربون' : 'No trainers',
               subtitle: isArabic ? 'لا يوجد مدربون مسجلون في صالتك' : 'No trainers registered at your gym',
+              actionLabel: canAdd ? (isArabic ? 'اضافة مدرب' : 'Add Trainer') : null,
+              onAction: canAdd ? () => context.push(RoutePaths.addTrainer) : null,
             );
           }
           return RefreshIndicator(
