@@ -1,13 +1,26 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { PageHeader, StatusBadge, Modal, ConfirmModal } from '@gym360/ui';
 import { Plus, Star, Users, Trophy } from 'lucide-react';
 import { useTrainers, useApproveTrainer, useRejectTrainer, useCreateTrainer } from '@/lib/hooks/useTrainers';
 
+const CARD_CLASS = 'rounded-xl border bg-card p-6 shadow-sm block';
+
+/** Owners/managers open the trainer's page; the desk (receptionist) only sees the card. */
+function TrainerCardShell({ trainerId, linked, children }: { trainerId: string; linked: boolean; children: ReactNode }) {
+  return linked
+    ? <Link href={`/trainers/${trainerId}`} className={`${CARD_CLASS} hover:shadow-md transition-shadow`}>{children}</Link>
+    : <div className={CARD_CLASS}>{children}</div>;
+}
+
 export default function TrainersPage() {
+  const { data: session } = useSession();
+  // Receptionists can add a coach; approving sign-ups and trainer pages stay owner/manager.
+  const canManage = session?.user?.staffSubRole !== 'receptionist';
   const { data: trainers = [], isLoading } = useTrainers();
   const approveTrainer = useApproveTrainer();
   const rejectTrainer = useRejectTrainer();
@@ -109,7 +122,7 @@ export default function TrainersPage() {
       )}
 
       {/* Pending Approval */}
-      {pendingTrainers.length > 0 && (
+      {canManage && pendingTrainers.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <h3 className="text-sm font-semibold text-amber-800 mb-3">Pending Approval ({pendingTrainers.length})</h3>
           {pendingTrainers.map((trainer) => (
@@ -145,7 +158,7 @@ export default function TrainersPage() {
       {/* Active Trainers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {activeTrainers.map((trainer) => (
-          <Link key={trainer.id} href={`/trainers/${trainer.id}`} className="rounded-xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow block">
+          <TrainerCardShell key={trainer.id} trainerId={trainer.id} linked={canManage}>
             <div className="flex items-start gap-4">
               <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary shrink-0">
                 {trainer.name?.split(' ').slice(-1)[0]?.[0]}
@@ -183,7 +196,7 @@ export default function TrainersPage() {
                 <p className="text-[10px] text-muted-foreground">Score</p>
               </div>
             </div>
-          </Link>
+          </TrainerCardShell>
         ))}
       </div>
 
