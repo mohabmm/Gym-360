@@ -10,6 +10,29 @@ type FlagsText = ReturnType<typeof useFlagsText>;
 const SELECT = 'rounded-md border border-input bg-background px-3 py-2 text-sm';
 const dash = (value?: string | null) => value ?? '—';
 
+/** One audit page plus the lookups the table needs (gyms for the filter, flag names). */
+function useAuditPage(gymId: string, featureKey: string, page: number) {
+  const { flagName } = useFlagsText();
+  const { data, isLoading, isError } = useFlagAudit(gymId, featureKey, page);
+  const { data: gymsData } = useFlagGyms('', '');
+  const { data: catalogData } = useFlagCatalog();
+  const result = data?.data;
+  const catalog = catalogData?.data ?? [];
+  const nameOfFlag = (key: string) => {
+    const f = catalog.find((c) => c.key === key);
+    return f ? flagName(f) : key;
+  };
+  return {
+    rows: result?.items ?? [],
+    hasNext: page * (result?.pageSize ?? 50) < (result?.totalCount ?? 0),
+    gyms: gymsData?.data?.items ?? [],
+    catalog,
+    nameOfFlag,
+    isLoading,
+    isError,
+  };
+}
+
 /** Audit log with filters by gym and flag. */
 export function AuditTable() {
   const text = useFlagsText();
@@ -17,17 +40,7 @@ export function AuditTable() {
   const [gymId, setGymId] = useState('');
   const [featureKey, setFeatureKey] = useState('');
   const [page, setPage] = useState(1);
-  const { data, isLoading, isError } = useFlagAudit(gymId, featureKey, page);
-  const { data: gymsData } = useFlagGyms('', '');
-  const { data: catalogData } = useFlagCatalog();
-
-  const result = data?.data;
-  const rows = result?.items ?? [];
-  const catalog = catalogData?.data ?? [];
-  const nameOfFlag = (key: string) => {
-    const f = catalog.find((c) => c.key === key);
-    return f ? text.flagName(f) : key;
-  };
+  const { rows, hasNext, gyms, catalog, nameOfFlag, isLoading, isError } = useAuditPage(gymId, featureKey, page);
   const filterBy = (set: (v: string) => void) => (value: string) => { set(value); setPage(1); };
 
   return (
@@ -35,7 +48,7 @@ export function AuditTable() {
       <div className="flex flex-wrap gap-3">
         <select className={SELECT} value={gymId} onChange={(e) => filterBy(setGymId)(e.target.value)}>
           <option value="">{t.allGyms}</option>
-          {(gymsData?.data?.items ?? []).map((g) => <option key={g.gymId} value={g.gymId}>{g.name}</option>)}
+          {gyms.map((g) => <option key={g.gymId} value={g.gymId}>{g.name}</option>)}
         </select>
         <select className={SELECT} value={featureKey} onChange={(e) => filterBy(setFeatureKey)(e.target.value)}>
           <option value="">{t.allFlags}</option>
@@ -61,7 +74,7 @@ export function AuditTable() {
         )}
       </div>
 
-      <Pager text={text} page={page} hasNext={page * (result?.pageSize ?? 50) < (result?.totalCount ?? 0)} onPage={setPage} />
+      <Pager text={text} page={page} hasNext={hasNext} onPage={setPage} />
     </div>
   );
 }

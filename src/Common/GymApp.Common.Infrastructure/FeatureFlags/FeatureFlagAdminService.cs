@@ -96,24 +96,12 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
             .Where(g => knownGymIds.Contains(g.GymId))
             .ToDictionaryAsync(g => g.GymId, cancellationToken);
 
+        var change = new PresetAssignment(presetCode, actor);
         var changed = new List<Guid>();
         foreach (var gymId in knownGymIds)
         {
-            var oldCode = existing.TryGetValue(gymId, out var row) ? row.PresetCode : _options.DefaultPreset;
-            if (row is not null && row.PresetCode == presetCode)
-                continue;
-
-            row ??= AddGymPresetRow(gymId);
-            row.PresetCode = presetCode;
-            row.UpdatedAtUtc = DateTime.UtcNow;
-            row.UpdatedBy = actor.UserId;
-            _db.AuditLog.Add(Audit(actor, FlagChangeTypes.PresetAssigned, gymId) with
-            {
-                PresetCode = presetCode,
-                OldValue = oldCode,
-                NewValue = presetCode,
-            });
-            changed.Add(gymId);
+            if (AssignPreset(gymId, existing.GetValueOrDefault(gymId), change))
+                changed.Add(gymId);
         }
 
         await SaveAndPublishAsync(changed, cancellationToken);
@@ -132,7 +120,7 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
             .FirstOrDefaultAsync(o => o.GymId == gymId && o.FeatureKey == change.FeatureKey, cancellationToken);
         var oldValue = row is null
             ? await DescribeEffectiveAsync(gymId, change, cancellationToken)
-            : OverrideLabel(row.Enabled);
+            : Label(FlagSource.Override, row.Enabled);
 
         if (row is null)
         {
@@ -149,7 +137,7 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
         {
             FeatureKey = change.FeatureKey,
             OldValue = oldValue,
-            NewValue = OverrideLabel(change.Enabled),
+            NewValue = Label(FlagSource.Override, change.Enabled),
             Reason = change.Reason,
         });
 
@@ -173,8 +161,8 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
         {
             FeatureKey = featureKey,
             PresetCode = presetCode,
-            OldValue = OverrideLabel(row.Enabled),
-            NewValue = PresetLabel(presetValues.GetValueOrDefault(featureKey)),
+            OldValue = Label(FlagSource.Override, row.Enabled),
+            NewValue = Label(FlagSource.Preset, presetValues.GetValueOrDefault(featureKey)),
         });
 
         await SaveAndPublishAsync(new[] { gymId }, cancellationToken);
@@ -270,17 +258,38 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
         {
             PresetCode = edit.PresetCode,
             FeatureKey = edit.FeatureKey,
-            OldValue = PresetLabel(old),
-            NewValue = PresetLabel(edit.Enabled),
+            OldValue = Label(FlagSource.Preset, old),
+            NewValue = Label(FlagSource.Preset, edit.Enabled),
         });
         return true;
     }
 
-    private GymPresetRow AddGymPresetRow(Guid gymId)
+    /// <summary>A preset an admin puts gyms on.</summary>
+    private sealed record PresetAssignment(string PresetCode, AdminActor Actor);
+
+    /// <summary>Puts one gym on the preset and audits it; false when it already was on it.</summary>
+    private bool AssignPreset(Guid gymId, GymPresetRow? row, PresetAssignment change)
     {
-        var row = new GymPresetRow { GymId = gymId };
-        _db.GymPresets.Add(row);
-        return row;
+        var oldCode = row?.PresetCode ?? _options.DefaultPreset;
+        if (row?.PresetCode == change.PresetCode)
+            return false;
+
+        if (row is null)
+        {
+            row = new GymPresetRow { GymId = gymId };
+            _db.GymPresets.Add(row);
+        }
+
+        row.PresetCode = change.PresetCode;
+        row.UpdatedAtUtc = DateTime.UtcNow;
+        row.UpdatedBy = change.Actor.UserId;
+        _db.AuditLog.Add(Audit(change.Actor, FlagChangeTypes.PresetAssigned, gymId) with
+        {
+            PresetCode = change.PresetCode,
+            OldValue = oldCode,
+            NewValue = change.PresetCode,
+        });
+        return true;
     }
 
     private async Task SaveAndPublishAsync(IReadOnlyCollection<Guid> gymIds, CancellationToken cancellationToken)
@@ -293,7 +302,7 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
     {
         var presetCode = await GetGymPresetCodeAsync(gymId, cancellationToken);
         var values = await LoadPresetValuesAsync(presetCode, cancellationToken);
-        return PresetLabel(values.GetValueOrDefault(change.FeatureKey));
+        return Label(FlagSource.Preset, values.GetValueOrDefault(change.FeatureKey));
     }
 
     private async Task<string> GetGymPresetCodeAsync(Guid gymId, CancellationToken cancellationToken) =>
@@ -372,9 +381,9 @@ internal sealed class FeatureFlagAdminService : IFeatureFlagAdminService
         ChangeType = changeType,
     };
 
-    private static string OverrideLabel(bool enabled) => enabled ? "on (override)" : "off (override)";
-
-    private static string PresetLabel(bool enabled) => enabled ? "on (preset)" : "off (preset)";
+    /// <summary>Audit wording, e.g. "on (override)" or "off (preset)".</summary>
+    private static string Label(FlagSource source, bool enabled) =>
+        $"{(enabled ? "on" : "off")} ({(source == FlagSource.Override ? "override" : "preset")})";
 
     private static (int Page, int PageSize) Clamp(IFlagPageRequest request) =>
         (Math.Max(1, request.Page), Math.Clamp(request.PageSize, 1, MaxPageSize));
