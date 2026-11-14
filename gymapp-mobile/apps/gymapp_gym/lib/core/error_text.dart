@@ -49,6 +49,8 @@ const Map<int, String> _arabicByStatus = {
 };
 
 const Map<String, String> _arabicByMessage = {
+  'This member already has a coach with sessions left. Assign a new coach after those sessions are used.':
+      'هذا العضو لديه مدرب وحصص متبقية. يمكن تعيين مدرب آخر بعد انتهاء هذه الحصص.',
   'The provided credentials are invalid.':
       'البريد الالكتروني او كلمة المرور غير صحيحة.',
   'The member is already added to this gym.':

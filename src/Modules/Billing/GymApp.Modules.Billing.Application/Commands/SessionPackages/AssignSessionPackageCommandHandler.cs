@@ -35,6 +35,9 @@ internal sealed class AssignSessionPackageCommandHandler : ICommandHandler<Assig
         if (!await _featureFlags.IsEnabledAsync(request.GymId, FeatureKeys.PtPackages, cancellationToken))
             return Result.Failure<Guid>(FeatureFlagErrors.FeatureDisabled(FeatureKeys.PtPackages));
 
+        if (await HasOtherCoachAsync(request, cancellationToken))
+            return Result.Failure<Guid>(BillingErrors.CoachAlreadyAssigned);
+
         // While pt.auto_expiry is off (default) packages never expire, so none gets an expiry date.
         var expiresAt = await _featureFlags.IsEnabledAsync(request.GymId, FeatureKeys.PtAutoExpiry, cancellationToken)
             ? request.ExpiresAt
@@ -65,5 +68,20 @@ internal sealed class AssignSessionPackageCommandHandler : ICommandHandler<Assig
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(package.Id);
+    }
+
+    /// <summary>
+    /// One coach at a time: while the member has sessions left, a new package must be with the
+    /// same coach (a renewal). A package with a different coach waits until those sessions are used.
+    /// </summary>
+    private async Task<bool> HasOtherCoachAsync(AssignSessionPackageCommand request, CancellationToken cancellationToken)
+    {
+        if (!await _packageRepository.HasActivePackageAsync(
+                new PackageOwner(request.GymId, request.MemberId), DateTime.UtcNow, cancellationToken))
+            return false;
+
+        var withSameCoach = await _packageRepository.GetActiveByMemberAndTrainerAsync(
+            new PackageParticipants(request.GymId, request.MemberId, request.TrainerId), cancellationToken);
+        return withSameCoach is null;
     }
 }

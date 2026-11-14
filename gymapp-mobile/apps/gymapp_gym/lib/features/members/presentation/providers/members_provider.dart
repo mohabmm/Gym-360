@@ -97,45 +97,6 @@ final membersProvider =
 });
 
 // ---------------------------------------------------------------------------
-// Member lookup by number (payment / package desks)
-// ---------------------------------------------------------------------------
-/// Finds the member whose member number (or id) staff typed, searching the
-/// whole roster server-side. Returns null when nobody matches.
-///
-/// Numbers are compared ignoring leading zeros so "2" finds "0002".
-Future<UserModel?> findMemberByNumber(
-  ApiClient apiClient,
-  String gymId,
-  String input,
-) async {
-  final query = input.trim();
-  if (query.isEmpty || gymId.isEmpty) return null;
-
-  final result = await apiClient.getPaginated<UserModel>(
-    ApiEndpoints.gymMembers(GymId(gymId)),
-    params: const PaginationParams(page: 1, pageSize: 50),
-    additionalParams: {'search': query},
-    itemParser: (json) => UserModel.fromJson(_normalizeMemberJson(json)),
-  );
-
-  String canonical(String value) {
-    final trimmed = value.trim().toLowerCase();
-    final asInt = int.tryParse(trimmed);
-    return asInt?.toString() ?? trimmed;
-  }
-
-  final wanted = canonical(query);
-  for (final member in result.items) {
-    final number = member.memberNumber;
-    if (member.id == query ||
-        (number != null && canonical(number) == wanted)) {
-      return member;
-    }
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // Member Detail
 // ---------------------------------------------------------------------------
 final memberDetailProvider =
@@ -187,4 +148,24 @@ final nextMemberNumberProvider = FutureProvider.autoDispose<String>((ref) async 
   } catch (_) {
     return '1';
   }
+});
+
+// ---------------------------------------------------------------------------
+// Member search (pickers: assign package, …)
+// ---------------------------------------------------------------------------
+
+/// Members matching [query] (name, phone, email or member number), server-side across the
+/// whole roster. Empty below 2 characters so typing a first letter doesn't fetch everyone.
+final memberSearchProvider =
+    FutureProvider.autoDispose.family<List<UserModel>, String>((ref, query) async {
+  final q = query.trim();
+  if (q.length < 2) return const [];
+  final gymId = ref.watch(currentGymIdProvider);
+  final result = await ref.watch(apiClientProvider).getPaginated<UserModel>(
+        ApiEndpoints.gymMembers(GymId(gymId)),
+        params: const PaginationParams(page: 1, pageSize: 10),
+        additionalParams: {'search': q},
+        itemParser: (json) => UserModel.fromJson(_normalizeMemberJson(json)),
+      );
+  return result.items;
 });
