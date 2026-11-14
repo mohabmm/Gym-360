@@ -43,6 +43,12 @@ public interface ISessionRepository
         DateOnly date,
         CancellationToken cancellationToken = default);
 
+    /// <summary>A quick-logged, not reversed session for the same coach and client in the same slot (date + start).</summary>
+    Task<Session?> FindQuickLogAtAsync(
+        SessionParticipants participants,
+        SessionSchedule schedule,
+        CancellationToken cancellationToken = default);
+
     /// <summary>A quick-logged session for the same coach and client since <paramref name="sinceUtc"/> (double-tap guard).</summary>
     Task<Session?> FindRecentQuickLogAsync(
         Guid trainerId,
