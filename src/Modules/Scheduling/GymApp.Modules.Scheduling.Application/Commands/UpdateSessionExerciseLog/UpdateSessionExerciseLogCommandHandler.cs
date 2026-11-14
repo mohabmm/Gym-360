@@ -2,8 +2,8 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Domain.Errors;
-using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.UpdateSessionExerciseLog;
 
@@ -40,7 +40,8 @@ internal sealed class UpdateSessionExerciseLogCommandHandler : ICommandHandler<U
                 Sets = request.Sets,
                 Reps = request.Reps,
                 Weight = request.Weight,
-                Notes = request.Notes
+                Notes = request.Notes,
+                Target = request.Target
             });
 
         if (result.IsFailure)

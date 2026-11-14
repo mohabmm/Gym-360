@@ -2,8 +2,9 @@ namespace GymApp.Common.Infrastructure.Tenancy.Provisioning;
 
 /// <summary>
 /// Schema-agnostic, idempotent T-SQL that adds the PT-module columns to every
-/// <c>session_packages</c> and <c>sessions</c> table (legacy and per-gym schemas).
-/// Mirrors the EF model in SessionPackageConfiguration / SessionConfiguration.
+/// <c>session_packages</c>, <c>sessions</c> and <c>session_exercise_logs</c> table (legacy and
+/// per-gym schemas). Mirrors the EF model in SessionPackageConfiguration / SessionConfiguration /
+/// SessionExerciseLogConfiguration.
 /// </summary>
 public static class PtSchemaPatch
 {
@@ -23,6 +24,10 @@ IF COL_LENGTH(' + QUOTENAME(s.name + N'.{0}', '''') + N', ''{1}'') IS NULL
         ("sessions", "MemberConfirmation", "int NOT NULL CONSTRAINT ' + QUOTENAME(N'DF_' + s.name + N'_sessions_MemberConfirmation') + N' DEFAULT 0"),
         ("sessions", "MemberRespondedAt", "datetime2 NULL"),
         ("sessions", "DisputeReason", "nvarchar(500) NULL"),
+        ("sessions", "DayLabel", "nvarchar(40) NULL"),
+        ("session_exercise_logs", "TargetSets", "int NULL"),
+        ("session_exercise_logs", "TargetReps", "nvarchar(50) NULL"),
+        ("session_exercise_logs", "TargetWeight", "decimal(8,2) NULL"),
     };
 
     public static string Sql { get; } = Build();

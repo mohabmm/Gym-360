@@ -47,7 +47,8 @@ internal sealed class GetSessionDetailQueryHandler
             session.ExerciseLogs.OrderBy(l => l.OrderIndex).Select(ToDto).ToList(),
             session.MemberConfirmation.ToString(),
             session.IsQuickLog,
-            session.DisputeReason);
+            session.DisputeReason,
+            session.DayLabel);
 
         return Result.Success(detail);
     }
@@ -79,18 +80,5 @@ internal sealed class GetSessionDetailQueryHandler
                 log.Satisfaction,
                 log.LoggedAt);
 
-    private static SessionExerciseLogDto ToDto(SessionExerciseLog log) =>
-        new(
-            log.Id,
-            log.SessionId,
-            log.ExerciseId,
-            log.ExerciseName,
-            log.ExerciseNameAr,
-            log.OrderIndex,
-            log.Sets,
-            log.Reps,
-            log.Weight,
-            log.Notes,
-            log.CreatedAt,
-            log.UpdatedAt);
+    private static SessionExerciseLogDto ToDto(SessionExerciseLog log) => SessionExerciseLogMapper.ToDto(log);
 }

@@ -1,3 +1,5 @@
+using GymApp.Common.Application.FeatureFlags;
+using GymApp.Common.Presentation.FeatureFlags;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Scheduling.Application.DTOs;
 using GymApp.Modules.Scheduling.Application.Queries.GetSessionExerciseLogs;
@@ -32,6 +34,7 @@ internal sealed class GetSessionExerciseLogsEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
         .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+        .RequireAnyFeature(FeatureKeys.TrainingWorkouts, FeatureKeys.PtExerciseProgress)
         .RequireAuthorization();
     }
 }

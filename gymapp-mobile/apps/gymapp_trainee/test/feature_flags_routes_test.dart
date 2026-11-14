@@ -39,6 +39,7 @@ void main() {
       AppRoutes.schedule,
       '/schedule/sessions/abc',
       AppRoutes.membership,
+      AppRoutes.exerciseProgress,
       AppRoutes.notifications,
       AppRoutes.settings,
     ]) {

@@ -18,6 +18,11 @@ public sealed class SessionExerciseLog : Entity
     public string Reps { get; private set; } = default!;
     public decimal? Weight { get; private set; }
     public string? Notes { get; private set; }
+
+    /// <summary>pt.exercise_progress: what the coach wants next time (all optional).</summary>
+    public int? TargetSets { get; private set; }
+    public string? TargetReps { get; private set; }
+    public decimal? TargetWeight { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -34,6 +39,9 @@ public sealed class SessionExerciseLog : Entity
             Reps = details.Reps,
             Weight = details.Weight,
             Notes = details.Notes,
+            TargetSets = details.Target?.Sets,
+            TargetReps = details.Target?.Reps,
+            TargetWeight = details.Target?.Weight,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -48,6 +56,9 @@ public sealed class SessionExerciseLog : Entity
         Reps = details.Reps;
         Weight = details.Weight;
         Notes = details.Notes;
+        TargetSets = details.Target?.Sets;
+        TargetReps = details.Target?.Reps;
+        TargetWeight = details.Target?.Weight;
         UpdatedAt = DateTime.UtcNow;
     }
 }

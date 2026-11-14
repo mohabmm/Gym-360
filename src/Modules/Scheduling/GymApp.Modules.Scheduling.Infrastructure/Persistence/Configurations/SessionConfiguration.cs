@@ -1,7 +1,7 @@
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore;
 
 namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Configurations;
 
@@ -39,8 +39,7 @@ internal sealed class SessionConfiguration : IEntityTypeConfiguration<Session>
             .HasMaxLength(30)
             .IsRequired();
 
-        builder.Property(e => e.Focus)
-            .HasMaxLength(500);
+        ConfigureLabels(builder);
 
         builder.Property(e => e.Status)
             .HasConversion<string>()
@@ -100,5 +99,14 @@ internal sealed class SessionConfiguration : IEntityTypeConfiguration<Session>
 
         builder.HasIndex(e => new { e.GymId, e.Status })
             .HasDatabaseName("IX_sessions_gym_status");
+    }
+
+    private static void ConfigureLabels(EntityTypeBuilder<Session> builder)
+    {
+        builder.Property(e => e.Focus)
+            .HasMaxLength(500);
+
+        builder.Property(e => e.DayLabel)
+            .HasMaxLength(Session.MaxDayLabelLength);
     }
 }

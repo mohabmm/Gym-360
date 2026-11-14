@@ -59,6 +59,7 @@ public static class BillingModuleRegistration
         services.AddScoped<GymApp.Modules.Billing.Application.Queries.PlanFeatures.PlanFeatureCatalog>();
         services.AddScoped<IPlatformAnalyticsReader, PlatformAnalyticsReader>();
         services.AddScoped<ITrainerAssignmentLookup, TrainerAssignmentLookup>();
+        services.AddScoped<IPtProgressScopeLookup, PtProgressScopeLookup>();
 
         services.AddMediatR(cfg =>
         {

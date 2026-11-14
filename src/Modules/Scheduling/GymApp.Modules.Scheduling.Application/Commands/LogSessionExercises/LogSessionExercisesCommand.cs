@@ -1,5 +1,6 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Modules.Scheduling.Application.DTOs;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.LogSessionExercises;
 
@@ -11,9 +12,11 @@ public sealed record ExerciseLogItem(
     int Sets,
     string Reps,
     decimal? Weight,
-    string? Notes);
+    string? Notes,
+    ExerciseTarget? Target = null);
 
 public sealed record LogSessionExercisesCommand(
     Guid SessionId,
     Guid TrainerId,
-    IReadOnlyList<ExerciseLogItem> Items) : ICommand<IReadOnlyList<SessionExerciseLogDto>>;
+    IReadOnlyList<ExerciseLogItem> Items,
+    string? DayLabel = null) : ICommand<IReadOnlyList<SessionExerciseLogDto>>;

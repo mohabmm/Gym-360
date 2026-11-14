@@ -70,6 +70,11 @@ export 'src/progress_journey/progress_journey_strings.dart';
 export 'src/progress_journey/widgets/progress_journey_view.dart';
 export 'src/progress_journey/widgets/since_day_one_card.dart';
 export 'src/progress_journey/widgets/goal_picker_sheet.dart';
+export 'src/exercise_progress/exercise_progress_model.dart';
+export 'src/exercise_progress/exercise_days.dart';
+export 'src/exercise_progress/exercise_insights.dart';
+export 'src/exercise_progress/exercise_progress_strings.dart';
+export 'src/exercise_progress/widgets/exercise_progress_view.dart';
 
 // Network
 export 'src/network/api_base_url.dart';

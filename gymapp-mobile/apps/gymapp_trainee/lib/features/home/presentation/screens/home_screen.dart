@@ -15,7 +15,9 @@ import '../../../scheduling/presentation/providers/scheduling_providers.dart';
 import '../../../scheduling/presentation/widgets/pt_conversion_widgets.dart';
 import '../../../scheduling/presentation/widgets/pt_session_widgets.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
+import '../../../progress/presentation/providers/exercise_progress_providers.dart';
 import '../../../progress/presentation/providers/progress_providers.dart';
+import '../../../progress/presentation/widgets/exercise_progress_home_card.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -46,6 +48,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(progressDashboardProvider);
           ref.invalidate(todaysWaterProvider);
           ref.invalidate(progressJourneyProvider);
+          ref.invalidate(myExerciseProgressProvider);
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -65,6 +68,7 @@ class HomeScreen extends ConsumerWidget {
             ...section(pagePad, FeatureFlagKeys.ptPackages, const PackageSummaryCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptDualSessionLogging, const ConfirmSessionsCard()),
             ...section(pagePad, FeatureFlagKeys.ptProgressMeasurements, const _SinceDayOneSection()),
+            ...section(pagePad, FeatureFlagKeys.ptExerciseProgress, const ExerciseProgressHomeCard()),
             ...section(pagePad, FeatureFlagKeys.trainingWorkouts, const TodaysWorkoutCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.schedulingBooking, const NextSessionCard()),
             SliverToBoxAdapter(

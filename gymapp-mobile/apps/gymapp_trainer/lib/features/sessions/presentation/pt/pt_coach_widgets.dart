@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
+import '../../../../core/router.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
 import '../../../home/presentation/providers/trainer_dashboard_provider.dart';
 import '../../../revenue/presentation/providers/revenue_providers.dart';
@@ -41,6 +42,7 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     final canMeasure = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptProgressMeasurements));
+    final canLogExercises = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptExerciseProgress));
     setState(() => _busy = true);
     try {
       final result = await ref.read(apiClientProvider).post<Map<String, dynamic>>(
@@ -50,18 +52,14 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
           );
       final left = (result['remainingSessions'] as num?)?.toInt() ?? 0;
       final already = result['alreadyLogged'] == true;
+      final sessionId = result['sessionId']?.toString() ?? '';
       ref.invalidate(allClientPackagesProvider);
       ref.invalidate(trainerDashboardProvider);
       messenger.showSnackBar(SnackBar(
         content: Text(already
             ? (isArabic ? 'تم تسجيل هذه الحصة بالفعل' : 'This session was already logged')
             : (isArabic ? 'تم تسجيل الحصة · متبقي $left' : 'Session logged · $left left')),
-        action: canMeasure && !already
-            ? SnackBarAction(
-                label: isArabic ? 'القياسات' : 'Measurements',
-                onPressed: () => router.push(measurementsRoute(widget.memberId)),
-              )
-            : null,
+        action: already ? null : _nextStep(router, isArabic, sessionId, canLogExercises, canMeasure),
       ));
     } on FeatureDisabledException {
       // Flags refresh hides the button.
@@ -70,6 +68,21 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// The optional second tap: record the session's exercises (pt.exercise_progress), else measurements.
+  SnackBarAction? _nextStep(GoRouter router, bool isArabic, String sessionId, bool canLogExercises, bool canMeasure) {
+    if (canLogExercises && sessionId.isNotEmpty) {
+      return SnackBarAction(
+        label: isArabic ? 'التمارين' : 'Exercises',
+        onPressed: () => router.push(AppRoutes.sessionExercisesFor(sessionId, widget.memberId)),
+      );
+    }
+    if (!canMeasure) return null;
+    return SnackBarAction(
+      label: isArabic ? 'القياسات' : 'Measurements',
+      onPressed: () => router.push(measurementsRoute(widget.memberId)),
+    );
   }
 
   static String _friendly(ApiException e, bool isArabic) {

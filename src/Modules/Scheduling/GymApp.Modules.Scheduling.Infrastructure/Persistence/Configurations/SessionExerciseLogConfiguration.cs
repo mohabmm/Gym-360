@@ -1,6 +1,6 @@
 using GymApp.Modules.Scheduling.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore;
 
 namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Configurations;
 
@@ -38,6 +38,12 @@ internal sealed class SessionExerciseLogConfiguration : IEntityTypeConfiguration
 
         builder.Property(e => e.Notes)
             .HasMaxLength(1000);
+
+        builder.Property(e => e.TargetReps)
+            .HasMaxLength(50);
+
+        builder.Property(e => e.TargetWeight)
+            .HasColumnType("decimal(8,2)");
 
         builder.Property(e => e.CreatedAt).IsRequired();
 

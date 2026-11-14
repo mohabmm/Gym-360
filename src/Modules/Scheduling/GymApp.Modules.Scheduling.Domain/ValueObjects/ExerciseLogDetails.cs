@@ -10,4 +10,11 @@ public sealed record ExerciseLogDetails
     public required string Reps { get; init; }
     public decimal? Weight { get; init; }
     public string? Notes { get; init; }
+    public ExerciseTarget? Target { get; init; }
+}
+
+/// <summary>pt.exercise_progress: the coach's goal for this exercise next session.</summary>
+public sealed record ExerciseTarget(int? Sets, string? Reps, decimal? Weight)
+{
+    public bool IsEmpty => Sets is null && string.IsNullOrWhiteSpace(Reps) && Weight is null;
 }

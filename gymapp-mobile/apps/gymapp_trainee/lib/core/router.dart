@@ -19,6 +19,7 @@ import '../features/workouts/presentation/screens/ad_hoc_workout_screen.dart';
 import '../features/workouts/presentation/screens/log_workout_screen.dart';
 import '../features/workouts/presentation/screens/workout_history_screen.dart';
 import '../features/progress/presentation/screens/progress_dashboard_screen.dart';
+import '../features/progress/presentation/screens/exercise_progress_screen.dart';
 import '../features/progress/presentation/screens/log_weight_screen.dart';
 import '../features/progress/presentation/screens/log_measurements_screen.dart';
 import '../features/progress/presentation/screens/progress_photos_screen.dart';
@@ -84,6 +85,7 @@ class AppRoutes {
   static const String settings = '/more/settings';
   static const String checkin = '/more/checkin';
   static const String membership = '/more/membership';
+  static const String exerciseProgress = '/more/exercise-progress';
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -318,6 +320,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'membership',
                 builder: (context, state) => const MembershipScreen(),
               ),
+              GoRoute(
+                path: 'exercise-progress',
+                builder: (context, state) => const ExerciseProgressScreen(),
+              ),
             ],
           ),
         ],
@@ -348,6 +354,7 @@ typedef _MoreDestination = (IconData, String, String, String, String?);
 
 const List<_MoreDestination> _moreFeatures = [
   (Icons.card_membership, 'باقاتي', 'My packages', AppRoutes.membership, FeatureFlagKeys.ptPackages),
+  (Icons.fitness_center, 'تقدم التمارين', 'Exercise progress', AppRoutes.exerciseProgress, FeatureFlagKeys.ptExerciseProgress),
   (Icons.qr_code, 'تسجيل الحضور', 'Check-in', AppRoutes.checkin, FeatureFlagKeys.gymAttendance),
   (Icons.restaurant_outlined, 'التغذية', 'Nutrition', AppRoutes.nutrition, FeatureFlagKeys.nutrition),
   (Icons.chat_outlined, 'المحادثة', 'Chat', AppRoutes.chat, FeatureFlagKeys.communicationChat),

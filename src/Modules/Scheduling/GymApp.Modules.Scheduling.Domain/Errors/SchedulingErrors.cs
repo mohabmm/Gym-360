@@ -69,6 +69,12 @@ public static class SchedulingErrors
     public static readonly Error ExerciseLogRequiresCompletedSession =
         new("Scheduling.ExerciseLogRequiresCompletedSession", "Exercise logs can only be recorded for a completed session.");
 
+    public static readonly Error DayLabelTooLong =
+        new("Scheduling.DayLabelTooLong", "The day label must be 40 characters or fewer.");
+
+    public static readonly Error ExerciseProgressForbidden =
+        new("Scheduling.ExerciseProgress.Forbidden", "Only the member or one of their coaches can see this progress.");
+
     public static Error ExerciseLogNotFound(Guid id) =>
         new("Scheduling.ExerciseLogNotFound", $"Exercise log with ID '{id}' was not found.");
 

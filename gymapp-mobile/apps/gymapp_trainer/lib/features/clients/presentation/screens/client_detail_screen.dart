@@ -9,6 +9,7 @@ import '../../../../core/session_type_l10n.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../providers/client_providers.dart';
 import '../../../sessions/presentation/pt/pt_coach_widgets.dart';
+import '../widgets/client_exercise_progress_tab.dart';
 
 /// Client detail screen with 5 tabs: Overview, Progress, Sessions, Workouts, Notes.
 class ClientDetailScreen extends ConsumerStatefulWidget {
@@ -40,6 +41,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           'التقدم',
           'Progress',
           (_) => _ProgressTab(clientId: widget.clientId, isArabic: isArabic)
+        ),
+      if (on(FeatureFlagKeys.ptExerciseProgress))
+        (
+          'تقدم التمارين',
+          'Exercises',
+          (d) => ClientExerciseProgressTab(clientId: widget.clientId, sessions: d.sessions, isArabic: isArabic)
         ),
       if (on(FeatureFlagKeys.ptDualSessionLogging))
         (

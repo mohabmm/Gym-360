@@ -11,6 +11,7 @@ abstract final class FeatureFlagKeys {
   static const ptTrialRecap = 'pt.trial_recap';
   static const ptPackageInterest = 'pt.package_interest';
   static const ptTrialFollowUps = 'pt.trial_followups';
+  static const ptExerciseProgress = 'pt.exercise_progress';
 
   // PT later phase — OFF in pt_module.
   static const ptMonthlyReport = 'pt.monthly_report';
@@ -58,5 +59,6 @@ abstract final class FeatureFlagKeys {
     ptTrialRecap,
     ptPackageInterest,
     ptTrialFollowUps,
+    ptExerciseProgress,
   };
 }

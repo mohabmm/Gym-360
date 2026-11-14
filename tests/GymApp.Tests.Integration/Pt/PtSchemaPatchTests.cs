@@ -29,8 +29,10 @@ EXEC('CREATE SCHEMA [{prefix}_billing]');
 EXEC('CREATE SCHEMA [{prefix}_scheduling]');
 CREATE TABLE [{prefix}_billing].[session_packages] (Id uniqueidentifier NOT NULL PRIMARY KEY, Name nvarchar(50) NOT NULL);
 CREATE TABLE [{prefix}_scheduling].[sessions] (Id uniqueidentifier NOT NULL PRIMARY KEY, Focus nvarchar(50) NULL);
+CREATE TABLE [{prefix}_scheduling].[session_exercise_logs] (Id uniqueidentifier NOT NULL PRIMARY KEY, Reps nvarchar(50) NOT NULL);
 INSERT INTO [{prefix}_billing].[session_packages] VALUES (NEWID(), N'old package');
-INSERT INTO [{prefix}_scheduling].[sessions] VALUES (NEWID(), N'old session');");
+INSERT INTO [{prefix}_scheduling].[sessions] VALUES (NEWID(), N'old session');
+INSERT INTO [{prefix}_scheduling].[session_exercise_logs] VALUES (NEWID(), N'10,8,8');");
 
         await db.ExecuteSqlRawAsync(PtSchemaPatch.Sql);
         await db.ExecuteSqlRawAsync(PtSchemaPatch.Sql); // second deploy: no-op
@@ -40,11 +42,15 @@ INSERT INTO [{prefix}_scheduling].[sessions] VALUES (NEWID(), N'old session');")
         (await ColumnsAsync(db, $"{prefix}_billing", "package_interests"))
             .Should().Contain(new[] { "Id", "GymId", "MemberId", "TrainerId", "SourcePackageId", "Source", "Status", "CreatedAt" });
         var sessionColumns = await ColumnsAsync(db, $"{prefix}_scheduling", "sessions");
-        sessionColumns.Should().Contain(new[] { "IsQuickLog", "MemberConfirmation", "MemberRespondedAt", "DisputeReason", "Focus" });
+        sessionColumns.Should().Contain(new[] { "IsQuickLog", "MemberConfirmation", "MemberRespondedAt", "DisputeReason", "DayLabel", "Focus" });
+        (await ColumnsAsync(db, $"{prefix}_scheduling", "session_exercise_logs"))
+            .Should().Contain(new[] { "TargetSets", "TargetReps", "TargetWeight", "Reps" });
 
         (await ScalarAsync(db, $"SELECT COUNT(*) AS Value FROM [{prefix}_billing].[session_packages] WHERE Name = N'old package' AND IsTrial = 0 AND MilestonesSent = 0"))
             .Should().Be(1);
         (await ScalarAsync(db, $"SELECT COUNT(*) AS Value FROM [{prefix}_scheduling].[sessions] WHERE Focus = N'old session' AND MemberConfirmation = 0 AND IsQuickLog = 0"))
+            .Should().Be(1);
+        (await ScalarAsync(db, $"SELECT COUNT(*) AS Value FROM [{prefix}_scheduling].[session_exercise_logs] WHERE Reps = N'10,8,8' AND TargetWeight IS NULL"))
             .Should().Be(1);
     }
 

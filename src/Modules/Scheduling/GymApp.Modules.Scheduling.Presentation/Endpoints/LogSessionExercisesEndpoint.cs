@@ -1,6 +1,9 @@
+using GymApp.Common.Application.FeatureFlags;
+using GymApp.Common.Presentation.FeatureFlags;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Scheduling.Application.Commands.LogSessionExercises;
 using GymApp.Modules.Scheduling.Application.DTOs;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 
@@ -28,10 +31,11 @@ internal sealed class LogSessionExercisesEndpoint : IEndpoint
                     i.Sets,
                     i.Reps,
                     i.Weight,
-                    i.Notes))
+                    i.Notes,
+                    i.Target))
                 .ToList();
 
-            var command = new LogSessionExercisesCommand(sessionId, trainerId, items);
+            var command = new LogSessionExercisesCommand(sessionId, trainerId, items, request.DayLabel);
             var result = await sender.Send(command);
 
             return result.IsSuccess
@@ -40,17 +44,18 @@ internal sealed class LogSessionExercisesEndpoint : IEndpoint
         })
         .WithTags("Scheduling")
         .WithSummary("Log session exercises (bulk)")
-        .WithDescription("Trainer records per-exercise actuals (sets, reps, weight, notes) for a completed session. Member sees them on session detail.")
+        .WithDescription("Trainer records per-exercise actuals (sets, reps, weight, notes) and an optional next target for a completed session, plus an optional day label (e.g. \"Push Day\"). Member sees them on session detail and in exercise progress.")
         .Produces<ApiResponse<IReadOnlyList<SessionExerciseLogDto>>>(StatusCodes.Status201Created)
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
         .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+        .RequireAnyFeature(FeatureKeys.TrainingWorkouts, FeatureKeys.PtExerciseProgress)
         .RequireAuthorization();
     }
 }
 
-internal sealed record LogSessionExercisesRequest(IReadOnlyList<ExerciseLogItemRequest>? Items);
+internal sealed record LogSessionExercisesRequest(IReadOnlyList<ExerciseLogItemRequest>? Items, string? DayLabel = null);
 
 internal sealed record ExerciseLogItemRequest(
     Guid? ExerciseId,
@@ -60,4 +65,5 @@ internal sealed record ExerciseLogItemRequest(
     int Sets,
     string Reps,
     decimal? Weight,
-    string? Notes);
+    string? Notes,
+    ExerciseTarget? Target = null);
