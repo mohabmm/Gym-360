@@ -34,7 +34,7 @@ final trainersProvider =
   final gymId = ref.watch(currentGymIdProvider);
   return apiClient.get<List<UserModel>>(
     ApiEndpoints.gymTrainers(GymId(gymId)),
-    parser: (data) => (data as List)
+    parser: (data) => ((data as List?) ?? const [])
         .map((e) => _trainerStubFromJson(e as Map<String, dynamic>))
         .toList(),
   );
@@ -60,7 +60,7 @@ final pendingTrainersProvider =
   return apiClient.get<List<UserModel>>(
     ApiEndpoints.gymTrainers(GymId(gymId)),
     queryParameters: const {'status': 'pending'},
-    parser: (data) => (data as List)
+    parser: (data) => ((data as List?) ?? const [])
         .map((e) => _trainerStubFromJson(e as Map<String, dynamic>))
         .where((t) => t.status?.toLowerCase() == 'pending')
         .toList(),
@@ -73,7 +73,7 @@ final trainerRatingsProvider =
     final apiClient = ref.watch(apiClientProvider);
     return apiClient.get<List<TrainerRatingModel>>(
       ApiEndpoints.trainerDetailedRatings(TrainerId(trainerId)),
-      parser: (data) => (data as List)
+      parser: (data) => ((data as List?) ?? const [])
           .map((e) => TrainerRatingModel.fromJson(e as Map<String, dynamic>))
           .toList(),
     );

@@ -231,6 +231,10 @@ namespace GymApp.Modules.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("revoked_at");
 
+                    b.Property<Guid?>("SelectedGymId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("selected_gym_id");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasMaxLength(500)

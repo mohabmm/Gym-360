@@ -34,6 +34,9 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.Property(rt => rt.RevokedAt)
             .HasColumnName("revoked_at");
 
+        builder.Property(rt => rt.SelectedGymId)
+            .HasColumnName("selected_gym_id");
+
         builder.Property<Guid>("UserId")
             .HasColumnName("user_id")
             .IsRequired();
