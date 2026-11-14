@@ -67,6 +67,19 @@ class ProgressJourneyStrings {
       );
   String get recordMeasurements => _t('تسجيل القياسات', 'Record measurements');
 
+  // Wins, milestones and check-in rhythm (member Progress tab).
+  String get yourWins => _t('إنجازاتك منذ اليوم الأول', 'Your wins since day one');
+  String get keepGoing => _t('استمر — النتائج تظهر مع الوقت', 'Keep going — results build over time');
+  String checkInCount(int n) => _t('$n قياسات', n == 1 ? '1 check-in' : '$n check-ins');
+  String daysOnJourney(int n) => _t('$n يوم في رحلتك', n == 1 ? '1 day in' : '$n days in');
+  String targetDone(double p) => _t('${(p * 100).round()}% من الهدف', '${(p * 100).round()}% to target');
+  String get checkInDue => _t('حان وقت القياس!', 'Time for your check-in!');
+  String get checkInDueBody =>
+      _t('القياس كل أسبوعين يوضح تقدمك الحقيقي.', 'Measuring every 2 weeks shows your real progress.');
+  String nextCheckInIn(int days) =>
+      _t('القياس القادم بعد $days يوم', days == 1 ? 'Next check-in tomorrow' : 'Next check-in in $days days');
+  String get logNow => _t('سجّل الآن', 'Log now');
+
   String goal(ProgressGoalType? g) => switch (g) {
         ProgressGoalType.loseFat => _t('خسارة الدهون', 'Lose fat'),
         ProgressGoalType.buildMuscle => _t('بناء العضلات', 'Build muscle'),
