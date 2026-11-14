@@ -39,6 +39,7 @@ public static class ErrorStatusCodeMapper
         (EndsWith(".AccountSuspended"), StatusCodes.Status403Forbidden),
         (EndsWith(".AccountDeleted"), StatusCodes.Status403Forbidden),
         (EndsWith(".AlreadyActiveInAnotherGym"), StatusCodes.Status409Conflict),
+        (EndsWith(".Conflict"), StatusCodes.Status409Conflict),
         (EndsWith(".Unauthorized"), StatusCodes.Status401Unauthorized),
         (EndsWith(".Forbidden"), StatusCodes.Status403Forbidden),
     };

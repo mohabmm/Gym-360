@@ -34,6 +34,7 @@ public static class NutritionModuleRegistration
         services.AddScoped<IFoodDatabaseRepository, FoodDatabaseRepository>();
         services.AddScoped<IMealPlanRepository, MealPlanRepository>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Nutrition.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.NutritionUserDataEraser>();
 
         services.AddMediatR(cfg =>
         {

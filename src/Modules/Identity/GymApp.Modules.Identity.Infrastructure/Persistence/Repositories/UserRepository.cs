@@ -22,6 +22,14 @@ internal sealed class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 
+    public async Task<User?> GetByIdWithRefreshTokensAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Users
+            .Include(u => u.GymMemberships)
+            .Include(u => u.RefreshTokens)
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
+    }
+
     public async Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Users
@@ -74,7 +82,8 @@ internal sealed class UserRepository : IUserRepository
         UserRole? role,
         CancellationToken cancellationToken = default)
     {
-        var query = _dbContext.Users.AsNoTracking();
+        // Legacy soft-deleted rows (pre hard-delete) are hidden from the admin console.
+        var query = _dbContext.Users.AsNoTracking().Where(u => u.Status != UserStatus.Deleted);
         if (role.HasValue)
             query = query.Where(u => u.Role == role.Value);
 
@@ -140,5 +149,23 @@ internal sealed class UserRepository : IUserRepository
             "DELETE FROM [identity].[user_gym_memberships] WHERE [gym_id] = {0}",
             new object[] { gymId },
             cancellationToken);
+    }
+
+    public async Task<int> CountSuperAdminsAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.PlatformAdmins
+            .AsNoTracking()
+            .CountAsync(a => a.AdminRole == AdminRole.SuperAdmin, cancellationToken);
+    }
+
+    public async Task DeleteSatelliteRecordsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.OtpCodes.Where(o => o.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await _dbContext.UserConsents.Where(c => c.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await _dbContext.PlatformAdmins.Where(a => a.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+
+        var ownerIds = _dbContext.Owners.Where(o => o.UserId == userId).Select(o => o.Id);
+        await _dbContext.Contracts.Where(c => ownerIds.Contains(c.OwnerId)).ExecuteDeleteAsync(cancellationToken);
+        await _dbContext.Owners.Where(o => o.UserId == userId).ExecuteDeleteAsync(cancellationToken);
     }
 }

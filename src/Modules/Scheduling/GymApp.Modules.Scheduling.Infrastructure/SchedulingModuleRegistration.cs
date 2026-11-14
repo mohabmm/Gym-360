@@ -38,6 +38,7 @@ public static class SchedulingModuleRegistration
         services.AddScoped<IGymSessionPolicyService, GymSessionPolicyService>();
         services.AddScoped<ISessionPackageService, SessionPackageService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Scheduling.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.SchedulingUserDataEraser>();
 
         services.AddMediatR(cfg =>
         {

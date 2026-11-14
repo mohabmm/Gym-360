@@ -23,8 +23,9 @@ internal sealed class DeleteAdminUserEndpoint : IEndpoint
                 : ApiResults.Problem(result.Error);
         })
         .WithTags("Admin", "Identity")
-        .WithSummary("Delete an admin user")
-        .WithDescription("Soft-deletes a user and removes any admin role they hold. Callers cannot delete themselves. Requires platform_admin.")
+        .WithSummary("Permanently delete a user")
+        .WithDescription("Hard-deletes a user and erases their personal data across every module and gym (payment and earnings records are kept, anonymized). Blocked for yourself, the last super admin, and owners who still own gyms (409). Requires platform_admin.")
+        .Produces<ApiResponse<object>>(409)
         .Produces(204)
         .Produces<ApiResponse<object>>(400)
         .Produces<ApiResponse<object>>(401)

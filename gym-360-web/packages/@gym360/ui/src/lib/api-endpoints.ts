@@ -11,6 +11,7 @@ export const IDENTITY = {
   USER: (id: string) => `/identity/users/${id}`,
   ADMIN_USERS: '/admin/users',
   ADMIN_USER: (id: string) => `/admin/users/${id}`,
+  ADMIN_USER_STATUS: (id: string) => `/admin/users/${id}/status`,
   ADMIN_OWNERS: '/admin/owners',
 } as const;
 
