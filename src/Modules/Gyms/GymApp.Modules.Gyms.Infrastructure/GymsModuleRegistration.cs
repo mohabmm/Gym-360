@@ -58,6 +58,7 @@ public static class GymsModuleRegistration
         services.AddScoped<IGymMembershipChecker, GymMembershipChecker>();
         services.AddScoped<IGymMemberDirectory, GymMemberDirectory>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Gyms.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.GymsUserDataEraser>();
         services.AddScoped<IStaffSubRoleResolver, StaffSubRoleResolver>();
         services.AddScoped<IGymDeskLookup, GymDeskLookup>();
 

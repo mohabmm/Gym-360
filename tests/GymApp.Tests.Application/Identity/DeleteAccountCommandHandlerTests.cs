@@ -38,7 +38,7 @@ public class DeleteAccountCommandHandlerTests
                 Gender = Gender.Male
             },
             UserRole.Trainee);
-        _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+        _userRepository.GetByIdWithRefreshTokensAsync(userId, Arg.Any<CancellationToken>())
             .Returns(user);
 
         var command = new DeleteAccountCommand(userId);
@@ -56,7 +56,7 @@ public class DeleteAccountCommandHandlerTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        _userRepository.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+        _userRepository.GetByIdWithRefreshTokensAsync(userId, Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
         var command = new DeleteAccountCommand(userId);

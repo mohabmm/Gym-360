@@ -47,6 +47,7 @@ public static class CommunicationModuleRegistration
         services.AddScoped<IFcmTokenStore, FcmTokenStore>();
         services.AddHttpClient<IPushNotificationService, PushNotificationService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Communication.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.CommunicationUserDataEraser>();
 
         services.AddMediatR(cfg =>
         {

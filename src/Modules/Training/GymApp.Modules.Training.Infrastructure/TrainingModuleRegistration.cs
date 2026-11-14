@@ -39,6 +39,7 @@ public static class TrainingModuleRegistration
 
         services.AddScoped<ITrainingQueryService, TrainingQueryService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Training.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.TrainingUserDataEraser>();
 
         services.AddMediatR(cfg =>
         {

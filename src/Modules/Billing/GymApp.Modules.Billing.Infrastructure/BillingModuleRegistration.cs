@@ -56,6 +56,7 @@ public static class BillingModuleRegistration
         // Services
         services.AddScoped<IGymPlanService, GymPlanService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Billing.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.BillingUserDataEraser>();
         services.AddScoped<GymApp.Modules.Billing.Application.Queries.PlanFeatures.PlanFeatureCatalog>();
         services.AddScoped<IPlatformAnalyticsReader, PlatformAnalyticsReader>();
         services.AddScoped<ITrainerAssignmentLookup, TrainerAssignmentLookup>();

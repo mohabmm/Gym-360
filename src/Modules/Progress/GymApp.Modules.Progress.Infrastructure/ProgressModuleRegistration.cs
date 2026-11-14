@@ -37,6 +37,7 @@ public static class ProgressModuleRegistration
 
         services.AddScoped<IProgressQueryService, ProgressQueryService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Progress.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.ProgressUserDataEraser>();
 
         services.AddMediatR(cfg =>
         {

@@ -8,6 +8,8 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<User?> GetByEmailAsync(Email email, CancellationToken cancellationToken = default);
     Task<User?> GetByPhoneAsync(PhoneNumber phoneNumber, CancellationToken cancellationToken = default);
+    /// <summary>Tracked user with memberships AND refresh tokens loaded (needed to revoke / hard-delete).</summary>
+    Task<User?> GetByIdWithRefreshTokensAsync(Guid id, CancellationToken cancellationToken = default);
     Task<User?> GetByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(Email email, CancellationToken cancellationToken = default);
     Task AddAsync(User user, CancellationToken cancellationToken = default);
@@ -41,4 +43,14 @@ public interface IUserRepository
     /// aggregate (raw SQL) to avoid loading N users. No SaveChanges required.
     /// </summary>
     Task<int> RemoveMembershipsForGymAsync(Guid gymId, CancellationToken cancellationToken = default);
+
+    Task<int> CountSuperAdminsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Hard-deletes the user's satellite Identity rows that are not part of the User
+    /// aggregate: OTP codes, consents, platform-admin role, and the Owner (+Contract) the
+    /// user is the principal of. Commits immediately (EF ExecuteDelete). The User row itself
+    /// (with memberships + refresh tokens) is removed via <see cref="Remove"/> + SaveChanges.
+    /// </summary>
+    Task DeleteSatelliteRecordsAsync(Guid userId, CancellationToken cancellationToken = default);
 }

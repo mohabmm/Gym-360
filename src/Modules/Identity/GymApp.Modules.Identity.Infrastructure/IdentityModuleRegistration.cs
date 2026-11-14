@@ -51,6 +51,10 @@ public static class IdentityModuleRegistration
         services.AddScoped<IUserDisplayLookup, UserDisplayLookup>();
         services.AddScoped<IUserProfileLookup, UserProfileLookup>();
         services.AddScoped<IUserProfileUpdater, UserProfileUpdater>();
+        services.AddScoped<UserAccessGuard>();
+        services.AddScoped<IUserAccessGuard>(sp => sp.GetRequiredService<UserAccessGuard>());
+        services.AddScoped<Application.Abstractions.IUserLockoutCache>(sp => sp.GetRequiredService<UserAccessGuard>());
+        services.AddScoped<Application.Abstractions.IUserDataPurger, UserDataPurger>();
         services.AddScoped<Application.Queries.GetProfile.AssignedTrainerResolver>();
         services.AddScoped<Application.Commands.Login.LoginUserResponseBuilder>();
 

@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using GymApp.Common.Infrastructure.Authentication;
+using GymApp.Modules.Identity.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -38,7 +40,8 @@ public static class AuthenticationExtensions
                 // on WS handshakes. Pull it into the principal so [Authorize] hubs work.
                 options.Events = new JwtBearerEvents
                 {
-                    OnMessageReceived = AttachHubAccessToken
+                    OnMessageReceived = AttachHubAccessToken,
+                    OnTokenValidated = RejectBlockedUser
                 };
             });
 
@@ -71,6 +74,25 @@ public static class AuthenticationExtensions
         var isPlaceholder = PlaceholderSecretPrefixes.Any(
             prefix => secret.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
         return isPlaceholder || Encoding.UTF8.GetByteCount(secret) < 32;
+    }
+
+    // Immediate lockout: a user suspended or deleted by a platform admin is rejected on
+    // their next request even though their JWT is still within its lifetime. 401 makes
+    // clients try a refresh, which then fails with 403 AccountSuspended → sign-out.
+    private static async Task RejectBlockedUser(TokenValidatedContext ctx)
+    {
+        if (!TryGetSubject(ctx.Principal, out var userId))
+            return;
+
+        var guard = ctx.HttpContext.RequestServices.GetRequiredService<IUserAccessGuard>();
+        if (await guard.IsBlockedAsync(userId, ctx.HttpContext.RequestAborted))
+            ctx.Fail("This account has been suspended or deleted.");
+    }
+
+    private static bool TryGetSubject(ClaimsPrincipal? principal, out Guid userId)
+    {
+        var raw = principal?.FindFirstValue("sub") ?? principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out userId);
     }
 
     private static Task AttachHubAccessToken(MessageReceivedContext ctx)

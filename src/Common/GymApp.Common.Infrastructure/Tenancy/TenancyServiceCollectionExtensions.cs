@@ -24,6 +24,7 @@ public static class TenancyServiceCollectionExtensions
         services.AddDbContext<TenantRegistryDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Database")));
         services.AddScoped<IGymRegistry, GymRegistryService>();
+        services.AddScoped<ITenantFanOut, TenantFanOut>();
 
         // Provisioning (used by onboarding endpoint + bootstrap).
         services.AddSingleton<SchemaCreator>();

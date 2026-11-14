@@ -46,6 +46,7 @@ public static class GamificationModuleRegistration
         // Services
         services.AddScoped<IGamificationQueryService, GamificationQueryService>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Gamification.Application.Services.UserDataProvider>();
+        services.AddScoped<IUserDataEraser, Services.GamificationUserDataEraser>();
         services.AddScoped<ITrainerStatsLookup, TrainerStatsLookup>();
 
         services.AddMediatR(cfg =>
