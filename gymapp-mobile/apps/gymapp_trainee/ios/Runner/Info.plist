@@ -36,11 +36,11 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Scan gym QR codes and capture progress photos.</string>
+	<string>Scan gym QR codes, capture progress photos and photograph your InBody result sheet.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Record voice messages in coach chat.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Attach progress photos and profile pictures.</string>
+	<string>Attach progress photos, profile pictures and InBody result sheets.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

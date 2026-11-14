@@ -48,6 +48,7 @@ public static class LegacyFeatureMap
         ["pdf_reports"] = K.PtMonthlyReport,
         ["churn_prediction"] = K.Analytics,
         ["data_import"] = K.GymDataImport,
+        ["inbody_integration"] = K.ProgressInBody,
     };
 
     public enum Kind

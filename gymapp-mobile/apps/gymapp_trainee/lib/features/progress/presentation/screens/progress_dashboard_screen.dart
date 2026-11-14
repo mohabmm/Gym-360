@@ -6,6 +6,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../providers/progress_providers.dart';
+import '../widgets/inbody_card.dart';
 
 /// pt.progress_measurements: the member's progress since day one (coach measurements are the
 /// baseline), plus the streak / check-in / photo sections when those features are on.
@@ -19,6 +20,7 @@ class ProgressDashboardScreen extends ConsumerWidget {
     final showStreaks = flags.isEnabled(FeatureFlagKeys.gamificationStreaks);
     final showCheckIns = flags.isEnabled(FeatureFlagKeys.gymAttendance);
     final showPhotos = flags.isEnabled(FeatureFlagKeys.progressPhotos);
+    final showInBody = flags.isEnabled(FeatureFlagKeys.progressInBody);
 
     return Scaffold(
       appBar: AppBar(
@@ -49,6 +51,10 @@ class ProgressDashboardScreen extends ConsumerWidget {
               ),
             const _JourneySection(),
             const SizedBox(height: 12),
+            if (showInBody) ...[
+              InBodyCard(isArabic: isArabic),
+              const SizedBox(height: 12),
+            ],
             _QuickActions(showPhotos: showPhotos, isArabic: isArabic),
             const SizedBox(height: 24),
           ],

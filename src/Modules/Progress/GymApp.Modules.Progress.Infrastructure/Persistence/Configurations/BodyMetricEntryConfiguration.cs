@@ -72,6 +72,14 @@ internal sealed class BodyMetricEntryConfiguration : IEntityTypeConfiguration<Bo
                 .HasColumnName("measurement_unit");
         });
 
+        // InBody values. Column names are mirrored in BodyCompositionSchemaPatch (existing gym schemas).
+        builder.OwnsOne(e => e.Composition, composition =>
+        {
+            composition.Property(c => c.HeightCm).HasPrecision(5, 1).HasColumnName("composition_height_cm");
+            composition.Property(c => c.SkeletalMuscleMassKg).HasPrecision(6, 2).HasColumnName("composition_skeletal_muscle_kg");
+            composition.Property(c => c.BodyWaterKg).HasPrecision(6, 2).HasColumnName("composition_body_water_kg");
+        });
+
         builder.HasIndex(e => new { e.UserId, e.Date })
             .IsUnique()
             .HasDatabaseName("IX_body_metric_entries_user_date");

@@ -26,6 +26,8 @@ public class FeatureRouteMapTests
     [InlineData("POST", "api/v1/scheduling/sessions/{sessionId:guid}/exercise-logs", FeatureKeys.TrainingWorkouts)]
     [InlineData("POST", "api/v1/progress/body-metrics/client", FeatureKeys.PtProgressMeasurements)]
     [InlineData("POST", "api/v1/progress/photos", FeatureKeys.ProgressPhotos)]
+    [InlineData("POST", "api/v1/progress/body-metrics/inbody", FeatureKeys.ProgressInBody)]
+    [InlineData("POST", "api/v1/progress/body-metrics", FeatureKeys.PtProgressMeasurements)]
     [InlineData("GET", "api/v1/training/programs/{programId:guid}", FeatureKeys.TrainingPrograms)]
     [InlineData("GET", "api/v1/training/workouts", FeatureKeys.TrainingWorkouts)]
     [InlineData("POST", "api/v1/training/remote-workout/activate", FeatureKeys.TrainingRemoteWorkout)]

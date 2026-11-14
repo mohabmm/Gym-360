@@ -1,5 +1,6 @@
 using GymApp.Modules.Progress.Application.Contracts;
 using GymApp.Modules.Progress.Application.DTOs;
+using GymApp.Modules.Progress.Application.Mappers;
 using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -26,35 +27,7 @@ internal sealed class ProgressQueryService : IProgressQueryService
             .OrderByDescending(e => e.Date)
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (entry is null)
-            return null;
-
-        return new BodyMetricDto(
-            entry.Id,
-            entry.UserId,
-            entry.GymId,
-            entry.Date,
-            entry.Weight,
-            entry.WeightUnit.ToString(),
-            entry.BodyFatPercentage,
-            entry.Measurements is not null
-                ? new BodyMeasurementsDto(
-                    entry.Measurements.Chest,
-                    entry.Measurements.Waist,
-                    entry.Measurements.Hips,
-                    entry.Measurements.LeftArm,
-                    entry.Measurements.RightArm,
-                    entry.Measurements.LeftThigh,
-                    entry.Measurements.RightThigh,
-                    entry.Measurements.LeftCalf,
-                    entry.Measurements.RightCalf,
-                    entry.Measurements.Neck,
-                    entry.Measurements.MeasurementUnit.ToString())
-                : null,
-            entry.Source.ToString(),
-            entry.LoggedBy,
-            entry.Notes,
-            entry.CreatedAt);
+        return entry is null ? null : ProgressMapper.ToDto(entry);
     }
 
     public async Task<decimal?> GetCurrentWeightAsync(

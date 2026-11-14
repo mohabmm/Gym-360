@@ -55,6 +55,11 @@ internal sealed class DataImportInBodyIntegrationEventHandler : INotificationHan
                 WeightUnit = WeightUnit.Kg,
                 BodyFatPercentage = n.BodyFatPercentage,
                 Measurements = null,
+                Composition = new BodyComposition
+                {
+                    SkeletalMuscleMassKg = n.SkeletalMuscleMassKg,
+                    BodyWaterKg = n.BodyWaterKg
+                },
                 Notes = notes
             }
         });
@@ -74,11 +79,9 @@ internal sealed class DataImportInBodyIntegrationEventHandler : INotificationHan
     private static string? BuildNotes(DataImportInBodyIntegrationEvent n)
     {
         var parts = new List<string>();
-        if (n.SkeletalMuscleMassKg.HasValue) parts.Add($"SMM: {n.SkeletalMuscleMassKg} kg");
         if (n.VisceralFatLevel.HasValue) parts.Add($"Visceral: {n.VisceralFatLevel}");
         if (n.Bmi.HasValue) parts.Add($"BMI: {n.Bmi}");
         if (n.BasalMetabolicRate.HasValue) parts.Add($"BMR: {n.BasalMetabolicRate}");
-        if (n.BodyWaterKg.HasValue) parts.Add($"Water: {n.BodyWaterKg} kg");
         if (!string.IsNullOrWhiteSpace(n.Notes)) parts.Add(n.Notes);
         return parts.Count == 0 ? null : string.Join(" | ", parts);
     }

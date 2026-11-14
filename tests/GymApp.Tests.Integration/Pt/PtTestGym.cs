@@ -12,8 +12,9 @@ namespace GymApp.Tests.Integration.Pt;
 /// <summary>Shared setup for PT integration tests: an approved pt_module gym and JSON helpers.</summary>
 internal static class PtTestGym
 {
-    /// <summary>Creates an approved gym (with the trainee as an active member), registers it and applies pt_module.</summary>
-    public static async Task<Guid> RegisterAsync(IServiceProvider services, Guid traineeId)
+    /// <summary>Creates an approved gym (with the trainee as an active member), registers it and applies the preset (pt_module by default).</summary>
+    public static async Task<Guid> RegisterAsync(
+        IServiceProvider services, Guid traineeId, string preset = FeatureRegistry.PtModulePreset)
     {
         using var scope = services.CreateScope();
 
@@ -49,7 +50,7 @@ internal static class PtTestGym
         await registry.SaveChangesAsync();
 
         var admin = scope.ServiceProvider.GetRequiredService<IFeatureFlagAdminService>();
-        (await admin.SetGymPresetAsync(new[] { gym.Id }, FeatureRegistry.PtModulePreset, new AdminActor(Guid.NewGuid(), "test")))
+        (await admin.SetGymPresetAsync(new[] { gym.Id }, preset, new AdminActor(Guid.NewGuid(), "test")))
             .IsSuccess.Should().BeTrue();
 
         return gym.Id;

@@ -111,6 +111,7 @@ public static class BillingSeedData
             ("churn_prediction", "Churn Prediction", "AI-powered churn risk scoring", "Analytics", 31),
             ("data_import", "Data Import", "Import members, payments, packages and InBody records from Odoo, Daftra or Excel", "Integration", 32),
             ("early_session_start", "Early Session Start (Testing Mode)", "Trainer can start a session before its scheduled time. Off by default; the StartSession endpoint enforces a 15-minute pre-window otherwise.", "Scheduling", 33),
+            ("inbody_integration", "InBody Scan", "Member scans the InBody result sheet; weight, height, body fat, muscle and water are imported", "Progress", 34),
         };
 
         return features.Select(f => Feature.Create(new FeatureDetails
@@ -154,7 +155,8 @@ public static class BillingSeedData
         var businessFeatures = new HashSet<string>(proFeatures)
         {
             "white_label_branding", "api_access", "custom_exercise_library",
-            "custom_permissions", "pdf_reports", "churn_prediction"
+            "custom_permissions", "pdf_reports", "churn_prediction",
+            "inbody_integration"
         };
 
         var planFeatures = new List<PlanFeature>();

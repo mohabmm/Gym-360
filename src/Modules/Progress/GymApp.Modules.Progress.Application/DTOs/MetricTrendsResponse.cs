@@ -5,4 +5,6 @@ public sealed record MetricTrendsResponse(
     List<decimal?> WeightValues,
     List<decimal?> BodyFatValues,
     List<decimal?> WaistValues,
-    List<decimal?> ChestValues);
+    List<decimal?> ChestValues,
+    List<decimal?> SkeletalMuscleMassValues,
+    List<decimal?> BodyWaterValues);

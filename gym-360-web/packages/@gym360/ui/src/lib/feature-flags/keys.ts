@@ -29,6 +29,7 @@ export const FEATURE_FLAG_KEYS = {
   TRAINING_REMOTE_WORKOUT: 'training.remote_workout',
   NUTRITION: 'nutrition',
   PROGRESS_PHOTOS: 'progress.photos',
+  PROGRESS_INBODY: 'progress.inbody',
   GAMIFICATION_STREAKS: 'gamification.streaks',
   COMMUNICATION_CHAT: 'communication.chat',
   COMMUNICATION_ANNOUNCEMENTS: 'communication.announcements',

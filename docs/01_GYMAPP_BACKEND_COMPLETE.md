@@ -911,11 +911,11 @@ All 3 methods produce identical check-in records: { memberId, gymId, method: "QR
 ## MODULE 4: Progress (Schema: `progress` | Priority: P0-P1 | Sprint 3-5)
 
 **Aggregates**:
-- **BodyMetricEntry** — Id, UserId, GymId, Date, Weight?, WeightUnit, BodyFatPercentage?, Measurements (VO: chest/waist/hips/leftArm/rightArm/leftThigh/rightThigh/leftCalf/rightCalf/neck, MeasurementUnit), Source (SelfReported/TrainerMeasured/InBodyScan), LoggedBy, Notes?.
+- **BodyMetricEntry** — Id, UserId, GymId, Date, Weight?, WeightUnit, BodyFatPercentage?, Measurements (VO: chest/waist/hips/leftArm/rightArm/leftThigh/rightThigh/leftCalf/rightCalf/neck, MeasurementUnit), Composition? (VO, InBody: HeightCm/SkeletalMuscleMassKg/BodyWaterKg — columns `composition_*`; muscle %, water % and BMI derived from weight in `BodyCompositionDto`, never stored), Source (SelfReported/TrainerMeasured/InBodyScan), LoggedBy, Notes?.
 - **ProgressPhoto** — Id, UserId, PhotoUrl, ThumbnailUrl, Angle (Front/Side/Back), Date, IsSharedWithTrainer, Notes?.
 - **Streak** — Id, UserId, GymId, CurrentStreak, LongestStreak, StreakType (DailyWorkout/WeeklyWorkout/DailyCheckIn), LastActivityDate.
 
-**Commands**: LogBodyMetric, LogBodyMetricForClient (trainer), UploadProgressPhoto, DeleteProgressPhoto, UpdateStreak (internal, triggered by WorkoutLogged/CheckIn events).
+**Commands**: LogBodyMetric, LogBodyMetricForClient (trainer), **LogInBodyScan** (member, `POST /progress/body-metrics/inbody`, flag `progress.inbody` / plan code `inbody_integration`, Business only — values read on the phone by OCR; a scan on a day already logged updates that entry and keeps tape measurements; FOUNDER_DECISIONS Q36), UploadProgressPhoto, DeleteProgressPhoto, UpdateStreak (internal, triggered by WorkoutLogged/CheckIn events).
 
 **Queries**: GetBodyMetrics (date range), GetBodyMetricTrends (chart-ready: labels+values per metric), GetProgressPhotos (paginated), GetProgressDashboard (latest metrics, weight trend, body fat change, photo count, streak, workouts this week/month), GetClientProgress (trainer view).
 

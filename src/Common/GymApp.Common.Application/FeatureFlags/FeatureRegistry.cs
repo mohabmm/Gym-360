@@ -126,6 +126,10 @@ public static class FeatureRegistry
             "Progress photos", "صور التقدم",
             "Upload and compare transformation photos.",
             "رفع صور التحول ومقارنتها.")),
+        Off(K.ProgressInBody, "progress", FeatureApps.Trainee, new(
+            "InBody scan", "قراءة جهاز InBody",
+            "Members scan their InBody result sheet; weight, height, body fat, muscle and water are filled in automatically.",
+            "يصوّر العضو ورقة نتيجة InBody فتُسجَّل قيم الوزن والطول ونسبة الدهون والعضلات والماء تلقائياً.")),
         Off(K.GamificationStreaks, "gamification", FeatureApps.Trainee, new(
             "Streaks", "سلاسل الالتزام",
             "Attendance streaks and milestone notifications.",

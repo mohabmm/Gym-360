@@ -12,4 +12,5 @@ public sealed record BodyMetricDto(
     string Source,
     Guid LoggedBy,
     string? Notes,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    BodyCompositionDto? Composition = null);

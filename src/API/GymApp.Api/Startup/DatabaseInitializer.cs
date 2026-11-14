@@ -74,6 +74,7 @@ public static class DatabaseInitializer
             await BackfillDurableOutboxAsync();
             await PatchPtModuleColumnsAsync();
             await PatchProgressGoalsTableAsync();
+            await PatchBodyCompositionColumnsAsync();
 
             var hardMode = IsHardMode;
             if (hardMode)
@@ -246,34 +247,32 @@ IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
         // and g{N}_scheduling.sessions tables need the new columns added here. Additive and
         // idempotent (adds a column only if missing, with a default); no data is changed.
         // The legacy billing/scheduling schemas get the same columns from the EF migrations.
-        private async Task PatchPtModuleColumnsAsync()
-        {
-            try
-            {
-                var registry = _sp.GetRequiredService<TenantRegistryDbContext>();
-                await registry.Database.ExecuteSqlRawAsync(PtSchemaPatch.Sql);
-                _logger.LogInformation("PT module column patch ensured across existing schemas.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "PT module column patch failed; trial/quick-log features will error for affected gyms.");
-            }
-        }
+        private Task PatchPtModuleColumnsAsync() =>
+            ApplySchemaPatchAsync("PT module column patch", PtSchemaPatch.Sql, "trial/quick-log features");
 
         // Step 1a''' — progress_goals table (pt.progress_measurements). Same reason as above:
         // existing g{N}_progress schemas are never migrated, so the new table is created here.
         // Idempotent (creates only if missing); no data is changed.
-        private async Task PatchProgressGoalsTableAsync()
+        private Task PatchProgressGoalsTableAsync() =>
+            ApplySchemaPatchAsync("progress_goals table", ProgressGoalsSchemaPatch.Sql, "member goals");
+
+        // Step 1a'''' — InBody composition columns on body_metric_entries (progress.inbody). Same
+        // reason as above. Idempotent (adds nullable columns only if missing).
+        private Task PatchBodyCompositionColumnsAsync() =>
+            ApplySchemaPatchAsync("InBody composition columns", BodyCompositionSchemaPatch.Sql, "InBody scans");
+
+        /// <summary>Runs one idempotent schema patch across existing schemas. Failure is logged, never fatal.</summary>
+        private async Task ApplySchemaPatchAsync(string patch, string sql, string affected)
         {
             try
             {
                 var registry = _sp.GetRequiredService<TenantRegistryDbContext>();
-                await registry.Database.ExecuteSqlRawAsync(ProgressGoalsSchemaPatch.Sql);
-                _logger.LogInformation("progress_goals table ensured across existing progress schemas.");
+                await registry.Database.ExecuteSqlRawAsync(sql);
+                _logger.LogInformation("{Patch} ensured across existing schemas.", patch);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "progress_goals patch failed; member goals will error for affected gyms.");
+                _logger.LogError(ex, "{Patch} failed; {Affected} will error for affected gyms.", patch, affected);
             }
         }
 

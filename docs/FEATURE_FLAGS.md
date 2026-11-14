@@ -16,6 +16,11 @@
 4. Mirror the key in `gymapp_core/.../feature_flag_keys.dart` and `@gym360/ui/src/lib/feature-flags/keys.ts`; a web test fails if the TS keys drift from .NET. Gate the UI with `FeatureFlagGate` and the app's route guard (Flutter `core/feature_flags.dart`, staff web `lib/feature-flag-rules.ts`).
 5. Deploy: the seeder adds it to the dashboard and to both presets (values from the registry).
 
+## `progress.inbody` (InBody scan)
+- Off in `pt_module`, on in `business`. Legacy plan code `inbody_integration` maps to it.
+- API: `POST /progress/body-metrics/inbody` (`.RequireFeature`) + handler check. Trainee app: InBody card on My Progress and route `/progress/inbody` (route guard). See FOUNDER_DECISIONS Q36.
+- Existing gym schemas get the new columns from `BodyCompositionSchemaPatch` on startup.
+
 ## Manage flags (Super Admin dashboard → Feature Flags)
 - **Gyms:** search, filter by preset, select several gyms → *Apply preset*.
 - **Gym page:** preset dropdown; per-flag toggle creates an override; *Reset to preset* removes it.
