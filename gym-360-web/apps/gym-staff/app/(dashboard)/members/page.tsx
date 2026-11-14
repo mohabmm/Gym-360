@@ -23,6 +23,8 @@ const EMPTY_MEMBER = { name: '', email: '', phone: '', section: 'Mens', national
 // Validation message for the Add Member form, or null when it can be submitted.
 function validateNewMember(member: typeof EMPTY_MEMBER): string | null {
   if (!member.name.trim() || !member.phone.trim()) return 'Name and phone are required.';
+  // Members sign in to the Member app with their email.
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(member.email.trim())) return 'A valid email is required: the member signs in with it.';
   const nid = member.nationalId.trim();
   if (nid && !/^\d{14}$/.test(nid)) return 'National ID must be exactly 14 digits.';
   return null;
@@ -268,7 +270,7 @@ export default function MembersPage() {
             <input type="tel" value={newMember.phone} onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
           </label>
           <label className="block">
-            <span className="text-sm font-medium">Email</span>
+            <span className="text-sm font-medium">Email (used to sign in) *</span>
             <input type="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
           </label>
           <label className="block">

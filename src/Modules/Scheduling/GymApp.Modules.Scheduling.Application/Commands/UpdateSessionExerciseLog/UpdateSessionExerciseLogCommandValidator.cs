@@ -1,4 +1,5 @@
 using FluentValidation;
+using GymApp.Modules.Scheduling.Application.Commands.LogSessionExercises;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.UpdateSessionExerciseLog;
 
@@ -17,5 +18,6 @@ internal sealed class UpdateSessionExerciseLogCommandValidator : AbstractValidat
         RuleFor(x => x.Weight)
             .GreaterThanOrEqualTo(0).When(x => x.Weight.HasValue);
         RuleFor(x => x.Notes).MaximumLength(1000);
+        RuleFor(x => x.Target!).SetValidator(new ExerciseTargetValidator()).When(x => x.Target is not null);
     }
 }

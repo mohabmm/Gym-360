@@ -22,5 +22,5 @@ public sealed record QuickAssignSessionPackageCommand(
     // ReferenceId = new package Id, so payments/earnings tables stay in sync.
     string? PaymentMethod = null,
     DateTime? ExpiresAt = null,
-    // pt.trial_sessions: a free 1–3 session trial with the chosen coach; one per member.
+    // pt.trial_sessions: a free 1–20 session trial with the chosen coach; one per member.
     bool IsTrial = false) : ICommand<Guid>;

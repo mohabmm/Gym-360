@@ -172,6 +172,10 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DayLabel")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
                     b.Property<string>("DisputeReason")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -281,6 +285,16 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Sets")
                         .HasColumnType("int");
+
+                    b.Property<string>("TargetReps")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("TargetSets")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("TargetWeight")
+                        .HasColumnType("decimal(8,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -436,6 +450,9 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("TotalSessions")
                         .HasColumnType("int");
+
+                    b.Property<Guid>("TrainerId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 

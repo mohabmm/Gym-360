@@ -21,8 +21,9 @@ internal sealed class CreateTrainerByStaffCommandValidator : AbstractValidator<C
             .NotEmpty().WithMessage("Phone number is required.")
             .Must(p => p.Trim().Length >= 7).WithMessage("Phone number is too short.");
 
+        // Trainers sign in to the Trainer app with their email, so it is required.
         RuleFor(x => x.Email)
-            .EmailAddress().WithMessage("A valid email address is required.")
-            .When(x => !string.IsNullOrWhiteSpace(x.Email));
+            .NotEmpty().WithMessage("Email is required: the trainer signs in with it.")
+            .EmailAddress().WithMessage("A valid email address is required.");
     }
 }

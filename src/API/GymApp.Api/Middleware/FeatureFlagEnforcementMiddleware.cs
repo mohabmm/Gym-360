@@ -28,8 +28,8 @@ public sealed class FeatureFlagEnforcementMiddleware
 
     public async Task InvokeAsync(HttpContext context, ITenantContext tenant, IFeatureFlagService flags)
     {
-        var featureKey = ResolveFeatureKey(context);
-        if (featureKey is null || IsPlatformAdmin(context.User))
+        var featureKeys = ResolveFeatureKeys(context);
+        if (featureKeys is null || IsPlatformAdmin(context.User))
         {
             await _next(context);
             return;
@@ -43,33 +43,53 @@ public sealed class FeatureFlagEnforcementMiddleware
             return;
         }
 
-        if (await flags.IsEnabledAsync(gymId.Value, featureKey, context.RequestAborted))
+        if (await AnyEnabledAsync(flags, gymId.Value, featureKeys, context.RequestAborted))
         {
             await _next(context);
             return;
         }
 
         _logger.LogInformation("Blocked {Method} {Path}: feature {Feature} is off for gym {GymId}",
-            context.Request.Method, context.Request.Path, featureKey, gymId);
-        await WriteDisabledAsync(context, featureKey);
+            context.Request.Method, context.Request.Path, string.Join(" | ", featureKeys), gymId);
+        await WriteDisabledAsync(context, featureKeys[0]);
     }
 
-    /// <summary>Feature key gating the matched endpoint, or null when always on / unmatched.</summary>
-    internal static string? ResolveFeatureKey(HttpContext context)
+    private static async Task<bool> AnyEnabledAsync(
+        IFeatureFlagService flags, Guid gymId, IReadOnlyList<string> featureKeys, CancellationToken cancellationToken)
+    {
+        foreach (var key in featureKeys)
+        {
+            if (await flags.IsEnabledAsync(gymId, key, cancellationToken))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Feature keys gating the matched endpoint (any one ON opens it), or null when always on / unmatched.</summary>
+    internal static IReadOnlyList<string>? ResolveFeatureKeys(HttpContext context)
     {
         var endpoint = context.GetEndpoint();
         if (endpoint is null)
             return null;
 
         if (endpoint.Metadata.GetMetadata<RequireFeatureMetadata>() is { } required)
-            return required.FeatureKey;
+            return new[] { required.FeatureKey };
+        if (endpoint.Metadata.GetMetadata<RequireAnyFeatureMetadata>() is { FeatureKeys.Count: > 0 } any)
+            return any.FeatureKeys;
         if (endpoint.Metadata.GetMetadata<AlwaysOnFeatureMetadata>() is not null)
             return null;
 
+        return MappedFeatureKeys(context, endpoint);
+    }
+
+    private static IReadOnlyList<string>? MappedFeatureKeys(HttpContext context, Endpoint endpoint)
+    {
         if (endpoint is not RouteEndpoint route || route.RoutePattern.RawText is not { } template)
             return null;
 
-        return FeatureRouteMap.Resolve(new RouteRequest(context.Request.Method, template))?.FeatureKey;
+        var key = FeatureRouteMap.Resolve(new RouteRequest(context.Request.Method, template))?.FeatureKey;
+        return key is null ? null : new[] { key };
     }
 
     private static bool IsPlatformAdmin(ClaimsPrincipal user) =>

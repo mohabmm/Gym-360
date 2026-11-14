@@ -116,3 +116,21 @@ public class CreateMemberByStaffCommandHandlerTests
         await _userRepository.DidNotReceive().AddAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
 }
+
+public class CreateMemberByStaffCommandValidatorTests
+{
+    private readonly CreateMemberByStaffCommandValidator _validator = new();
+
+    private static CreateMemberByStaffCommand With(string? email) => new("Sara", "Member", "01001596189", email);
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Email_is_required_because_members_sign_in_with_it(string? email) =>
+        _validator.Validate(With(email)).IsValid.Should().BeFalse();
+
+    [Fact]
+    public void Valid_email_passes() =>
+        _validator.Validate(With("sara@example.com")).IsValid.Should().BeTrue();
+}

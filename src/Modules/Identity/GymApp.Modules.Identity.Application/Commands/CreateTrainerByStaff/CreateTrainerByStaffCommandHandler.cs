@@ -52,11 +52,8 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
         if (existingByPhone is not null)
             return await ReuseExistingAsync(existingByPhone, UserErrors.PhoneReservedForOtherRole, request.GymId, cancellationToken);
 
-        var emailInput = string.IsNullOrWhiteSpace(request.Email)
-            ? SynthesizePlaceholderEmail(phoneResult.Value.Value)
-            : request.Email.Trim();
-
-        var emailResult = Email.Create(emailInput);
+        // Required by the validator: the trainer signs in with it.
+        var emailResult = Email.Create(request.Email!.Trim());
         if (emailResult.IsFailure)
             return Result.Failure<CreateTrainerByStaffResult>(emailResult.Error);
 
@@ -119,10 +116,4 @@ internal sealed class CreateTrainerByStaffCommandHandler : ICommandHandler<Creat
     private static bool IsActiveTrainerAt(DomainEntities.User user, Guid gymId) =>
         user.GymMemberships.Any(m => m.IsActive && m.Role == UserRole.Trainer && m.GymId == gymId);
 
-
-    private static string SynthesizePlaceholderEmail(string e164Phone)
-    {
-        var digits = new string(e164Phone.Where(char.IsDigit).ToArray());
-        return $"trainer.{digits}@placeholder.gymapp.local";
-    }
 }

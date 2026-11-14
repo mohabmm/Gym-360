@@ -38,6 +38,12 @@ internal sealed class QuickAssignSessionPackageCommandHandler
         if (gate.IsFailure)
             return Result.Failure<Guid>(gate.Error);
 
+        // One coach at a time: a member whose current package still has sessions left
+        // cannot be given another coach until those sessions are used (or expire).
+        if (await _packageRepository.HasActivePackageAsync(
+                new PackageOwner(request.GymId, request.MemberId), DateTime.UtcNow, cancellationToken))
+            return Result.Failure<Guid>(BillingErrors.CoachAlreadyAssigned);
+
         // While pt.auto_expiry is off (default) packages never expire, so none gets an expiry date.
         var expiresAt = await _featureFlags.IsEnabledAsync(request.GymId, FeatureKeys.PtAutoExpiry, cancellationToken)
             ? request.ExpiresAt

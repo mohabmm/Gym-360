@@ -18,16 +18,18 @@ class NewTrainer {
   final String firstName;
   final String lastName;
   final String phone;
-  final String? email;
 
-  const NewTrainer({required this.firstName, required this.lastName, required this.phone, this.email});
+  /// Required: trainers sign in to the Trainer app with their email.
+  final String email;
 
-  /// Body for staff-create-trainer; a blank email is sent as null.
+  const NewTrainer({required this.firstName, required this.lastName, required this.phone, required this.email});
+
+  /// Body for staff-create-trainer.
   Map<String, dynamic> toJson() => {
         'firstName': firstName,
         'lastName': lastName,
         'phone': phone,
-        'email': (email == null || email!.isEmpty) ? null : email,
+        'email': email,
       };
 }
 
@@ -86,6 +88,7 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
     try {
       final created = await createTrainerForGym(
         ref.read(apiClientProvider),
@@ -94,12 +97,12 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
           phone: phone,
-          email: _emailController.text.trim(),
+          email: email,
         ),
       );
       ref.invalidate(trainersProvider);
       if (!mounted) return;
-      await _showLoginDetails(phone, created.initialPassword);
+      await _showLoginDetails(email, created.initialPassword);
       // Hand the id back so a caller (e.g. Add Member) can select the new coach.
       if (mounted) context.pop(created.userId);
     } catch (e) {
@@ -118,14 +121,14 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
-  Future<void> _showLoginDetails(String phone, String? initialPassword) {
+  Future<void> _showLoginDetails(String email, String? initialPassword) {
     final isArabic = _isArabic;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(isArabic ? 'تمت اضافة المدرب' : 'Trainer added'),
-        content: _LoginDetails(phone: phone, initialPassword: initialPassword, isArabic: isArabic),
+        content: _LoginDetails(email: email, initialPassword: initialPassword, isArabic: isArabic),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(ctx),
@@ -147,10 +150,11 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
         : null;
   }
 
+  // Required: the trainer signs in with it.
   String? _email(String? v) {
-    final t = v?.trim() ?? '';
-    if (t.isEmpty) return null;
-    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)
+    final missing = _required(v);
+    if (missing != null) return missing;
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v!.trim())
         ? null
         : (_isArabic ? 'بريد إلكتروني غير صالح' : 'Invalid email address');
   }
@@ -189,7 +193,7 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
                   const SizedBox(height: 16),
                   AppTextField(
                     controller: _emailController,
-                    label: isArabic ? 'البريد الالكتروني (اختياري)' : 'Email (optional)',
+                    label: isArabic ? 'البريد الالكتروني (للدخول)' : 'Email (used to sign in)',
                     keyboardType: TextInputType.emailAddress,
                     validator: _email,
                   ),
@@ -218,13 +222,13 @@ class _AddTrainerScreenState extends ConsumerState<AddTrainerScreen> {
   }
 }
 
-/// Login details after adding: phone + first password for a new account, or a note
+/// Login details after adding: email + first password for a new account, or a note
 /// that an existing trainer keeps signing in with their own password.
 class _LoginDetails extends StatelessWidget {
-  final String phone;
+  final String email;
   final String? initialPassword;
   final bool isArabic;
-  const _LoginDetails({required this.phone, required this.initialPassword, required this.isArabic});
+  const _LoginDetails({required this.email, required this.initialPassword, required this.isArabic});
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +245,7 @@ class _LoginDetails extends StatelessWidget {
                 ? 'يسجل المدرب الدخول في تطبيق المدرب بهذه البيانات، ثم يغير كلمة المرور:'
                 : 'The trainer signs in to the Trainer app with these details, then changes the password:')),
         const SizedBox(height: 12),
-        _LoginLine(label: isArabic ? 'الهاتف' : 'Phone', value: phone),
+        _LoginLine(label: isArabic ? 'البريد الالكتروني' : 'Email', value: email),
         if (password != null) _LoginLine(label: isArabic ? 'كلمة المرور' : 'Password', value: password),
       ],
     );

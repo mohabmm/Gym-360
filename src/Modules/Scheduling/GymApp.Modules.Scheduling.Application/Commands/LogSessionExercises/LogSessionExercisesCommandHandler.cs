@@ -4,8 +4,8 @@ using GymApp.Modules.Scheduling.Application.Abstractions;
 using GymApp.Modules.Scheduling.Application.DTOs;
 using GymApp.Modules.Scheduling.Domain.Entities;
 using GymApp.Modules.Scheduling.Domain.Errors;
-using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using GymApp.Modules.Scheduling.Domain.Repositories;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.LogSessionExercises;
 
@@ -35,6 +35,10 @@ internal sealed class LogSessionExercisesCommandHandler
         if (session.TrainerId != request.TrainerId)
             return Result.Failure<IReadOnlyList<SessionExerciseLogDto>>(SchedulingErrors.NotSessionTrainer);
 
+        var labelled = request.DayLabel is null ? Result.Success() : session.SetDayLabel(request.DayLabel);
+        if (labelled.IsFailure)
+            return Result.Failure<IReadOnlyList<SessionExerciseLogDto>>(labelled.Error);
+
         var created = new List<SessionExerciseLog>();
         foreach (var item in request.Items)
         {
@@ -47,7 +51,8 @@ internal sealed class LogSessionExercisesCommandHandler
                 Sets = item.Sets,
                 Reps = item.Reps,
                 Weight = item.Weight,
-                Notes = item.Notes
+                Notes = item.Notes,
+                Target = item.Target
             });
 
             if (addResult.IsFailure)
@@ -61,9 +66,7 @@ internal sealed class LogSessionExercisesCommandHandler
 
         IReadOnlyList<SessionExerciseLogDto> dtos = created
             .OrderBy(l => l.OrderIndex)
-            .Select(l => new SessionExerciseLogDto(
-                l.Id, l.SessionId, l.ExerciseId, l.ExerciseName, l.ExerciseNameAr,
-                l.OrderIndex, l.Sets, l.Reps, l.Weight, l.Notes, l.CreatedAt, l.UpdatedAt))
+            .Select(SessionExerciseLogMapper.ToDto)
             .ToList();
 
         return Result.Success(dtos);

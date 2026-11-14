@@ -36,6 +36,7 @@ void main() {
       AppRoutes.clients,
       '/clients/c1',
       '/clients/c1/measurements',
+      '/pt-sessions/s1/exercises?clientId=c1',
       AppRoutes.clientPackages,
       AppRoutes.notifications,
       AppRoutes.settings,
@@ -52,5 +53,14 @@ void main() {
       origin: FeatureFlagsOrigin.server,
     );
     expect(trainerFeatureRedirect('/clients/c1/measurements', noMeasurements), AppRoutes.home);
+  });
+
+  test('session exercises are blocked when pt.exercise_progress is off', () {
+    final noExercises = FeatureFlags(
+      values: {for (final k in FeatureFlagKeys.ptModuleDefaults) k: k != FeatureFlagKeys.ptExerciseProgress},
+      preset: 'pt_module',
+      origin: FeatureFlagsOrigin.server,
+    );
+    expect(trainerFeatureRedirect('/pt-sessions/s1/exercises?clientId=c1', noExercises), AppRoutes.home);
   });
 }

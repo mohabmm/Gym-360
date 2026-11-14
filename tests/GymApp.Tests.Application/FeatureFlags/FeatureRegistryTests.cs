@@ -16,6 +16,7 @@ public class FeatureRegistryTests
         FeatureKeys.PtTrialRecap,
         FeatureKeys.PtPackageInterest,
         FeatureKeys.PtTrialFollowUps,
+        FeatureKeys.PtExerciseProgress,
     };
 
     [Fact]
@@ -25,7 +26,7 @@ public class FeatureRegistryTests
     }
 
     [Fact]
-    public void Pt_module_turns_on_exactly_the_ten_pt_features()
+    public void Pt_module_turns_on_exactly_the_eleven_pt_features()
     {
         FeatureRegistry.PtModuleDefaults.Should().BeEquivalentTo(PtModuleOn);
     }

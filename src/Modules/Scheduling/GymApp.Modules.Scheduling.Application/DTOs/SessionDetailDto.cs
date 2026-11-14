@@ -20,4 +20,5 @@ public sealed record SessionDetailDto(
     IReadOnlyList<SessionExerciseLogDto> ExerciseLogs,
     string MemberConfirmation = "None",
     bool IsQuickLog = false,
-    string? DisputeReason = null);
+    string? DisputeReason = null,
+    string? DayLabel = null);

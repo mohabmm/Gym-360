@@ -46,7 +46,7 @@ public class FeatureRouteCoverageTests
                 continue;
 
             var text = File.ReadAllText(file);
-            var explicitTag = text.Contains(".RequireFeature(") || text.Contains(".AlwaysOn()");
+            var explicitTag = text.Contains(".RequireFeature(") || text.Contains(".RequireAnyFeature(") || text.Contains(".AlwaysOn()");
             foreach (Match m in MapCall.Matches(text))
             {
                 routes.Add(new DiscoveredRoute(

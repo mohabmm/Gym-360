@@ -27,6 +27,7 @@ import '../features/scheduling/presentation/screens/calendar_screen.dart';
 import '../features/scheduling/presentation/screens/recurring_session_screen.dart';
 import '../features/scheduling/presentation/screens/leave_management_screen.dart';
 import '../features/sessions/presentation/screens/live_session_screen.dart';
+import '../features/sessions/presentation/pt/exercises/session_exercises_screen.dart';
 import '../features/sessions/presentation/screens/post_session_log_screen.dart';
 import '../features/communication/presentation/screens/chat_list_screen.dart';
 import '../features/communication/presentation/screens/chat_screen.dart';
@@ -70,6 +71,11 @@ class AppRoutes {
   static const String leaveManagement = '/schedule/leave';
   static const String liveSession = '/sessions/:sessionId/live';
   static const String postSessionLog = '/sessions/:sessionId/log';
+
+  /// pt.exercise_progress — outside /sessions, which belongs to scheduling.booking.
+  static const String sessionExercises = '/pt-sessions/:sessionId/exercises';
+  static String sessionExercisesFor(String sessionId, String clientId) =>
+      '/pt-sessions/$sessionId/exercises?clientId=$clientId';
   static const String more = '/more';
   static const String chatList = '/more/chat';
   static const String chat = '/more/chat/:conversationId';
@@ -289,6 +295,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           final sessionId = state.pathParameters['sessionId']!;
           return LiveSessionScreen(sessionId: sessionId);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.sessionExercises,
+        builder: (context, state) => SessionExercisesScreen(
+          sessionId: state.pathParameters['sessionId']!,
+          clientId: state.uri.queryParameters['clientId'] ?? '',
+        ),
       ),
       GoRoute(
         path: AppRoutes.postSessionLog,

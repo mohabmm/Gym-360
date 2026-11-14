@@ -1,3 +1,5 @@
+using GymApp.Common.Application.FeatureFlags;
+using GymApp.Common.Presentation.FeatureFlags;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Scheduling.Application.Commands.DeleteSessionExerciseLog;
 using MediatR;
@@ -31,6 +33,7 @@ internal sealed class DeleteSessionExerciseLogEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
         .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+        .RequireAnyFeature(FeatureKeys.TrainingWorkouts, FeatureKeys.PtExerciseProgress)
         .RequireAuthorization();
     }
 }

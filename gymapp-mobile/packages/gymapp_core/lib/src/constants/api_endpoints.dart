@@ -291,6 +291,12 @@ class ApiEndpoints {
   // ---- PT module ----
   /// Coach logs a session in one tap: POST { memberId, notes? }.
   static const String sessionQuickLog = '$basePrefix/scheduling/sessions/quick-log';
+
+  // pt.exercise_progress: the coach's numbers per exercise, for the member and the coach.
+  static const String myExerciseProgress = '$basePrefix/scheduling/me/exercise-progress';
+  static String clientExerciseProgress(ClientId clientId) =>
+      '$basePrefix/scheduling/clients/$clientId/exercise-progress';
+
   static String sessionMemberConfirm(String id) => '$basePrefix/scheduling/sessions/$id/member-confirm';
   static String sessionMemberDispute(String id) => '$basePrefix/scheduling/sessions/$id/member-dispute';
   static String sessionReverse(String id) => '$basePrefix/scheduling/sessions/$id/reverse';

@@ -76,15 +76,20 @@ export default function TrainersPage() {
       setFormError('Phone is required.');
       return;
     }
+    // Trainers sign in to the Trainer app with their email.
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newTrainer.email.trim())) {
+      setFormError('A valid email is required: the trainer signs in with it.');
+      return;
+    }
     setFormError(null);
     const name = newTrainer.name;
     createTrainer.mutate(
-      { name, email: newTrainer.email || undefined, phone: newTrainer.phone },
+      { name, email: newTrainer.email.trim(), phone: newTrainer.phone },
       {
         onSuccess: ({ initialPassword }) => {
           toast.success(`${name} added.`, {
             description: initialPassword
-              ? `Login: ${newTrainer.phone} / password ${initialPassword}`
+              ? `Login: ${newTrainer.email.trim()} / password ${initialPassword}`
               : 'Already has an account — signs in with their current password.',
             duration: 15000,
           });
@@ -225,7 +230,7 @@ export default function TrainersPage() {
             </label>
           </div>
           <label className="block">
-            <span className="text-sm font-medium">Email</span>
+            <span className="text-sm font-medium">Email (used to sign in) *</span>
             <input type="email" value={newTrainer.email} onChange={(e) => setNewTrainer({ ...newTrainer, email: e.target.value })} className="mt-1 w-full h-9 rounded-lg border border-input bg-background px-3 text-sm" />
           </label>
           <label className="block">

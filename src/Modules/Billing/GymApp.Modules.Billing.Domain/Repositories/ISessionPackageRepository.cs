@@ -15,6 +15,8 @@ public interface ISessionPackageRepository
     /// <summary>pt.trial_followups: trial packages whose last free session was used at or after <paramref name="finishedSinceUtc"/> (tracked).</summary>
     Task<IReadOnlyList<SessionPackage>> GetFinishedTrialsAsync(DateTime finishedSinceUtc, CancellationToken cancellationToken = default);
     Task<bool> HasTrialAsync(PackageOwner owner, CancellationToken cancellationToken = default);
+    /// <summary>Whether the member has a package with sessions left that has not expired at <paramref name="nowUtc"/>.</summary>
+    Task<bool> HasActivePackageAsync(PackageOwner owner, DateTime nowUtc, CancellationToken cancellationToken = default);
     Task<SessionPackage?> FindByUsageSessionAsync(PackageSessionRef session, CancellationToken cancellationToken = default);
     Task AddAsync(SessionPackage package, CancellationToken cancellationToken = default);
     void Update(SessionPackage package);

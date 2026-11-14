@@ -63,6 +63,7 @@ class _Body extends ConsumerWidget {
     final windowHours = policy?.cancellationWindowHours ?? 24;
     final canCancel = _canCancelNow(windowHours);
     final pastWindow = _statusCancellable(session.status) && !canCancel;
+    final showProgressLink = ref.watch(featureFlagsProvider).isEnabled(FeatureFlagKeys.ptExerciseProgress);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -102,6 +103,15 @@ class _Body extends ConsumerWidget {
             return sorted
                 .map((log) => _ExerciseLogTile(log: log, isArabic: isArabic));
           })(),
+          if (showProgressLink)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: () => context.push(AppRoutes.exerciseProgress),
+                icon: const Icon(Icons.trending_up, size: 18),
+                label: Text(isArabic ? 'شاهد تقدمك في كل تمرين' : 'See your progress on every exercise'),
+              ),
+            ),
         ],
         if (session.trainerLog != null) ...[
           const SizedBox(height: 24),

@@ -106,7 +106,7 @@ public sealed class StaffCreatedAccountIntegrationTests : BaseIntegrationTest
         var otherGymOwner = CreateGymOwnerClient(gymId: Guid.NewGuid());
         var created = await ReadCreatedAsync(await otherGymOwner.PostAsJsonAsync(Url, new
         {
-            FirstName = "Omar", LastName = "Coach", Phone = phone, Email = (string?)null
+            FirstName = "Omar", LastName = "Coach", Phone = phone, Email = email
         }));
 
         created.InitialPassword.Should().BeNull();

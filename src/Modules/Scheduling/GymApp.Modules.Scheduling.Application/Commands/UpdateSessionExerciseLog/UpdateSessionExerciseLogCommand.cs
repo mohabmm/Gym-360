@@ -1,4 +1,5 @@
 using GymApp.Common.Application.Messaging;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 
 namespace GymApp.Modules.Scheduling.Application.Commands.UpdateSessionExerciseLog;
 
@@ -13,4 +14,5 @@ public sealed record UpdateSessionExerciseLogCommand(
     int Sets,
     string Reps,
     decimal? Weight,
-    string? Notes) : ICommand;
+    string? Notes,
+    ExerciseTarget? Target = null) : ICommand;

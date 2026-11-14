@@ -59,6 +59,10 @@ public static class FeatureRegistry
             "Trial follow-ups", "متابعة ما بعد التجربة",
             "Reminds the trainee when the trial ends, after 3 days and after 12 days if they have not subscribed.",
             "تذكير المتدرب عند انتهاء التجربة وبعد ٣ أيام وبعد ١٢ يومًا إن لم يشترك.")),
+        Pt(K.PtExerciseProgress, Mobile, new(
+            "Exercise progress", "تقدم التمارين",
+            "Coach records sets, reps, weight, a note and the next target per exercise; trainee sees every number from the trial, then from paid sessions.",
+            "يسجل المدرب المجموعات والعدات والوزن وملاحظة والهدف القادم لكل تمرين، ويرى المتدرب كل الأرقام من الحصص التجريبية ثم من الحصص المدفوعة.")),
 
         // ---- PT later phase (OFF) ----
         Off(K.PtMonthlyReport, "pt", FeatureApps.All, new(

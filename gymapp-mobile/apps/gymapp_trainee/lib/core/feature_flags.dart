@@ -31,6 +31,7 @@ const traineeRouteGuard = FeatureRouteGuard(
     '/more/rate-trainer': FeatureFlagKeys.ptCoachRatings,
     AppRoutes.checkin: FeatureFlagKeys.gymAttendance,
     AppRoutes.membership: FeatureFlagKeys.ptPackages,
+    AppRoutes.exerciseProgress: FeatureFlagKeys.ptExerciseProgress,
   },
 );
 

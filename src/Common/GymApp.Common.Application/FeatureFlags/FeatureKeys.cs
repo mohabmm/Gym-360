@@ -18,6 +18,7 @@ public static class FeatureKeys
     public const string PtTrialRecap = "pt.trial_recap";
     public const string PtPackageInterest = "pt.package_interest";
     public const string PtTrialFollowUps = "pt.trial_followups";
+    public const string PtExerciseProgress = "pt.exercise_progress";
 
     // --- PT, later phase: OFF in pt_module ---
     public const string PtMonthlyReport = "pt.monthly_report";

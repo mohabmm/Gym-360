@@ -18,9 +18,10 @@ internal sealed class CreateMemberByStaffCommandValidator : AbstractValidator<Cr
             .NotEmpty().WithMessage("Phone number is required.")
             .Must(p => p.Trim().Length >= 7).WithMessage("Phone number is too short.");
 
+        // Members sign in to the Member app with their email, so it is required.
         RuleFor(x => x.Email)
-            .EmailAddress().WithMessage("A valid email address is required.")
-            .When(x => !string.IsNullOrWhiteSpace(x.Email));
+            .NotEmpty().WithMessage("Email is required: the member signs in with it.")
+            .EmailAddress().WithMessage("A valid email address is required.");
 
         // National ID optional; if supplied must be a 14-digit Egyptian NID.
         RuleFor(x => x.NationalId)

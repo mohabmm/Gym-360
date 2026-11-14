@@ -30,9 +30,7 @@ internal sealed class GetSessionExerciseLogsQueryHandler
 
         IReadOnlyList<SessionExerciseLogDto> logs = session.ExerciseLogs
             .OrderBy(l => l.OrderIndex)
-            .Select(l => new SessionExerciseLogDto(
-                l.Id, l.SessionId, l.ExerciseId, l.ExerciseName, l.ExerciseNameAr,
-                l.OrderIndex, l.Sets, l.Reps, l.Weight, l.Notes, l.CreatedAt, l.UpdatedAt))
+            .Select(SessionExerciseLogMapper.ToDto)
             .ToList();
 
         return Result.Success(logs);

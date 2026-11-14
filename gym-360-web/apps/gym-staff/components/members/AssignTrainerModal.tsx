@@ -7,8 +7,8 @@ import type { TrainerListItem } from '@gym360/ui';
 import { useQuickAssignTrainer } from '@/lib/hooks/useMembers';
 
 const SESSION_COUNT_OPTIONS = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40];
-/** pt.trial_sessions: one free trial per trainee, 1–3 sessions. */
-const TRIAL_SESSION_OPTIONS = [1, 2, 3];
+/** pt.trial_sessions: one free trial per trainee, 1–20 sessions. */
+const TRIAL_SESSION_OPTIONS = Array.from({ length: 20 }, (_, i) => i + 1);
 
 const INPUT_CLASS = 'w-full h-9 rounded-lg border border-input bg-background px-3 text-sm';
 

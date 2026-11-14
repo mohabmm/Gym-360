@@ -1,5 +1,8 @@
+using GymApp.Common.Application.FeatureFlags;
+using GymApp.Common.Presentation.FeatureFlags;
 using GymApp.Common.Presentation;
 using GymApp.Modules.Scheduling.Application.Commands.UpdateSessionExerciseLog;
+using GymApp.Modules.Scheduling.Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 
@@ -30,7 +33,8 @@ internal sealed class UpdateSessionExerciseLogEndpoint : IEndpoint
                 request.Sets,
                 request.Reps,
                 request.Weight,
-                request.Notes);
+                request.Notes,
+                request.Target);
 
             var result = await sender.Send(command);
 
@@ -45,6 +49,7 @@ internal sealed class UpdateSessionExerciseLogEndpoint : IEndpoint
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
         .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
         .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+        .RequireAnyFeature(FeatureKeys.TrainingWorkouts, FeatureKeys.PtExerciseProgress)
         .RequireAuthorization();
     }
 }
@@ -57,4 +62,5 @@ internal sealed record UpdateSessionExerciseLogRequest(
     int Sets,
     string Reps,
     decimal? Weight,
-    string? Notes);
+    string? Notes,
+    ExerciseTarget? Target = null);

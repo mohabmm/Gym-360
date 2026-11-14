@@ -56,6 +56,18 @@ public class QuickAssignTrialTests
     }
 
     [Fact]
+    public async Task Member_who_still_has_a_coach_with_sessions_left_is_rejected()
+    {
+        _packages.HasActivePackageAsync(Arg.Is<PackageOwner>(o => o.GymId == GymId), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await _sut.Handle(Trial(), CancellationToken.None);
+
+        result.Error.Should().Be(BillingErrors.CoachAlreadyAssigned);
+        await _packages.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Fact]
     public async Task Trial_is_blocked_when_trial_sessions_flag_is_off()
     {
         _flags.IsEnabledAsync(GymId, FeatureKeys.PtTrialSessions, Arg.Any<CancellationToken>()).Returns(false);
@@ -80,8 +92,9 @@ public class QuickAssignTrialTests
     [InlineData(0, false)]
     [InlineData(1, true)]
     [InlineData(3, true)]
-    [InlineData(4, false)]
-    public void Validator_allows_one_to_three_free_trial_sessions(int sessions, bool valid)
+    [InlineData(20, true)]
+    [InlineData(21, false)]
+    public void Validator_allows_one_to_twenty_free_trial_sessions(int sessions, bool valid)
     {
         var validator = new QuickAssignSessionPackageCommandValidator();
 

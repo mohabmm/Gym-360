@@ -46,6 +46,29 @@ internal sealed class SessionRepository : ISessionRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Session>> GetCompletedWithExerciseLogsByMemberAsync(
+        MemberInGym member,
+        CancellationToken cancellationToken = default)
+    {
+        return await InChronologicalOrder(_dbContext.Sessions
+                .AsNoTracking()
+                .Include(s => s.ExerciseLogs)
+                .Where(s => s.MemberId == member.MemberId
+                    && s.GymId == member.GymId
+                    && s.Status == SessionStatus.Completed
+                    && s.ExerciseLogs.Any()))
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<bool> HasSessionWithMemberAsync(
+        SessionParticipants participants,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.Sessions
+            .AsNoTracking()
+            .AnyAsync(s => s.TrainerId == participants.TrainerId
+                && s.MemberId == participants.MemberId
+                && s.GymId == participants.GymId, cancellationToken);
+
     public async Task<IReadOnlyList<Session>> GetUpcomingByTrainerAsync(
         Guid trainerId,
         CancellationToken cancellationToken = default)

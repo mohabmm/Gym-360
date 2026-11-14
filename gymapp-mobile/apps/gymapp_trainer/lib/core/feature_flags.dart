@@ -21,6 +21,7 @@ const trainerRouteGuard = FeatureRouteGuard(
     AppRoutes.programBuilder: FeatureFlagKeys.trainingPrograms,
     AppRoutes.schedule: FeatureFlagKeys.schedulingBooking,
     '/sessions': FeatureFlagKeys.schedulingBooking,
+    '/pt-sessions': FeatureFlagKeys.ptExerciseProgress,
     AppRoutes.chatList: FeatureFlagKeys.communicationChat,
     AppRoutes.broadcast: FeatureFlagKeys.communicationAnnouncements,
     AppRoutes.formCheck: FeatureFlagKeys.progressPhotos,

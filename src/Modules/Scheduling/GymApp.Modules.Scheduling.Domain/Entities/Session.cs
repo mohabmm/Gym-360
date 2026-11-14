@@ -14,6 +14,8 @@ public sealed class Session : Entity
         SessionStatus.Confirmed
     ];
 
+    public const int MaxDayLabelLength = 40;
+
     private readonly List<SessionExerciseLog> _exerciseLogs = new();
 
     private Session() : base() { }
@@ -42,6 +44,9 @@ public sealed class Session : Entity
     public int DurationMinutes { get; private set; }
     public SessionType SessionType { get; private set; }
     public string? Focus { get; private set; }
+
+    /// <summary>pt.exercise_progress: the day type the coach trained (e.g. "Push Day").</summary>
+    public string? DayLabel { get; private set; }
     public SessionStatus Status { get; private set; }
     public bool IsRecurring { get; private set; }
     public string? RecurrenceRule { get; private set; }
@@ -298,6 +303,20 @@ public sealed class Session : Entity
             return Result.Failure(SchedulingErrors.ExerciseLogNotFound(logId));
 
         log.Apply(details);
+        return Result.Success();
+    }
+
+    /// <summary>pt.exercise_progress: the coach names the day trained ("Push Day"); blank clears it.</summary>
+    public Result SetDayLabel(string? dayLabel)
+    {
+        if (Status != SessionStatus.Completed)
+            return Result.Failure(SchedulingErrors.ExerciseLogRequiresCompletedSession);
+
+        var trimmed = dayLabel?.Trim();
+        if (trimmed is { Length: > MaxDayLabelLength })
+            return Result.Failure(SchedulingErrors.DayLabelTooLong);
+
+        DayLabel = string.IsNullOrEmpty(trimmed) ? null : trimmed;
         return Result.Success();
     }
 

@@ -6,6 +6,7 @@ internal sealed class QuickAssignSessionPackageCommandValidator : AbstractValida
 {
     internal const int MinSessions = 1;
     internal const int MaxSessions = 100;
+    internal const int MaxTrialSessions = 20;
 
     public QuickAssignSessionPackageCommandValidator()
     {
@@ -19,11 +20,11 @@ internal sealed class QuickAssignSessionPackageCommandValidator : AbstractValida
             .InclusiveBetween(MinSessions, MaxSessions)
             .When(x => !x.IsTrial)
             .WithMessage($"SessionCount must be between {MinSessions} and {MaxSessions}.");
-        // Free trial: the desk picks 1–3 sessions; no price and no payment.
+        // Free trial: the desk picks 1–20 sessions; no price and no payment.
         RuleFor(x => x.SessionCount)
-            .InclusiveBetween(1, 3)
+            .InclusiveBetween(MinSessions, MaxTrialSessions)
             .When(x => x.IsTrial)
-            .WithMessage("A trial has 1 to 3 free sessions.");
+            .WithMessage($"A trial has {MinSessions} to {MaxTrialSessions} free sessions.");
         RuleFor(x => x.TotalPrice)
             .Must(p => p is null or 0)
             .When(x => x.IsTrial)
