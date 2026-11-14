@@ -236,7 +236,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: RoutePaths.assignPackage,
-            builder: (context, state) => const AssignPackageScreen(),
+            builder: (context, state) =>
+                AssignPackageScreen(initialMemberId: state.uri.queryParameters['memberId']),
           ),
           GoRoute(
             path: RoutePaths.activePackages,

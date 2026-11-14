@@ -6,6 +6,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import '../../../../core/permissions.dart';
 import '../../../../core/error_text.dart';
 import '../../../../core/providers.dart';
+import '../../../../core/router.dart';
 import '../providers/members_provider.dart';
 import '../widgets/current_coach.dart';
 import '../widgets/assign_trainer_form.dart';
@@ -161,6 +162,18 @@ class MemberDetailScreen extends ConsumerWidget {
                     ),
                   ),
                 if (showAssign) const SizedBox(height: 8),
+                if (canAssignTrainer && flags.isEnabled(FeatureFlagKeys.ptPackages)) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton.outlined(
+                      key: const ValueKey('member-assign-package'),
+                      text: isArabic ? 'تعيين باقة' : 'Assign package',
+                      icon: Icons.card_membership_outlined,
+                      onPressed: () => context.push('${RoutePaths.assignPackage}?memberId=$memberId'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 if (canFreeze)
                   SizedBox(
                     width: double.infinity,

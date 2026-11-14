@@ -5,7 +5,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
 import '../providers/billing_provider.dart';
-import '../../../members/presentation/providers/members_provider.dart';
+import '../../../members/presentation/widgets/member_picker.dart';
 import '../../../trainers/presentation/providers/trainers_provider.dart';
 import '../../../../core/error_text.dart';
 
@@ -19,7 +19,7 @@ class RecordPaymentScreen extends ConsumerStatefulWidget {
 
 class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _memberIdController = TextEditingController();
+  UserModel? _member;
   final _amountController = TextEditingController();
   String _method = 'Cash';
   String _purpose = 'Membership';
@@ -33,13 +33,20 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
 
   @override
   void dispose() {
-    _memberIdController.dispose();
     _amountController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final member = _member;
     if (!_formKey.currentState!.validate()) return;
+    if (member == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isArabic ? 'اختر العضو أولاً' : 'Pick the member first'),
+      ));
+      return;
+    }
     final isPackage = _purpose == 'SessionPackage';
     if (isPackage && _trainerId == null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -56,21 +63,11 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
       final apiClient = ref.read(apiClientProvider);
       final gymId = ref.read(currentGymIdProvider);
 
-      final memberInput = _memberIdController.text.trim();
-      final match = await findMemberByNumber(apiClient, gymId, memberInput);
-      if (match == null) {
-        throw Exception(
-          Localizations.localeOf(context).languageCode == 'ar'
-              ? 'العضو غير موجود'
-              : 'Member not found',
-        );
-      }
-
       await apiClient.post<void>(
         ApiEndpoints.payments,
         data: {
           'gymId': gymId,
-          'memberId': match.id,
+          'memberId': member.id,
           'amount': double.tryParse(_amountController.text) ?? 0,
           'paymentMethod': _method,
           'purpose': _purpose,
@@ -122,11 +119,13 @@ class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  AppTextField(
-                    controller: _memberIdController,
-                    label: isArabic ? 'رقم العضو' : 'Member Number / ID',
-                    validator: (v) =>
-                        v == null || v.isEmpty ? (isArabic ? 'مطلوب' : 'Required') : null,
+                  Text(isArabic ? 'العضو' : 'Member',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  MemberPicker(
+                    selected: _member,
+                    onChanged: (m) => setState(() => _member = m),
+                    isArabic: isArabic,
                   ),
                   const SizedBox(height: 16),
                   AppTextField(

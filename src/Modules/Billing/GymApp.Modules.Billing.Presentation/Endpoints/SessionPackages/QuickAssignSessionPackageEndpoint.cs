@@ -14,7 +14,6 @@ internal sealed class QuickAssignSessionPackageEndpoint : IEndpoint
         Guid TrainerId,
         Guid MemberId,
         int SessionCount,
-        Guid AssignedBy,
         decimal? TotalPrice,
         string? PaymentMethod,
         DateTime? ExpiresAt,
@@ -24,14 +23,19 @@ internal sealed class QuickAssignSessionPackageEndpoint : IEndpoint
     {
         app.MapPost("api/v1/billing/packages/quick-assign", async (
             Request request,
+            HttpContext httpContext,
             ISender sender) =>
         {
+            // Who assigned the package is the signed-in staff member, never a value from the body.
+            if (!UserContext.TryGetUserId(httpContext, out var assignedBy))
+                return Results.Unauthorized();
+
             var command = new QuickAssignSessionPackageCommand(
                 request.GymId,
                 request.TrainerId,
                 request.MemberId,
                 request.SessionCount,
-                request.AssignedBy,
+                assignedBy,
                 request.TotalPrice,
                 request.PaymentMethod,
                 request.ExpiresAt,
