@@ -7,6 +7,7 @@ import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../providers/progress_providers.dart';
 import '../widgets/inbody_card.dart';
+import '../widgets/progress_conversion_card.dart';
 
 /// pt.progress_measurements: the member's progress since day one (coach measurements are the
 /// baseline), plus the streak / check-in / photo sections when those features are on.
@@ -29,7 +30,7 @@ class ProgressDashboardScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: isArabic ? 'تسجيل قياس' : 'Log Measurement',
-            onPressed: () => context.push(AppRoutes.logWeight),
+            onPressed: () => context.push(AppRoutes.logMeasurements),
           ),
         ],
       ),
@@ -49,6 +50,7 @@ class ProgressDashboardScreen extends ConsumerWidget {
                 showPhotos: showPhotos,
                 isArabic: isArabic,
               ),
+            const _MotivationSection(),
             const _JourneySection(),
             const SizedBox(height: 12),
             if (showInBody) ...[
@@ -60,6 +62,33 @@ class ProgressDashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Wins since day one, the check-in rhythm and (while the trial ends) "continue with your coach".
+class _MotivationSection extends ConsumerWidget {
+  const _MotivationSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final journey = ref.watch(progressJourneyProvider).valueOrNull;
+    if (journey == null || journey.isEmpty) return const SizedBox.shrink();
+    final strings = ProgressJourneyStrings(Localizations.localeOf(context).languageCode == 'ar');
+    final now = DateTime.now();
+    final cards = [
+      ProgressWinsCard(journey: journey, strings: strings, now: now),
+      NextCheckInCard(
+        journey: journey,
+        strings: strings,
+        now: now,
+        onLog: () => context.push(AppRoutes.logMeasurements),
+      ),
+      ProgressConversionCard(journey: journey, now: now),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [for (final card in cards) Padding(padding: const EdgeInsets.only(bottom: 12), child: card)],
     );
   }
 }

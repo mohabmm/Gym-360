@@ -1,4 +1,5 @@
 using GymApp.Common.Application.Messaging;
+using GymApp.Modules.Progress.Application.Commands.Shared;
 using GymApp.Modules.Progress.Application.DTOs;
 
 namespace GymApp.Modules.Progress.Application.Commands.LogBodyMetric;
@@ -13,4 +14,4 @@ public sealed record LogBodyMetricCommand(
     BodyMeasurementsDto? Measurements,
     string Source,
     Guid LoggedBy,
-    string? Notes) : ICommand<Guid>;
+    string? Notes) : ICommand<Guid>, IBodyMetricReading;
