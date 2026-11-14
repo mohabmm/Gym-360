@@ -19,8 +19,8 @@ class SessionRange {
 /// Desk-chosen session counts: any number in this range (free or paid).
 const SessionRange kAssignSessionRange = SessionRange(1, 100);
 
-/// Free trial (pt.trial_sessions): 1–3 sessions, once per trainee.
-const SessionRange kTrialSessionRange = SessionRange(1, 3);
+/// Free trial (pt.trial_sessions): 1–20 sessions, once per trainee.
+const SessionRange kTrialSessionRange = SessionRange(1, 20);
 
 /// Payment methods the backend accepts (wallets/InstaPay are 'Online'), with (Arabic, English) labels.
 const Map<String, (String, String)> kAssignPaymentMethods = {
@@ -57,7 +57,7 @@ class AssignTrainerDraft {
   }
 }
 
-/// Validation for the session count: trial 1–3, otherwise 1–100.
+/// Validation for the session count: trial 1–20, otherwise 1–100.
 String? validateSessionCount(String? value, {required bool isTrial, required bool isArabic}) {
   final range = isTrial ? kTrialSessionRange : kAssignSessionRange;
   if (range.contains(int.tryParse(value?.trim() ?? ''))) return null;
@@ -161,7 +161,7 @@ class AssignTrainerFields extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           value: draft.isTrial,
           title: Text(isArabic ? 'حصص تجريبية مجانية' : 'Free trial'),
-          subtitle: Text(isArabic ? 'من ١ إلى ٣ حصص، مرة واحدة لكل متدرب' : '1–3 sessions, once per trainee'),
+          subtitle: Text(isArabic ? 'من ١ إلى ٢٠ حصة، مرة واحدة لكل متدرب' : '1–20 sessions, once per trainee'),
           onChanged: (v) => _update(() => draft.isTrial = v),
         ),
       );
@@ -174,7 +174,7 @@ class AssignTrainerFields extends StatelessWidget {
         decoration: InputDecoration(
           labelText: isArabic ? 'عدد الحصص' : 'Number of sessions',
           hintText: draft.isTrial
-              ? (isArabic ? 'من ١ إلى ٣' : '1 to 3')
+              ? (isArabic ? 'من ١ إلى ٢٠' : '1 to 20')
               : (isArabic ? 'من ١ إلى ١٠٠' : '1 to 100'),
         ),
         validator: (v) => validateSessionCount(v, isTrial: draft.isTrial, isArabic: isArabic),

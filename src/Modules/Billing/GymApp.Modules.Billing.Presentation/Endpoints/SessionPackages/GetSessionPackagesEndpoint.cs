@@ -19,6 +19,7 @@ internal sealed class GetSessionPackagesEndpoint : IEndpoint
             Guid? trainerId,
             Guid? memberId,
             string? status,
+            HttpContext http,
             ISender sender) =>
         {
             var resolved = headerGymId ?? queryGymId;
@@ -28,7 +29,11 @@ internal sealed class GetSessionPackagesEndpoint : IEndpoint
                     "The X-Gym-Id header (or gymId query parameter) is required.",
                     400);
 
-            var query = new GetSessionPackagesQuery(resolved.Value, trainerId, memberId, status);
+            var (allowed, trainerFilter) = PackageListAccess.Resolve(http.User, resolved.Value, trainerId);
+            if (!allowed)
+                return ApiResults.Problem("FORBIDDEN", "You are not allowed to see this gym's packages.", 403);
+
+            var query = new GetSessionPackagesQuery(resolved.Value, trainerFilter, memberId, status);
             var result = await sender.Send(query);
 
             return result.IsSuccess
@@ -37,9 +42,10 @@ internal sealed class GetSessionPackagesEndpoint : IEndpoint
         })
         .RequireAuthorization()
         .WithSummary("Get session packages")
-        .WithDescription("Returns session packages for a gym, filterable by trainer, member, and status.")
+        .WithDescription("Returns session packages for a gym, filterable by trainer, member, and status. Staff of the gym and platform admins see all; a trainer of the gym sees only packages they coach; others get 403.")
         .WithTags("Billing")
         .Produces<ApiResponse<List<SessionPackageDto>>>(200)
-        .Produces<ApiResponse<object>>(401);
+        .Produces<ApiResponse<object>>(401)
+        .Produces<ApiResponse<object>>(403);
     }
 }

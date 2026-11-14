@@ -43,6 +43,8 @@ public sealed class PtModuleEndToEndTests : BaseIntegrationTest
         (await QuickAssignAsync(desk, sessions: 2, isTrial: true)).StatusCode.Should().Be(HttpStatusCode.Created);
         (await QuickAssignAsync(desk, sessions: 1, isTrial: true)).StatusCode
             .Should().Be(HttpStatusCode.Conflict, "one trial per trainee");
+        (await QuickAssignAsync(desk, sessions: 8, isTrial: false, price: 4000m)).StatusCode
+            .Should().Be(HttpStatusCode.Conflict, "one coach at a time: the trial still has sessions left");
 
         // 2. Coach logs session 1 with one tap, and records measurements from session 1.
         var first = await QuickLogAsync(coach);

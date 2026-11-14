@@ -24,10 +24,10 @@
 
 ## What this branch built
 - Flags backend, Super Admin API + dashboard, audit log, migration assigning existing gyms to `pt_module` (with Business seat limits).
-- PT: free trials (1–3 sessions, one per trainee), one-tap coach quick-log + trainee confirm/dispute + desk reverse, coach measurements (own clients only), renewal reminders at exactly 3 and 1 left, trial-end alerts + "not converted" list, owner PT dashboard (conversion per coach, 14-day window, renewals, sessions).
+- PT: free trials (1–20 sessions, one per trainee), one-tap coach quick-log + trainee confirm/dispute + desk reverse, coach measurements (own clients only), renewal reminders at exactly 3 and 1 left, trial-end alerts + "not converted" list, owner PT dashboard (conversion per coach, 14-day window, renewals, sessions).
 - Package auto-expiry only when `pt.auto_expiry` is ON.
 - Flutter: trainee, trainer, staff mobile apps driven by flags with PT-focused homes.
-- Staff web (Next.js `apps/gym-staff`): flag-driven sidebar, dashboard, quick actions, member/trainer tabs and KPI cards. A route guard covers typed URLs and deep links. New PT pages: `/pt/trials`, `/pt/review`, `/pt/dashboard`. Assign Trainer can start a free 1–3 session trial.
+- Staff web (Next.js `apps/gym-staff`): flag-driven sidebar, dashboard, quick actions, member/trainer tabs and KPI cards. A route guard covers typed URLs and deep links. New PT pages: `/pt/trials`, `/pt/review`, `/pt/dashboard`. Assign Trainer can start a free 1–20 session trial.
 
 ## Tests
 - .NET: `dotnet test` (flag resolution, enforcement, Super Admin-only API, PT logic, route coverage, PT journey integration test).

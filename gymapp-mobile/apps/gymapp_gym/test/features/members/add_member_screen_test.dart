@@ -36,9 +36,11 @@ void main() {
       expect(check('101'), isNotNull);
     });
 
-    test('a free trial stays at 1 to 3', () {
-      expect(check('3', trial: true), isNull);
-      expect(check('4', trial: true), isNotNull);
+    test('a free trial allows 1 to 20', () {
+      expect(check('1', trial: true), isNull);
+      expect(check('20', trial: true), isNull);
+      expect(check('0', trial: true), isNotNull);
+      expect(check('21', trial: true), isNotNull);
     });
   });
 
@@ -100,6 +102,20 @@ void main() {
       expect(find.text(noCoachesText(false)), findsOneWidget);
       final button = tester.widget<AppButton>(find.widgetWithText(AppButton, 'Add Member'));
       expect(button.onPressed, isNull);
+    });
+
+    testWidgets('email is required because members sign in with it', (tester) async {
+      await pump(tester, const [coach]);
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), 'Sara');
+      await tester.enterText(fields.at(1), 'Member');
+      await tester.enterText(fields.at(2), '01001596189');
+
+      await tester.tap(find.widgetWithText(AppButton, 'Add Member'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Email (used to sign in)'), findsOneWidget);
+      expect(find.text('Required'), findsOneWidget);
     });
 
     testWidgets('shows the fixed first password the member signs in with', (tester) async {

@@ -7,6 +7,7 @@ import '../../../../core/permissions.dart';
 import '../../../../core/error_text.dart';
 import '../../../../core/providers.dart';
 import '../providers/members_provider.dart';
+import '../widgets/current_coach.dart';
 import '../widgets/assign_trainer_form.dart';
 
 class MemberDetailScreen extends ConsumerWidget {
@@ -32,6 +33,14 @@ class MemberDetailScreen extends ConsumerWidget {
         authState?.hasPermission(StaffPermission.deleteMember) ?? false;
     final canAssignTrainer =
         authState?.hasPermission(StaffPermission.assignPackage) ?? false;
+    // One coach at a time: while the member has sessions left with a coach, show that
+    // coach instead of "Assign Trainer". On a failed lookup the button stays (the
+    // backend still refuses a second coach).
+    final currentCoach = canAssignTrainer
+        ? ref.watch(memberCurrentCoachProvider(memberId))
+        : const AsyncValue<SessionPackageModel?>.data(null);
+    final coachPackage = currentCoach.valueOrNull;
+    final showAssign = canAssignTrainer && !currentCoach.isLoading && coachPackage == null;
 
     return Scaffold(
       appBar: AppBar(
@@ -137,7 +146,11 @@ class MemberDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
 
                 // Quick Actions
-                if (canAssignTrainer)
+                if (coachPackage != null) ...[
+                  CurrentCoachCard(package: coachPackage, isArabic: isArabic),
+                  const SizedBox(height: 8),
+                ],
+                if (showAssign)
                   SizedBox(
                     width: double.infinity,
                     child: AppButton(
@@ -147,7 +160,7 @@ class MemberDetailScreen extends ConsumerWidget {
                           _showAssignTrainerDialog(context, ref, isArabic),
                     ),
                   ),
-                if (canAssignTrainer) const SizedBox(height: 8),
+                if (showAssign) const SizedBox(height: 8),
                 if (canFreeze)
                   SizedBox(
                     width: double.infinity,
@@ -234,6 +247,7 @@ class MemberDetailScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, bool isArabic) async {
     if (await showAssignTrainerDialog(context, ref, memberId: memberId)) {
       ref.invalidate(memberDetailProvider(memberId));
+      ref.invalidate(memberCurrentCoachProvider(memberId));
       ref.invalidate(membersProvider);
     }
   }

@@ -80,6 +80,13 @@ internal sealed class SessionPackageRepository : ISessionPackageRepository
             .AsNoTracking()
             .AnyAsync(sp => sp.GymId == owner.GymId && sp.MemberId == owner.MemberId && sp.IsTrial, cancellationToken);
 
+    public Task<bool> HasActivePackageAsync(PackageOwner owner, DateTime nowUtc, CancellationToken cancellationToken = default) =>
+        _dbContext.SessionPackages
+            .AsNoTracking()
+            .AnyAsync(sp => sp.GymId == owner.GymId && sp.MemberId == owner.MemberId
+                && sp.Status == PackageStatus.Active && sp.RemainingSessions > 0
+                && (sp.ExpiresAt == null || sp.ExpiresAt > nowUtc), cancellationToken);
+
     public Task<SessionPackage?> FindByUsageSessionAsync(PackageSessionRef session, CancellationToken cancellationToken = default) =>
         _dbContext.SessionPackages
             .Include(sp => sp.UsageHistory)

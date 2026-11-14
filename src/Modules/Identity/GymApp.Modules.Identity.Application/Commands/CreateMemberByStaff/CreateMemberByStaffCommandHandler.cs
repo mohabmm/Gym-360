@@ -47,11 +47,8 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
                 : UserErrors.PhoneReservedForOtherRole);
         }
 
-        var emailInput = string.IsNullOrWhiteSpace(request.Email)
-            ? SynthesizePlaceholderEmail(phoneResult.Value.Value)
-            : request.Email.Trim();
-
-        var emailResult = Email.Create(emailInput);
+        // Required by the validator: the member signs in with it.
+        var emailResult = Email.Create(request.Email!.Trim());
         if (emailResult.IsFailure)
             return Result.Failure<Guid>(emailResult.Error);
 
@@ -86,11 +83,5 @@ internal sealed class CreateMemberByStaffCommandHandler : ICommandHandler<Create
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(user.Id);
-    }
-
-    private static string SynthesizePlaceholderEmail(string e164Phone)
-    {
-        var digits = new string(e164Phone.Where(char.IsDigit).ToArray());
-        return $"member.{digits}@placeholder.gymapp.local";
     }
 }

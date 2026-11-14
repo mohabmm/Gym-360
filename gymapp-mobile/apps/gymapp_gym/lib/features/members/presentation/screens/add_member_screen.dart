@@ -103,13 +103,12 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   }
 
   Map<String, dynamic> _newMemberBody(String phone) {
-    final email = _emailController.text.trim();
     final nationalId = _nationalIdController.text.trim();
     return {
       'firstName': _firstNameController.text.trim(),
       'lastName': _lastNameController.text.trim(),
       'phone': phone,
-      if (email.isNotEmpty) 'email': email,
+      'email': _emailController.text.trim(),
       if (nationalId.isNotEmpty) 'nationalId': nationalId,
     };
   }
@@ -231,11 +230,11 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
 
   String? _required(String? v) => v == null || v.trim().isEmpty ? (_isArabic ? 'مطلوب' : 'Required') : null;
 
-  // Optional, but if provided it must be a valid address — the backend rejects
-  // malformed emails with a 400, so validate inline instead.
-  String? _optionalEmail(String? v) {
-    final t = v?.trim() ?? '';
-    if (t.isEmpty || RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)) return null;
+  // Required: members sign in to the Member app with their email.
+  String? _email(String? v) {
+    final missing = _required(v);
+    if (missing != null) return missing;
+    if (RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v!.trim())) return null;
     return _isArabic ? 'بريد إلكتروني غير صالح' : 'Invalid email address';
   }
 
@@ -267,9 +266,9 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
         const SizedBox(height: 16),
         AppTextField(
           controller: _emailController,
-          label: isArabic ? 'البريد الالكتروني' : 'Email (optional)',
+          label: isArabic ? 'البريد الالكتروني (للدخول)' : 'Email (used to sign in)',
           keyboardType: TextInputType.emailAddress,
-          validator: _optionalEmail,
+          validator: _email,
         ),
         const SizedBox(height: 16),
         AppTextField(

@@ -113,3 +113,26 @@ public class CreateTrainerByStaffCommandHandlerTests
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }
+
+public class CreateTrainerByStaffCommandValidatorTests
+{
+    private readonly CreateTrainerByStaffCommandValidator _validator = new();
+
+    private static CreateTrainerByStaffCommand With(string? email) =>
+        new(Guid.NewGuid(), "Omar", "Coach", "01001596189", email);
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Email_is_required_because_trainers_sign_in_with_it(string? email) =>
+        _validator.Validate(With(email)).IsValid.Should().BeFalse();
+
+    [Fact]
+    public void Invalid_email_is_rejected() =>
+        _validator.Validate(With("not-an-email")).IsValid.Should().BeFalse();
+
+    [Fact]
+    public void Valid_email_passes() =>
+        _validator.Validate(With("omar@example.com")).IsValid.Should().BeTrue();
+}

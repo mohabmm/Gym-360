@@ -79,7 +79,7 @@ export function useTrainer(id: string) {
 }
 
 export interface CreateTrainerInput {
-  name: string; email?: string; phone: string;
+  name: string; email: string; phone: string;
 }
 
 // Identity may return `{ userId }`, `{ id }` or the bare id as the payload.
@@ -98,7 +98,7 @@ async function createTrainerUser(data: CreateTrainerInput): Promise<CreatedTrain
     firstName,
     lastName,
     phone: data.phone,
-    email: data.email || null,
+    email: data.email,
   });
   const payload = userRes.data?.data;
   const userId = extractUserId(payload);

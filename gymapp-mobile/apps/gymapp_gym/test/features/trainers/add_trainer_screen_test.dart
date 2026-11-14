@@ -54,7 +54,7 @@ void main() {
     final api = _FakeApi();
     final created = await createTrainerForGym(api,
         gymId: 'g-1',
-        trainer: const NewTrainer(firstName: 'Omar', lastName: 'Ali', phone: '01012345678', email: ''));
+        trainer: const NewTrainer(firstName: 'Omar', lastName: 'Ali', phone: '01012345678', email: 'omar@gym.eg'));
 
     expect(api.calls.map((c) => c.path), [
       ApiEndpoints.identityStaffCreateTrainer,
@@ -64,7 +64,7 @@ void main() {
       'firstName': 'Omar',
       'lastName': 'Ali',
       'phone': '01012345678',
-      'email': null,
+      'email': 'omar@gym.eg',
     });
     expect(api.calls.last.data, {'trainerId': 'u-1'});
     expect(created.userId, 'u-1');
@@ -73,7 +73,7 @@ void main() {
 
   test('an existing trainer comes back without a password (theirs is unchanged)', () async {
     final created = await createTrainerForGym(_FakeApi(initialPassword: null),
-        gymId: 'g-1', trainer: const NewTrainer(firstName: 'Omar', lastName: 'Ali', phone: '01012345678'));
+        gymId: 'g-1', trainer: const NewTrainer(firstName: 'Omar', lastName: 'Ali', phone: '01012345678', email: 'omar@gym.eg'));
 
     expect(created.userId, 'u-1');
     expect(created.initialPassword, isNull);
@@ -90,7 +90,8 @@ void main() {
     await tester.tap(find.text('اضافة المدرب'));
     await tester.pump();
 
-    expect(find.text('مطلوب'), findsNWidgets(3));
+    // Name, last name, phone and email (trainers sign in with their email).
+    expect(find.text('مطلوب'), findsNWidgets(4));
   });
 
   testWidgets('short phone and bad email are rejected in English', (tester) async {

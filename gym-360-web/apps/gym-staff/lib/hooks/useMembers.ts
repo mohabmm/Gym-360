@@ -141,7 +141,7 @@ export function useCreateMember() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (data: {
-      name: string; email?: string; phone: string; section?: string; nationalId?: string;
+      name: string; email: string; phone: string; section?: string; nationalId?: string;
     }) => {
       // staff-create is the authoritative entry point for NEW members: it creates
       // the Trainee user, calls AddMemberCommand (gym.MemberIds + gym_members
@@ -149,12 +149,11 @@ export function useCreateMember() {
       // that already belongs to an existing member (409) instead of silently
       // returning that other person's account — the caller handles 409 by offering
       // the "Add existing member" re-link flow (useLinkExistingMember).
-      // Email is sent only when provided; the backend synthesizes a stable
-      // placeholder from the phone otherwise (no Date.now() churn that masked dups).
+      // Email is required: the member signs in with it.
       const userRes = await apiClient.post('/identity/users/staff-create', {
         ...splitName(data.name),
         phone: data.phone,
-        ...(data.email ? { email: data.email } : {}),
+        email: data.email.trim(),
         section: data.section,
         ...(data.nationalId ? { nationalId: data.nationalId } : {}),
       });
@@ -285,7 +284,7 @@ function invalidateAfterQuickAssign(qc: QueryClient, gymId: string | undefined, 
  */
 export interface QuickAssignInput {
   memberId: string; trainerId: string; sessionCount: number; totalPrice?: number; paymentMethod?: string;
-  /** pt.trial_sessions: a free 1–3 session trial (one per trainee). */
+  /** pt.trial_sessions: a free 1–20 session trial (one per trainee). */
   isTrial?: boolean;
 }
 

@@ -22,6 +22,10 @@ public static class BillingErrors
     public static readonly Error PaymentAlreadyVoided = new(
         "Billing.PaymentAlreadyVoided", "The payment has already been voided.");
 
+    public static readonly Error CoachAlreadyAssigned = new(
+        "Billing.Coach.AlreadyExists",
+        "This member already has a coach with sessions left. Assign a new coach after those sessions are used.");
+
     public static readonly Error TrialAlreadyUsed = new(
         "Billing.Trial.AlreadyExists", "This trainee already had a free trial.");
 
