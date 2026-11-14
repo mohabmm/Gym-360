@@ -55,68 +55,79 @@ class AuthInterceptor extends Interceptor {
     return handler.next(options);
   }
 
+  /// Sent by the API when the token is valid but carries no gym the request can be scoped to
+  /// (e.g. an owner session issued before a gym was selected, or a staff token issued before
+  /// the gym membership was linked). A fresh token fixes it, so it is handled like a 401.
+  static const gymNotFoundCode = 'GYM_NOT_FOUND';
+
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode != 401 || _isRefreshing) {
-      return handler.next(err);
-    }
-
     // Wrong password / bad OTP comes back as 401 too. Running the refresh flow
     // here would fire onAuthInvalidated and wipe the login form before the
     // screen can show the error.
-    if (_publicPaths.contains(err.requestOptions.path)) {
+    if (_isRefreshing || !_needsFreshToken(err) || _publicPaths.contains(err.requestOptions.path)) {
       return handler.next(err);
     }
 
     _isRefreshing = true;
+    final newAccessToken = await _refreshTokens();
+    if (newAccessToken == null) {
+      // Refresh token missing, expired or revoked: the session is over.
+      await _storage.clearTokens();
+      await _onAuthInvalidated?.call();
+      _isRefreshing = false;
+      return handler.next(err);
+    }
+
+    // Retry the original request once with the new token. If the retry fails, the caller sees
+    // that error; the session itself is still valid, so the user is not signed out.
+    final opts = err.requestOptions;
+    opts.headers['Authorization'] = 'Bearer $newAccessToken';
+    try {
+      return handler.resolve(await _dio.fetch(opts));
+    } on DioException catch (retryError) {
+      return handler.next(retryError);
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  static bool _needsFreshToken(DioException err) {
+    final status = err.response?.statusCode;
+    return status == 401 || (status == 404 && _errorCode(err.response?.data) == gymNotFoundCode);
+  }
+
+  static String? _errorCode(Object? body) {
+    if (body is! Map) return null;
+    final errors = body['errors'];
+    if (errors is! List || errors.isEmpty) return null;
+    final first = errors.first;
+    return first is Map ? first['code']?.toString() : null;
+  }
+
+  /// Exchanges the stored refresh token for a new pair. Returns the new access token, or null
+  /// when there is no refresh token or the API rejects it.
+  Future<String?> _refreshTokens() async {
+    final refreshToken = await _storage.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return null;
 
     try {
-      final refreshToken = await _storage.getRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) {
-        _isRefreshing = false;
-        await _storage.clearTokens();
-        await _onAuthInvalidated?.call();
-        return handler.next(err);
-      }
-
       // BE schema: RefreshTokenEndpoint.Request expects `{ "token": "..." }`.
       // Using any other key hits the 400 "Token required" validation and
       // silently logs the user out.
-      final response = await _dio.post(
-        ApiEndpoints.refreshToken,
-        data: {'token': refreshToken},
+      final response = await _dio.post(ApiEndpoints.refreshToken, data: {'token': refreshToken});
+      if (response.statusCode != 200) return null;
+
+      final data = response.data['data'];
+      final newAccessToken = data['accessToken'] as String;
+      await _storage.saveTokens(
+        accessToken: AccessToken(newAccessToken),
+        refreshToken: RefreshToken(data['refreshToken'] as String),
       );
-
-      if (response.statusCode == 200) {
-        final newAccessToken = response.data['data']['accessToken'] as String;
-        final newRefreshToken =
-            response.data['data']['refreshToken'] as String;
-
-        await _storage.saveTokens(
-          accessToken: AccessToken(newAccessToken),
-          refreshToken: RefreshToken(newRefreshToken),
-        );
-
-        // Retry the original request with new token
-        final opts = err.requestOptions;
-        opts.headers['Authorization'] = 'Bearer $newAccessToken';
-
-        final retryResponse = await _dio.fetch(opts);
-        _isRefreshing = false;
-        return handler.resolve(retryResponse);
-      }
-
-      // Refresh returned non-200 — treat as expired/invalid session.
-      await _storage.clearTokens();
-      await _onAuthInvalidated?.call();
-    } catch (e) {
-      // Network error or refresh rejected (400/401/403). Clear tokens and
-      // signal the auth notifier so it can navigate the user back to login.
-      await _storage.clearTokens();
-      await _onAuthInvalidated?.call();
+      return newAccessToken;
+    } catch (_) {
+      // Network error, rejected refresh (400/401/403) or an unexpected body.
+      return null;
     }
-
-    _isRefreshing = false;
-    return handler.next(err);
   }
 }
