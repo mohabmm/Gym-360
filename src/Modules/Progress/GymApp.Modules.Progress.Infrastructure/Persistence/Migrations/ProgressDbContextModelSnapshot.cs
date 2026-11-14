@@ -244,6 +244,34 @@ namespace GymApp.Modules.Progress.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("GymApp.Modules.Progress.Domain.Entities.BodyMetricEntry", b =>
                 {
+                    b.OwnsOne("GymApp.Modules.Progress.Domain.ValueObjects.BodyComposition", "Composition", b1 =>
+                        {
+                            b1.Property<Guid>("BodyMetricEntryId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<decimal?>("BodyWaterKg")
+                                .HasPrecision(6, 2)
+                                .HasColumnType("decimal(6,2)")
+                                .HasColumnName("composition_body_water_kg");
+
+                            b1.Property<decimal?>("HeightCm")
+                                .HasPrecision(5, 1)
+                                .HasColumnType("decimal(5,1)")
+                                .HasColumnName("composition_height_cm");
+
+                            b1.Property<decimal?>("SkeletalMuscleMassKg")
+                                .HasPrecision(6, 2)
+                                .HasColumnType("decimal(6,2)")
+                                .HasColumnName("composition_skeletal_muscle_kg");
+
+                            b1.HasKey("BodyMetricEntryId");
+
+                            b1.ToTable("body_metric_entries", "progress");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BodyMetricEntryId");
+                        });
+
                     b.OwnsOne("GymApp.Modules.Progress.Domain.ValueObjects.BodyMeasurements", "Measurements", b1 =>
                         {
                             b1.Property<Guid>("BodyMetricEntryId")
@@ -312,6 +340,8 @@ namespace GymApp.Modules.Progress.Infrastructure.Persistence.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("BodyMetricEntryId");
                         });
+
+                    b.Navigation("Composition");
 
                     b.Navigation("Measurements");
                 });

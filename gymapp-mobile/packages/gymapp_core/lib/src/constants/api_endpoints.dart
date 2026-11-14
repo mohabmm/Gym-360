@@ -148,6 +148,7 @@ class ApiEndpoints {
 
   // Progress
   static const String bodyMetrics = '$basePrefix/progress/body-metrics';
+  static const String inBodyScan = '$basePrefix/progress/body-metrics/inbody';
   static const String progressPhotos = '$basePrefix/progress/photos';
   static String progressPhotoById(ProgressPhotoId id) =>
       '$basePrefix/progress/photos/$id';

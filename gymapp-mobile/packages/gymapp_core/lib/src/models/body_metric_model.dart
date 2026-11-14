@@ -20,6 +20,7 @@ class BodyMetricEntryModel with _$BodyMetricEntryModel {
     required String loggedBy,
     String? notes,
     required DateTime createdAt,
+    BodyCompositionModel? composition,
   }) = _BodyMetricEntryModel;
 
   factory BodyMetricEntryModel.fromJson(Map<String, dynamic> json) =>
@@ -45,6 +46,23 @@ class BodyMeasurementsModel with _$BodyMeasurementsModel {
 
   factory BodyMeasurementsModel.fromJson(Map<String, dynamic> json) =>
       _$BodyMeasurementsModelFromJson(json);
+}
+
+/// Matches the backend BodyCompositionDto — InBody values. Percentages and BMI
+/// are derived by the backend from the entry's weight and may be null.
+@freezed
+class BodyCompositionModel with _$BodyCompositionModel {
+  const factory BodyCompositionModel({
+    double? heightCm,
+    double? skeletalMuscleMassKg,
+    double? bodyWaterKg,
+    double? skeletalMusclePercent,
+    double? bodyWaterPercent,
+    double? bmi,
+  }) = _BodyCompositionModel;
+
+  factory BodyCompositionModel.fromJson(Map<String, dynamic> json) =>
+      _$BodyCompositionModelFromJson(json);
 }
 
 /// Matches backend ProgressDashboardResponse (Modules/Progress). BE returns a

@@ -27,7 +27,7 @@
 | P2-15 | Online payment gateway (Fawry/Paymob) | docs/01 | High | Starter+ | Billing |
 | P2-16 | CSV bulk member import (data migration) | docs/01 | High | Starter+ | Gyms |
 | P2-17 | WhatsApp Bot integration | docs/01 | Medium | Business | Communication |
-| P2-18 | InBody scanner integration | docs/01 | Low | Business | Progress |
+| ~~P2-18~~ | ~~InBody scanner integration~~ — **moved to MVP 2026-11-14 (FOUNDER_DECISIONS Q36)**: member scans the printed sheet in the member app | docs/01 | Low | Business | Progress |
 | P2-19 | Video coaching / form-check video calls | docs/01 | Medium | Business | Communication |
 | P2-20 | Supplement store module | docs/01 | Low | Business | New module |
 

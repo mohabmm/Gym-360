@@ -33,6 +33,7 @@ abstract final class FeatureFlagKeys {
   static const trainingRemoteWorkout = 'training.remote_workout';
   static const nutrition = 'nutrition';
   static const progressPhotos = 'progress.photos';
+  static const progressInBody = 'progress.inbody';
   static const gamificationStreaks = 'gamification.streaks';
   static const communicationChat = 'communication.chat';
   static const communicationAnnouncements = 'communication.announcements';

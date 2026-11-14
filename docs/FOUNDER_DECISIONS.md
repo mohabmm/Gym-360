@@ -387,6 +387,18 @@ Description: Daily cash close-out report showing who collected what, totals by p
 - Imported users are created with an empty `PasswordHash`. Staff must send them the onboarding OTP flow after the import to set a password.
 - Idempotency: re-uploading the same workbook will create **duplicate payments and packages** today. A dedup table keyed on `(ImportJobId, Sheet, RowNumber)` is deferred — staff should only run a file once.
 
+### Q36 — InBody scan in the member app (P2-18 pulled into MVP)
+**ANSWER:**
+- (a) The member photographs the printed InBody result sheet (270 / 370 / 570 / 770) in the member app; **weight, height, body fat %, skeletal muscle mass and total body water** are read and saved as one `InBodyScan` measurement.
+- (b) **On-device OCR** (Google ML Kit, Latin script). The photo never leaves the phone; only the numbers the member confirmed are sent. The member always reviews and can edit every value; unsure or missing values are highlighted.
+- (c) Stored as real columns on `body_metric_entries`: `composition_height_cm`, `composition_skeletal_muscle_kg`, `composition_body_water_kg` (body water in L is stored as kg, 1:1). Muscle %, water % and BMI are **derived** from weight in the API, never stored. Height is stored **per measurement**, not on the profile.
+- (d) One entry per member per day: a scan on a day that already has an entry **updates** it. InBody values replace weight, body fat and composition; tape measurements already logged are kept.
+- (e) The Excel/Odoo/Daftra InBody import (Q35) now fills the same columns instead of writing muscle and water into notes.
+**DECIDED BY:** **Founder** (2026-11-14)
+**PHASE:** MVP
+**PLAN:** **Business only**. Flag `progress.inbody` (off in `pt_module`, on in `business`); legacy plan code `inbody_integration`.
+**IMPACT:** Progress (BodyComposition value object, `POST /progress/body-metrics/inbody`, DTO `composition`, trends series), startup schema patch for existing gym schemas, member app (scan + review screen, InBody card on My Progress), flag key mirrored in Flutter + web.
+
 ---
 
 ## SUMMARY TABLE
@@ -428,6 +440,7 @@ Description: Daily cash close-out report showing who collected what, totals by p
 | Q32 | Ramadan hours | Seasonal override schedules | MVP | Default |
 | Q33 | Cash reconciliation | **Phase 2, Pro plan feature** | Phase 2 | **Founder** |
 | Q34 | Arabic-first / Hijri | Arabic default; Hijri Phase 2 | MVP / Phase 2 | Default |
+| Q36 | InBody scan in member app | **On-device OCR, Business only, scan updates that day's entry** | MVP | **Founder** |
 
 ---
 

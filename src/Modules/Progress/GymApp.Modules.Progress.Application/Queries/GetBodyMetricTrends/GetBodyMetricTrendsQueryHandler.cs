@@ -33,7 +33,9 @@ internal sealed class GetBodyMetricTrendsQueryHandler : IQueryHandler<GetBodyMet
             weightValues,
             bodyFatValues,
             waistValues,
-            chestValues);
+            chestValues,
+            ordered.Select(e => e.Composition?.SkeletalMuscleMassKg).ToList(),
+            ordered.Select(e => e.Composition?.BodyWaterKg).ToList());
 
         return Result.Success(response);
     }

@@ -21,6 +21,7 @@ const traineeRouteGuard = FeatureRouteGuard(
     AppRoutes.guidedWorkout: FeatureFlagKeys.trainingRemoteWorkout,
     AppRoutes.progress: FeatureFlagKeys.ptProgressMeasurements,
     AppRoutes.progressPhotos: FeatureFlagKeys.progressPhotos,
+    AppRoutes.inBodyScan: FeatureFlagKeys.progressInBody,
     AppRoutes.schedule: FeatureFlagKeys.ptDualSessionLogging,
     AppRoutes.bookSession: FeatureFlagKeys.schedulingBooking,
     AppRoutes.classSchedule: FeatureFlagKeys.classes,

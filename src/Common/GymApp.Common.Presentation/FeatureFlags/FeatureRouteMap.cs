@@ -121,6 +121,7 @@ public static class FeatureRouteMap
         new(K.TrainingRemoteWorkout, "training/remote-workout"),
         new(K.Nutrition, "nutrition"),
         new(K.ProgressPhotos, "progress/photos"),
+        new(K.ProgressInBody, "progress/body-metrics/inbody"),
         new(K.GamificationMemberLeaderboard, "gamification/leaderboards"),
         new(K.CoachLeaderboard, "gamification/trainers/leaderboard"),
         new(K.CoachLeaderboard, "gamification/trainers/coach-of-the-month"),

@@ -40,6 +40,7 @@ public static class FeatureKeys
     public const string TrainingRemoteWorkout = "training.remote_workout";
     public const string Nutrition = "nutrition";
     public const string ProgressPhotos = "progress.photos";
+    public const string ProgressInBody = "progress.inbody";
     public const string GamificationStreaks = "gamification.streaks";
     public const string CommunicationChat = "communication.chat";
     public const string CommunicationAnnouncements = "communication.announcements";

@@ -1,5 +1,6 @@
 using GymApp.Modules.Progress.Application.DTOs;
 using GymApp.Modules.Progress.Domain.Entities;
+using GymApp.Modules.Progress.Domain.Enums;
 using GymApp.Modules.Progress.Domain.ValueObjects;
 
 namespace GymApp.Modules.Progress.Application.Mappers;
@@ -19,7 +20,19 @@ internal static class ProgressMapper
             entry.Source.ToString(),
             entry.LoggedBy,
             entry.Notes,
-            entry.CreatedAt);
+            entry.CreatedAt,
+            ToDto(entry.Composition, entry.WeightUnit.ToKg(entry.Weight)));
+
+    public static BodyCompositionDto? ToDto(BodyComposition? c, decimal? weightKg) =>
+        c is null
+            ? null
+            : new BodyCompositionDto(
+                c.HeightCm,
+                c.SkeletalMuscleMassKg,
+                c.BodyWaterKg,
+                BodyComposition.PercentOf(c.SkeletalMuscleMassKg, weightKg),
+                BodyComposition.PercentOf(c.BodyWaterKg, weightKg),
+                BodyComposition.Bmi(weightKg, c.HeightCm));
 
     public static BodyMeasurementsDto ToDto(BodyMeasurements m) =>
         new(

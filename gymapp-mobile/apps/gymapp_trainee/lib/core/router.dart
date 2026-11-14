@@ -22,6 +22,7 @@ import '../features/progress/presentation/screens/progress_dashboard_screen.dart
 import '../features/progress/presentation/screens/exercise_progress_screen.dart';
 import '../features/progress/presentation/screens/log_weight_screen.dart';
 import '../features/progress/presentation/screens/log_measurements_screen.dart';
+import '../features/progress/presentation/screens/inbody_scan_screen.dart';
 import '../features/progress/presentation/screens/progress_photos_screen.dart';
 import '../features/scheduling/presentation/widgets/awaiting_coach_view.dart';
 import '../features/scheduling/presentation/screens/upcoming_sessions_screen.dart';
@@ -65,6 +66,7 @@ class AppRoutes {
   static const String logWeight = '/progress/weight';
   static const String logMeasurements = '/progress/measurements';
   static const String progressPhotos = '/progress/photos';
+  static const String inBodyScan = '/progress/inbody';
 
   static const String schedule = '/schedule';
   static const String bookSession = '/schedule/book';
@@ -221,6 +223,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'measurements',
                 builder: (context, state) => const LogMeasurementsScreen(),
+              ),
+              GoRoute(
+                path: 'inbody',
+                builder: (context, state) => const InBodyScanScreen(),
               ),
               GoRoute(
                 path: 'photos',

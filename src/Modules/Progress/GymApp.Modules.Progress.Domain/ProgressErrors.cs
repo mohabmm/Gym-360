@@ -32,6 +32,18 @@ public static class ProgressErrors
         "Progress.InvalidWeight",
         "Weight must be greater than zero.");
 
+    public static readonly Error InvalidHeight = new(
+        "Progress.InvalidHeight",
+        "Height must be between 50 and 250 cm.");
+
+    public static readonly Error InvalidBodyComposition = new(
+        "Progress.InvalidBodyComposition",
+        "Muscle mass and body water must be greater than zero and less than the body weight.");
+
+    public static readonly Error EmptyInBodyScan = new(
+        "Progress.EmptyInBodyScan",
+        "An InBody scan needs at least one value.");
+
     public static readonly Error NotClientOfTrainer = new(
         "Progress.NotClientOfTrainer.Forbidden",
         "You can view or record progress only for your own clients.");

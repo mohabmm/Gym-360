@@ -24,6 +24,7 @@ void main() {
       AppRoutes.leaderboard,
       AppRoutes.checkin,
       AppRoutes.progressPhotos,
+      AppRoutes.inBodyScan,
       '/more/rate-trainer/abc',
     ]) {
       test('$path → home', () => expect(traineeRouteGuard.redirect(path, pt), AppRoutes.home));
@@ -48,7 +49,7 @@ void main() {
   });
 
   test('business preset opens everything', () {
-    for (final path in [AppRoutes.nutrition, AppRoutes.classSchedule, AppRoutes.chat, AppRoutes.workouts]) {
+    for (final path in [AppRoutes.nutrition, AppRoutes.classSchedule, AppRoutes.chat, AppRoutes.workouts, AppRoutes.inBodyScan]) {
       expect(traineeRouteGuard.redirect(path, business), isNull, reason: path);
     }
   });
