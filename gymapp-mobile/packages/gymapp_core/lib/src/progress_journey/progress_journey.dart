@@ -44,6 +44,16 @@ class CheckIn {
   const CheckIn({required this.entry, required this.date, required this.changes, required this.isDayOne});
 }
 
+/// One metric of a check-in, compared with the reading before it and with day one.
+class CheckInReading {
+  final ProgressMetric metric;
+  final MetricValue value;
+  final MetricChange? sincePrevious;
+  final MetricChange? sinceDayOne;
+
+  const CheckInReading({required this.metric, required this.value, this.sincePrevious, this.sinceDayOne});
+}
+
 /// Who measured an entry.
 enum MeasuredBy { coach, member, inBody }
 
@@ -173,6 +183,35 @@ class ProgressJourney {
       ));
     }
     return items.reversed.toList();
+  }
+
+  /// Every metric [entry] has, with its change since the last reading of that metric and since
+  /// day one (null when there is nothing to compare with). Drives the check-in report.
+  List<CheckInReading> readingsOf(BodyMetricEntryModel entry) {
+    final index = entries.indexWhere((e) => identical(e, entry));
+    final start = baseline;
+    final afterDayOne = start != null && index > entries.indexWhere((e) => identical(e, start));
+    return [
+      for (final m in ProgressMetric.values)
+        if (m.valueOf(entry) case final value?)
+          CheckInReading(
+            metric: m,
+            value: MetricValue(value, m.unitFor(entry)),
+            sincePrevious: _changeFrom(m, _lastWith(m, before: index), entry),
+            sinceDayOne: afterDayOne ? _changeFrom(m, start, entry) : null,
+          ),
+    ];
+  }
+
+  MetricChange? _changeFrom(ProgressMetric m, BodyMetricEntryModel? from, BodyMetricEntryModel to) =>
+      from == null || m.valueOf(from) == null ? null : _changeBetween(m, from, to);
+
+  /// Latest entry before index [before] that has [metric].
+  BodyMetricEntryModel? _lastWith(ProgressMetric metric, {required int before}) {
+    for (var i = before - 1; i >= 0; i--) {
+      if (metric.valueOf(entries[i]) != null) return entries[i];
+    }
+    return null;
   }
 
   List<MetricChange> _changesSince(BodyMetricEntryModel previous, BodyMetricEntryModel entry) => [

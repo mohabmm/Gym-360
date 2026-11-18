@@ -24,7 +24,11 @@ class ProgressWinsCard extends StatelessWidget {
   final ProgressJourneyStrings strings;
   final DateTime now;
 
-  const ProgressWinsCard({super.key, required this.journey, required this.strings, required this.now});
+  /// Coach app: titled as the client's wins.
+  final bool forCoach;
+
+  const ProgressWinsCard(
+      {super.key, required this.journey, required this.strings, required this.now, this.forCoach = false});
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +47,7 @@ class ProgressWinsCard extends StatelessWidget {
             const Text('🏆', style: TextStyle(fontSize: 22)),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(wins.isEmpty ? strings.keepGoing : strings.yourWins,
+              child: Text(wins.isEmpty ? strings.keepGoing : (forCoach ? strings.clientWins : strings.yourWins),
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             ),
           ]),

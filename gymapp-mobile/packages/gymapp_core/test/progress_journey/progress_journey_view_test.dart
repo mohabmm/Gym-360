@@ -55,7 +55,7 @@ void _layoutTests() {
     expect(find.textContaining('34 days ago'), findsOneWidget);
     expect(find.text('Lose fat'), findsOneWidget);
     expect(find.text('↓ 4 kg'), findsWidgets);
-    expect(find.text('↓ 5 cm'), findsOneWidget);
+    expect(find.text('↓ 5 cm'), findsWidgets); // day 1 vs now + latest check-in
     expect(find.text('Day 1 vs now'), findsOneWidget);
     expect(find.textContaining('of the way to 85 kg'), findsOneWidget);
     expect(find.byType(LineChart), findsOneWidget);

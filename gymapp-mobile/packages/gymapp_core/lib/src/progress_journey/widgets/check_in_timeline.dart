@@ -6,8 +6,10 @@ import '../progress_journey.dart';
 import '../progress_journey_strings.dart';
 import '../progress_metric.dart';
 import 'change_chip.dart';
+import 'check_in_report_sheet.dart';
 
 /// Check-ins newest first: date, who measured, what changed since the previous one, coach note.
+/// Tapping a check-in opens its full report.
 class CheckInTimeline extends StatelessWidget {
   final ProgressJourney journey;
   final ProgressJourneyStrings strings;
@@ -41,6 +43,15 @@ class CheckInTimeline extends StatelessWidget {
                 strings: strings,
                 who: measuredByLabel(items[i].entry),
                 isLast: i == items.length - 1,
+                onTap: () => showCheckInReport(
+                  context,
+                  CheckInReport(
+                    journey: journey,
+                    entry: items[i].entry,
+                    strings: strings,
+                    measuredBy: measuredByLabel(items[i].entry),
+                  ),
+                ),
               ),
           ],
         ),
@@ -54,43 +65,58 @@ class _CheckInTile extends StatelessWidget {
   final ProgressJourneyStrings strings;
   final String who;
   final bool isLast;
+  final VoidCallback onTap;
 
-  const _CheckInTile({required this.item, required this.strings, required this.who, required this.isLast});
+  const _CheckInTile({
+    required this.item,
+    required this.strings,
+    required this.who,
+    required this.isLast,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final coach = ProgressJourney.measuredBy(item.entry) == MeasuredBy.coach;
     final color = coach ? theme.colorScheme.primary : theme.hintColor;
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Column(children: [
-            const SizedBox(height: 4),
-            Icon(coach ? Icons.circle : Icons.circle_outlined, size: 12, color: color),
-            if (!isLast) Expanded(child: VerticalDivider(width: 12, thickness: 1, color: theme.dividerColor)),
-          ]),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Header(item: item, strings: strings, who: who, color: color),
-                  const SizedBox(height: 6),
-                  _Values(item: item, strings: strings),
-                  if ((item.entry.notes ?? '').trim().isNotEmpty) ...[
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Column(children: [
+              const SizedBox(height: 4),
+              Icon(coach ? Icons.circle : Icons.circle_outlined, size: 12, color: color),
+              if (!isLast) Expanded(child: VerticalDivider(width: 12, thickness: 1, color: theme.dividerColor)),
+            ]),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Header(item: item, strings: strings, who: who, color: color),
                     const SizedBox(height: 6),
-                    Text('${strings.noteLabel}: ${item.entry.notes!.trim()}',
-                        style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic)),
+                    _Values(item: item, strings: strings),
+                    if ((item.entry.notes ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text('${strings.noteLabel}: ${item.entry.notes!.trim()}',
+                          style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic)),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(Icons.chevron_right, size: 18, color: theme.hintColor),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -120,8 +146,7 @@ class _Header extends StatelessWidget {
               color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(strings.dayOne,
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary)),
+            child: Text(strings.dayOne, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary)),
           ),
       ],
     );
@@ -157,6 +182,6 @@ class _Values extends StatelessWidget {
   String _readings() => [
         for (final m in ProgressMetric.values)
           if (m.valueOf(item.entry) != null)
-          '${strings.metric(m)} ${strings.value(MetricValue(m.valueOf(item.entry)!, m.unitFor(item.entry)))}',
+            '${strings.metric(m)} ${strings.value(MetricValue(m.valueOf(item.entry)!, m.unitFor(item.entry)))}',
       ].join(' · ');
 }

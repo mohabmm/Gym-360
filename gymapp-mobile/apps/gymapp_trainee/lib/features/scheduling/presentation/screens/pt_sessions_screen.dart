@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
 import '../providers/scheduling_providers.dart';
 import '../widgets/pt_session_widgets.dart';
+import '../widgets/pt_conversion_widgets.dart';
 
 /// "My sessions" for PT gyms (no self-booking): remaining sessions per package,
 /// sessions to confirm, and the history of logged sessions.
@@ -25,6 +26,7 @@ class PtSessionsScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(mySessionsAllProvider);
           ref.invalidate(activePackagesProvider);
+          ref.invalidate(myPackageInterestProvider);
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),

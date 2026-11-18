@@ -43,6 +43,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(activePackagesProvider);
           ref.invalidate(allPackagesProvider);
           ref.invalidate(myTrialRecapProvider);
+          ref.invalidate(myPackageInterestProvider);
           ref.invalidate(todaysWorkoutProvider);
           ref.invalidate(upcomingSessionsListProvider);
           ref.invalidate(progressDashboardProvider);

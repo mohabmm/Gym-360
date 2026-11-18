@@ -6,6 +6,7 @@ import '../measurement_form_strings.dart';
 import '../measurement_rules.dart';
 import 'check_in_header.dart';
 import 'check_in_saved_sheet.dart';
+import 'check_in_shortcuts.dart';
 import 'measurement_save_bar.dart';
 import 'measurement_sections.dart';
 
@@ -37,6 +38,9 @@ class MeasurementEntryPage extends StatefulWidget {
 
   /// Member app: show the "what changed" sheet after saving instead of a snackbar.
   final bool celebrate;
+
+  /// Coach app: the note is addressed to the client and offers one-tap quick notes.
+  final bool forCoach;
   final DateTime? now;
 
   const MeasurementEntryPage({
@@ -47,6 +51,7 @@ class MeasurementEntryPage extends StatefulWidget {
     required this.onSubmit,
     this.leading,
     this.celebrate = false,
+    this.forCoach = false,
     this.now,
   });
 
@@ -170,6 +175,11 @@ class _MeasurementEntryPageState extends State<MeasurementEntryPage> {
       ),
       gap,
       if (widget.leading != null) ...[widget.leading!, gap],
+      // Stays in place (disabled when nothing is left to copy) so the fields never jump while typing.
+      if (_form.hasLastReadings) ...[
+        CopyLastButton(strings: s, onCopy: _form.canCopyLast ? _form.copyLast : null),
+        gap,
+      ],
       BodySection(form: _form, strings: s),
       gap,
       TapeSection(form: _form, strings: s),
@@ -177,9 +187,12 @@ class _MeasurementEntryPageState extends State<MeasurementEntryPage> {
       TextField(
         controller: _form.notes,
         maxLength: 500,
-        maxLines: 2,
-        decoration: InputDecoration(labelText: s.notes, hintText: s.notesHint),
+        maxLines: widget.forCoach ? 3 : 2,
+        decoration: widget.forCoach
+            ? InputDecoration(labelText: s.coachNote, helperText: s.coachNoteHint)
+            : InputDecoration(labelText: s.notes, hintText: s.notesHint),
       ),
+      if (widget.forCoach) QuickNoteChips(notes: s.quickNotes, onPick: _form.addNote),
     ];
   }
 }

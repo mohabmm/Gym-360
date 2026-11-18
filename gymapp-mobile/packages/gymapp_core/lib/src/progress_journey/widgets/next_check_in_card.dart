@@ -15,12 +15,16 @@ class NextCheckInCard extends StatelessWidget {
   final DateTime now;
   final VoidCallback onLog;
 
+  /// Coach app: the due card talks about the client.
+  final bool forCoach;
+
   const NextCheckInCard({
     super.key,
     required this.journey,
     required this.strings,
     required this.now,
     required this.onLog,
+    this.forCoach = false,
   });
 
   int? get _daysSinceLast {
@@ -49,9 +53,10 @@ class NextCheckInCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(strings.checkInDue, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            Text(forCoach ? strings.clientCheckInDue : strings.checkInDue,
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: 2),
-            Text(strings.checkInDueBody, style: theme.textTheme.bodySmall),
+            Text(forCoach ? strings.clientCheckInDueBody : strings.checkInDueBody, style: theme.textTheme.bodySmall),
           ]),
         ),
         const SizedBox(width: 8),

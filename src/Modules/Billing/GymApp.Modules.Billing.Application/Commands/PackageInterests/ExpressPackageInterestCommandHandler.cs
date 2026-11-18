@@ -48,7 +48,8 @@ internal sealed class ExpressPackageInterestCommandHandler
         if (package is null || package.GymId != request.GymId || package.MemberId != request.MemberId)
             return Result.Failure<PackageInterestReceipt>(BillingErrors.PackageNotFound);
 
-        var pending = await FindPendingAsync(new PackageOwner(request.GymId, request.MemberId), cancellationToken);
+        var pending = await PendingPackageInterest.FindAsync(
+            _interests, _packages, new PackageOwner(request.GymId, request.MemberId), cancellationToken);
         if (pending is not null)
             return Result.Success(new PackageInterestReceipt(pending.Id, AlreadyPending: true));
 
@@ -64,16 +65,6 @@ internal sealed class ExpressPackageInterestCommandHandler
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new PackageInterestReceipt(interest.Id, AlreadyPending: false));
-    }
-
-    private async Task<PackageInterest?> FindPendingAsync(PackageOwner owner, CancellationToken cancellationToken)
-    {
-        var interests = await _interests.GetByMemberAsync(owner, cancellationToken);
-        if (interests.Count == 0)
-            return null;
-
-        var paidCreatedAts = await PaidPackageDates.ForMemberAsync(_packages, owner, cancellationToken);
-        return interests.FirstOrDefault(i => i.IsPendingGiven(paidCreatedAts));
     }
 }
 

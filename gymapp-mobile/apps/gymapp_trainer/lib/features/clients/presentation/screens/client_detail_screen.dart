@@ -524,6 +524,24 @@ class _ProgressTab extends ConsumerWidget {
             data: (journey) => ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // Coach view of the rhythm and the client's wins: talking points for the session.
+                if (!journey.isEmpty) ...[
+                  NextCheckInCard(
+                    journey: journey,
+                    strings: ProgressJourneyStrings(isArabic),
+                    now: DateTime.now(),
+                    onLog: () => context.push(measurementsRoute(clientId)),
+                    forCoach: true,
+                  ),
+                  const SizedBox(height: 12),
+                  ProgressWinsCard(
+                    journey: journey,
+                    strings: ProgressJourneyStrings(isArabic),
+                    now: DateTime.now(),
+                    forCoach: true,
+                  ),
+                  if (!journey.hasOnlyBaseline) const SizedBox(height: 12),
+                ],
                 ProgressJourneyView(
                   journey: journey,
                   isArabic: isArabic,

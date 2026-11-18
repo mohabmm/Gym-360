@@ -48,6 +48,22 @@ class PackageInterestReceipt {
       );
 }
 
+/// The trainee's own request (`GET /billing/package-interest/mine`): while [pending], the app shows
+/// "request sent" instead of the "I'm interested" / "Renew" button.
+class MyPackageInterest {
+  final bool pending;
+  final DateTime? createdAt;
+
+  const MyPackageInterest({required this.pending, this.createdAt});
+
+  static const none = MyPackageInterest(pending: false);
+
+  factory MyPackageInterest.fromJson(Map<String, dynamic> j) => MyPackageInterest(
+        pending: j['pending'] == true,
+        createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal(),
+      );
+}
+
 /// A desk lead: a trainee who tapped "I'm interested".
 class PackageInterestLead {
   final String id;

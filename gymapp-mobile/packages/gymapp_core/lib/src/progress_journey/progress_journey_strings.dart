@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import 'progress_journey.dart';
 import 'progress_journey_model.dart';
 import 'progress_metric.dart';
 
@@ -79,6 +80,29 @@ class ProgressJourneyStrings {
   String nextCheckInIn(int days) =>
       _t('القياس القادم بعد $days يوم', days == 1 ? 'Next check-in tomorrow' : 'Next check-in in $days days');
   String get logNow => _t('سجّل الآن', 'Log now');
+  String get clientWins => _t('إنجازات العميل منذ اليوم الأول', "Client's wins since day one");
+  String get clientCheckInDue => _t('موعد قياس العميل', 'Check-in due for this client');
+  String get clientCheckInDueBody =>
+      _t('مر أسبوعان على آخر قياس — سجّله في الحصة القادمة.', '2 weeks since the last check-in — record it this session.');
+
+  // ---- Latest check-in + full report ----
+  String get latestCheckIn => _t('آخر قياس', 'Latest check-in');
+  String get newLabel => _t('جديد', 'New');
+  String get viewReport => _t('عرض التقرير كاملًا', 'View full report');
+  String get checkInReport => _t('تقرير القياس', 'Check-in report');
+  String get sincePrevious => _t('منذ القياس السابق', 'Since last');
+  String get sinceDayOneShort => _t('منذ اليوم الأول', 'Since day 1');
+  String get measurement => _t('القياس', 'Measurement');
+  String get firstCheckInValues => _t('قراءات اليوم الأول', 'Day one readings');
+  String get bodyComposition => _t('تكوين الجسم (InBody)', 'Body composition (InBody)');
+  String get muscleMass => _t('الكتلة العضلية', 'Muscle mass');
+  String get bodyWater => _t('مياه الجسم', 'Body water');
+  String get bmi => _t('مؤشر كتلة الجسم', 'BMI');
+  String get height => _t('الطول', 'Height');
+  String get measuredByPrefix => _t('القياس بواسطة', 'Measured by');
+  String improvedCount(List<MetricChange> improved) => improved.length == 1
+      ? _t('قياس واحد تحسّن', '1 measurement improved')
+      : _t('${improved.length} قياسات تحسّنت', '${improved.length} measurements improved');
 
   String goal(ProgressGoalType? g) => switch (g) {
         ProgressGoalType.loseFat => _t('خسارة الدهون', 'Lose fat'),

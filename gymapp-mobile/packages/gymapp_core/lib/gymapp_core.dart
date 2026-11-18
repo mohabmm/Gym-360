@@ -72,6 +72,8 @@ export 'src/progress_journey/widgets/since_day_one_card.dart';
 export 'src/progress_journey/widgets/goal_picker_sheet.dart';
 export 'src/progress_journey/widgets/progress_wins_card.dart';
 export 'src/progress_journey/widgets/next_check_in_card.dart';
+export 'src/progress_journey/widgets/check_in_report_sheet.dart';
+export 'src/progress_journey/widgets/latest_check_in_card.dart';
 export 'src/progress_journey/widgets/change_chip.dart' show ChangeChip, toneColor;
 export 'src/progress_journey/measurement_form/measurement_rules.dart';
 export 'src/progress_journey/measurement_form/measurement_form_controller.dart';
