@@ -21,6 +21,24 @@ class MeasurementFormStrings {
   String get right => _t('يمين', 'Right');
   String get notes => _t('ملاحظات (اختياري)', 'Notes (optional)');
   String get notesHint => _t('مثال: صائم، بعد التمرين', 'e.g. fasted, after training');
+  String get coachNote => _t('ملاحظة للعميل (اختياري)', 'Note for your client (optional)');
+  String get coachNoteHint =>
+      _t('يراها العميل في تقرير القياس', 'Your client sees this in the check-in report');
+  String get copyLast => _t('نفس آخر قياس', 'Same as last');
+  String get copyLastHint =>
+      _t('يملأ الخانات الفارغة بآخر قيمة — عدّل ما تغيّر فقط', 'Fills empty fields with last values — edit what changed');
+
+  /// Ready-made coach notes, one tap each.
+  List<String> get quickNotes => isArabic
+      ? const ['تقدم ممتاز، استمر 💪', 'التزم بالنظام الغذائي', 'زوّد شرب المياه', 'نم 7-8 ساعات', 'زوّد البروتين', 'ثبات الوزن طبيعي، استمر']
+      : const [
+          'Great progress, keep going 💪',
+          'Stick to the meal plan',
+          'Drink more water',
+          'Sleep 7–8 hours',
+          'Increase protein',
+          'A plateau is normal, stay consistent',
+        ];
   String get firstCheckIn => _t('أول قياس — سيصبح نقطة البداية', 'First check-in — this becomes Day 1');
   String get checkInDate => _t('تاريخ القياس', 'Check-in date');
   String get today => _t('اليوم', 'Today');

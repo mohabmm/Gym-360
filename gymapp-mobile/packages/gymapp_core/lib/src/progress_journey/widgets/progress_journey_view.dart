@@ -7,6 +7,7 @@ import '../progress_journey_strings.dart';
 import 'check_in_timeline.dart';
 import 'day_one_comparison_card.dart';
 import 'journey_hero_card.dart';
+import 'latest_check_in_card.dart';
 import 'metric_trend_card.dart';
 
 /// Who is looking: the member at their own progress, or a coach at a client's.
@@ -59,7 +60,8 @@ class CoachViewer extends JourneyViewer {
       };
 }
 
-/// pt.progress_measurements: progress from day one — hero, trend chart, day 1 vs now, check-ins.
+/// pt.progress_measurements: progress from day one — hero, latest check-in (with the full report),
+/// trend chart, day 1 vs now and every check-in (each opens its report).
 /// Not scrollable itself; put it in a ListView / SliverToBoxAdapter.
 class ProgressJourneyView extends StatelessWidget {
   final ProgressJourney journey;
@@ -85,10 +87,13 @@ class ProgressJourneyView extends StatelessWidget {
     if (journey.isEmpty) return _empty(s);
     final today = now ?? DateTime.now();
     const gap = SizedBox(height: 12);
+    String who(BodyMetricEntryModel e) => viewer.measuredBy(e, s);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         JourneyHeroCard(journey: journey, strings: s, now: today, onEditGoal: onEditGoal),
+        gap,
+        LatestCheckInCard(journey: journey, strings: s, now: today, measuredByLabel: who),
         gap,
         MetricTrendCard(journey: journey, strings: s, now: today, selfLabel: viewer.selfLabel(s)),
         if (!journey.hasOnlyBaseline) ...[
@@ -96,7 +101,7 @@ class ProgressJourneyView extends StatelessWidget {
           DayOneComparisonCard(journey: journey, strings: s),
         ],
         gap,
-        CheckInTimeline(journey: journey, strings: s, measuredByLabel: (e) => viewer.measuredBy(e, s)),
+        CheckInTimeline(journey: journey, strings: s, measuredByLabel: who),
       ],
     );
   }

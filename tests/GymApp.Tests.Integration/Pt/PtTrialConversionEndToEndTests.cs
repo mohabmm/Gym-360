@@ -50,11 +50,16 @@ public sealed class PtTrialConversionEndToEndTests : BaseIntegrationTest
         recap.GetProperty("trialFinished").GetBoolean().Should().BeTrue();
 
         // Trainee taps "I'm interested" twice: one lead; desk and coach are told.
+        (await DataAsync(trainee, "api/v1/billing/package-interest/mine")).GetProperty("pending").GetBoolean()
+            .Should().BeFalse("nothing was requested yet");
         var first = await PostDataAsync(trainee, "api/v1/billing/package-interest", new { sourcePackageId = trialId });
         first.GetProperty("alreadyPending").GetBoolean().Should().BeFalse();
         var second = await PostDataAsync(trainee, "api/v1/billing/package-interest", new { sourcePackageId = trialId });
         second.GetProperty("alreadyPending").GetBoolean().Should().BeTrue();
         second.GetProperty("interestId").GetGuid().Should().Be(first.GetProperty("interestId").GetGuid());
+        var mine = await DataAsync(trainee, "api/v1/billing/package-interest/mine");
+        mine.GetProperty("pending").GetBoolean().Should().BeTrue("the app shows \"request sent\" instead of the button");
+        mine.GetProperty("interestId").GetGuid().Should().Be(first.GetProperty("interestId").GetGuid());
         await EventuallyAsync(() => HasNotificationAsync(desk, "package_interest"), "desk gets the lead");
         (await HasNotificationAsync(coach, "package_interest")).Should().BeTrue("the coach hears about the lead too");
 
@@ -69,6 +74,8 @@ public sealed class PtTrialConversionEndToEndTests : BaseIntegrationTest
             .Should().NotContain(l => l.GetProperty("memberId").GetGuid() == _traineeId);
         (await DataAsync(desk, "api/v1/billing/package-interest?state=converted")).EnumerateArray()
             .Should().Contain(l => l.GetProperty("memberId").GetGuid() == _traineeId);
+        (await DataAsync(trainee, "api/v1/billing/package-interest/mine")).GetProperty("pending").GetBoolean()
+            .Should().BeFalse("a converted lead no longer blocks the next renewal");
     }
 
     [Fact]

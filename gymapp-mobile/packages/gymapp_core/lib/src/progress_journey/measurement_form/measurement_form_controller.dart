@@ -39,6 +39,29 @@ class MeasurementFormController extends ChangeNotifier {
 
   LastReading? last(ProgressMetric m) => _last[m];
 
+  /// True when there is any earlier reading (the "Same as last" row is shown).
+  bool get hasLastReadings => _last.isNotEmpty;
+
+  /// True while some empty field has a last reading to copy.
+  bool get canCopyLast => checkInMetrics.any((m) => _last[m] != null && fields[m]!.text.trim().isEmpty);
+
+  /// Fills every empty field with its last reading, so only what changed needs editing.
+  /// Typed values are kept. Tape is often re-measured only in part.
+  void copyLast() {
+    for (final m in checkInMetrics) {
+      final before = _last[m];
+      final field = fields[m]!;
+      if (before != null && field.text.trim().isEmpty) field.text = before.value.compact;
+    }
+  }
+
+  /// Adds a ready-made note on its own line (once).
+  void addNote(String text) {
+    final current = notes.text.trim();
+    if (current.contains(text)) return;
+    notes.text = current.isEmpty ? text : '$current\n$text';
+  }
+
   MetricCheck check(ProgressMetric m) => checkMetric(m, fields[m]!.text, previous: _last[m]?.value);
 
   /// Live change vs the last reading; null without both values.

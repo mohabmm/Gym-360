@@ -192,20 +192,35 @@ class _PackageRemaining extends StatelessWidget {
               child: LinearProgressIndicator(value: left / total, minHeight: 8),
             ),
             if (low) ...[
-              const SizedBox(height: 8),
-              Text(
-                isArabic ? 'اقتربت باقتك على الانتهاء، جدّدها من الاستقبال.' : 'Your package is almost used up — renew at the desk.',
-                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.warning),
-              ),
-              const SizedBox(height: 8),
-              InterestButton(
-                packageId: package.id,
-                label: isArabic ? 'جدّد مع ${package.trainerName ?? 'مدربك'}' : 'Renew with ${package.trainerName ?? 'your coach'}',
-              ),
+              const SizedBox(height: 12),
+              _RenewPrompt(package: package),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One renew action for a package that is almost used up: the "Renew with coach" button
+/// (pt.package_interest), or the sent request, or — with interest off — "renew at the desk".
+class _RenewPrompt extends ConsumerWidget {
+  final SessionPackageModel package;
+  const _RenewPrompt({required this.package});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isArabic = _isArabic(context);
+    final coach = package.trainerName ?? (isArabic ? 'مدربك' : 'your coach');
+    if (!ref.watch(featureFlagsProvider).isEnabled(FeatureFlagKeys.ptPackageInterest)) {
+      return Text(
+        isArabic ? 'اقتربت باقتك على الانتهاء، جدّدها من الاستقبال.' : 'Your package is almost used up — renew at the desk.',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.warning),
+      );
+    }
+    return InterestButton(
+      packageId: package.id,
+      label: isArabic ? 'جدّد مع $coach' : 'Renew with $coach',
     );
   }
 }

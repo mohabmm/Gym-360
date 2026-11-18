@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/providers.dart';
 import '../../../membership/presentation/providers/membership_providers.dart';
@@ -132,8 +133,23 @@ class _KeepTrainingCard extends StatelessWidget {
   }
 }
 
-/// pt.package_interest — one tap tells the desk and coach the trainee wants a package.
-/// Renders nothing while the flag is off. Repeated taps are safe (the backend keeps one lead).
+/// pt.package_interest — the trainee's own pending request. Every "I'm interested" / "Renew"
+/// button reads it, so after one tap all of them show "request sent" (also after a restart),
+/// until the desk sells the package or closes the lead.
+final myPackageInterestProvider = FutureProvider<MyPackageInterest>((ref) async {
+  if (!ref.watch(featureFlagsProvider).isEnabled(FeatureFlagKeys.ptPackageInterest)) return MyPackageInterest.none;
+  try {
+    return await ref.watch(apiClientProvider).get<MyPackageInterest>(
+          ApiEndpoints.packageInterestMine,
+          parser: (data) => MyPackageInterest.fromJson(Map<String, dynamic>.from(data as Map)),
+        );
+  } on FeatureDisabledException {
+    return MyPackageInterest.none;
+  }
+});
+
+/// One tap tells the desk and coach the trainee wants a package. Renders nothing while the flag
+/// is off; shows the sent request instead of the button while one is pending.
 class InterestButton extends ConsumerStatefulWidget {
   final String packageId;
   final String label;
@@ -145,7 +161,6 @@ class InterestButton extends ConsumerStatefulWidget {
 
 class _InterestButtonState extends ConsumerState<InterestButton> {
   bool _busy = false;
-  bool _sent = false;
 
   Future<void> _send() async {
     final isArabic = _isArabic(context);
@@ -157,7 +172,7 @@ class _InterestButtonState extends ConsumerState<InterestButton> {
             data: {'sourcePackageId': widget.packageId},
             parser: (data) => PackageInterestReceipt.fromJson(data as Map<String, dynamic>),
           );
-      if (mounted) setState(() => _sent = true);
+      ref.invalidate(myPackageInterestProvider);
       messenger.showSnackBar(SnackBar(
         content: Text(isArabic ? 'تم! سيتواصل معك الاستقبال قريبًا' : 'Done! The desk will contact you soon'),
       ));
@@ -177,25 +192,53 @@ class _InterestButtonState extends ConsumerState<InterestButton> {
     if (!ref.watch(featureFlagsProvider).isEnabled(FeatureFlagKeys.ptPackageInterest)) {
       return const SizedBox.shrink();
     }
-    final isArabic = _isArabic(context);
+    final mine = ref.watch(myPackageInterestProvider);
+    if (mine.valueOrNull?.pending == true) return RequestSentNote(sentAt: mine.value!.createdAt);
 
-    if (_sent) {
-      return Row(children: [
-        const Icon(Icons.check_circle, color: AppColors.success, size: 20),
-        const SizedBox(width: 6),
-        Expanded(child: Text(isArabic ? 'تم إرسال طلبك للاستقبال' : 'Request sent to the desk')),
-      ]);
-    }
-
+    // Wait for the status before offering the button, so it never flashes and disappears.
+    final busy = _busy || (mine.isLoading && !mine.hasValue);
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
-        onPressed: _busy ? null : _send,
-        icon: _busy
+        onPressed: busy ? null : _send,
+        icon: busy
             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
             : const Icon(Icons.thumb_up_alt_outlined),
         label: Text(widget.label),
       ),
+    );
+  }
+}
+
+/// "Request sent · 18 Nov — the desk will contact you": replaces the button while pending.
+class RequestSentNote extends StatelessWidget {
+  final DateTime? sentAt;
+  const RequestSentNote({super.key, this.sentAt});
+
+  @override
+  Widget build(BuildContext context) {
+    final isArabic = _isArabic(context);
+    final theme = Theme.of(context);
+    final when = sentAt == null ? '' : ' · ${DateFormat('d MMM', isArabic ? 'ar' : 'en').format(sentAt!)}';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(children: [
+        const Icon(Icons.check_circle, color: AppColors.success, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${isArabic ? 'تم إرسال طلبك' : 'Request sent'}$when',
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(isArabic ? 'سيتواصل معك الاستقبال لإتمام الباقة' : 'The desk will contact you to set up your package',
+                style: theme.textTheme.bodySmall),
+          ]),
+        ),
+      ]),
     );
   }
 }

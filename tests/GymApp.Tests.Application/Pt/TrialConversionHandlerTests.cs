@@ -200,6 +200,45 @@ public class TrialConversionHandlerTests
         pending.Value.Should().ContainSingle(r => r.Id == waiting.Id);
     }
 
+    private GetMyPackageInterestQueryHandler MineHandler() => new(_interests, _packages, _flags);
+
+    [Fact]
+    public async Task Trainee_sees_their_pending_request_so_the_button_is_not_offered_again()
+    {
+        var package = Package(8, isTrial: false);
+        var lead = PackageInterest.ForPackage(package, Now.AddHours(-3));
+        _interests.GetByMemberAsync(new PackageOwner(Gym, package.MemberId), Arg.Any<CancellationToken>())
+            .Returns(new[] { lead });
+
+        var result = await MineHandler().Handle(new GetMyPackageInterestQuery(Gym, package.MemberId), CancellationToken.None);
+
+        result.Value.Should().Be(new MyPackageInterestDto(true, lead.Id, package.Id, lead.CreatedAt));
+    }
+
+    [Fact]
+    public async Task No_pending_request_once_the_trainee_bought_the_package()
+    {
+        var member = Guid.NewGuid();
+        var lead = PackageInterest.ForPackage(Package(8, isTrial: false, member), Now.AddDays(-2));
+        var renewed = Package(8, isTrial: false, member);
+        _interests.GetByMemberAsync(Arg.Any<PackageOwner>(), Arg.Any<CancellationToken>()).Returns(new[] { lead });
+        _packages.GetByMemberAsync(Gym, member, Arg.Any<CancellationToken>()).Returns(new[] { renewed });
+
+        var result = await MineHandler().Handle(new GetMyPackageInterestQuery(Gym, member), CancellationToken.None);
+
+        result.Value.Should().Be(MyPackageInterestDto.None);
+    }
+
+    [Fact]
+    public async Task My_request_is_blocked_when_the_flag_is_off()
+    {
+        _flags.IsEnabledAsync(Gym, FeatureKeys.PtPackageInterest, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await MineHandler().Handle(new GetMyPackageInterestQuery(Gym, Guid.NewGuid()), CancellationToken.None);
+
+        result.Error.Code.Should().Be("FEATURE_DISABLED:pt.package_interest");
+    }
+
     // ---- pt.trial_followups ----
 
     [Theory]

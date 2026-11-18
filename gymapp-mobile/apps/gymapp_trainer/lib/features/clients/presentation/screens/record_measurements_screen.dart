@@ -73,6 +73,7 @@ class _RecordMeasurementsScreenState extends ConsumerState<RecordMeasurementsScr
       isArabic: _isArabic,
       journey: journey,
       onSubmit: _submit,
+      forCoach: true,
       leading: needsGoal
           ? _FirstSessionGoal(
               strings: ProgressJourneyStrings(_isArabic),

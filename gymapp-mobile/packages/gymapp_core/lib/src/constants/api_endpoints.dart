@@ -309,6 +309,8 @@ class ApiEndpoints {
   static const String myTrialRecap = '$basePrefix/billing/trials/my-recap';
   /// pt.package_interest — trainee POSTs { sourcePackageId }; desk GETs ?state=pending|converted|dismissed|all.
   static const String packageInterest = '$basePrefix/billing/package-interest';
+  /// Trainee's own pending request: `{pending, interestId, sourcePackageId, createdAt}`.
+  static const String packageInterestMine = '$basePrefix/billing/package-interest/mine';
   static String packageInterestDismiss(String id) => '$basePrefix/billing/package-interest/$id/dismiss';
   static const String bodyMetricsForClient = '$basePrefix/progress/body-metrics/client';
   // Trainer's view of all their clients' active packages.

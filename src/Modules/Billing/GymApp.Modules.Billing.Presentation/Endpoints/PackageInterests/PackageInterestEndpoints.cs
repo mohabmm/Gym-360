@@ -14,6 +14,7 @@ namespace GymApp.Modules.Billing.Presentation.Endpoints.PackageInterests;
 /// <summary>
 /// pt.package_interest:
 /// <c>POST /api/v1/billing/package-interest</c> (trainee taps "I'm interested"),
+/// <c>GET /api/v1/billing/package-interest/mine</c> (trainee's own pending request),
 /// <c>GET /api/v1/billing/package-interest?state=pending</c> and
 /// <c>POST /api/v1/billing/package-interest/{id}/dismiss</c> (desk).
 /// </summary>
@@ -46,6 +47,27 @@ internal sealed class PackageInterestEndpoints : IEndpoint
         .WithDescription("Idempotent: while the trainee already has a pending lead, that lead is returned with alreadyPending=true.")
         .Produces<ApiResponse<PackageInterestReceipt>>(StatusCodes.Status200OK)
         .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
+        app.MapGet("api/v1/billing/package-interest/mine", async (
+            [FromHeader(Name = "X-Gym-Id")] Guid? headerGymId,
+            HttpContext httpContext,
+            ISender sender) =>
+        {
+            if (!UserContext.TryGetUserId(httpContext, out var memberId))
+                return Results.Unauthorized();
+
+            var gymId = GymContext.Resolve(httpContext, headerGymId);
+            if (gymId is null)
+                return GymContext.Required();
+
+            var result = await sender.Send(new GetMyPackageInterestQuery(gymId.Value, memberId));
+            return result.IsSuccess ? ApiResults.Ok(result.Value) : ApiResults.Problem(result.Error);
+        })
+        .RequireAuthorization("trainee")
+        .RequireFeature(FeatureKeys.PtPackageInterest)
+        .WithTags("Billing")
+        .WithSummary("Trainee's own pending \"I'm interested\" / renew request, so the app does not offer the button again")
+        .Produces<ApiResponse<MyPackageInterestDto>>(StatusCodes.Status200OK);
 
         app.MapGet("api/v1/billing/package-interest", async (
             [FromQuery] string? state,
