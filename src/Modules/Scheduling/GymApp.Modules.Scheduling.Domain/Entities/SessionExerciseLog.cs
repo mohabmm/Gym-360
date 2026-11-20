@@ -23,42 +23,52 @@ public sealed class SessionExerciseLog : Entity
     public int? TargetSets { get; private set; }
     public string? TargetReps { get; private set; }
     public decimal? TargetWeight { get; private set; }
+    public int? TargetSeconds { get; private set; }
+
+    /// <summary>pt.exercise_progress: reps or time.</summary>
+    public ExerciseMeasure Measure { get; private set; }
+
+    // NULL in the database for logs written before per-set logging.
+    private IReadOnlyList<ExerciseSetEntry>? _setEntries;
+
+    /// <summary>Each set as done; empty for logs written before per-set logging (read Sets/Reps/Weight then).</summary>
+    public IReadOnlyList<ExerciseSetEntry> SetEntries => _setEntries ?? [];
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
     internal static SessionExerciseLog Create(Guid sessionId, ExerciseLogDetails details)
     {
-        return new SessionExerciseLog(Guid.NewGuid())
+        var log = new SessionExerciseLog(Guid.NewGuid())
         {
             SessionId = sessionId,
-            ExerciseId = details.ExerciseId,
-            ExerciseName = details.ExerciseName,
-            ExerciseNameAr = details.ExerciseNameAr,
-            OrderIndex = details.OrderIndex,
-            Sets = details.Sets,
-            Reps = details.Reps,
-            Weight = details.Weight,
-            Notes = details.Notes,
-            TargetSets = details.Target?.Sets,
-            TargetReps = details.Target?.Reps,
-            TargetWeight = details.Target?.Weight,
             CreatedAt = DateTime.UtcNow
         };
+        log.Write(details);
+        return log;
     }
 
     internal void Apply(ExerciseLogDetails details)
     {
+        Write(details);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    private void Write(ExerciseLogDetails details)
+    {
+        var summary = ExerciseLogSummary.Of(details);
         ExerciseId = details.ExerciseId;
         ExerciseName = details.ExerciseName;
         ExerciseNameAr = details.ExerciseNameAr;
         OrderIndex = details.OrderIndex;
-        Sets = details.Sets;
-        Reps = details.Reps;
-        Weight = details.Weight;
+        Measure = details.Measure;
+        _setEntries = details.SetEntries.Count == 0 ? null : details.SetEntries.ToList();
+        Sets = summary.Sets;
+        Reps = summary.Reps;
+        Weight = summary.Weight;
         Notes = details.Notes;
         TargetSets = details.Target?.Sets;
         TargetReps = details.Target?.Reps;
         TargetWeight = details.Target?.Weight;
-        UpdatedAt = DateTime.UtcNow;
+        TargetSeconds = details.Target?.Seconds;
     }
 }

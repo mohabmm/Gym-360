@@ -75,13 +75,32 @@ class ExerciseProgressStrings {
         ExerciseLead.oneRepMax => _t('القوة القصوى المقدرة', 'Est. max'),
       };
 
-  /// "60 → 67.5 kg in 6 sessions (+12.5%)"
+  String get longestHold => _t('أطول ثبات', 'Longest hold');
+
+  /// "60 → 67.5 kg in 6 sessions (+12.5%)" — or "0:40 → 1:00 …" for a timed exercise.
   String change(LeadChange c) {
     final percent = c.percent;
     final sign = (percent ?? 0) > 0 ? '+' : '';
     final pct = percent == null ? '' : ' ($sign${number(percent)}${_t('٪', '%')})';
-    return _t('${kg(c.first)} ← ${kg(c.latest)} في ${c.sessions} حصص$pct',
-        '${kg(c.first)} → ${kg(c.latest)} in ${c.sessions} sessions$pct');
+    String unit(double? v) => c.isTimed ? (v == null ? '-' : duration(v.round())) : kg(v);
+    return _t('${unit(c.first)} ← ${unit(c.latest)} في ${c.sessions} حصص$pct',
+        '${unit(c.first)} → ${unit(c.latest)} in ${c.sessions} sessions$pct');
+  }
+
+  /// What the member did, set by set: "12×60 · 10×70 · 8×80 kg", "45s · 40s · 30s",
+  /// or "3 × 10,8,8 @ 60 kg" when every set had the same weight.
+  String entryLine(ExerciseEntryModel e) {
+    final sets = e.setEntries;
+    if (sets.isEmpty) return setLine(e.sets, e.reps, e.weight);
+    if (e.isTimed) return sets.map(_timedSet).join(' · ');
+    final weights = sets.map((s) => s.weight).toSet();
+    if (weights.length == 1) return setLine(sets.length, sets.map((s) => s.reps ?? 0).join(','), weights.first);
+    return '${sets.map((s) => s.weight == null ? '${s.reps}' : '${s.reps}×${number(s.weight!)}').join(' · ')} ${_t('كجم', 'kg')}';
+  }
+
+  String _timedSet(ExerciseSetEntryModel s) {
+    final time = duration(s.seconds ?? 0);
+    return s.weight == null ? time : '$time +${kg(s.weight)}';
   }
 
   /// "3 × 10,8,8 @ 60 kg"
@@ -89,9 +108,17 @@ class ExerciseProgressStrings {
       weight == null ? '$sets × $reps' : '$sets × $reps @ ${kg(weight)}';
 
   String target(ExerciseTargetModel t) => [
-        if (t.sets != null || (t.reps?.isNotEmpty ?? false)) '${t.sets ?? '-'} × ${t.reps ?? '-'}',
+        if (t.sets != null || (t.reps?.isNotEmpty ?? false) || t.seconds != null)
+          '${t.sets ?? '-'} × ${t.seconds != null ? duration(t.seconds!) : t.reps ?? '-'}',
         if (t.weight != null) kg(t.weight),
       ].join(' @ ');
+
+  /// 45 → "45s" / "45ث"; 90 → "1:30".
+  String duration(int seconds) {
+    if (seconds < 60) return '$seconds${_t('ث', 's')}';
+    final rest = (seconds % 60).toString().padLeft(2, '0');
+    return '${seconds ~/ 60}:$rest';
+  }
 
   String kg(double? value) => value == null ? '-' : '${number(value)} ${_t('كجم', 'kg')}';
 

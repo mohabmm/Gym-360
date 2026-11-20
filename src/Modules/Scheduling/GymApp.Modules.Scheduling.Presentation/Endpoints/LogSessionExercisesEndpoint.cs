@@ -29,10 +29,12 @@ internal sealed class LogSessionExercisesEndpoint : IEndpoint
                     i.ExerciseNameAr,
                     i.OrderIndex,
                     i.Sets,
-                    i.Reps,
+                    i.Reps ?? string.Empty,
                     i.Weight,
                     i.Notes,
-                    i.Target))
+                    i.Target,
+                    i.Measure ?? ExerciseMeasure.Reps,
+                    i.SetEntries))
                 .ToList();
 
             var command = new LogSessionExercisesCommand(sessionId, trainerId, items, request.DayLabel);
@@ -44,7 +46,7 @@ internal sealed class LogSessionExercisesEndpoint : IEndpoint
         })
         .WithTags("Scheduling")
         .WithSummary("Log session exercises (bulk)")
-        .WithDescription("Trainer records per-exercise actuals (sets, reps, weight, notes) and an optional next target for a completed session, plus an optional day label (e.g. \"Push Day\"). Member sees them on session detail and in exercise progress.")
+        .WithDescription("Trainer records per-exercise actuals (per-set reps or seconds and weight, notes) and an optional next target for a completed session, plus an optional day label (e.g. \"Push Day\"). Member sees them on session detail and in exercise progress.")
         .Produces<ApiResponse<IReadOnlyList<SessionExerciseLogDto>>>(StatusCodes.Status201Created)
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
@@ -63,7 +65,9 @@ internal sealed record ExerciseLogItemRequest(
     string? ExerciseNameAr,
     int OrderIndex,
     int Sets,
-    string Reps,
+    string? Reps,
     decimal? Weight,
     string? Notes,
-    ExerciseTarget? Target = null);
+    ExerciseTarget? Target = null,
+    ExerciseMeasure? Measure = null,
+    IReadOnlyList<ExerciseSetEntry>? SetEntries = null);

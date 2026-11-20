@@ -53,7 +53,7 @@ class _EntryTile extends StatelessWidget {
         children: [
           Text(heading, style: text.labelMedium?.copyWith(color: AppColors.grey500)),
           const SizedBox(height: 2),
-          Text(strings.setLine(entry.sets, entry.reps, entry.weight), style: text.titleSmall),
+          Text(strings.entryLine(entry), style: text.titleSmall),
           if (entry.notes?.trim().isNotEmpty ?? false)
             _Line(icon: Icons.sticky_note_2_outlined, text: '${strings.coachNote}: ${entry.notes!.trim()}'),
           if (entry.target != null)

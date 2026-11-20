@@ -11,10 +11,16 @@ public sealed record ExerciseLogDetails
     public decimal? Weight { get; init; }
     public string? Notes { get; init; }
     public ExerciseTarget? Target { get; init; }
+
+    /// <summary>pt.exercise_progress: reps or time; decides how <see cref="SetEntries"/> are read.</summary>
+    public ExerciseMeasure Measure { get; init; } = ExerciseMeasure.Reps;
+
+    /// <summary>Each set as done; when given, <see cref="Sets"/>/<see cref="Reps"/>/<see cref="Weight"/> are derived from it.</summary>
+    public IReadOnlyList<ExerciseSetEntry> SetEntries { get; init; } = [];
 }
 
-/// <summary>pt.exercise_progress: the coach's goal for this exercise next session.</summary>
-public sealed record ExerciseTarget(int? Sets, string? Reps, decimal? Weight)
+/// <summary>pt.exercise_progress: the coach's goal for this exercise next session (<see cref="Seconds"/> for timed exercises).</summary>
+public sealed record ExerciseTarget(int? Sets, string? Reps, decimal? Weight, int? Seconds = null)
 {
-    public bool IsEmpty => Sets is null && string.IsNullOrWhiteSpace(Reps) && Weight is null;
+    public bool IsEmpty => Sets is null && string.IsNullOrWhiteSpace(Reps) && Weight is null && Seconds is null;
 }

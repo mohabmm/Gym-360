@@ -31,10 +31,12 @@ internal sealed class UpdateSessionExerciseLogEndpoint : IEndpoint
                 request.ExerciseNameAr,
                 request.OrderIndex,
                 request.Sets,
-                request.Reps,
+                request.Reps ?? string.Empty,
                 request.Weight,
                 request.Notes,
-                request.Target);
+                request.Target,
+                request.Measure ?? ExerciseMeasure.Reps,
+                request.SetEntries);
 
             var result = await sender.Send(command);
 
@@ -60,7 +62,9 @@ internal sealed record UpdateSessionExerciseLogRequest(
     string? ExerciseNameAr,
     int OrderIndex,
     int Sets,
-    string Reps,
+    string? Reps,
     decimal? Weight,
     string? Notes,
-    ExerciseTarget? Target = null);
+    ExerciseTarget? Target = null,
+    ExerciseMeasure? Measure = null,
+    IReadOnlyList<ExerciseSetEntry>? SetEntries = null);

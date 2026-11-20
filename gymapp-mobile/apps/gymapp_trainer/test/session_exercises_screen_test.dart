@@ -25,14 +25,15 @@ Future<void> _pump(WidgetTester tester, {String locale = 'en'}) async {
 }
 
 void main() {
-  testWidgets('save stays off until an exercise has a name and reps', (tester) async {
+  _perSetTests();
+
+  testWidgets('save is off on an empty form and on once something is typed', (tester) async {
     await _pump(tester);
 
     FilledButton save() => tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save exercises'));
     expect(save().onPressed, isNull);
 
     await tester.enterText(find.widgetWithText(TextFormField, 'Exercise'), 'Squat');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Reps (10,8,8)'), '5');
     await tester.pump();
 
     expect(save().onPressed, isNotNull);
@@ -45,7 +46,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bench press'), findsOneWidget);
-    expect(find.text('65'), findsOneWidget);
+    expect(find.text('65'), findsNWidgets(3), reason: 'the target weight fills every set');
     expect(find.textContaining("Filled in last Push Day's exercises"), findsOneWidget);
   });
 
@@ -55,7 +56,8 @@ void main() {
     await tester.tap(find.text('Next session target'));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(TextFormField, 'kg'), findsNWidgets(2));
+    expect(find.widgetWithText(TextFormField, 'Weight (kg)'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Reps (e.g. 8-12)'), findsOneWidget);
   });
 
   testWidgets('Arabic: right-to-left with Arabic day names', (tester) async {
@@ -64,5 +66,59 @@ void main() {
     expect(find.text('يوم الدفع'), findsOneWidget);
     expect(Directionality.of(tester.element(find.text('يوم الدفع'))), TextDirection.rtl);
     expect(tester.takeException(), isNull);
+  });
+}
+
+/// Weight per set, timed sets and the save checks that name the missing set.
+void _perSetTests() {
+  testWidgets('one line per set; + repeats the last set with its kg', (tester) async {
+    await _pump(tester);
+
+    expect(find.text('3'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Set 3 reps'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Set 4 reps'), findsNothing);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Set 3 reps'), '8');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Set 3 kg'), '80');
+    await tester.tap(find.byTooltip('One more set'));
+    await tester.pump();
+
+    Finder inSet4(String label, String value) =>
+        find.descendant(of: find.widgetWithText(TextFormField, label), matching: find.text(value));
+    expect(find.text('4'), findsOneWidget);
+    expect(inSet4('Set 4 reps', '8'), findsOneWidget);
+    expect(inSet4('Set 4 kg', '80'), findsOneWidget);
+  });
+
+  testWidgets('switching to Time asks for each set\'s time with optional kg', (tester) async {
+    await _pump(tester);
+
+    await tester.tap(find.text('Time'));
+    await tester.pump();
+
+    expect(find.widgetWithText(TextFormField, 'Set 1 time (s or m:ss)'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'kg (optional)'), findsNWidgets(3));
+    expect(find.widgetWithText(TextFormField, 'Set 1 reps'), findsNothing);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Exercise'), 'Plank');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Set 1 time (s or m:ss)'), '45');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save exercises'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fill in the time for set 2, 3 of "Plank"'), findsOneWidget);
+  });
+
+  testWidgets('saving with a set missing reps says which set and marks it', (tester) async {
+    await _pump(tester);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Exercise'), 'Squat');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Set 1 reps'), '10');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Set 2 reps'), '10');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Set 3 kg'), '60');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save exercises'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fill in the reps for set 3 of "Squat"'), findsOneWidget);
+    expect(find.text('Required'), findsOneWidget);
   });
 }

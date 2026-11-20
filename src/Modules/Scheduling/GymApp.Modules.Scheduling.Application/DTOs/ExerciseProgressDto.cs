@@ -35,8 +35,12 @@ public sealed record ExerciseHistoryDto(
     ExerciseTarget? NextTarget);
 
 /// <param name="SessionNumber">1-based position of the session on the member's board.</param>
-/// <param name="Volume">Total reps × weight; null when no weight was recorded.</param>
-/// <param name="EstimatedOneRepMax">Epley estimate from the hardest set; null without a weight.</param>
+/// <param name="Weight">Top-set weight (kg); null for timed exercises.</param>
+/// <param name="Volume">Σ reps × kg over the sets; null when no weight was recorded or the exercise is timed.</param>
+/// <param name="EstimatedOneRepMax">Best Epley estimate over the weighted sets; null without a weight.</param>
+/// <param name="SetEntries">Each set as done (legacy logs are expanded from Sets/Reps/Weight).</param>
+/// <param name="TotalSeconds">Timed exercises: seconds held over all sets.</param>
+/// <param name="BestSeconds">Timed exercises: the longest set.</param>
 public sealed record ExerciseEntryDto(
     Guid SessionId,
     DateOnly Date,
@@ -50,8 +54,15 @@ public sealed record ExerciseEntryDto(
     decimal? Volume,
     decimal? EstimatedOneRepMax,
     string? Notes,
-    ExerciseTarget? Target);
+    ExerciseTarget? Target,
+    ExerciseMeasure Measure,
+    IReadOnlyList<ExerciseSetEntry> SetEntries,
+    int? TotalSeconds,
+    int? BestSeconds);
 
+/// <param name="LatestBestSeconds">Timed exercises: longest hold last session.</param>
+/// <param name="BestSecondsEver">Timed exercises: longest hold on record.</param>
+/// <param name="SecondsChangePercent">Timed exercises: first → latest longest hold.</param>
 /// <param name="HitPreviousTarget">Whether the latest entry met the target set the session before; null when there was none.</param>
 public sealed record ExerciseTrendDto(
     decimal? FirstWeight,
@@ -62,4 +73,7 @@ public sealed record ExerciseTrendDto(
     decimal? VolumeChangePercent,
     decimal? LatestEstimatedOneRepMax,
     bool LatestIsPersonalBest,
-    bool? HitPreviousTarget);
+    bool? HitPreviousTarget,
+    int? LatestBestSeconds = null,
+    int? BestSecondsEver = null,
+    decimal? SecondsChangePercent = null);

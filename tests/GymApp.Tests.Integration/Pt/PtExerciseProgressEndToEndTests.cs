@@ -104,6 +104,59 @@ public sealed class PtExerciseProgressEndToEndTests : BaseIntegrationTest
             .IsSuccess.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Weight_per_set_and_timed_holds_reach_the_board()
+    {
+        var (desk, coach, trainee) = await StartAsync();
+        (await QuickAssignAsync(desk, new Sale(Sessions: 2, IsTrial: true))).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var first = await QuickLogAsync(coach);
+        await LogExercisesAsync(coach, new SessionLog(first, "Leg Day",
+            PerSet("Leg press", "reps", new { reps = 12, weight = 60m }, new { reps = 10, weight = 70m }, new { reps = 8, weight = 80m }),
+            PerSet("Plank", "time", new { seconds = 40 }, new { seconds = 35 }) with { target = new { seconds = 45 } }));
+        await AgePreviousQuickLogsAsync();
+        var second = await QuickLogAsync(coach);
+        await LogExercisesAsync(coach, new SessionLog(second, "Leg Day",
+            PerSet("Plank", "time", new { seconds = 60 }, new { seconds = 50, weight = 10m })));
+
+        await EventuallyAsync(async () => (await BoardAsync(trainee)).GetProperty("summary").GetProperty("sessionsLogged").GetInt32() == 2,
+            "both sessions are on the board");
+        var board = await BoardAsync(trainee);
+
+        var press = Exercise(board, "Leg press").GetProperty("entries")[0];
+        press.GetProperty("reps").GetString().Should().Be("12,10,8");
+        press.GetProperty("weight").GetDecimal().Should().Be(80m);
+        press.GetProperty("volume").GetDecimal().Should().Be(2060m);
+        press.GetProperty("setEntries").EnumerateArray().Select(s => s.GetProperty("weight").GetDecimal())
+            .Should().Equal(60m, 70m, 80m);
+
+        var plank = Exercise(board, "Plank");
+        var latest = plank.GetProperty("entries")[1];
+        latest.GetProperty("measure").GetString().Should().Be("time");
+        latest.GetProperty("bestSeconds").GetInt32().Should().Be(60);
+        latest.GetProperty("reps").GetString().Should().Be("60s,50s");
+        var trend = plank.GetProperty("trend");
+        trend.GetProperty("latestIsPersonalBest").GetBoolean().Should().BeTrue();
+        trend.GetProperty("hitPreviousTarget").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task A_timed_set_without_seconds_is_rejected()
+    {
+        var (desk, coach, _) = await StartAsync();
+        (await QuickAssignAsync(desk, new Sale(Sessions: 1, IsTrial: true))).StatusCode.Should().Be(HttpStatusCode.Created);
+        var session = await QuickLogAsync(coach);
+
+        var response = await coach.PostAsJsonAsync($"api/v1/scheduling/sessions/{session}/exercise-logs",
+            new { items = new[] { PerSet("Plank", "time", new { reps = 10 }) } });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    private sealed record PerSetItem(string exerciseName, int orderIndex, string measure, object[] setEntries, object? target = null);
+
+    private static PerSetItem PerSet(string name, string measure, params object[] sets) => new(name, 0, measure, sets);
+
     private sealed record Lift(string Reps, decimal Weight, object? Target = null);
 
     private sealed record Sale(int Sessions, bool IsTrial, decimal? Price = null);

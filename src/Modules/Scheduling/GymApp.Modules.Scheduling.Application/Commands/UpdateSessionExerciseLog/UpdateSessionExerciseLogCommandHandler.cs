@@ -41,7 +41,9 @@ internal sealed class UpdateSessionExerciseLogCommandHandler : ICommandHandler<U
                 Reps = request.Reps,
                 Weight = request.Weight,
                 Notes = request.Notes,
-                Target = request.Target
+                Target = request.Target,
+                Measure = request.Measure,
+                SetEntries = request.SetEntries ?? []
             });
 
         if (result.IsFailure)

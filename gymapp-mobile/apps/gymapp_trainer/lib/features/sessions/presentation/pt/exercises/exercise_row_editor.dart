@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import 'exercise_inputs.dart';
 import 'session_exercises_draft.dart';
 
-/// One exercise: name, sets × reps @ weight, note and the optional next-session target.
-/// Writes straight into [draft]; [onChanged] lets the screen re-check "Save".
+/// One exercise as it happens on the gym floor: name, reps or time, how many sets, each set's
+/// reps (or seconds) and kg, a note and the optional next-session target. Writes straight into
+/// [draft]; [onChanged] lets the screen re-check "Save". With [showErrors] the fields that
+/// still block saving are marked.
 class ExerciseRowEditor extends StatefulWidget {
   final ExerciseRowDraft draft;
   final bool isArabic;
+  final bool showErrors;
   final VoidCallback onChanged;
   final VoidCallback onRemove;
 
@@ -17,6 +20,7 @@ class ExerciseRowEditor extends StatefulWidget {
     required this.isArabic,
     required this.onChanged,
     required this.onRemove,
+    this.showErrors = false,
   });
 
   @override
@@ -33,42 +37,79 @@ class _ExerciseRowEditorState extends State<ExerciseRowEditor> {
     widget.onChanged();
   }
 
+  bool get _flag => widget.showErrors && !widget.draft.isUntouched;
+
   @override
   Widget build(BuildContext context) {
     final d = widget.draft;
+    final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      shape: _flag && !d.isValid
+          ? RoundedRectangleBorder(
+              side: BorderSide(color: theme.colorScheme.error),
+              borderRadius: BorderRadius.circular(12),
+            )
+          : null,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 4, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
               Expanded(
-                child: _Field(
+                child: ExerciseTextField(
                   label: _t('التمرين', 'Exercise'),
                   initial: d.name,
+                  errorText: _flag && d.name.trim().isEmpty ? _t('اكتب اسم التمرين', 'Name the exercise') : null,
                   onChanged: (v) => _update((d) => d.name = v),
                 ),
               ),
               IconButton(icon: const Icon(Icons.close), tooltip: _t('حذف', 'Remove'), onPressed: widget.onRemove),
             ]),
-            _NumbersRow(
-              sets: d.sets,
-              reps: d.reps,
-              weight: d.weight,
-              isArabic: widget.isArabic,
-              onSets: (v) => _update((d) => d.sets = v ?? 0),
-              onReps: (v) => _update((d) => d.reps = v),
-              onWeight: (v) => _update((d) => d.weight = v),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(top: 12, end: 8),
+              child: _todayNumbers(d),
             ),
-            _Field(label: _t('ملاحظة للمتدرب', 'Note for the member'), initial: d.notes, onChanged: (v) => _update((d) => d.notes = v)),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(top: 12, end: 8),
+              child: ExerciseTextField(
+                label: _t('ملاحظة للمتدرب', 'Note for the member'),
+                initial: d.notes,
+                onChanged: (v) => _update((d) => d.notes = v),
+              ),
+            ),
             _targetSection(d),
           ],
         ),
       ),
     );
   }
+
+  Widget _todayNumbers(ExerciseRowDraft d) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          MeasureToggle(
+            value: d.measure,
+            isArabic: widget.isArabic,
+            onChanged: (v) => _update((d) => d.measure = v),
+          ),
+          const SizedBox(height: 8),
+          SetsStepper(
+            value: d.setCount,
+            isArabic: widget.isArabic,
+            onChanged: (v) => _update((d) => d.setCount = v ?? 1),
+          ),
+          const SizedBox(height: 12),
+          SetsList(
+            sets: d.sets,
+            measure: d.measure,
+            isArabic: widget.isArabic,
+            showErrors: _flag,
+            onChanged: widget.onChanged,
+          ),
+        ],
+      );
 
   Widget _targetSection(ExerciseRowDraft d) {
     if (!_showTarget) {
@@ -79,101 +120,52 @@ class _ExerciseRowEditorState extends State<ExerciseRowEditor> {
       );
     }
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsetsDirectional.only(top: 12, end: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(_t('هدف الحصة القادمة', 'Next session target'), style: Theme.of(context).textTheme.labelMedium),
-          _NumbersRow(
-            sets: d.targetSets,
-            reps: d.targetReps,
-            weight: d.targetWeight,
+          const SizedBox(height: 8),
+          SetsStepper(
+            value: d.targetSets,
             isArabic: widget.isArabic,
-            onSets: (v) => _update((d) => d.targetSets = v),
-            onReps: (v) => _update((d) => d.targetReps = v),
-            onWeight: (v) => _update((d) => d.targetWeight = v),
+            nullable: true,
+            startAt: d.setCount,
+            onChanged: (v) => _update((d) => d.targetSets = v),
           ),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(flex: 3, child: d.isTimed ? _targetTime(d) : _targetReps(d)),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: WeightField(
+                weight: d.targetWeight,
+                isArabic: widget.isArabic,
+                onChanged: (v) => _update((d) => d.targetWeight = v),
+              ),
+            ),
+          ]),
         ],
       ),
     );
   }
-}
 
-class _NumbersRow extends StatelessWidget {
-  final int? sets;
-  final String reps;
-  final double? weight;
-  final bool isArabic;
-  final ValueChanged<int?> onSets;
-  final ValueChanged<String> onReps;
-  final ValueChanged<double?> onWeight;
-
-  const _NumbersRow({
-    required this.sets,
-    required this.reps,
-    required this.weight,
-    required this.isArabic,
-    required this.onSets,
-    required this.onReps,
-    required this.onWeight,
-  });
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(
-            child: _Field(
-              label: isArabic ? 'مجموعات' : 'Sets',
-              initial: sets?.toString() ?? '',
-              digitsOnly: true,
-              onChanged: (v) => onSets(int.tryParse(v)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 2,
-            child: _Field(label: isArabic ? 'العدات (10,8,8)' : 'Reps (10,8,8)', initial: reps, onChanged: onReps),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: _Field(
-              label: isArabic ? 'كجم' : 'kg',
-              initial: weight == null ? '' : _plain(weight!),
-              decimal: true,
-              onChanged: (v) => onWeight(double.tryParse(v.replaceAll(',', '.'))),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
+  Widget _targetReps(ExerciseRowDraft d) => ExerciseTextField(
+        key: const ValueKey('target-reps'),
+        label: _t('العدات (مثال 8-12)', 'Reps (e.g. 8-12)'),
+        initial: d.targetReps,
+        textAlign: TextAlign.center,
+        onChanged: (v) => _update((d) => d.targetReps = v),
       );
 
-  static String _plain(double v) => v == v.truncateToDouble() ? v.toStringAsFixed(0) : v.toString();
-}
-
-class _Field extends StatelessWidget {
-  final String label;
-  final String initial;
-  final ValueChanged<String> onChanged;
-  final bool digitsOnly;
-  final bool decimal;
-
-  const _Field({
-    required this.label,
-    required this.initial,
-    required this.onChanged,
-    this.digitsOnly = false,
-    this.decimal = false,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: TextFormField(
-          initialValue: initial,
-          onChanged: onChanged,
-          keyboardType: digitsOnly || decimal ? TextInputType.numberWithOptions(decimal: decimal) : TextInputType.text,
-          inputFormatters: digitsOnly ? [FilteringTextInputFormatter.digitsOnly] : null,
-          decoration: InputDecoration(labelText: label, isDense: true, border: const OutlineInputBorder()),
-        ),
+  Widget _targetTime(ExerciseRowDraft d) => ExerciseTextField(
+        key: const ValueKey('target-time'),
+        label: _t('الوقت (ث أو د:ث)', 'Time (s or m:ss)'),
+        initial: d.targetSeconds == null ? '' : SetDraft.formatSeconds(d.targetSeconds!),
+        keyboardType: TextInputType.datetime,
+        inputFormatters: const [TimeInputFormatter()],
+        textAlign: TextAlign.center,
+        onChanged: (v) => _update((d) => d.targetSeconds = SetDraft.parseSeconds(v)),
       );
 }
