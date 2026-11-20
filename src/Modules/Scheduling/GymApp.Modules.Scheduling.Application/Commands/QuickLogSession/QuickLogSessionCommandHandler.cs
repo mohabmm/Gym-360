@@ -16,8 +16,6 @@ internal sealed class QuickLogSessionCommandHandler : ICommandHandler<QuickLogSe
     /// <summary>A second tap within this window returns the session just logged instead of logging another.</summary>
     internal static readonly TimeSpan DoubleTapWindow = TimeSpan.FromMinutes(5);
 
-    private const int DefaultDurationMinutes = 60;
-
     private readonly QuickLogStateLoader _state;
     private readonly ISessionRepository _sessions;
     private readonly IFeatureFlagService _featureFlags;
@@ -43,19 +41,21 @@ internal sealed class QuickLogSessionCommandHandler : ICommandHandler<QuickLogSe
         if (!await _featureFlags.IsEnabledAsync(request.GymId, FeatureKeys.PtDualSessionLogging, cancellationToken))
             return Result.Failure<QuickLogSessionResult>(FeatureFlagErrors.FeatureDisabled(FeatureKeys.PtDualSessionLogging));
 
-        var (nowUtc, remaining, recent) = await _state.LoadAsync(request, DoubleTapWindow, cancellationToken);
+        var (nowLocal, schedule, remaining, recent) = await _state.LoadAsync(request, DoubleTapWindow, cancellationToken);
         if (recent is not null)
-            return Result.Success(new QuickLogSessionResult(recent.Id, remaining ?? 0, AlreadyLogged: true));
+            return Result.Success(new QuickLogSessionResult(
+                recent.Id, remaining ?? 0, AlreadyLogged: true, recent.ScheduledDate, recent.ScheduledTime));
 
+        if (QuickLogSchedule.Check(schedule, nowLocal) is { } outOfWindow)
+            return Result.Failure<QuickLogSessionResult>(outOfWindow);
         if (remaining is null)
             return Result.Failure<QuickLogSessionResult>(SchedulingErrors.ClientNotAssignedToTrainer);
         if (remaining <= 0)
             return Result.Failure<QuickLogSessionResult>(SchedulingErrors.NoSessionsRemaining);
 
-        var nowLocal = GymLocalTime.FromUtc(nowUtc);
         var session = Session.LogCompleted(
             new SessionParticipants(request.GymId, request.TrainerId, request.MemberId),
-            new SessionSchedule(DateOnly.FromDateTime(nowLocal), TimeOnly.FromDateTime(nowLocal), DefaultDurationMinutes),
+            schedule,
             string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim());
 
         await _sessions.AddAsync(session, cancellationToken);
@@ -67,6 +67,7 @@ internal sealed class QuickLogSessionCommandHandler : ICommandHandler<QuickLogSe
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(new QuickLogSessionResult(session.Id, remaining.Value - 1, AlreadyLogged: false));
+        return Result.Success(new QuickLogSessionResult(
+            session.Id, remaining.Value - 1, AlreadyLogged: false, schedule.Date, schedule.Time));
     }
 }

@@ -97,6 +97,21 @@ internal sealed class SessionRepository : ISessionRepository
             .ToListAsync(cancellationToken);
     }
 
+    public Task<Session?> FindQuickLogAtAsync(
+        SessionParticipants participants,
+        SessionSchedule schedule,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.Sessions
+            .AsNoTracking()
+            .Where(s => s.GymId == participants.GymId
+                        && s.TrainerId == participants.TrainerId
+                        && s.MemberId == participants.MemberId
+                        && s.IsQuickLog
+                        && s.ScheduledDate == schedule.Date
+                        && s.ScheduledTime == schedule.Time
+                        && s.MemberConfirmation != MemberConfirmationStatus.Reversed)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<Session?> FindRecentQuickLogAsync(
         Guid trainerId,
         Guid memberId,

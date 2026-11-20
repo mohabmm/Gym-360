@@ -8,6 +8,10 @@ import '../../../../core/router.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
 import '../../../home/presentation/providers/trainer_dashboard_provider.dart';
 import '../../../revenue/presentation/providers/revenue_providers.dart';
+import 'record_session/record_session_sheet.dart';
+import 'record_session/record_session_strings.dart';
+import 'record_session/session_recorded_sheet.dart';
+import 'record_session/session_time_draft.dart';
 import 'trial_recap_widgets.dart';
 
 bool _isArabic(BuildContext context) => Localizations.localeOf(context).languageCode == 'ar';
@@ -23,8 +27,9 @@ final activeClientPackagesProvider = Provider.autoDispose<AsyncValue<List<Sessio
 /// Route of the coach's "record measurements" screen for a client.
 String measurementsRoute(String clientId) => '/clients/$clientId/measurements';
 
-/// One tap logs a session that just happened (pt.dual_session_logging). The
-/// snackbar offers the optional second tap: record measurements.
+/// Opens "Record session" (pt.dual_session_logging): the coach confirms the client, says when the
+/// session happened (today by default, up to 7 days back) and records it; then a sheet offers the
+/// next steps — exercises (pt.exercise_progress) and measurements (pt.progress_measurements).
 class QuickLogButton extends ConsumerStatefulWidget {
   final String memberId;
   final bool compact;
@@ -35,77 +40,81 @@ class QuickLogButton extends ConsumerStatefulWidget {
 }
 
 class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
-  bool _busy = false;
+  SessionPackageModel? get _package => ref
+      .read(activeClientPackagesProvider)
+      .valueOrNull
+      ?.where((p) => p.memberId == widget.memberId && p.remainingSessions > 0)
+      .firstOrNull;
 
-  Future<void> _log() async {
-    final isArabic = _isArabic(context);
-    final messenger = ScaffoldMessenger.of(context);
-    final router = GoRouter.of(context);
-    final canMeasure = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptProgressMeasurements));
-    final canLogExercises = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptExerciseProgress));
-    setState(() => _busy = true);
-    try {
-      final result = await ref.read(apiClientProvider).post<Map<String, dynamic>>(
-            ApiEndpoints.sessionQuickLog,
-            data: {'memberId': widget.memberId},
-            parser: (data) => Map<String, dynamic>.from(data as Map),
-          );
-      final left = (result['remainingSessions'] as num?)?.toInt() ?? 0;
-      final already = result['alreadyLogged'] == true;
-      final sessionId = result['sessionId']?.toString() ?? '';
-      ref.invalidate(allClientPackagesProvider);
-      ref.invalidate(trainerDashboardProvider);
-      messenger.showSnackBar(SnackBar(
-        content: Text(already
-            ? (isArabic ? 'تم تسجيل هذه الحصة بالفعل' : 'This session was already logged')
-            : (isArabic ? 'تم تسجيل الحصة · متبقي $left' : 'Session logged · $left left')),
-        action: already ? null : _nextStep(router, isArabic, sessionId, canLogExercises, canMeasure),
-      ));
-    } on FeatureDisabledException {
-      // Flags refresh hides the button.
-    } on ApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(_friendly(e, isArabic))));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  String get _clientName {
+    final fromPackage = _package?.memberName ?? '';
+    return fromPackage.isNotEmpty ? fromPackage : (ref.read(clientNameByIdProvider)[widget.memberId] ?? '');
   }
 
-  /// The optional second tap: record the session's exercises (pt.exercise_progress), else measurements.
-  SnackBarAction? _nextStep(GoRouter router, bool isArabic, String sessionId, bool canLogExercises, bool canMeasure) {
-    if (canLogExercises && sessionId.isNotEmpty) {
-      return SnackBarAction(
-        label: isArabic ? 'التمارين' : 'Exercises',
-        onPressed: () => router.push(AppRoutes.sessionExercisesFor(sessionId, widget.memberId)),
-      );
-    }
-    if (!canMeasure) return null;
-    return SnackBarAction(
-      label: isArabic ? 'القياسات' : 'Measurements',
-      onPressed: () => router.push(measurementsRoute(widget.memberId)),
+  Future<RecordedSession> _send(Map<String, dynamic> payload) async {
+    final result = await ref.read(apiClientProvider).post<Map<String, dynamic>>(
+          ApiEndpoints.sessionQuickLog,
+          data: {'memberId': widget.memberId, ...payload},
+          parser: (data) => Map<String, dynamic>.from(data as Map),
+        );
+    return RecordedSession.fromJson(result);
+  }
+
+  Future<void> _open() async {
+    final strings = RecordSessionStrings(_isArabic(context));
+    final router = GoRouter.of(context);
+    final draft = SessionTimeDraft(DateTime.now());
+    final name = _clientName;
+    final result = await showModalBottomSheet<RecordedSession>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => RecordSessionSheet(
+        clientName: name,
+        package: _package,
+        strings: strings,
+        draft: draft,
+        onSubmit: _send,
+      ),
+    );
+    if (result == null || !mounted) return;
+    ref.invalidate(allClientPackagesProvider);
+    ref.invalidate(trainerDashboardProvider);
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SessionRecordedSheet(
+        result: result,
+        clientName: name,
+        strings: strings,
+        draft: draft,
+        next: _nextSteps(router, result),
+      ),
     );
   }
 
-  static String _friendly(ApiException e, bool isArabic) {
-    final code = e.errorCode ?? '';
-    if (code.contains('NoSessionsRemaining')) {
-      return isArabic ? 'لا توجد حصص متبقية في الباقة' : 'No sessions left in the package';
-    }
-    if (code.contains('ClientNotAssignedToTrainer')) {
-      return isArabic ? 'هذا العميل ليس لديه باقة معك' : 'This client has no package with you';
-    }
-    return isArabic ? 'تعذّر تسجيل الحصة، حاول مرة أخرى' : 'Could not log the session, please try again';
+  NextSteps _nextSteps(GoRouter router, RecordedSession result) {
+    final canExercises = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptExerciseProgress)) &&
+        result.sessionId.isNotEmpty;
+    final canMeasure = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptProgressMeasurements));
+    return NextSteps(
+      exercises: canExercises
+          ? () => router.push(AppRoutes.sessionExercisesFor(result.sessionId, widget.memberId))
+          : null,
+      measurements: canMeasure ? () => router.push(measurementsRoute(widget.memberId)) : null,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = _isArabic(context);
-    final label = Text(isArabic ? 'سجّل حصة' : 'Log session');
-    final icon = _busy
-        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-        : const Icon(Icons.check_circle_outline, size: 18);
+    // Keep the client's package and name loaded so the sheet opens with them.
+    ref.watch(activeClientPackagesProvider);
+    ref.watch(clientNameByIdProvider);
+    final label = Text(_isArabic(context) ? 'سجّل حصة' : 'Log session');
+    const icon = Icon(Icons.check_circle_outline, size: 18);
     return widget.compact
-        ? FilledButton.tonalIcon(onPressed: _busy ? null : _log, icon: icon, label: label)
-        : FilledButton.icon(onPressed: _busy ? null : _log, icon: icon, label: label);
+        ? FilledButton.tonalIcon(key: const ValueKey('log-session'), onPressed: _open, icon: icon, label: label)
+        : FilledButton.icon(key: const ValueKey('log-session'), onPressed: _open, icon: icon, label: label);
   }
 }
 
