@@ -1,4 +1,4 @@
-package com.example.gymapp_trainee
+package com.gym360.trainee
 
 import io.flutter.embedding.android.FlutterActivity
 

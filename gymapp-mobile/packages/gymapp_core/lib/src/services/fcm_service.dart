@@ -9,6 +9,7 @@ import '../constants/app_constants.dart';
 import '../models/notification_model.dart';
 import '../network/api_client.dart';
 import '../widgets/feature_gate.dart';
+import 'foreground_notification_presenter.dart';
 import 'secure_storage_service.dart';
 
 /// Handles Firebase Cloud Messaging for push notifications.
@@ -19,6 +20,10 @@ class FCMService {
   final SecureStorageService _storage;
   final Ref _ref;
   final ApiClient? _apiClient;
+  final ForegroundNotificationPresenter _presenter;
+
+  /// Set once the listeners are attached so re-login doesn't double-subscribe.
+  bool _listening = false;
 
   /// True when a default Firebase app is initialized and FCM is usable.
   /// When false, all FCM operations become safe no-ops so the app still runs
@@ -49,9 +54,11 @@ class FCMService {
     required SecureStorageService storage,
     ApiClient? apiClient,
     FirebaseMessaging? messaging,
+    ForegroundNotificationPresenter? presenter,
   })  : _ref = ref,
         _storage = storage,
         _apiClient = apiClient,
+        _presenter = presenter ?? ForegroundNotificationPresenter(),
         _messaging = messaging ?? _resolveMessaging();
 
   static FirebaseMessaging? _resolveMessaging() {
@@ -117,6 +124,20 @@ class FCMService {
   }
 
   void _setupMessageListeners(FirebaseMessaging messaging) {
+    if (_listening) return;
+    _listening = true;
+
+    // iOS: let the OS draw the banner while the app is open.
+    messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    // Android: FCM won't draw it in the foreground, so re-post it locally.
+    _presenter.initialize(
+      onTap: (data) => _messageController.add({...data, '_tapped': true}),
+    );
+
     // Foreground messages
     FirebaseMessaging.onMessage.listen(_handleMessage);
 
@@ -153,7 +174,9 @@ class FCMService {
         _gymSuspensionController.add(false);
         break;
       default:
-        // Regular notification -- handled by notification provider
+        // Regular notification -- notification provider refreshes the list;
+        // show a banner too since the user is inside the app.
+        _presenter.show(message);
         break;
     }
   }

@@ -29,11 +29,14 @@ services:
       # Staging web hosts — always allowed so deployed admin/staff logins pass CORS.
       - Cors__AllowedOrigins__3=${CORS_ORIGIN_3:-https://staging-admin.gym-365.com}
       - Cors__AllowedOrigins__4=${CORS_ORIGIN_4:-https://staging-staff.gym-365.com}
-      # FCM disabled by default. To enable: set FCM_ENABLED=true, place the
-      # service-account JSON at ./config/firebase-service-account.json, and
-      # uncomment the matching volume mount below.
+      # FCM disabled by default. To enable: set FCM_ENABLED=true and provide the
+      # Firebase service-account key EITHER inline via FCM_SERVICE_ACCOUNT_JSON
+      # (preferred on Dokploy — set it as a secret env var) OR as a file at
+      # ./config/firebase-service-account.json with the volume mount below.
+      # Inline JSON wins when both are present.
       - Fcm__IsEnabled=${FCM_ENABLED:-false}
-      - Fcm__ProjectId=${FCM_PROJECT_ID:-forma-389d6}
+      - Fcm__ProjectId=${FCM_PROJECT_ID:-gym360-app}
+      - Fcm__ServiceAccountJson=${FCM_SERVICE_ACCOUNT_JSON:-}
       - Fcm__ServiceAccountKeyPath=/run/secrets/firebase-service-account.json
       - Tenancy__Mode=${TENANCY_MODE:-Hard}
       # Run EF migrations + Hard-mode fresh-DB self-bootstrap at startup.

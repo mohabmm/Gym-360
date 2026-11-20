@@ -37,6 +37,7 @@ dependencies:
   signalr_netcore: ^1.4.1
   package_info_plus: ^8.0.0
   device_info_plus: ^10.1.0
+  flutter_local_notifications: ^22.3.3  # 23.x needs Android compileSdk 37
 
 dev_dependencies:
   flutter_test:

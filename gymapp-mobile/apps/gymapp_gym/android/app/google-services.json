@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "890933428862",
+    "project_id": "gym360-app",
+    "storage_bucket": "gym360-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:890933428862:android:57610182f01c1fd1998e2f",
+        "android_client_info": {
+          "package_name": "com.gym360.staff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDavG_-AC3RpQOMXNFnQXUKbc_9P9DEO3w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:890933428862:android:dbe95a98d0edeffa998e2f",
+        "android_client_info": {
+          "package_name": "com.gym360.trainee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDavG_-AC3RpQOMXNFnQXUKbc_9P9DEO3w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:890933428862:android:d60f0d942fb2bcf3998e2f",
+        "android_client_info": {
+          "package_name": "com.gym360.trainer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDavG_-AC3RpQOMXNFnQXUKbc_9P9DEO3w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
