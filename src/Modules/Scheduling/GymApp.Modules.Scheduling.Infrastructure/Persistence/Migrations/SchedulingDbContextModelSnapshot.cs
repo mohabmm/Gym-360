@@ -268,6 +268,11 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("Measure")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -283,12 +288,18 @@ namespace GymApp.Modules.Scheduling.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("SetEntries")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Sets")
                         .HasColumnType("int");
 
                     b.Property<string>("TargetReps")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("TargetSeconds")
+                        .HasColumnType("int");
 
                     b.Property<int?>("TargetSets")
                         .HasColumnType("int");

@@ -28,6 +28,9 @@ IF COL_LENGTH(' + QUOTENAME(s.name + N'.{0}', '''') + N', ''{1}'') IS NULL
         ("session_exercise_logs", "TargetSets", "int NULL"),
         ("session_exercise_logs", "TargetReps", "nvarchar(50) NULL"),
         ("session_exercise_logs", "TargetWeight", "decimal(8,2) NULL"),
+        ("session_exercise_logs", "TargetSeconds", "int NULL"),
+        ("session_exercise_logs", "Measure", "int NOT NULL CONSTRAINT ' + QUOTENAME(N'DF_' + s.name + N'_session_exercise_logs_Measure') + N' DEFAULT 0"),
+        ("session_exercise_logs", "SetEntries", "nvarchar(max) NULL"),
     };
 
     public static string Sql { get; } = Build();

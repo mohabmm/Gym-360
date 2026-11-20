@@ -146,6 +146,10 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
     return '$h:$m:$s';
   }
 
+  List<Map<String, dynamic>> _exerciseLogItems() => liveExerciseLogItems(
+        _sets.map((s) => (name: s.exerciseName, setNumber: s.setNumber, reps: s.reps, weight: s.weight)),
+      );
+
   Future<void> _completeSession() async {
     final isArabic =
         Localizations.localeOf(context).languageCode == 'ar';
@@ -184,42 +188,9 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
         data: {},
       );
 
-      // Aggregate live `_LiveSetLog` rows per exercise. BE SessionExerciseLog
-      // schema is one row per exercise (sets count + reps string), so encode
-      // per-set reps as CSV "10,8,8" — trainee detail splits on comma to
-      // render the breakdown. Weight = max recorded (working weight).
-      final byExercise = <String, List<_LiveSetLog>>{};
-      for (final s in _sets) {
-        final key = s.exerciseName.trim();
-        if (key.isEmpty) continue;
-        byExercise.putIfAbsent(key, () => []).add(s);
-      }
-      if (byExercise.isNotEmpty) {
-        final items = <Map<String, dynamic>>[];
-        var i = 0;
-        for (final entry in byExercise.entries) {
-          final rows = entry.value..sort((a, b) => a.setNumber.compareTo(b.setNumber));
-          final reps = rows.map((r) => r.reps).join(',');
-          final weights = rows.map((r) => r.weight).whereType<double>();
-          final maxWeight = weights.isEmpty
-              ? null
-              : weights.reduce((a, b) => a > b ? a : b);
-          // Per-set weight breakdown captured in notes when not uniform so the
-          // trainee can see actual progression: "60,60,65 kg".
-          final weightVals = rows.map((r) => r.weight).toList();
-          final allSameWeight = weightVals.every((w) => w == weightVals.first);
-          final notes = (!allSameWeight && weightVals.any((w) => w != null))
-              ? 'Per-set weight (kg): ${weightVals.map((w) => w == null ? '-' : (w == w.truncateToDouble() ? w.toStringAsFixed(0) : w.toStringAsFixed(1))).join(', ')}'
-              : null;
-          items.add({
-            'exerciseName': entry.key,
-            'orderIndex': i++,
-            'sets': rows.length,
-            'reps': reps.isEmpty ? '0' : reps,
-            'weight': maxWeight,
-            'notes': notes,
-          });
-        }
+      // One exercise log per exercise, each set as done (reps + kg per set).
+      final items = _exerciseLogItems();
+      if (items.isNotEmpty) {
         try {
           await apiClient.postVoid(
             ApiEndpoints.sessionExerciseLogs(SessionId(widget.sessionId)),
@@ -490,6 +461,31 @@ class _LiveSessionScreenState extends ConsumerState<LiveSessionScreen> {
       ),
     );
   }
+}
+
+typedef LiveSetEntry = ({String name, int setNumber, int reps, double? weight});
+
+/// Groups the live sets by exercise into the API's per-set exercise logs; sets without reps are
+/// left out (the API rejects them) and at most 10 sets are sent per exercise.
+List<Map<String, dynamic>> liveExerciseLogItems(Iterable<LiveSetEntry> sets) {
+  final byExercise = <String, List<LiveSetEntry>>{};
+  for (final s in sets) {
+    final key = s.name.trim();
+    if (key.isEmpty || s.reps < 1) continue;
+    byExercise.putIfAbsent(key, () => []).add(s);
+  }
+  return [
+    for (final (i, entry) in byExercise.entries.indexed)
+      {
+        'exerciseName': entry.key,
+        'orderIndex': i,
+        'measure': 'reps',
+        'setEntries': [
+          for (final s in (entry.value..sort((a, b) => a.setNumber.compareTo(b.setNumber))).take(10))
+            {'reps': s.reps, 'weight': s.weight},
+        ],
+      },
+  ];
 }
 
 class _LiveSetLog {

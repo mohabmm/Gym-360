@@ -52,7 +52,9 @@ internal sealed class LogSessionExercisesCommandHandler
                 Reps = item.Reps,
                 Weight = item.Weight,
                 Notes = item.Notes,
-                Target = item.Target
+                Target = item.Target,
+                Measure = item.Measure,
+                SetEntries = item.SetEntries ?? []
             });
 
             if (addResult.IsFailure)

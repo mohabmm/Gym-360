@@ -15,4 +15,6 @@ public sealed record UpdateSessionExerciseLogCommand(
     string Reps,
     decimal? Weight,
     string? Notes,
-    ExerciseTarget? Target = null) : ICommand;
+    ExerciseTarget? Target = null,
+    ExerciseMeasure Measure = ExerciseMeasure.Reps,
+    IReadOnlyList<ExerciseSetEntry>? SetEntries = null) : ICommand;

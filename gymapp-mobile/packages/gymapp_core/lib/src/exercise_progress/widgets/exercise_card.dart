@@ -36,11 +36,11 @@ class ExerciseCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Text(strings.setLine(latest.sets, latest.reps, latest.weight), style: text.bodyMedium),
+          Text(strings.entryLine(latest), style: text.bodyMedium),
           if (change.isComparable) _ChangeLine(change: change, lead: lead, strings: strings),
           const SizedBox(height: 8),
           ExerciseSparkline(
-            values: exercise.entries.map(lead.of).whereType<double>().toList(),
+            values: LeadChange.valuesOf(exercise, lead),
             color: change.improved ? AppColors.success : AppColors.grey500,
           ),
           _TargetRow(exercise: exercise, strings: strings),
@@ -63,7 +63,7 @@ class _ChangeLine extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Text(
-        '${strings.leadName(lead)}: ${strings.change(change)}',
+        '${change.isTimed ? strings.longestHold : strings.leadName(lead)}: ${strings.change(change)}',
         style: Theme.of(context).textTheme.labelMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );

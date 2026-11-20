@@ -100,6 +100,35 @@ class ExerciseHistoryModel {
       isArabic && (nameAr?.trim().isNotEmpty ?? false) ? nameAr! : name;
 
   ExerciseEntryModel? get latest => entries.isEmpty ? null : entries.last;
+
+  /// Counted in seconds (plank) as last logged.
+  bool get isTimed => latest?.isTimed ?? false;
+}
+
+/// How an exercise is counted: reps per set, or seconds held per set (plank).
+enum ExerciseMeasure {
+  reps,
+  time;
+
+  static ExerciseMeasure parse(Object? raw) =>
+      raw?.toString().toLowerCase() == 'time' || raw == 1 ? ExerciseMeasure.time : ExerciseMeasure.reps;
+}
+
+/// One set as the member did it: reps (or seconds for a timed exercise) and optional kg.
+class ExerciseSetEntryModel {
+  final int? reps;
+  final double? weight;
+  final int? seconds;
+
+  const ExerciseSetEntryModel({this.reps, this.weight, this.seconds});
+
+  factory ExerciseSetEntryModel.fromJson(Map<String, dynamic> json) => ExerciseSetEntryModel(
+        reps: (json['reps'] as num?)?.toInt(),
+        weight: _double(json['weight']),
+        seconds: (json['seconds'] as num?)?.toInt(),
+      );
+
+  Map<String, dynamic> toJson() => {'reps': reps, 'weight': weight, 'seconds': seconds};
 }
 
 class ExerciseEntryModel {
@@ -116,6 +145,12 @@ class ExerciseEntryModel {
   final double? estimatedOneRepMax;
   final String? notes;
   final ExerciseTargetModel? target;
+  final ExerciseMeasure measure;
+
+  /// Each set as done; legacy logs come expanded from sets/reps/weight.
+  final List<ExerciseSetEntryModel> setEntries;
+  final int? totalSeconds;
+  final int? bestSeconds;
 
   const ExerciseEntryModel({
     required this.sessionId,
@@ -131,7 +166,13 @@ class ExerciseEntryModel {
     this.estimatedOneRepMax,
     this.notes,
     this.target,
+    this.measure = ExerciseMeasure.reps,
+    this.setEntries = const [],
+    this.totalSeconds,
+    this.bestSeconds,
   });
+
+  bool get isTimed => measure == ExerciseMeasure.time;
 
   factory ExerciseEntryModel.fromJson(Map<String, dynamic> json) => ExerciseEntryModel(
         sessionId: json['sessionId']?.toString() ?? '',
@@ -147,6 +188,10 @@ class ExerciseEntryModel {
         estimatedOneRepMax: _double(json['estimatedOneRepMax']),
         notes: json['notes']?.toString(),
         target: ExerciseTargetModel.tryFromJson(json['target']),
+        measure: ExerciseMeasure.parse(json['measure']),
+        setEntries: _list(json['setEntries'], ExerciseSetEntryModel.fromJson),
+        totalSeconds: (json['totalSeconds'] as num?)?.toInt(),
+        bestSeconds: (json['bestSeconds'] as num?)?.toInt(),
       );
 }
 
@@ -163,6 +208,11 @@ class ExerciseTrendModel {
   /// Whether the latest session met the coach's previous target; null when there was none.
   final bool? hitPreviousTarget;
 
+  /// Timed exercises: longest hold last session / on record, and first → latest change.
+  final int? latestBestSeconds;
+  final int? bestSecondsEver;
+  final double? secondsChangePercent;
+
   const ExerciseTrendModel({
     this.firstWeight,
     this.latestWeight,
@@ -173,6 +223,9 @@ class ExerciseTrendModel {
     this.latestEstimatedOneRepMax,
     this.latestIsPersonalBest = false,
     this.hitPreviousTarget,
+    this.latestBestSeconds,
+    this.bestSecondsEver,
+    this.secondsChangePercent,
   });
 
   factory ExerciseTrendModel.fromJson(Map<String, dynamic> json) => ExerciseTrendModel(
@@ -185,6 +238,9 @@ class ExerciseTrendModel {
         latestEstimatedOneRepMax: _double(json['latestEstimatedOneRepMax']),
         latestIsPersonalBest: json['latestIsPersonalBest'] == true,
         hitPreviousTarget: json['hitPreviousTarget'] as bool?,
+        latestBestSeconds: (json['latestBestSeconds'] as num?)?.toInt(),
+        bestSecondsEver: (json['bestSecondsEver'] as num?)?.toInt(),
+        secondsChangePercent: _double(json['secondsChangePercent']),
       );
 }
 
@@ -194,9 +250,12 @@ class ExerciseTargetModel {
   final String? reps;
   final double? weight;
 
-  const ExerciseTargetModel({this.sets, this.reps, this.weight});
+  /// Timed exercises: hold each set this long.
+  final int? seconds;
 
-  bool get isEmpty => sets == null && (reps?.trim().isEmpty ?? true) && weight == null;
+  const ExerciseTargetModel({this.sets, this.reps, this.weight, this.seconds});
+
+  bool get isEmpty => sets == null && (reps?.trim().isEmpty ?? true) && weight == null && seconds == null;
 
   static ExerciseTargetModel? tryFromJson(Object? json) {
     if (json is! Map) return null;
@@ -204,11 +263,12 @@ class ExerciseTargetModel {
       sets: (json['sets'] as num?)?.toInt(),
       reps: json['reps']?.toString(),
       weight: _double(json['weight']),
+      seconds: (json['seconds'] as num?)?.toInt(),
     );
     return target.isEmpty ? null : target;
   }
 
-  Map<String, dynamic> toJson() => {'sets': sets, 'reps': reps, 'weight': weight};
+  Map<String, dynamic> toJson() => {'sets': sets, 'reps': reps, 'weight': weight, 'seconds': seconds};
 }
 
 Map<String, dynamic> _map(Object? raw) => raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};

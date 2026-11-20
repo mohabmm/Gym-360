@@ -13,7 +13,9 @@ public sealed record ExerciseLogItem(
     string Reps,
     decimal? Weight,
     string? Notes,
-    ExerciseTarget? Target = null);
+    ExerciseTarget? Target = null,
+    ExerciseMeasure Measure = ExerciseMeasure.Reps,
+    IReadOnlyList<ExerciseSetEntry>? SetEntries = null);
 
 public sealed record LogSessionExercisesCommand(
     Guid SessionId,

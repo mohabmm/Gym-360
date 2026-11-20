@@ -18,7 +18,10 @@ enum ExerciseLead {
         _ => ExerciseLead.oneRepMax,
       };
 
-  double? of(ExerciseEntryModel entry) => switch (this) {
+  /// The number followed for [entry]; a timed exercise (plank) is always followed by its longest hold.
+  double? of(ExerciseEntryModel entry) => entry.isTimed ? entry.bestSeconds?.toDouble() : _ofLift(entry);
+
+  double? _ofLift(ExerciseEntryModel entry) => switch (this) {
         ExerciseLead.weight => entry.weight,
         ExerciseLead.volume => entry.volume,
         ExerciseLead.oneRepMax => entry.estimatedOneRepMax,
@@ -31,16 +34,29 @@ class LeadChange {
   final double? latest;
   final int sessions;
 
-  const LeadChange({this.first, this.latest, this.sessions = 0});
+  /// Values are seconds held (plank), not kilograms.
+  final bool isTimed;
 
+  const LeadChange({this.first, this.latest, this.sessions = 0, this.isTimed = false});
+
+  /// Only entries counted the same way as the latest one (reps or time) are compared.
   factory LeadChange.of(ExerciseHistoryModel exercise, ExerciseLead lead) {
-    final values = exercise.entries.map(lead.of).whereType<double>().toList();
+    final timed = exercise.isTimed;
+    final values = valuesOf(exercise, lead);
     return LeadChange(
       first: values.isEmpty ? null : values.first,
       latest: values.isEmpty ? null : values.last,
       sessions: exercise.entries.length,
+      isTimed: timed,
     );
   }
+
+  /// The followed number per session, oldest first (sparkline points).
+  static List<double> valuesOf(ExerciseHistoryModel exercise, ExerciseLead lead) => exercise.entries
+      .where((e) => e.isTimed == exercise.isTimed)
+      .map(lead.of)
+      .whereType<double>()
+      .toList();
 
   bool get isComparable => first != null && latest != null && sessions > 1;
 
