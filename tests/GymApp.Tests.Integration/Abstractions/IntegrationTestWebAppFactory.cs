@@ -17,6 +17,8 @@ namespace GymApp.Tests.Integration.Abstractions;
 public sealed class IntegrationTestWebAppFactory
     : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    public const string CiReleaseToken = "integration-tests-ci-release-token";
+
     private readonly MsSqlContainer _dbContainer = new MsSqlBuilder()
         .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
         .WithPassword("Integration_Test_P@ss2024!")
@@ -57,6 +59,8 @@ public sealed class IntegrationTestWebAppFactory
                 // Existing suites exercise every module: gyms default to the all-on preset.
                 // Feature-flag tests assign presets explicitly.
                 ["FeatureFlags:DefaultPreset"] = "business",
+                // Shared secret for the CI-only release-settings endpoint.
+                ["Ci:ReleaseToken"] = CiReleaseToken,
                 // Jwt:SecretKey is set via env var in the ctor — Program.cs validates
                 // it before Build(), so an in-memory override here is too late.
             });

@@ -31,10 +31,11 @@ export interface PlatformConfig {
   supportEmail: string;
 }
 
-interface SecurityToggle {
+interface SettingToggle {
+  endpoint: string;
   current: boolean;
   set: (value: boolean) => void;
-  field: 'twoFactorRequired' | 'ipWhitelistEnabled';
+  field: string;
   label: string;
   errorMessage: string;
 }
@@ -67,8 +68,21 @@ export function useSettingsToasts() {
 
 type Toasts = Pick<ReturnType<typeof useSettingsToasts>, 'flash' | 'flashError'>;
 
+/** Optimistically flips a boolean setting, PATCHes it, and rolls back on failure. */
+async function toggleSetting(toggle: SettingToggle, { flash, flashError }: Toasts): Promise<void> {
+  const next = !toggle.current;
+  toggle.set(next);
+  try {
+    await apiPatch(toggle.endpoint, { [toggle.field]: next });
+    flash(`${toggle.label} ${next ? 'enabled' : 'disabled'}`);
+  } catch {
+    toggle.set(!next);
+    flashError(toggle.errorMessage);
+  }
+}
+
 /** 2FA / IP-whitelist flags, seeded from the server and toggled optimistically. */
-export function useSecuritySettings({ flash, flashError }: Toasts) {
+export function useSecuritySettings(toasts: Toasts) {
   const [twoFactorOn, setTwoFactorOn] = useState(true);
   const [ipWhitelistOn, setIpWhitelistOn] = useState(false);
   const { data: securityData } = useApiQuery<{ twoFactorRequired: boolean; ipWhitelistEnabled: boolean }>(
@@ -83,38 +97,57 @@ export function useSecuritySettings({ flash, flashError }: Toasts) {
     }
   }, [securityData]);
 
-  /** Optimistically flips a security flag, PATCHes it, and rolls back on failure. */
-  const toggleSecuritySetting = async (toggle: SecurityToggle) => {
-    const next = !toggle.current;
-    toggle.set(next);
-    try {
-      await apiPatch(ADMIN.SECURITY_SETTINGS, { [toggle.field]: next });
-      flash(`${toggle.label} ${next ? 'enabled' : 'disabled'}`);
-    } catch {
-      toggle.set(!next);
-      flashError(toggle.errorMessage);
-    }
-  };
-
   const toggleTwoFactor = () =>
-    toggleSecuritySetting({
+    toggleSetting({
+      endpoint: ADMIN.SECURITY_SETTINGS,
       current: twoFactorOn,
       set: setTwoFactorOn,
       field: 'twoFactorRequired',
       label: '2FA',
       errorMessage: 'Failed to update 2FA setting',
-    });
+    }, toasts);
 
   const toggleIpWhitelist = () =>
-    toggleSecuritySetting({
+    toggleSetting({
+      endpoint: ADMIN.SECURITY_SETTINGS,
       current: ipWhitelistOn,
       set: setIpWhitelistOn,
       field: 'ipWhitelistEnabled',
       label: 'IP whitelist',
       errorMessage: 'Failed to update IP whitelist setting',
-    });
+    }, toasts);
 
   return { twoFactorOn, ipWhitelistOn, toggleTwoFactor, toggleIpWhitelist };
+}
+
+interface ReleaseSettings {
+  androidInternalAutoPublish: boolean;
+  updatedAt: string | null;
+}
+
+/** Android → Play Internal testing auto-publish switch (read by Codemagic on every develop merge). */
+export function useReleaseSettings(toasts: Toasts) {
+  const { invalidate } = useInvalidateQueries();
+  const [androidAutoPublishOn, setAndroidAutoPublishOn] = useState(true);
+  const { data } = useApiQuery<ReleaseSettings>(['release-settings'], ADMIN.RELEASE_SETTINGS);
+
+  useEffect(() => {
+    if (data?.data) setAndroidAutoPublishOn(data.data.androidInternalAutoPublish ?? true);
+  }, [data]);
+
+  const toggleAndroidAutoPublish = async () => {
+    await toggleSetting({
+      endpoint: ADMIN.RELEASE_SETTINGS,
+      current: androidAutoPublishOn,
+      set: setAndroidAutoPublishOn,
+      field: 'androidInternalAutoPublish',
+      label: 'Android auto-publish',
+      errorMessage: 'Failed to update Android auto-publish',
+    }, toasts);
+    invalidate(['release-settings']);
+  };
+
+  return { androidAutoPublishOn, updatedAt: data?.data?.updatedAt ?? null, toggleAndroidAutoPublish };
 }
 
 /** Platform config + admin-team mutations sharing one busy flag. */
