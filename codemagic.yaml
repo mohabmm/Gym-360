@@ -6,8 +6,9 @@
 # Signing uses the encrypted `gym360_apple` variable group on the Codemagic app:
 #   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER,
 #   APP_STORE_CONNECT_PRIVATE_KEY (.p8 contents), CERTIFICATE_PRIVATE_KEY (PEM).
-# Each build fetches the distribution certificate matching CERTIFICATE_PRIVATE_KEY and
-# its App Store profile, creating the profile on first use.
+# Each build makes sure the App ID has Push Notifications enabled, then fetches the
+# distribution certificate matching CERTIFICATE_PRIVATE_KEY and its App Store profile,
+# creating the profile on first use (or after Push invalidated the old one).
 
 definitions:
   environment: &ios_environment
@@ -43,10 +44,30 @@ definitions:
     - &apply_signing
       name: Set up code signing
       script: |
+        set -euo pipefail
         keychain initialize
+
+        # Push notifications (FCM via APNs) need the Push capability on the App ID, or the
+        # profile lacks aps-environment and signing fails. Enabling it invalidates the app's
+        # existing profiles; fetch-signing-files only reuses ACTIVE ones, so it then creates
+        # a fresh App Store profile that includes Push. No-op once Push is enabled.
+        BUNDLE_RESOURCE_ID=$(app-store-connect bundle-ids list \
+          --bundle-id-identifier "$BUNDLE_ID" --strict-match-identifier --platform IOS --json \
+          | python3 -c 'import json, sys; ids = json.load(sys.stdin); print(ids[0]["id"] if ids else "")')
+        if [ -z "$BUNDLE_RESOURCE_ID" ]; then
+          echo "App ID $BUNDLE_ID not found; it is created below without Push. Re-run once it exists." >&2
+        elif app-store-connect bundle-ids capabilities "$BUNDLE_RESOURCE_ID" --json \
+          | python3 -c 'import json, sys; sys.exit(0 if any(c["attributes"]["capabilityType"] == "PUSH_NOTIFICATIONS" for c in json.load(sys.stdin)) else 1)'; then
+          echo "Push Notifications already enabled for $BUNDLE_ID"
+        else
+          echo "Enabling Push Notifications for $BUNDLE_ID"
+          app-store-connect bundle-ids enable-capabilities "$BUNDLE_RESOURCE_ID" --capability "Push Notifications"
+        fi
+
         app-store-connect fetch-signing-files "$BUNDLE_ID" \
           --type IOS_APP_STORE \
           --strict-match-identifier \
+          --delete-stale-profiles \
           --create
         keychain add-certificates
         xcode-project use-profiles --project "$CM_BUILD_DIR/$APP_DIR/ios/Runner.xcodeproj"
