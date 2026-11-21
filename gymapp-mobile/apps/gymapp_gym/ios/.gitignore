@@ -32,3 +32,7 @@ Runner/GeneratedPluginRegistrant.*
 !default.mode2v3
 !default.pbxuser
 !default.perspectivev3
+
+# Flutter pins plugin versions in pubspec.lock; a committed SPM lock goes stale on
+# every Firebase bump and crashed Xcode package resolution on Codemagic.
+**/xcshareddata/swiftpm/Package.resolved
