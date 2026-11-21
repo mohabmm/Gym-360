@@ -287,18 +287,23 @@ class _ExerciseLogTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          _kv(theme, isArabic ? 'المجموعات' : 'Sets', '${log.sets}'),
-          _kv(
-            theme,
-            isArabic ? 'التكرارات' : 'Reps',
-            perSet.isEmpty ? repsRaw : perSet.join(' • '),
-          ),
-          if (log.weight != null)
+          if (log.setEntries.isNotEmpty)
+            for (final (i, set) in log.setEntries.indexed)
+              _SetLine(index: i, set: set, timed: log.measure == 'time', isArabic: isArabic)
+          else ...[
+            _kv(theme, isArabic ? 'المجموعات' : 'Sets', '${log.sets}'),
             _kv(
               theme,
-              isArabic ? 'الوزن' : 'Weight',
-              '${_fmtWeight(log.weight!)} ${isArabic ? 'كجم' : 'kg'}',
+              isArabic ? 'التكرارات' : 'Reps',
+              perSet.isEmpty ? repsRaw : perSet.join(' • '),
             ),
+            if (log.weight != null)
+              _kv(
+                theme,
+                isArabic ? 'الوزن' : 'Weight',
+                '${_fmtWeight(log.weight!)} ${isArabic ? 'كجم' : 'kg'}',
+              ),
+          ],
           if (log.notes != null && log.notes!.trim().isNotEmpty) ...[
             const SizedBox(height: 4),
             _kv(theme, isArabic ? 'ملاحظات' : 'Notes', log.notes!.trim()),
@@ -328,8 +333,59 @@ class _ExerciseLogTile extends StatelessWidget {
     );
   }
 
-  String _fmtWeight(double w) =>
+  String _fmtWeight(double w) => _formatWeight(w);
+
+  static String _formatWeight(double w) =>
       w == w.truncateToDouble() ? w.toStringAsFixed(0) : w.toStringAsFixed(1);
+}
+
+/// One set as the coach logged it — "S2   10 × 70 kg" or "S1   0:45" — with the coach's note on
+/// that set underneath.
+class _SetLine extends StatelessWidget {
+  final int index;
+  final ExerciseSetEntryModel set;
+  final bool timed;
+  final bool isArabic;
+  const _SetLine({required this.index, required this.set, required this.timed, required this.isArabic});
+
+  String get _amount {
+    final kg = set.weight == null ? null : '${_ExerciseLogTile._formatWeight(set.weight!)} ${isArabic ? 'كجم' : 'kg'}';
+    if (timed) {
+      final s = set.seconds ?? 0;
+      final time = s < 60 ? '$s${isArabic ? 'ث' : 's'}' : '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+      return kg == null ? time : '$time + $kg';
+    }
+    final reps = '${set.reps ?? 0} ${isArabic ? 'عدة' : 'reps'}';
+    return kg == null ? reps : '$reps × $kg';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 36,
+            child: Text(isArabic ? 'م${index + 1}' : 'S${index + 1}',
+                style: theme.textTheme.labelMedium?.copyWith(color: theme.hintColor)),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_amount, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                if (set.hasNote)
+                  Text(set.note!, style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TrainerLogCard extends StatelessWidget {

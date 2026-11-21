@@ -98,6 +98,17 @@ class ExerciseProgressStrings {
     return '${sets.map((s) => s.weight == null ? '${s.reps}' : '${s.reps}×${number(s.weight!)}').join(' · ')} ${_t('كجم', 'kg')}';
   }
 
+  /// The coach's per-set remarks: "S2 (10×70 kg): last 2 reps assisted" — one per set that has one.
+  List<String> setNotes(ExerciseEntryModel e) => [
+        for (final (i, s) in e.setEntries.indexed)
+          if (s.hasNote) '${_t('م${i + 1}', 'S${i + 1}')} (${_oneSet(s, e.isTimed)}): ${s.note}',
+      ];
+
+  String _oneSet(ExerciseSetEntryModel s, bool timed) {
+    if (timed) return _timedSet(s);
+    return s.weight == null ? '${s.reps ?? 0}' : '${s.reps ?? 0}×${kg(s.weight)}';
+  }
+
   String _timedSet(ExerciseSetEntryModel s) {
     final time = duration(s.seconds ?? 0);
     return s.weight == null ? time : '$time +${kg(s.weight)}';

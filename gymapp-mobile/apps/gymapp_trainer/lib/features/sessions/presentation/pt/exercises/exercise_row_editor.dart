@@ -4,7 +4,7 @@ import 'exercise_inputs.dart';
 import 'session_exercises_draft.dart';
 
 /// One exercise as it happens on the gym floor: name, reps or time, how many sets, each set's
-/// reps (or seconds) and kg, a note and the optional next-session target. Writes straight into
+/// reps (or seconds), kg and the coach's note on it, an overall note and the optional next-session target. Writes straight into
 /// [draft]; [onChanged] lets the screen re-check "Save". With [showErrors] the fields that
 /// still block saving are marked.
 class ExerciseRowEditor extends StatefulWidget {
@@ -74,7 +74,7 @@ class _ExerciseRowEditorState extends State<ExerciseRowEditor> {
             Padding(
               padding: const EdgeInsetsDirectional.only(top: 12, end: 8),
               child: ExerciseTextField(
-                label: _t('ملاحظة للمتدرب', 'Note for the member'),
+                label: _t('ملاحظة عامة على التمرين', 'Overall note on this exercise'),
                 initial: d.notes,
                 onChanged: (v) => _update((d) => d.notes = v),
               ),

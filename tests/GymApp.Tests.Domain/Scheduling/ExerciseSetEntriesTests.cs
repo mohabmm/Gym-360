@@ -51,6 +51,18 @@ public sealed class ExerciseSetEntriesTests
     }
 
     [Fact]
+    public void Each_set_keeps_its_own_coach_note_and_blank_notes_are_dropped()
+    {
+        var log = Completed().AddExerciseLog(WithSets(ExerciseMeasure.Reps,
+            new ExerciseSetEntry(12, 60m, null, "  Good form  "),
+            new ExerciseSetEntry(10, 70m, null, "   "),
+            new ExerciseSetEntry(8, 80m, null, "Last 2 reps assisted"))).Value;
+
+        log.SetEntries.Select(s => s.Note).Should().Equal("Good form", null, "Last 2 reps assisted");
+        log.Reps.Should().Be("12,10,8");
+    }
+
+    [Fact]
     public void Without_set_entries_the_log_is_stored_as_sent()
     {
         var details = new ExerciseLogDetails { ExerciseName = "Squat", OrderIndex = 0, Sets = 4, Reps = "10,8,8,6", Weight = 100m };

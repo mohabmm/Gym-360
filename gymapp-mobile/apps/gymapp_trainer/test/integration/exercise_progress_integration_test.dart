@@ -50,7 +50,7 @@ void main() {
     expect(item['exerciseName'], 'Bench press');
     expect(item['weight'], 65);
     expect(item['measure'], 'reps');
-    expect(item['setEntries'], List.filled(3, {'reps': 10, 'seconds': null, 'weight': 65.0}));
+    expect(item['setEntries'], List.filled(3, {'reps': 10, 'seconds': null, 'weight': 65.0, 'note': null}));
     expect((item['target'] as Map)['weight'], 67.5);
   });
 }

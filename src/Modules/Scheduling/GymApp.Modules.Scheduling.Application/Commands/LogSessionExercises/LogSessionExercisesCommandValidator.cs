@@ -59,7 +59,7 @@ internal sealed class ExerciseTargetValidator : AbstractValidator<ExerciseTarget
     }
 }
 
-/// <summary>pt.exercise_progress: one set of a reps exercise — reps required, kg optional.</summary>
+/// <summary>pt.exercise_progress: one set of a reps exercise — reps required, kg and note optional.</summary>
 internal sealed class RepsSetEntryValidator : AbstractValidator<ExerciseSetEntry>
 {
     public RepsSetEntryValidator()
@@ -67,10 +67,11 @@ internal sealed class RepsSetEntryValidator : AbstractValidator<ExerciseSetEntry
         RuleFor(s => s.Reps).NotNull().WithMessage("Reps are required for every set.")
             .InclusiveBetween(1, ExerciseSetEntry.MaxReps);
         RuleFor(s => s.Weight).InclusiveBetween(0m, ExerciseSetEntry.MaxWeightKg).When(s => s.Weight.HasValue);
+        RuleFor(s => s.Note).MaximumLength(ExerciseSetEntry.MaxNoteLength);
     }
 }
 
-/// <summary>pt.exercise_progress: one set of a timed exercise (plank) — seconds required, kg optional.</summary>
+/// <summary>pt.exercise_progress: one set of a timed exercise (plank) — seconds required, kg and note optional.</summary>
 internal sealed class TimedSetEntryValidator : AbstractValidator<ExerciseSetEntry>
 {
     public TimedSetEntryValidator()
@@ -78,6 +79,7 @@ internal sealed class TimedSetEntryValidator : AbstractValidator<ExerciseSetEntr
         RuleFor(s => s.Seconds).NotNull().WithMessage("Seconds are required for every set.")
             .InclusiveBetween(1, ExerciseSetEntry.MaxSeconds);
         RuleFor(s => s.Weight).InclusiveBetween(0m, ExerciseSetEntry.MaxWeightKg).When(s => s.Weight.HasValue);
+        RuleFor(s => s.Note).MaximumLength(ExerciseSetEntry.MaxNoteLength);
     }
 }
 

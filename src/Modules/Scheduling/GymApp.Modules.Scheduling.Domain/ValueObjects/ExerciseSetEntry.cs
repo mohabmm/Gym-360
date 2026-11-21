@@ -15,9 +15,12 @@ public enum ExerciseMeasure
 /// <summary>
 /// One set as the member did it: <see cref="Reps"/> for <see cref="ExerciseMeasure.Reps"/>,
 /// <see cref="Seconds"/> for <see cref="ExerciseMeasure.Time"/>; <see cref="Weight"/> (kg) is optional for both.
+/// <see cref="Note"/> is the coach's optional remark on this one set ("last 2 reps assisted").
 /// </summary>
-public sealed record ExerciseSetEntry(int? Reps, decimal? Weight, int? Seconds)
+public sealed record ExerciseSetEntry(int? Reps, decimal? Weight, int? Seconds, string? Note = null)
 {
+    public const int MaxNoteLength = 200;
+
     /// <summary>Most sets one exercise can hold; keeps the CSV summary inside its 50-char column.</summary>
     public const int MaxSets = 10;
 

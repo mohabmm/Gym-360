@@ -35,7 +35,11 @@ void main() {
       name: ' Leg press ',
       notes: ' Slow down ',
       targetWeight: 85,
-      sets: [SetDraft(reps: '12', weight: 60), SetDraft(reps: '10', weight: 70), SetDraft(reps: '8', weight: 80)],
+      sets: [
+        SetDraft(reps: '12', weight: 60, note: 'Good depth'),
+        SetDraft(reps: '10', weight: 70, note: '   '),
+        SetDraft(reps: '8', weight: 80, note: ' Last 2 reps assisted '),
+      ],
     );
     final draft = SessionExercisesDraft(dayLabel: 'Leg Day', rows: [press, ExerciseRowDraft()]);
 
@@ -46,9 +50,9 @@ void main() {
       'orderIndex': 0,
       'measure': 'reps',
       'setEntries': [
-        {'reps': 12, 'seconds': null, 'weight': 60.0},
-        {'reps': 10, 'seconds': null, 'weight': 70.0},
-        {'reps': 8, 'seconds': null, 'weight': 80.0},
+        {'reps': 12, 'seconds': null, 'weight': 60.0, 'note': 'Good depth'},
+        {'reps': 10, 'seconds': null, 'weight': 70.0, 'note': null},
+        {'reps': 8, 'seconds': null, 'weight': 80.0, 'note': 'Last 2 reps assisted'},
       ],
       'sets': 3,
       'reps': '12,10,8',
@@ -124,5 +128,17 @@ void main() {
 
     expect(draft.filled, hasLength(2));
     expect((draft.firstInvalid?.issue, draft.canSave), (ExerciseRowIssue.missingName, false));
+  });
+
+  test('a new set repeats the last numbers but starts without a note', () {
+    final row = ExerciseRowDraft(sets: [SetDraft(reps: '8', weight: 80, note: 'Assisted')])..setCount = 2;
+
+    expect(row.sets.last.reps, '8');
+    expect(row.sets.last.weight, 80);
+    expect(row.sets.last.note, isEmpty);
+  });
+
+  test('a note alone keeps the exercise from being skipped as untouched', () {
+    expect(ExerciseRowDraft(sets: [SetDraft(note: 'Watch knees')]).isUntouched, isFalse);
   });
 }

@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../exercise_progress/exercise_progress_model.dart';
+
 part 'session_model.freezed.dart';
 part 'session_model.g.dart';
 
@@ -93,6 +95,10 @@ class SessionExerciseLogModel with _$SessionExerciseLogModel {
     String? notes,
     required DateTime createdAt,
     DateTime? updatedAt,
+    /// "reps" or "time" (plank); decides how [setEntries] read.
+    @Default('reps') String measure,
+    /// Each set as done, with the coach's note on that set; empty for logs made before per-set logging.
+    @Default([]) List<ExerciseSetEntryModel> setEntries,
   }) = _SessionExerciseLogModel;
 
   factory SessionExerciseLogModel.fromJson(Map<String, dynamic> json) =>

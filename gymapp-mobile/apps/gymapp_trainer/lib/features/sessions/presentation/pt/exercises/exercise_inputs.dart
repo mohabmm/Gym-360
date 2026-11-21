@@ -209,7 +209,8 @@ class MeasureToggle extends StatelessWidget {
       );
 }
 
-/// One line per set: "م1  [12] عدة  [60] كجم", or for a timed exercise "م1  [0:45]  [كجم]".
+/// One block per set: "م1  [12] عدة  [60] كجم" (or "م1  [0:45]  [كجم]" when timed) and the coach's
+/// note on that set underneath.
 class SetsList extends StatelessWidget {
   final List<SetDraft> sets;
   final ExerciseMeasure measure;
@@ -269,35 +270,53 @@ class _SetLine extends StatelessWidget {
     final n = index + 1;
     final timed = measure == ExerciseMeasure.time;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
         children: [
-          SizedBox(
-            width: 40,
-            height: 44,
-            child: Center(child: Text(_t('م$n', 'S$n'), style: Theme.of(context).textTheme.labelLarge)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 40,
+                height: 44,
+                child: Center(child: Text(_t('م$n', 'S$n'), style: Theme.of(context).textTheme.labelLarge)),
+              ),
+              Expanded(
+                child: timed ? _timeField(n) : _repsField(n),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: WeightField(
+                  weight: set.weight,
+                  isArabic: isArabic,
+                  label: timed ? _t('كجم (اختياري)', 'kg (optional)') : null,
+                  semanticSet: n,
+                  onChanged: (v) {
+                    set.weight = v;
+                    onChanged();
+                  },
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: timed ? _timeField(n) : _repsField(n),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: WeightField(
-              weight: set.weight,
-              isArabic: isArabic,
-              label: timed ? _t('كجم (اختياري)', 'kg (optional)') : null,
-              semanticSet: n,
-              onChanged: (v) {
-                set.weight = v;
-                onChanged();
-              },
-            ),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 40, top: 6),
+            child: _noteField(n),
           ),
         ],
       ),
     );
   }
+
+  Widget _noteField(int n) => ExerciseTextField(
+        label: _t('ملاحظتك على م$n', 'Your note on set $n'),
+        initial: set.note,
+        inputFormatters: [LengthLimitingTextInputFormatter(SetDraft.maxNoteLength)],
+        onChanged: (v) {
+          set.note = v;
+          onChanged();
+        },
+      );
 
   Widget _repsField(int n) => ExerciseTextField(
         label: _t('عدات م$n', 'Set $n reps'),

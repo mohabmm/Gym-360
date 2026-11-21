@@ -90,6 +90,20 @@ void _perSetTests() {
     expect(inSet4('Set 4 kg', '80'), findsOneWidget);
   });
 
+  testWidgets('every set has its own coach note; a new set starts with an empty one', (tester) async {
+    await _pump(tester);
+
+    for (final n in [1, 2, 3]) {
+      expect(find.widgetWithText(TextFormField, 'Your note on set $n'), findsOneWidget);
+    }
+    await tester.enterText(find.widgetWithText(TextFormField, 'Your note on set 3'), 'Last 2 reps assisted');
+    await tester.tap(find.byTooltip('One more set'));
+    await tester.pump();
+
+    expect(find.text('Last 2 reps assisted'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Your note on set 4'), findsOneWidget);
+  });
+
   testWidgets('switching to Time asks for each set\'s time with optional kg', (tester) async {
     await _pump(tester);
 
