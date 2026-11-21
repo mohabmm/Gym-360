@@ -51,6 +51,9 @@ services:
       - Seed__RunDemoData=${SEED_RUN_DEMO_DATA:-false}
       - Identity__RunDevSeeder=${IDENTITY_RUN_DEV_SEEDER:-true}
       - Identity__DevSeederScope=${IDENTITY_DEV_SEEDER_SCOPE:-admin}
+      # Demo-account password. No default on purpose (public repo): unset = no demo
+      # users. Setting a new value rotates existing demo accounts on next boot.
+      - Identity__DevSeederPassword=${IDENTITY_DEV_SEEDER_PASSWORD:-}
       # OpenTelemetry → self-hosted SigNoz (deploy/signoz). No-op unless
       # OTEL_EXPORTER_OTLP_ENDPOINT is set, so it defaults to empty/off and only
       # activates on staging where SigNoz runs. Collector reached over the external

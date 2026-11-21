@@ -2,7 +2,6 @@ appId: com.gym360.trainer
 name: 03_workouts
 env:
   EMAIL: trainer@demo.local
-  PASSWORD: "123456"
 ---
 - launchApp:
     clearState: false

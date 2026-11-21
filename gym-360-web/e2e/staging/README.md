@@ -17,7 +17,7 @@ npm run e2e:staging:staff      # staff only
 npm run e2e:staging:report     # open last HTML report
 ```
 
-Override targets / creds via env:
+Passwords are required via env (never committed — the repo is public):
 
 ```bash
 STAGING_ADMIN=… STAGING_STAFF=… STAGING_API=… \
@@ -25,8 +25,8 @@ ADMIN_EMAIL=… ADMIN_PASSWORD=… STAFF_EMAIL=… STAFF_PASSWORD=… \
 npm run e2e:staging
 ```
 
-Defaults: staging URLs + demo accounts `admin@demo.local` / `staff@demo.local`
-(`123456`).
+Defaults: staging URLs + demo accounts `admin@demo.local` / `staff@demo.local`.
+Their password is the staging `IDENTITY_DEV_SEEDER_PASSWORD` (Dokploy env).
 
 ## Notes
 

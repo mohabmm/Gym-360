@@ -69,6 +69,11 @@ config/firebase-service-account.json
 config/*-service-account*.json
 *-service-account*.json
 *firebase-adminsdk*.json
+# Firebase client configs (API keys). develop still tracks older copies for the
+# Codemagic builds; this stops new ones from being added by accident.
+**/google-services.json
+**/GoogleService-Info.plist
+**/firebase_options.dart
 *.pem
 *.pfx
 *.p12

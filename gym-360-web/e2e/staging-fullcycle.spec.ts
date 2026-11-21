@@ -8,10 +8,12 @@
  * Run (headed, serial):
  *   ADMIN_URL=https://staging-admin.gym-365.com \
  *   STAFF_URL=https://staging-staff.gym-365.com \
+ *   STAGING_PASSWORD=… \
  *   npx playwright test e2e/staging-fullcycle.spec.ts --project=chromium --headed --workers=1 --no-deps
  */
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { isShown } from './helpers/ui';
+import { requireEnv } from './staging/helpers';
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'fs';
 import path from 'path';
 
@@ -19,7 +21,8 @@ const ADMIN_URL = process.env.ADMIN_URL ?? 'https://staging-admin.gym-365.com';
 const STAFF_URL = process.env.STAFF_URL ?? 'https://staging-staff.gym-365.com';
 const EMAIL_ADMIN = 'admin@demo.local';
 const EMAIL_STAFF = 'staff@demo.local';
-const PASS = '123456';
+// Shared password of the admin@ / staff@ demo accounts on staging — env only (public repo).
+const PASS = requireEnv('STAGING_PASSWORD');
 
 const FINDINGS = path.resolve(__dirname, '../../test_logs/staging_fullcycle_findings.json');
 
