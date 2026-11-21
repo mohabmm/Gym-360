@@ -93,6 +93,7 @@ definitions:
     - &android_keystore
       name: Set up Android upload keystore
       script: |
+        #!/usr/bin/env bash
         b64_var="${KEYSTORE_PREFIX}_KEYSTORE_B64"
         pw_var="${KEYSTORE_PREFIX}_KEYSTORE_PASSWORD"
         if [ -z "${!b64_var}" ] || [ -z "${!pw_var}" ]; then
@@ -100,7 +101,7 @@ definitions:
           exit 1
         fi
         keystore="$CM_BUILD_DIR/upload-keystore.jks"
-        echo "${!b64_var}" | base64 --decode > "$keystore"
+        printf "%s" "${!b64_var}" | openssl base64 -d -A > "$keystore"
         # build.gradle signs release builds from these.
         {
           echo "CM_KEYSTORE_PATH=$keystore"
@@ -251,7 +252,7 @@ workflows:
 
   android-staff-internal:
     name: Android Staff - Play Internal testing
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     max_build_duration: 60
     triggering: *develop_merge
     when:
@@ -283,7 +284,7 @@ workflows:
 
   android-trainee-internal:
     name: Android Member - Play Internal testing
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     max_build_duration: 60
     triggering: *develop_merge
     when:
@@ -315,7 +316,7 @@ workflows:
 
   android-trainer-internal:
     name: Android Trainer - Play Internal testing
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     max_build_duration: 60
     triggering: *develop_merge
     when:
