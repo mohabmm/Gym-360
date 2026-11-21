@@ -6,9 +6,10 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 /// APNs token shows up only after [apnsAfter] polls (null = never).
 class _FakeMessaging implements FirebaseMessaging {
-  _FakeMessaging({this.apnsAfter});
+  _FakeMessaging({this.apnsAfter, this.permission = _authorized});
 
   final int? apnsAfter;
+  final NotificationSettings permission;
   int apnsPolls = 0;
   final List<String> subscribed = [];
   bool tokenRequested = false;
@@ -34,7 +35,7 @@ class _FakeMessaging implements FirebaseMessaging {
   @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.memberName == #requestPermission) {
-      return Future.value(_authorized);
+      return Future.value(permission);
     }
     throw UnimplementedError('${invocation.memberName}');
   }
@@ -55,7 +56,45 @@ const _authorized = NotificationSettings(
   providesAppNotificationSettings: AppleNotificationSetting.disabled,
 );
 
-FCMService _service(_FakeMessaging messaging) {
+/// Captures what FCMService reports instead of shipping it.
+class _FakeTelemetry extends TelemetryService {
+  _FakeTelemetry()
+      : super(appName: 'test', baseUrl: 'http://localhost', storage: SecureStorageService());
+
+  final List<String> warnings = [];
+  final List<Map<String, dynamic>?> attributes = [];
+
+  @override
+  void log(
+    TelemetryLevel level,
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+    Map<String, dynamic>? attributes,
+  }) {
+    if (level == TelemetryLevel.warning) {
+      warnings.add(message);
+      this.attributes.add(attributes);
+    }
+  }
+}
+
+const _denied = NotificationSettings(
+  alert: AppleNotificationSetting.disabled,
+  announcement: AppleNotificationSetting.disabled,
+  authorizationStatus: AuthorizationStatus.denied,
+  badge: AppleNotificationSetting.disabled,
+  carPlay: AppleNotificationSetting.disabled,
+  lockScreen: AppleNotificationSetting.disabled,
+  notificationCenter: AppleNotificationSetting.disabled,
+  showPreviews: AppleShowPreviewSetting.never,
+  timeSensitive: AppleNotificationSetting.disabled,
+  criticalAlert: AppleNotificationSetting.disabled,
+  sound: AppleNotificationSetting.disabled,
+  providesAppNotificationSettings: AppleNotificationSetting.disabled,
+);
+
+FCMService _service(_FakeMessaging messaging, {TelemetryService? telemetry}) {
   final container = ProviderContainer();
   addTearDown(container.dispose);
   final provider = Provider<FCMService>(
@@ -63,6 +102,7 @@ FCMService _service(_FakeMessaging messaging) {
       ref: ref,
       storage: SecureStorageService(),
       messaging: messaging,
+      telemetry: telemetry,
       apnsRetryDelay: Duration.zero,
     ),
   );
@@ -103,6 +143,27 @@ void main() {
 
       expect(messaging.tokenRequested, isFalse);
       expect(messaging.subscribed, isEmpty);
+    });
+
+    test('reports a denied permission to telemetry', () async {
+      final telemetry = _FakeTelemetry();
+      final messaging = _FakeMessaging(apnsAfter: 0, permission: _denied);
+
+      await _service(messaging, telemetry: telemetry).initialize();
+
+      expect(messaging.tokenRequested, isFalse);
+      expect(telemetry.warnings.single, contains('permission'));
+      expect(telemetry.warnings.single, contains('denied'));
+      expect(telemetry.attributes.single?['push.step'], 'permission');
+    });
+
+    test('reports a missing APNs token to telemetry', () async {
+      final telemetry = _FakeTelemetry();
+
+      await _service(_FakeMessaging(), telemetry: telemetry).initialize();
+
+      expect(telemetry.warnings.single, contains('apns_token'));
+      expect(telemetry.attributes.single?['push.platform'], 'iOS');
     });
 
     test('retries the wait on the next call after a failed one', () async {
