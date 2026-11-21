@@ -25,7 +25,10 @@ class _FakeMessaging implements FirebaseMessaging {
   Future<void> subscribeToTopic(String topic) async => subscribed.add(topic);
 
   @override
-  Future<String?> getToken({String? vapidKey}) async {
+  Future<String?> getToken({
+    String? serviceWorkerScriptPath,
+    String? vapidKey,
+  }) async {
     tokenRequested = true;
     return 'fcm-token';
   }
