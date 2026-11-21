@@ -18,6 +18,15 @@ internal sealed class PushNotificationService : IPushNotificationService
     private const string GoogleTokenUrl = "https://oauth2.googleapis.com/token";
     private const string FcmScope = "https://www.googleapis.com/auth/firebase.messaging";
 
+    /// <summary>Must match ForegroundNotificationPresenter.channelId and the
+    /// AndroidManifest default_notification_channel_id in every Flutter app.</summary>
+    internal const string AndroidChannelId = "gym360_default";
+
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+    };
+
     private readonly IFcmTokenStore _tokenStore;
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
@@ -66,6 +75,23 @@ internal sealed class PushNotificationService : IPushNotificationService
             return;
         }
 
+        try
+        {
+            await SendToAllTokensAsync(tokens, content, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Push is best-effort: the in-app notification is already persisted, so a
+            // misconfigured key or FCM outage must never fail the caller's request.
+            _logger.LogError(ex, "FCM push failed for UserId={UserId}", userId);
+        }
+    }
+
+    private async Task SendToAllTokensAsync(
+        IReadOnlyCollection<string> tokens,
+        PushContent content,
+        CancellationToken cancellationToken)
+    {
         string projectId = _configuration["Fcm:ProjectId"] ?? throw new InvalidOperationException("Fcm:ProjectId is not configured.");
         var endpoint = new FcmEndpoint(
             string.Format(FcmSendUrlTemplate, projectId),
@@ -81,22 +107,7 @@ internal sealed class PushNotificationService : IPushNotificationService
         PushContent content,
         CancellationToken cancellationToken)
     {
-        var message = new
-        {
-            message = new
-            {
-                token = deviceToken,
-                notification = new { title = content.Title, body = content.Body },
-                data = content.Data ?? new Dictionary<string, string>(),
-                android = new { priority = "high" },
-                apns = new { headers = new { apns_priority = "10" } }
-            }
-        };
-
-        var json = JsonSerializer.Serialize(message, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-        });
+        var json = SerializeMessage(deviceToken, content);
 
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint.SendUrl);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", endpoint.AccessToken);
@@ -118,6 +129,33 @@ internal sealed class PushNotificationService : IPushNotificationService
             _logger.LogDebug("FCM notification sent successfully to token {TokenPrefix}...", deviceToken[..Math.Min(20, deviceToken.Length)]);
         }
     }
+
+    /// <summary>
+    /// FCM v1 message body. Header/data maps are dictionaries so the snake_case
+    /// naming policy never rewrites their keys (APNs requires "apns-priority").
+    /// </summary>
+    internal static string SerializeMessage(string deviceToken, PushContent content) =>
+        JsonSerializer.Serialize(BuildMessage(deviceToken, content), SerializerOptions);
+
+    private static object BuildMessage(string deviceToken, PushContent content) => new
+    {
+        message = new
+        {
+            token = deviceToken,
+            notification = new { title = content.Title, body = content.Body },
+            data = content.Data ?? new Dictionary<string, string>(),
+            android = new
+            {
+                priority = "high",
+                notification = new { channel_id = AndroidChannelId }
+            },
+            apns = new
+            {
+                headers = new Dictionary<string, string> { ["apns-priority"] = "10" },
+                payload = new { aps = new { sound = "default" } }
+            }
+        }
+    };
 
     private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken)
     {

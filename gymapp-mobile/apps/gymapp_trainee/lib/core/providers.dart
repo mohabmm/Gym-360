@@ -38,7 +38,13 @@ final telemetryServiceProvider = Provider<TelemetryService>((ref) {
 // ---------------------------------------------------------------------------
 final fcmServiceProvider = Provider<FCMService>((ref) {
   final storage = ref.watch(secureStorageProvider);
-  return FCMService(ref: ref, storage: storage);
+  // apiClient is required so the device token reaches POST /device-tokens —
+  // without it the backend has no token to push to.
+  return FCMService(
+    ref: ref,
+    storage: storage,
+    apiClient: ref.watch(apiClientProvider),
+  );
 });
 
 // ---------------------------------------------------------------------------

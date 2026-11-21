@@ -1,4 +1,4 @@
-appId: com.example.gymappTrainee
+appId: com.gym360.trainee
 ---
 # Trainee app — Maestro test config
 # Run: maestro test apps/gymapp_trainee/.maestro/flows

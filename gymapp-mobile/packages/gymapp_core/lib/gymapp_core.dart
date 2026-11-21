@@ -97,6 +97,7 @@ export 'src/network/api_exceptions.dart';
 
 // Services
 export 'src/services/fcm_service.dart';
+export 'src/services/foreground_notification_presenter.dart';
 export 'src/services/consent_service.dart';
 export 'src/services/offline_queue_service.dart';
 export 'src/services/secure_storage_key.dart';

@@ -1,4 +1,4 @@
-appId: com.example.gymappGym
+appId: com.gym360.staff
 name: 20_member_leaderboard
 env:
   EMAIL: staff@demo.local

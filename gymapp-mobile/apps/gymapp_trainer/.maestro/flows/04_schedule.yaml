@@ -1,4 +1,4 @@
-appId: com.example.gymappTrainer
+appId: com.gym360.trainer
 name: 04_schedule
 env:
   EMAIL: trainer@demo.local

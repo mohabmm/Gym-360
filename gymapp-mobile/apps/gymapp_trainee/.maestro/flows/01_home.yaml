@@ -1,4 +1,4 @@
-appId: com.example.gymappTrainee
+appId: com.gym360.trainee
 name: 01_home
 env:
   EMAIL: trainee@demo.local
