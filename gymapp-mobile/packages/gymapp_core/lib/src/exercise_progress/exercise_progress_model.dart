@@ -120,15 +120,21 @@ class ExerciseSetEntryModel {
   final double? weight;
   final int? seconds;
 
-  const ExerciseSetEntryModel({this.reps, this.weight, this.seconds});
+  /// The coach's remark on this one set ("last 2 reps assisted").
+  final String? note;
+
+  const ExerciseSetEntryModel({this.reps, this.weight, this.seconds, this.note});
 
   factory ExerciseSetEntryModel.fromJson(Map<String, dynamic> json) => ExerciseSetEntryModel(
         reps: (json['reps'] as num?)?.toInt(),
         weight: _double(json['weight']),
         seconds: (json['seconds'] as num?)?.toInt(),
+        note: (json['note'] as String?)?.trim(),
       );
 
-  Map<String, dynamic> toJson() => {'reps': reps, 'weight': weight, 'seconds': seconds};
+  bool get hasNote => note?.isNotEmpty ?? false;
+
+  Map<String, dynamic> toJson() => {'reps': reps, 'weight': weight, 'seconds': seconds, 'note': note};
 }
 
 class ExerciseEntryModel {

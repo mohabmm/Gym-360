@@ -3,17 +3,23 @@ import 'package:gymapp_core/gymapp_core.dart';
 /// What stops one exercise from being saved.
 enum ExerciseRowIssue { missingName, missingSets }
 
-/// One set as the member did it, as typed: reps (reps exercise) or time (timed exercise), kg optional.
+/// One set as the member did it, as typed: reps (reps exercise) or time (timed exercise), kg optional,
+/// and the coach's own note on that set.
 class SetDraft {
+  /// Mirrors ExerciseSetEntry.MaxNoteLength on the backend.
+  static const int maxNoteLength = 200;
+
   String reps;
   String time;
   double? weight;
+  String note;
 
-  SetDraft({this.reps = '', this.time = '', this.weight});
+  SetDraft({this.reps = '', this.time = '', this.weight, this.note = ''});
 
+  /// The next set starts from this one's numbers; the note is about this set only.
   SetDraft copy() => SetDraft(reps: reps, time: time, weight: weight);
 
-  bool get isEmpty => reps.trim().isEmpty && time.trim().isEmpty && weight == null;
+  bool get isEmpty => reps.trim().isEmpty && time.trim().isEmpty && weight == null && note.trim().isEmpty;
 
   int? get repsValue => int.tryParse(reps.trim());
 
@@ -29,6 +35,7 @@ class SetDraft {
         'reps': measure == ExerciseMeasure.reps ? repsValue : null,
         'seconds': measure == ExerciseMeasure.time ? seconds : null,
         'weight': weight,
+        'note': note.trim().isEmpty ? null : note.trim(),
       };
 
   /// "45" → 45 s, "1:30" → 90 s; Arabic digits accepted. Null when it is not a time.

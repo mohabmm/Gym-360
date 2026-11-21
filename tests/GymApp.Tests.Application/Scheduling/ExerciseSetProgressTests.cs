@@ -141,6 +141,8 @@ public sealed class ExerciseSetProgressTests
         new("timed set without seconds", ExerciseMeasure.Time, [Lift(12, null)], false),
         new("hold too long", ExerciseMeasure.Time, [Hold(ExerciseSetEntry.MaxSeconds + 1)], false),
         new("negative kg", ExerciseMeasure.Reps, [Lift(10, -5m)], false),
+        new("coach note on a set", ExerciseMeasure.Reps, [Lift(12, 60m) with { Note = "آخر عدتين بمساعدة" }, Lift(10, 70m)], true),
+        new("set note too long", ExerciseMeasure.Time, [Hold(45) with { Note = new string('x', ExerciseSetEntry.MaxNoteLength + 1) }], false),
         new("too many sets", ExerciseMeasure.Reps, Enumerable.Repeat(Lift(10, 20m), ExerciseSetEntry.MaxSets + 1).ToArray(), false),
     };
 

@@ -61,7 +61,7 @@ public sealed class SessionExerciseLog : Entity
         ExerciseNameAr = details.ExerciseNameAr;
         OrderIndex = details.OrderIndex;
         Measure = details.Measure;
-        _setEntries = details.SetEntries.Count == 0 ? null : details.SetEntries.ToList();
+        _setEntries = details.SetEntries.Count == 0 ? null : details.SetEntries.Select(WithTrimmedNote).ToList();
         Sets = summary.Sets;
         Reps = summary.Reps;
         Weight = summary.Weight;
@@ -71,4 +71,8 @@ public sealed class SessionExerciseLog : Entity
         TargetWeight = details.Target?.Weight;
         TargetSeconds = details.Target?.Seconds;
     }
+
+    // A blank set note is stored as no note, so the member never sees an empty "note" line.
+    private static ExerciseSetEntry WithTrimmedNote(ExerciseSetEntry set) =>
+        set with { Note = string.IsNullOrWhiteSpace(set.Note) ? null : set.Note.Trim() };
 }

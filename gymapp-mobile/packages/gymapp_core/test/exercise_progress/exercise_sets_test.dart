@@ -102,4 +102,26 @@ void main() {
   test('a seconds target reads as a duration', () {
     expect(en.target(const ExerciseTargetModel(sets: 3, seconds: 60)), '3 × 1:00');
   });
+
+  test('lists the coach note of each set, skipping sets without one', () {
+    final lift = _entry({
+      'measure': 'reps',
+      'setEntries': [
+        {'reps': 12, 'weight': 60, 'note': 'Good depth'},
+        {'reps': 10, 'weight': 70},
+        {'reps': 8, 'weight': 80, 'note': ' Last 2 reps assisted '},
+      ],
+    });
+    expect(en.setNotes(lift), ['S1 (12×60 kg): Good depth', 'S3 (8×80 kg): Last 2 reps assisted']);
+    expect(ar.setNotes(lift).first, 'م1 (12×60 كجم): Good depth');
+
+    final plank = _entry({
+      'measure': 'time',
+      'setEntries': [
+        {'seconds': 45, 'note': 'Hips dropped'},
+      ],
+    });
+    expect(en.setNotes(plank), ['S1 (45s): Hips dropped']);
+    expect(en.setNotes(_entry({'reps': '10,8,8', 'weight': 60})), isEmpty);
+  });
 }

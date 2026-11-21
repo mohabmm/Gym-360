@@ -75,7 +75,7 @@ internal sealed class SessionExerciseLogConfiguration : IEntityTypeConfiguration
     }
 }
 
-/// <summary>JSON shape of <see cref="SessionExerciseLog.SetEntries"/>: <c>[{"reps":12,"weight":60,"seconds":null}]</c>.</summary>
+/// <summary>JSON shape of <see cref="SessionExerciseLog.SetEntries"/>: <c>[{"reps":12,"weight":60,"seconds":null,"note":"last rep assisted"}]</c>.</summary>
 internal static class SetEntriesJson
 {
     public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);

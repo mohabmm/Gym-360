@@ -112,7 +112,7 @@ public sealed class PtExerciseProgressEndToEndTests : BaseIntegrationTest
 
         var first = await QuickLogAsync(coach);
         await LogExercisesAsync(coach, new SessionLog(first, "Leg Day",
-            PerSet("Leg press", "reps", new { reps = 12, weight = 60m }, new { reps = 10, weight = 70m }, new { reps = 8, weight = 80m }),
+            PerSet("Leg press", "reps", new { reps = 12, weight = 60m, note = "Good depth" }, new { reps = 10, weight = 70m, note = "  " }, new { reps = 8, weight = 80m, note = "Last 2 reps assisted" }),
             PerSet("Plank", "time", new { seconds = 40 }, new { seconds = 35 }) with { target = new { seconds = 45 } }));
         await AgePreviousQuickLogsAsync();
         var second = await QuickLogAsync(coach);
@@ -129,6 +129,8 @@ public sealed class PtExerciseProgressEndToEndTests : BaseIntegrationTest
         press.GetProperty("volume").GetDecimal().Should().Be(2060m);
         press.GetProperty("setEntries").EnumerateArray().Select(s => s.GetProperty("weight").GetDecimal())
             .Should().Equal(60m, 70m, 80m);
+        press.GetProperty("setEntries").EnumerateArray().Select(s => s.GetProperty("note").GetString())
+            .Should().Equal("Good depth", null, "Last 2 reps assisted");
 
         var plank = Exercise(board, "Plank");
         var latest = plank.GetProperty("entries")[1];
