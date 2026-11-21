@@ -2,7 +2,6 @@ appId: com.gym360.staff
 name: gymstaff-login-smoke
 env:
   EMAIL: staff@demo.local
-  PASSWORD: "123456"
 ---
 - stopApp
 - launchApp:

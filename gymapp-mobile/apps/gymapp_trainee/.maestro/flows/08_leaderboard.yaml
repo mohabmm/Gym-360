@@ -2,7 +2,6 @@ appId: com.gym360.trainee
 name: 08_leaderboard
 env:
   EMAIL: trainee@demo.local
-  PASSWORD: "123456"
 ---
 - launchApp:
     clearState: false

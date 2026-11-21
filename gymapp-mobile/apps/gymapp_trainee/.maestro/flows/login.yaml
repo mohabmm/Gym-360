@@ -2,7 +2,6 @@ appId: com.gym360.trainee
 name: trainee-login-smoke
 env:
   EMAIL: trainee@demo.local
-  PASSWORD: "123456"
 ---
 - stopApp
 - launchApp:

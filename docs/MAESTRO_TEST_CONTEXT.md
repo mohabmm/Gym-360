@@ -27,7 +27,9 @@ iOS bundle ids: `com.gym360.trainee`, `com.gym360.trainer`, `com.gym360.staff`.
 
 ## 2. Demo credentials (seeded by `db/seed.sql`)
 
-Password for every seeded user: **`123456`**.
+Password for every seeded user = the API's `IDENTITY_DEV_SEEDER_PASSWORD`. Locally that is `123456` (see `.env.example`); on staging it is a secret in the Dokploy env and is never written in this repo (it is public).
+
+Flows read it from the CLI, never from the YAML: `maestro test -e PASSWORD=<password> .maestro/flows`.
 
 | Role | Email |
 |---|---|
@@ -176,7 +178,7 @@ Key screens:
 - tapOn: "Email"
 - inputText: ${EMAIL}
 - tapOn: "Password"
-- inputText: "123456"
+- inputText: ${PASSWORD}   # maestro test -e PASSWORD=…
 - tapOn: "Login"
 - assertVisible:
     text: "Home"

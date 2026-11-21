@@ -8,7 +8,7 @@ import { uiLogin, ADMIN } from './helpers';
  */
 const STAFF_URL = process.env.STAGING_STAFF || 'https://staging-staff.gym-365.com';
 const ADMIN_URL = process.env.STAGING_ADMIN || 'https://staging-admin.gym-365.com';
-const DESK = { email: process.env.PT_STAFF_EMAIL ?? '', password: process.env.PT_STAFF_PASSWORD ?? 'Test@1234' };
+const DESK = { email: process.env.PT_STAFF_EMAIL ?? '', password: process.env.PT_STAFF_PASSWORD ?? '' };
 const GYM_ID = process.env.PT_GYM_ID ?? '';
 
 const OFF_ROUTES = ['/classes', '/exercises', '/messages', '/billing', '/gamification', '/announcements', '/analytics', '/check-ins', '/kiosk-pin', '/data-import'];
@@ -22,7 +22,7 @@ async function sidebarHrefs(page: Page): Promise<string[]> {
 const switches = (page: Page) => page.locator('[role="switch"], input[type="checkbox"]');
 
 test.describe('staff web — pt_module gym', () => {
-  test.skip(!DESK.email, 'PT_STAFF_EMAIL not set');
+  test.skip(!DESK.email || !DESK.password, 'PT_STAFF_EMAIL / PT_STAFF_PASSWORD not set');
   test.use({ baseURL: STAFF_URL });
 
   test.beforeEach(async ({ page }) => {

@@ -361,8 +361,17 @@ IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
                 return;
             }
 
+            // No default password: the repo is public, so a fallback would be a known
+            // platform-admin credential on every deployed environment.
+            var password = _app.Configuration["Identity:DevSeederPassword"];
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                _logger.LogWarning("IdentityDevSeeder skipped: set Identity:DevSeederPassword (IDENTITY_DEV_SEEDER_PASSWORD) to seed demo users.");
+                return;
+            }
+
             using var identityScope = _app.Services.CreateScope();
-            try { await IdentityDevSeeder.SeedAsync(identityScope.ServiceProvider); }
+            try { await IdentityDevSeeder.SeedAsync(identityScope.ServiceProvider, password); }
             catch (Exception ex) { _logger.LogError(ex, "IdentityDevSeeder failed"); }
         }
 

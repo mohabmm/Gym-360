@@ -1,9 +1,9 @@
 /**
  * Shared helpers for the STAGING e2e suite.
  *
- * Credentials default to the staging demo accounts (verified reachable
- * 2026-05-30). Override via env if a fresh tenant was provisioned:
- *   ADMIN_EMAIL/ADMIN_PASSWORD, STAFF_EMAIL/STAFF_PASSWORD.
+ * Passwords come only from env — this repo is public, so staging passwords
+ * never live in it: ADMIN_PASSWORD and STAFF_PASSWORD (ADMIN_EMAIL /
+ * STAFF_EMAIL default to the demo accounts).
  */
 import { Page, APIRequestContext, expect, request } from '@playwright/test';
 
@@ -15,13 +15,20 @@ export const V1 = `${API}/api/v1`;
 /** Login credentials for one account. */
 export type Credentials = { email: string; password: string };
 
+/** Reads a required env var, failing with a clear message instead of a bad login. */
+export function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is not set — staging passwords come from env, never the repo.`);
+  return value;
+}
+
 export const ADMIN: Credentials = {
   email: process.env.ADMIN_EMAIL || 'admin@demo.local',
-  password: process.env.ADMIN_PASSWORD || '123456',
+  get password() { return requireEnv('ADMIN_PASSWORD'); },
 };
 export const STAFF: Credentials = {
   email: process.env.STAFF_EMAIL || 'staff@demo.local',
-  password: process.env.STAFF_PASSWORD || '123456',
+  get password() { return requireEnv('STAFF_PASSWORD'); },
 };
 
 // Staging WAF rejects non-browser UAs — every API call must look like Chrome.
