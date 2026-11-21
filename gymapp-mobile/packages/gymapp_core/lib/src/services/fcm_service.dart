@@ -11,6 +11,7 @@ import '../network/api_client.dart';
 import '../widgets/feature_gate.dart';
 import 'foreground_notification_presenter.dart';
 import 'secure_storage_service.dart';
+import 'telemetry_service.dart';
 
 /// Handles Firebase Cloud Messaging for push notifications.
 /// Supports silent pushes for config_refresh, gym_suspended, gym_reactivated.
@@ -21,6 +22,7 @@ class FCMService {
   final Ref _ref;
   final ApiClient? _apiClient;
   final ForegroundNotificationPresenter _presenter;
+  final TelemetryService? _telemetry;
 
   /// Set once the listeners are attached so re-login doesn't double-subscribe.
   bool _listening = false;
@@ -62,8 +64,10 @@ class FCMService {
     ApiClient? apiClient,
     FirebaseMessaging? messaging,
     ForegroundNotificationPresenter? presenter,
+    TelemetryService? telemetry,
     Duration apnsRetryDelay = const Duration(milliseconds: 500),
   })  : _ref = ref,
+        _telemetry = telemetry,
         _apnsRetryDelay = apnsRetryDelay,
         _storage = storage,
         _apiClient = apiClient,
@@ -88,7 +92,10 @@ class FCMService {
   /// Initialize FCM: request permissions, get token, set up listeners.
   Future<void> initialize() async {
     final messaging = _messaging;
-    if (messaging == null) return;
+    if (messaging == null) {
+      _reportFailure(_PushStep.firebaseUnavailable);
+      return;
+    }
     // Request notification permission
     final settings = await messaging.requestPermission(
       alert: true,
@@ -100,6 +107,8 @@ class FCMService {
     final status = settings.authorizationStatus;
     if (status != AuthorizationStatus.authorized &&
         status != AuthorizationStatus.provisional) {
+      _reportFailure(_PushStep.permission,
+          detail: status);
       return;
     }
     if (!await _apnsReady(messaging)) return;
@@ -111,9 +120,13 @@ class FCMService {
   Future<void> _saveCurrentToken(FirebaseMessaging messaging) async {
     try {
       final token = await messaging.getToken();
-      if (token != null) await _saveToken(token);
+      if (token == null) {
+        _reportFailure(_PushStep.nullToken);
+        return;
+      }
+      await _saveToken(token);
     } catch (e) {
-      debugPrint('[FCMService] getToken failed: $e');
+      _reportFailure(_PushStep.getToken, error: e);
     }
   }
 
@@ -140,7 +153,8 @@ class FCMService {
       if (await messaging.getAPNSToken() != null) return true;
       await Future<void>.delayed(_apnsRetryDelay);
     }
-    debugPrint('[FCMService] APNs token never arrived — push unavailable.');
+    _reportFailure(_PushStep.apnsToken,
+        detail: _apnsRetryDelay * _apnsMaxAttempts);
     return false;
   }
 
@@ -164,7 +178,7 @@ class FCMService {
           ? await messaging.subscribeToTopic(topic)
           : await messaging.unsubscribeFromTopic(topic);
     } catch (e) {
-      debugPrint('[FCMService] topic $topic update failed: $e');
+      _reportFailure(_PushStep.topic, detail: topic, error: e);
     }
   }
 
@@ -247,9 +261,33 @@ class FCMService {
         ApiEndpoints.deviceTokens,
         data: {'token': token, 'platform': _platformLabel()},
       );
-    } catch (_) {
-      // Swallow — next refresh or next login will retry. Auth interceptor handles 401.
+    } catch (e) {
+      // Next refresh or next login will retry. Auth interceptor handles 401.
+      _reportFailure(_PushStep.registerToken, error: e);
     }
+  }
+
+  /// Push setup fails quietly by design (the app must keep working without
+  /// push), so each failed step is reported as a warning — release builds
+  /// ship warning+ to the backend client-logs. Never include the token itself.
+  void _reportFailure(_PushStep step, {Object? detail, Object? error}) {
+    // Step + detail go in the message: the server log line shows only that.
+    final text = [
+      '[FCMService] push setup failed at ${step.code}: ${step.message}',
+      if (detail != null) '$detail',
+      if (error != null) '$error',
+    ].join(' | ');
+    debugPrint(text);
+    _telemetry?.log(
+      TelemetryLevel.warning,
+      text,
+      error: error,
+      attributes: {
+        'push.step': step.code,
+        'push.platform': _platformLabel(),
+        if (detail != null) 'push.detail': '$detail',
+      },
+    );
   }
 
   static String _platformLabel() {
@@ -263,6 +301,22 @@ class FCMService {
         return Platform.operatingSystem;
     }
   }
+}
+
+/// Push-setup steps that can fail; reported to telemetry by FCMService.
+enum _PushStep {
+  firebaseUnavailable('firebase_unavailable', 'Firebase not initialized'),
+  permission('permission', 'Notification permission not granted'),
+  apnsToken('apns_token', 'APNs token never arrived'),
+  getToken('get_token', 'getToken failed'),
+  nullToken('get_token', 'getToken returned null'),
+  registerToken('register_token', 'POST device-tokens failed'),
+  topic('topic', 'Topic update failed');
+
+  const _PushStep(this.code, this.message);
+
+  final String code;
+  final String message;
 }
 
 /// Top-level background message handler (required by Firebase).

@@ -44,6 +44,7 @@ final fcmServiceProvider = Provider<FCMService>((ref) {
     ref: ref,
     storage: storage,
     apiClient: ref.watch(apiClientProvider),
+    telemetry: ref.watch(telemetryServiceProvider),
   );
 });
 
