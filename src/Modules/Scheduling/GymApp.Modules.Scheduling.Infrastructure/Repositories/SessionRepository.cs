@@ -53,6 +53,7 @@ internal sealed class SessionRepository : ISessionRepository
         return await InChronologicalOrder(_dbContext.Sessions
                 .AsNoTracking()
                 .Include(s => s.ExerciseLogs)
+                .Include(s => s.TrainerLog)
                 .Where(s => s.MemberId == member.MemberId
                     && s.GymId == member.GymId
                     && s.Status == SessionStatus.Completed

@@ -30,8 +30,13 @@ ProgressJourney _journeyWithGoal(ProgressGoalType goal) => ProgressJourney.from(
       ProgressJourneyModel(userId: 'm1', entries: const [], goal: ProgressGoalModel(goal: goal)),
     );
 
-Future<void> _pump(WidgetTester tester, ExerciseProgressModel board,
-    {ProgressGoalType goal = ProgressGoalType.buildMuscle, String locale = 'en'}) async {
+/// What the member has: their goal, app language, and a used-up trial (if any).
+typedef _Member = ({ProgressGoalType goal, String locale, SessionPackageModel? finishedTrial});
+
+const _Member _defaultMember = (goal: ProgressGoalType.buildMuscle, locale: 'en', finishedTrial: null);
+
+Future<void> _pump(WidgetTester tester, ExerciseProgressModel board, {_Member member = _defaultMember}) async {
+  final (:goal, :locale, :finishedTrial) = member;
   tester.view.physicalSize = const Size(1080, 6000);
   tester.view.devicePixelRatio = 2.5;
   addTearDown(tester.view.reset);
@@ -40,7 +45,8 @@ Future<void> _pump(WidgetTester tester, ExerciseProgressModel board,
       featureFlagServiceProvider.overrideWithValue(_PtFlags()),
       myExerciseProgressProvider.overrideWith((ref) async => board),
       progressJourneyProvider.overrideWith((ref) async => _journeyWithGoal(goal)),
-      finishedTrialProvider.overrideWithValue(null),
+      finishedTrialProvider.overrideWithValue(finishedTrial),
+      myPackageInterestProvider.overrideWith((ref) async => MyPackageInterest.none),
       myTrialRecapProvider.overrideWith((ref) async => null),
       activePackagesProvider.overrideWith((ref) async => const <SessionPackageModel>[]),
     ],
@@ -58,15 +64,19 @@ void main() {
   testWidgets('trial member sees the coach numbers framed by their goal and the keep-training line', (tester) async {
     await _pump(tester, trialBoard());
 
-    expect(find.text('Exercise progress'), findsOneWidget);
+    expect(find.text('My training'), findsOneWidget);
     expect(find.text('Goal: build muscle — we follow your working weight'), findsOneWidget);
     expect(find.text('Stronger on 1 of 1 exercises'), findsOneWidget);
+    expect(find.text('Sessions'), findsOneWidget);
+    expect(find.textContaining('Session 3 · 8/11'), findsOneWidget);
     expect(find.text('Bench press'), findsOneWidget);
     expect(find.textContaining('Keep training with your coach'), findsOneWidget);
   });
 
   testWidgets('lose-fat goal leads with total work', (tester) async {
-    await _pump(tester, trialBoard(), goal: ProgressGoalType.loseFat);
+    await _pump(tester, trialBoard(), member: (goal: ProgressGoalType.loseFat, locale: 'en', finishedTrial: null));
+    await tester.tap(find.text('Exercises'));
+    await tester.pumpAndSettle();
 
     expect(find.textContaining('More work on 1 of 1 exercises'), findsOneWidget);
     expect(find.textContaining('Total work:'), findsOneWidget);
@@ -79,10 +89,21 @@ void main() {
   });
 
   testWidgets('Arabic screen renders right-to-left', (tester) async {
-    await _pump(tester, trialBoard(), locale: 'ar');
+    await _pump(tester, trialBoard(), member: (goal: ProgressGoalType.buildMuscle, locale: 'ar', finishedTrial: null));
 
-    expect(find.text('تقدم التمارين'), findsOneWidget);
+    expect(find.text('تمريني'), findsOneWidget);
     expect(Directionality.of(tester.element(find.text('ضغط صدر'))), TextDirection.rtl);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('trial used up: the keep-training card leads the screen', (tester) async {
+    const trial = SessionPackageModel(
+        id: 'p1', status: 'Exhausted', isTrial: true, trainerName: 'Coach Ali', totalSessions: 3, remainingSessions: 0);
+    await _pump(tester, trialBoard(), member: (goal: ProgressGoalType.buildMuscle, locale: 'en', finishedTrial: trial));
+
+    final card = find.text('Your free sessions are done 🎉');
+    expect(card, findsOneWidget);
+    expect(find.textContaining('carry on with a package'), findsOneWidget);
+    expect(tester.getTopLeft(card).dy, lessThan(tester.getTopLeft(find.text('Sessions')).dy));
   });
 }

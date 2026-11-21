@@ -1,34 +1,50 @@
 import 'package:flutter/material.dart';
 
 import '../../progress_journey/progress_journey_model.dart';
-import '../../theme/app_colors.dart';
-import '../../widgets/app_card.dart';
 import '../../widgets/empty_state.dart';
 import '../exercise_insights.dart';
 import '../exercise_progress_model.dart';
 import '../exercise_progress_strings.dart';
+import '../session_strings.dart';
+import 'board_insight_card.dart';
 import 'exercise_card.dart';
+import 'session_timeline.dart';
 
-/// pt.exercise_progress: the member's board — goal story, day tabs (Push / Pull / Legs …) and
-/// one card per exercise. Shared by the trainee app (own board) and the trainer app (a client's).
+/// How the board is read: session by session (default) or exercise by exercise.
+enum ExerciseBoardTab { sessions, exercises }
+
+/// pt.exercise_progress: the member's board — goal story, then either every session (newest
+/// first, with the coach's recap) or day tabs (Push / Pull / Legs …) with one card per exercise.
+/// Shared by the trainee app (own board) and the trainer app (a client's).
 class ExerciseProgressView extends StatefulWidget {
   final ExerciseProgressModel board;
   final ProgressGoalType? goal;
   final bool isArabic;
 
-  /// Shown under the cards, e.g. the trainee's "keep training" card during the trial.
+  /// Shown above everything, e.g. the trainee's "keep training" card once the trial is over.
+  final Widget? header;
+
+  /// Shown under the cards, e.g. the trainee's "keep tracking" line during the trial.
   final Widget? footer;
 
   /// Empty-state text; defaults to the trainee wording.
   final String? emptyBody;
+
+  final ExerciseBoardTab initialTab;
+
+  /// Opens a session's full details; session cards show no link when null.
+  final ValueChanged<String>? onOpenSession;
 
   const ExerciseProgressView({
     super.key,
     required this.board,
     required this.goal,
     required this.isArabic,
+    this.header,
     this.footer,
     this.emptyBody,
+    this.initialTab = ExerciseBoardTab.sessions,
+    this.onOpenSession,
   });
 
   @override
@@ -36,74 +52,71 @@ class ExerciseProgressView extends StatefulWidget {
 }
 
 class _ExerciseProgressViewState extends State<ExerciseProgressView> {
+  late ExerciseBoardTab _tab = widget.initialTab;
   TrainingDayModel? _day;
 
   @override
   Widget build(BuildContext context) {
     final strings = ExerciseProgressStrings(widget.isArabic);
     final board = widget.board;
-    if (board.isEmpty) {
-      return Column(children: [
-        EmptyState(icon: Icons.fitness_center, title: strings.emptyTitle, subtitle: widget.emptyBody ?? strings.emptyBody),
-        if (widget.footer != null) widget.footer!,
-      ]);
-    }
-    final lead = ExerciseLead.forGoal(widget.goal);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _InsightCard(board: board, goal: widget.goal, strings: strings),
-        const SizedBox(height: 12),
-        if (board.days.length > 1) _DayChips(days: board.days, selected: _day, strings: strings, onSelected: _select),
-        const SizedBox(height: 8),
-        for (final exercise in board.exercisesFor(_day)) ExerciseCard(exercise: exercise, lead: lead, strings: strings),
+        if (widget.header != null) widget.header!,
+        if (board.isEmpty)
+          EmptyState(icon: Icons.fitness_center, title: strings.emptyTitle, subtitle: widget.emptyBody ?? strings.emptyBody)
+        else ...[
+          BoardInsightCard(board: board, goal: widget.goal, strings: strings),
+          const SizedBox(height: 12),
+          _TabSwitch(tab: _tab, strings: strings, onChanged: (tab) => setState(() => _tab = tab)),
+          const SizedBox(height: 12),
+          if (_tab == ExerciseBoardTab.sessions)
+            SessionTimeline(board: board, strings: strings, onOpenSession: widget.onOpenSession)
+          else
+            ..._exercises(board, strings),
+        ],
         if (widget.footer != null) widget.footer!,
       ],
     );
   }
 
+  List<Widget> _exercises(ExerciseProgressModel board, ExerciseProgressStrings strings) {
+    final lead = ExerciseLead.forGoal(widget.goal);
+    return [
+      if (board.days.length > 1) _DayChips(days: board.days, selected: _day, strings: strings, onSelected: _select),
+      const SizedBox(height: 8),
+      for (final exercise in board.exercisesFor(_day)) ExerciseCard(exercise: exercise, lead: lead, strings: strings),
+    ];
+  }
+
   void _select(TrainingDayModel? day) => setState(() => _day = day);
 }
 
-class _InsightCard extends StatelessWidget {
-  final ExerciseProgressModel board;
-  final ProgressGoalType? goal;
+class _TabSwitch extends StatelessWidget {
+  final ExerciseBoardTab tab;
   final ExerciseProgressStrings strings;
+  final ValueChanged<ExerciseBoardTab> onChanged;
 
-  const _InsightCard({required this.board, required this.goal, required this.strings});
+  const _TabSwitch({required this.tab, required this.strings, required this.onChanged});
 
   @override
-  Widget build(BuildContext context) {
-    final insight = BoardInsight.of(board, goal);
-    final badges = strings.badges(insight);
-    final text = Theme.of(context).textTheme;
-    final summary = board.summary;
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(strings.goalFocus(goal), style: text.labelMedium?.copyWith(color: AppColors.grey500)),
-          const SizedBox(height: 6),
-          Text(strings.headline(insight), style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-          if (badges.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(badges, style: text.bodySmall?.copyWith(color: AppColors.success, fontWeight: FontWeight.w600)),
-          ],
-          const SizedBox(height: 12),
-          Text(strings.trialProgress(summary), style: text.bodySmall),
-          if (summary.isTrialView && summary.trialSessionsTotal > 0) ...[
-            const SizedBox(height: 6),
-            LinearProgressIndicator(
-              value: (summary.trialSessionsUsed / summary.trialSessionsTotal).clamp(0, 1).toDouble(),
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ],
+  Widget build(BuildContext context) => SegmentedButton<ExerciseBoardTab>(
+        showSelectedIcon: false,
+        segments: [
+          ButtonSegment(
+            value: ExerciseBoardTab.sessions,
+            icon: const Icon(Icons.event_note_outlined),
+            label: Text(strings.tabSessions),
+          ),
+          ButtonSegment(
+            value: ExerciseBoardTab.exercises,
+            icon: const Icon(Icons.fitness_center),
+            label: Text(strings.tabExercises),
+          ),
         ],
-      ),
-    );
-  }
+        selected: {tab},
+        onSelectionChanged: (selection) => onChanged(selection.first),
+      );
 }
 
 class _DayChips extends StatelessWidget {

@@ -23,7 +23,7 @@ internal static class ExerciseProgressCalculator
             .OrderBy(h => h.Entries[0].SessionNumber)
             .ToList();
 
-        return new ExerciseProgressDto(Summarize(numbered, scope), Days(numbered), exercises);
+        return new ExerciseProgressDto(Summarize(numbered, scope), Days(numbered), exercises, numbered.Select(ToSummary).ToList());
     }
 
     /// <summary>Same exercise across sessions: the library id, else the name ignoring case and spacing.</summary>
@@ -33,7 +33,8 @@ internal static class ExerciseProgressCalculator
 
     private static ExerciseHistoryDto ToHistory(string key, List<(SessionExerciseLog Log, ProgressSession Session)> rows)
     {
-        var entries = rows.Select(r => ExerciseEntryFactory.Create(r.Log, r.Session)).ToList();
+        var entries = ExerciseTrendCalculator.FlagEachSession(
+            rows.Select(r => ExerciseEntryFactory.Create(r.Log, r.Session)).ToList());
         var latest = rows[^1].Log;
 
         return new ExerciseHistoryDto(
@@ -44,6 +45,19 @@ internal static class ExerciseProgressCalculator
             ExerciseTrendCalculator.Calculate(entries),
             entries[^1].Target);
     }
+
+    private static SessionSummaryDto ToSummary(ProgressSession ps) =>
+        new(
+            ps.Session.Id,
+            ps.Number,
+            ps.Session.ScheduledDate,
+            ps.Session.DayLabel,
+            ps.IsTrial,
+            ps.Session.ExerciseLogs.OrderBy(l => l.OrderIndex).Select(KeyOf).Distinct().ToList(),
+            ToRecap(ps.Session.TrainerLog));
+
+    private static SessionCoachRecapDto? ToRecap(TrainerLog? log) =>
+        log is null ? null : new(log.Feedback, log.NextSessionFocus, log.ClientEffortRating);
 
     private static IReadOnlyList<TrainingDayDto> Days(IReadOnlyList<ProgressSession> sessions) =>
         sessions

@@ -52,6 +52,17 @@ public sealed class PtExerciseProgressEndToEndTests : BaseIntegrationTest
         bench.GetProperty("nextTarget").GetProperty("weight").GetDecimal().Should().Be(62.5m);
         bench.GetProperty("entries")[0].GetProperty("isTrialSession").GetBoolean().Should().BeTrue();
         bench.GetProperty("entries")[0].GetProperty("notes").GetString().Should().Be("Elbows in");
+        var sessions = board.GetProperty("sessions");
+        sessions.EnumerateArray().Select(s => s.GetProperty("sessionId").GetGuid()).Should().Equal(push, pull);
+        sessions[0].GetProperty("exerciseKeys")[0].GetString().Should().Be("bench press");
+        sessions[0].GetProperty("coachRecap").ValueKind.Should().Be(JsonValueKind.Null);
+
+        // The coach's post-session recap reaches the session on the board.
+        await LogRecapAsync(coach, pull);
+        var recap = (await BoardAsync(trainee)).GetProperty("sessions")[1].GetProperty("coachRecap");
+        recap.GetProperty("feedback").GetString().Should().Be("Strong pulls");
+        recap.GetProperty("nextSessionFocus").GetString().Should().Be("Heavier rows");
+        recap.GetProperty("effortRating").GetInt32().Should().Be(4);
 
         // The coach sees the same board; another coach does not.
         (await DataAsync(coach, $"api/v1/scheduling/clients/{_traineeId}/exercise-progress"))
@@ -207,6 +218,19 @@ public sealed class PtExerciseProgressEndToEndTests : BaseIntegrationTest
         var response = await coach.PostAsJsonAsync(
             $"api/v1/scheduling/sessions/{log.SessionId}/exercise-logs", new { dayLabel = log.DayLabel, items = log.Items });
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+    }
+
+    private static async Task LogRecapAsync(HttpClient coach, Guid sessionId)
+    {
+        var response = await coach.PostAsJsonAsync($"api/v1/scheduling/sessions/{sessionId}/trainer-log", new
+        {
+            exercisesPerformed = "Rows",
+            clientEffortRating = 4,
+            feedback = "Strong pulls",
+            nextSessionFocus = "Heavier rows",
+            attendanceConfirmed = true,
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent, await response.Content.ReadAsStringAsync());
     }
 
     /// <summary>Moves earlier quick-logs out of the 5-minute double-tap window (simulates time passing).</summary>

@@ -5,8 +5,12 @@ import '../../widgets/app_card.dart';
 import '../exercise_insights.dart';
 import '../exercise_progress_model.dart';
 import '../exercise_progress_strings.dart';
+import '../session_insights.dart';
+import '../session_strings.dart';
 import 'exercise_history_sheet.dart';
 import 'exercise_sparkline.dart';
+import 'progress_badge.dart';
+import 'session_card.dart';
 
 /// One exercise: latest numbers, change for the goal, badges, next target and a trend line.
 class ExerciseCard extends StatelessWidget {
@@ -32,7 +36,7 @@ class ExerciseCard extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text(exercise.displayName(strings.isArabic), style: text.titleMedium)),
-              if (exercise.trend.latestIsPersonalBest) _Badge(strings.personalBest, AppColors.accentGold),
+              if (exercise.trend.latestIsPersonalBest) ProgressBadge(strings.personalBest, AppColors.accentGold, icon: Icons.emoji_events),
             ],
           ),
           const SizedBox(height: 4),
@@ -80,35 +84,20 @@ class _TargetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final target = exercise.nextTarget;
     final hit = exercise.trend.hitPreviousTarget;
-    if (target == null && hit == null) return const SizedBox.shrink();
+    final delta = ExerciseDelta.forEntry(exercise, exercise.latest!);
+    if (target == null && hit == null && delta.isFirstTime) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
         runSpacing: 6,
         children: [
+          if (!delta.isFirstTime) DeltaBadge(delta: delta, strings: strings, prefix: strings.vsLastTime),
           if (hit != null)
-            _Badge(hit ? strings.targetHit : strings.targetMissed, hit ? AppColors.success : AppColors.warning),
-          if (target != null) _Badge('${strings.nextTarget}: ${strings.target(target)}', AppColors.info),
+            ProgressBadge(hit ? strings.targetHit : strings.targetMissed, hit ? AppColors.success : AppColors.warning),
+          if (target != null) ProgressBadge('${strings.nextTarget}: ${strings.target(target)}', AppColors.info),
         ],
       ),
     );
   }
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _Badge(this.label, this.color);
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w700),
-        ),
-      );
 }

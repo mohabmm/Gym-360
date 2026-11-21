@@ -11,7 +11,7 @@ internal static class ExerciseTrendCalculator
 {
     public static ExerciseTrendDto Calculate(IReadOnlyList<ExerciseEntryDto> all)
     {
-        var entries = all.Where(e => e.Measure == all[^1].Measure).ToList();
+        var entries = ComparableWithLatest(all);
         var first = entries[0];
         var latest = entries[^1];
 
@@ -29,6 +29,18 @@ internal static class ExerciseTrendCalculator
             entries.Max(e => e.BestSeconds),
             PercentChange(first.BestSeconds, latest.BestSeconds));
     }
+
+    /// <summary>Each entry flagged as it stood that day: a new best, and whether it met the target set the time before.</summary>
+    public static IReadOnlyList<ExerciseEntryDto> FlagEachSession(IReadOnlyList<ExerciseEntryDto> all) =>
+        all.Select((entry, i) =>
+            {
+                var upToThen = ComparableWithLatest(all.Take(i + 1).ToList());
+                return entry with { IsPersonalBest = IsPersonalBest(upToThen), HitPreviousTarget = HitPreviousTarget(upToThen) };
+            })
+            .ToList();
+
+    private static List<ExerciseEntryDto> ComparableWithLatest(IReadOnlyList<ExerciseEntryDto> all) =>
+        all.Where(e => e.Measure == all[^1].Measure).ToList();
 
     private static decimal? PercentChange(decimal? from, decimal? to)
     {

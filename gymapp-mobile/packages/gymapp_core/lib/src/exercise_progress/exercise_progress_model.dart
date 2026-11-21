@@ -1,3 +1,5 @@
+import 'session_summary_model.dart';
+
 /// pt.exercise_progress: backend `ExerciseProgressDto` from `GET /scheduling/me/exercise-progress`
 /// and `GET /scheduling/clients/{id}/exercise-progress`.
 class ExerciseProgressModel {
@@ -5,15 +7,33 @@ class ExerciseProgressModel {
   final List<TrainingDayModel> days;
   final List<ExerciseHistoryModel> exercises;
 
-  const ExerciseProgressModel({required this.summary, required this.days, required this.exercises});
+  /// Every logged session, oldest first.
+  final List<SessionSummaryModel> sessions;
 
-  factory ExerciseProgressModel.fromJson(Map<String, dynamic> json) => ExerciseProgressModel(
-        summary: ExerciseProgressSummaryModel.fromJson(_map(json['summary'])),
-        days: _list(json['days'], TrainingDayModel.fromJson),
-        exercises: _list(json['exercises'], ExerciseHistoryModel.fromJson),
-      );
+  const ExerciseProgressModel({
+    required this.summary,
+    required this.days,
+    required this.exercises,
+    this.sessions = const [],
+  });
+
+  factory ExerciseProgressModel.fromJson(Map<String, dynamic> json) {
+    final exercises = _list(json['exercises'], ExerciseHistoryModel.fromJson);
+    final sessions = _list(json['sessions'], SessionSummaryModel.fromJson);
+    return ExerciseProgressModel(
+      summary: ExerciseProgressSummaryModel.fromJson(_map(json['summary'])),
+      days: _list(json['days'], TrainingDayModel.fromJson),
+      exercises: exercises,
+      sessions: sessions.isEmpty ? SessionSummaryModel.fromEntries(exercises) : sessions,
+    );
+  }
 
   bool get isEmpty => exercises.isEmpty;
+
+  /// The most recent session; null on an empty board.
+  SessionSummaryModel? get latestSession => sessions.isEmpty ? null : sessions.last;
+
+  ExerciseHistoryModel? exercise(String key) => exercises.where((e) => e.key == key).firstOrNull;
 
   /// The day's exercises in the order last trained; every exercise when [day] is null.
   List<ExerciseHistoryModel> exercisesFor(TrainingDayModel? day) {
@@ -51,6 +71,9 @@ class ExerciseProgressSummaryModel {
         firstSessionDate: _date(json['firstSessionDate']),
         lastSessionDate: _date(json['lastSessionDate']),
       );
+
+  /// Still on the free trial with sessions left to book.
+  bool get hasFreeSessionsLeft => isTrialView && trialSessionsUsed < trialSessionsTotal;
 }
 
 class TrainingDayModel {
@@ -158,6 +181,12 @@ class ExerciseEntryModel {
   final int? totalSeconds;
   final int? bestSeconds;
 
+  /// This session beat every earlier time the exercise was done.
+  final bool isPersonalBest;
+
+  /// Met the coach's target from the time before; null when there was none.
+  final bool? hitPreviousTarget;
+
   const ExerciseEntryModel({
     required this.sessionId,
     required this.date,
@@ -176,6 +205,8 @@ class ExerciseEntryModel {
     this.setEntries = const [],
     this.totalSeconds,
     this.bestSeconds,
+    this.isPersonalBest = false,
+    this.hitPreviousTarget,
   });
 
   bool get isTimed => measure == ExerciseMeasure.time;
@@ -198,6 +229,8 @@ class ExerciseEntryModel {
         setEntries: _list(json['setEntries'], ExerciseSetEntryModel.fromJson),
         totalSeconds: (json['totalSeconds'] as num?)?.toInt(),
         bestSeconds: (json['bestSeconds'] as num?)?.toInt(),
+        isPersonalBest: json['isPersonalBest'] == true,
+        hitPreviousTarget: json['hitPreviousTarget'] as bool?,
       );
 }
 

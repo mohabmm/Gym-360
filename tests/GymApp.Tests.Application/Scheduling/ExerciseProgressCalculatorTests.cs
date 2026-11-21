@@ -68,6 +68,58 @@ public sealed class ExerciseProgressCalculatorTests
     }
 
     [Fact]
+    public void Sessions_list_each_logged_session_with_its_exercises_in_the_coachs_order()
+    {
+        var first = Logged(new On(1, "Push Day"), BenchPress with { OrderIndex = 1 }, Lift("Shoulder press") with { OrderIndex = 0 });
+        var second = Logged(new On(4), Row);
+
+        var sessions = Board(first, second).Dto.Sessions;
+
+        sessions.Select(s => s.SessionId).Should().Equal(first.Id, second.Id);
+        sessions.Select(s => s.SessionNumber).Should().Equal(1, 2);
+        sessions[0].ExerciseKeys.Should().Equal("shoulder press", "bench press");
+        sessions[0].DayLabel.Should().Be("Push Day");
+        sessions[0].Date.Should().Be(new DateOnly(2026, 11, 1));
+        sessions[0].IsTrialSession.Should().BeTrue();
+        sessions[1].DayLabel.Should().BeNull();
+    }
+
+    [Fact]
+    public void Every_entry_is_flagged_as_it_stood_on_that_day()
+    {
+        var target = new ExerciseTarget(3, "10", 62.5m);
+        var entries = Board(
+                Logged(new On(1), BenchPress with { Weight = 60m, Target = target }),
+                Logged(new On(3), BenchPress with { Weight = 62.5m }),
+                Logged(new On(5), BenchPress with { Weight = 60m }))
+            .Single.Entries;
+
+        entries.Select(e => e.IsPersonalBest).Should().Equal(false, true, false);
+        entries.Select(e => e.HitPreviousTarget).Should().Equal(null, true, null);
+    }
+
+    [Fact]
+    public void A_session_carries_the_coachs_recap_once_written()
+    {
+        var withRecap = Logged(new On(1), BenchPress);
+        withRecap.LogTrainerSession(new TrainerLogDetails
+        {
+            ExercisesPerformed = "Bench",
+            ClientEffortRating = 4,
+            Feedback = "Great energy today",
+            NextSessionFocus = "Add 2.5 kg on bench",
+            AttendanceConfirmed = true,
+        });
+        var withoutRecap = Logged(new On(2), BenchPress);
+
+        var sessions = Board(withRecap, withoutRecap).Dto.Sessions;
+
+        sessions[0].CoachRecap.Should().Be(new Modules.Scheduling.Application.DTOs.SessionCoachRecapDto(
+            "Great energy today", "Add 2.5 kg on bench", 4));
+        sessions[1].CoachRecap.Should().BeNull();
+    }
+
+    [Fact]
     public void Summary_counts_logged_and_trial_sessions()
     {
         var summary = Board(Logged(new On(1), BenchPress), Logged(new On(2), BenchPress)).Dto.Summary;

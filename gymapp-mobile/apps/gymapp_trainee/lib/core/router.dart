@@ -360,7 +360,7 @@ typedef _MoreDestination = (IconData, String, String, String, String?);
 
 const List<_MoreDestination> _moreFeatures = [
   (Icons.card_membership, 'باقاتي', 'My packages', AppRoutes.membership, FeatureFlagKeys.ptPackages),
-  (Icons.fitness_center, 'تقدم التمارين', 'Exercise progress', AppRoutes.exerciseProgress, FeatureFlagKeys.ptExerciseProgress),
+  (Icons.fitness_center, 'تمريني', 'My training', AppRoutes.exerciseProgress, FeatureFlagKeys.ptExerciseProgress),
   (Icons.qr_code, 'تسجيل الحضور', 'Check-in', AppRoutes.checkin, FeatureFlagKeys.gymAttendance),
   (Icons.restaurant_outlined, 'التغذية', 'Nutrition', AppRoutes.nutrition, FeatureFlagKeys.nutrition),
   (Icons.chat_outlined, 'المحادثة', 'Chat', AppRoutes.chat, FeatureFlagKeys.communicationChat),

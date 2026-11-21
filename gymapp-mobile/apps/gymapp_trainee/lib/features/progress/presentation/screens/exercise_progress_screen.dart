@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
+
+import '../../../../core/router.dart';
 
 import '../../../scheduling/presentation/widgets/pt_conversion_widgets.dart';
 import '../providers/exercise_progress_providers.dart';
 import '../providers/progress_providers.dart';
 
-/// pt.exercise_progress: the member's board — what the coach recorded per day and per
-/// exercise, read against the member's goal. During the free trial it holds the trial
-/// sessions; after paying it keeps every session.
+/// pt.exercise_progress: "My training" — what the coach recorded, session by session (default)
+/// or exercise by exercise, read against the member's goal. During the free trial it holds the
+/// trial sessions and leads with the "keep training" card once they are used; after paying it
+/// keeps every session.
 class ExerciseProgressScreen extends ConsumerWidget {
   const ExerciseProgressScreen({super.key});
 
@@ -33,7 +37,9 @@ class ExerciseProgressScreen extends ConsumerWidget {
                     board: board,
                     goal: goal,
                     isArabic: isArabic,
+                    header: board.summary.isTrialView ? _ConversionHeader(board: board, strings: strings) : null,
                     footer: board.summary.isTrialView ? _TrialFooter(strings: strings) : null,
+                    onOpenSession: (id) => context.push(AppRoutes.sessionDetail.replaceFirst(':sessionId', id)),
                   ),
                 ],
               ),
@@ -49,7 +55,34 @@ class ExerciseProgressScreen extends ConsumerWidget {
   }
 }
 
-/// Trial view: why paying matters for the board, plus the conversion card once the trial ends.
+/// Trial over (or the coach sent a plan): the conversion card leads the screen, with what the
+/// member keeps by continuing. Renders nothing while the trial is still running.
+class _ConversionHeader extends ConsumerWidget {
+  final ExerciseProgressModel board;
+  final ExerciseProgressStrings strings;
+
+  const _ConversionHeader({required this.board, required this.strings});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final finished = ref.watch(finishedTrialProvider) != null;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const TrialConversionCard(),
+          if (finished) ...[
+            const SizedBox(height: 6),
+            Text(strings.keepProgress(board), style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Trial still running: a quiet line on why tracking matters.
 class _TrialFooter extends StatelessWidget {
   final ExerciseProgressStrings strings;
 
@@ -58,13 +91,6 @@ class _TrialFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(strings.keepTracking, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
-            const SizedBox(height: 8),
-            const TrialConversionCard(),
-          ],
-        ),
+        child: Text(strings.keepTracking, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.center),
       );
 }
