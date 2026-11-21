@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/providers.dart';
+import '../package_numbers.dart';
 import '../providers/billing_provider.dart';
 import '../../../../core/error_text.dart';
 
@@ -110,8 +111,8 @@ class PackageTemplatesScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             AppTextField(
               controller: priceCtrl,
-              label: isArabic ? 'السعر' : 'Price',
-              keyboardType: TextInputType.number,
+              label: isArabic ? 'السعر (جنيه)' : 'Price (EGP)',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
           ],
         ),
@@ -124,8 +125,8 @@ class PackageTemplatesScreen extends ConsumerWidget {
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               final name = nameCtrl.text.trim();
-              final sessionCount = int.tryParse(sessionsCtrl.text.trim()) ?? 0;
-              final totalPrice = double.tryParse(priceCtrl.text.trim()) ?? 0;
+              final sessionCount = PackageNumbers.sessions(sessionsCtrl.text) ?? 0;
+              final totalPrice = PackageNumbers.price(priceCtrl.text) ?? 0;
               final gymId = ref.read(currentGymIdProvider);
 
               String? validationError;

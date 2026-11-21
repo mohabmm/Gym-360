@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../../../../core/error_text.dart';
+import '../../../../core/permissions.dart';
 import '../../../../core/providers.dart';
 import '../../../members/presentation/providers/members_provider.dart';
 import '../../../members/presentation/widgets/current_coach.dart';
@@ -10,6 +11,7 @@ import '../../../members/presentation/widgets/member_picker.dart';
 import '../../../trainers/presentation/providers/trainers_provider.dart';
 import '../providers/billing_provider.dart';
 import '../widgets/assign_package_sections.dart';
+import 'package_templates_screen.dart';
 
 /// Sell a session package at the desk: 1) find the member, 2) the coach (locked to the member's
 /// current coach while they have sessions left), 3) the package; then confirm.
@@ -176,11 +178,7 @@ class _AssignPackageScreenState extends ConsumerState<AssignPackageScreen> {
   Widget _templatesStep() => ref.watch(packageTemplatesProvider).when(
         data: (all) {
           final templates = all.where((t) => t.isActive).toList();
-          if (templates.isEmpty) {
-            return StepHint(_ar
-                ? 'لا توجد باقات بعد. أنشئ باقة من «قوالب الباقات».'
-                : 'No packages yet. Create one in "Package Templates".');
-          }
+          if (templates.isEmpty) return _noTemplates();
           return Column(children: [
             for (final t in templates)
               TemplateCard(
@@ -194,4 +192,34 @@ class _AssignPackageScreenState extends ConsumerState<AssignPackageScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => StepHint(_ar ? 'تعذر تحميل الباقات' : "Couldn't load packages"),
       );
+
+  /// No package to sell yet: owners and managers create one right here; the desk is told who can.
+  Widget _noTemplates() {
+    final role = ref.watch(staffRoleProvider) ?? '';
+    if (!StaffPermissions.hasPermission(role, StaffPermission.managePackageTemplates)) {
+      return StepHint(_ar
+          ? 'لا توجد باقات بعد. اطلب من المدير أو المالك إنشاء باقة من «قوالب الباقات».'
+          : 'No packages yet. Ask a manager or the owner to create one in "Package Templates".');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StepHint(_ar
+            ? 'لا توجد باقات بعد. أنشئ باقة (عدد الحصص والسعر) ثم ارجع لإكمال التعيين.'
+            : 'No packages yet. Create one (sessions and price), then come back to finish.'),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const ValueKey('create-package-template'),
+          icon: const Icon(Icons.add),
+          label: Text(_ar ? 'إنشاء باقة' : 'Create package'),
+          onPressed: _openTemplates,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openTemplates() async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PackageTemplatesScreen()));
+    if (mounted) ref.invalidate(packageTemplatesProvider);
+  }
 }
