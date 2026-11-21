@@ -63,7 +63,7 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
   Future<void> _open() async {
     final strings = RecordSessionStrings(_isArabic(context));
     final router = GoRouter.of(context);
-    final draft = SessionTimeDraft(DateTime.now());
+    final draft = SessionTimeDraft(ref.read(clockProvider)());
     final name = _clientName;
     final result = await showModalBottomSheet<RecordedSession>(
       context: context,

@@ -29,7 +29,10 @@ Map<String, dynamic> _answer({bool already = false}) => {
       'startTime': '18:00:00',
     };
 
-Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? answer, int status = 200}) async {
+/// A fixed evening, so "just finished" is today whatever time the suite runs (CI runs after midnight too).
+final _evening = DateTime(2026, 11, 20, 18, 30);
+
+Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? answer, int status = 200, DateTime? now}) async {
   t.adapter.onPost(ApiEndpoints.sessionQuickLog,
       respond: (_) => status == 200 ? t.adapter.ok(answer ?? _answer()) : t.adapter.rawResponse(status, answer));
   tester.view.physicalSize = const Size(1200, 2400);
@@ -46,6 +49,7 @@ Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? answer, int statu
   await tester.pumpWidget(ProviderScope(
     overrides: [
       apiClientProvider.overrideWithValue(t.apiClient),
+      clockProvider.overrideWithValue(() => now ?? _evening),
       allClientPackagesProvider.overrideWith((ref) async => [_package]),
       clientNameByIdProvider.overrideWithValue(const {}),
       isFeatureEnabledProvider.overrideWith((ref, flag) => true),
@@ -82,6 +86,14 @@ void _theSheet() {
     expect(t.adapter.recorded.where((r) => r.method == 'POST'), isEmpty, reason: 'nothing is deducted before confirming');
   });
 
+  testWidgets('just after midnight the session that just finished started yesterday', (tester) async {
+    await _pump(tester, now: DateTime(2026, 11, 21, 0, 25));
+
+    final yesterday = tester.widget<ChoiceChip>(find.byKey(const ValueKey('day-yesterday')));
+    expect(yesterday.selected, isTrue);
+    expect(tester.widget<ChoiceChip>(find.byKey(const ValueKey('day-today'))).selected, isFalse);
+  });
+
   testWidgets('a forgotten session from yesterday is sent with its date, time and duration', (tester) async {
     await _pump(tester);
 
@@ -92,9 +104,8 @@ void _theSheet() {
     await tester.pumpAndSettle();
 
     final body = _sent();
-    final yesterday = DateUtils.dateOnly(DateTime.now()).subtract(const Duration(days: 1));
     expect(body['memberId'], kClientId);
-    expect(body['date'], '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}');
+    expect(body['date'], '2026-11-19');
     expect(body['startTime'], matches(RegExp(r'^\d\d:\d\d:00$')));
     expect(body['durationMinutes'], 60);
   });

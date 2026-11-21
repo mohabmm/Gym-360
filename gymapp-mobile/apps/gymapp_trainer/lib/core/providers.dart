@@ -15,6 +15,10 @@ final secureStorageProvider = Provider<SecureStorageService>((ref) {
 // ---------------------------------------------------------------------------
 // API Client
 // ---------------------------------------------------------------------------
+/// The current time. Overridden in tests so time-of-day defaults (e.g. "a session that just
+/// finished" falls on yesterday right after midnight) do not depend on when the test runs.
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
 final apiClientProvider = Provider<ApiClient>((ref) {
   final storage = ref.watch(secureStorageProvider);
   return ApiClient(

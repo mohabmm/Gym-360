@@ -35,8 +35,15 @@ const _template = SessionPackageTemplateModel(
 class _Desk {
   final SessionPackageModel? currentCoach;
   final String? fromMemberProfile;
+  final List<SessionPackageTemplateModel> templates;
+  final String role;
 
-  const _Desk({this.currentCoach, this.fromMemberProfile});
+  const _Desk({
+    this.currentCoach,
+    this.fromMemberProfile,
+    this.templates = const [_template],
+    this.role = AppConstants.roleManager,
+  });
 }
 
 Future<TestApiClient> _pump(WidgetTester tester, [_Desk desk = const _Desk()]) async {
@@ -53,7 +60,8 @@ Future<TestApiClient> _pump(WidgetTester tester, [_Desk desk = const _Desk()]) a
       memberDetailProvider.overrideWith((ref, id) async => _mona),
       memberCurrentCoachProvider.overrideWith((ref, id) async => desk.currentCoach),
       trainersProvider.overrideWith((ref) async => [_omar]),
-      packageTemplatesProvider.overrideWith((ref) async => [_template]),
+      packageTemplatesProvider.overrideWith((ref) async => desk.templates),
+      staffRoleProvider.overrideWithValue(desk.role),
     ],
     child: MaterialApp(
       locale: const Locale('en'),
@@ -140,6 +148,22 @@ void _coachAndPackage() {
     expect(find.byKey(const ValueKey('locked-coach')), findsOneWidget);
     expect(find.text('Coach Omar'), findsOneWidget);
     expect(find.byKey(const ValueKey('trainer-dropdown')), findsNothing);
+  });
+
+  testWidgets('no packages yet: a manager can create one from here', (tester) async {
+    await _pump(tester, const _Desk(templates: []));
+
+    await tester.tap(find.byKey(const ValueKey('create-package-template')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Session Packages'), findsOneWidget, reason: 'Package Templates opens on top');
+  });
+
+  testWidgets('no packages yet: the desk is told who can create one', (tester) async {
+    await _pump(tester, const _Desk(templates: [], role: AppConstants.roleReceptionist));
+
+    expect(find.byKey(const ValueKey('create-package-template')), findsNothing);
+    expect(find.textContaining('Ask a manager or the owner'), findsOneWidget);
   });
 
   testWidgets('member, coach and package → confirm → POST without assignedBy', (tester) async {
