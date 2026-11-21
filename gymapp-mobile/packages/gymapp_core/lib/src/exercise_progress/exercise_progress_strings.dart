@@ -11,7 +11,7 @@ class ExerciseProgressStrings {
 
   String _t(String ar, String en) => isArabic ? ar : en;
 
-  String get title => _t('تقدم التمارين', 'Exercise progress');
+  String get title => _t('تمريني', 'My training');
   String get allDays => _t('الكل', 'All');
   String get otherDay => _t('أخرى', 'Other');
   String dayLabel(String? label) => label == null ? otherDay : ExerciseDays.display(label, isArabic);

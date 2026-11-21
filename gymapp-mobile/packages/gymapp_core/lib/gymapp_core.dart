@@ -80,9 +80,12 @@ export 'src/progress_journey/measurement_form/measurement_form_controller.dart';
 export 'src/progress_journey/measurement_form/measurement_form_strings.dart';
 export 'src/progress_journey/measurement_form/widgets/measurement_entry_page.dart';
 export 'src/exercise_progress/exercise_progress_model.dart';
+export 'src/exercise_progress/session_summary_model.dart';
+export 'src/exercise_progress/session_insights.dart';
 export 'src/exercise_progress/exercise_days.dart';
 export 'src/exercise_progress/exercise_insights.dart';
 export 'src/exercise_progress/exercise_progress_strings.dart';
+export 'src/exercise_progress/session_strings.dart';
 export 'src/exercise_progress/widgets/exercise_progress_view.dart';
 
 // Network

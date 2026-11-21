@@ -18,9 +18,11 @@ Future<void> pump(WidgetTester tester, Widget child, {bool arabic = false}) asyn
   await tester.pumpAndSettle();
 }
 
+const byExercise = ExerciseBoardTab.exercises;
+
 void main() {
   testWidgets('member: goal story, trial progress, day chips and exercise cards', (tester) async {
-    await pump(tester, ExerciseProgressView(board: trialBoard(), goal: ProgressGoalType.buildMuscle, isArabic: false));
+    await pump(tester, ExerciseProgressView(board: trialBoard(), goal: ProgressGoalType.buildMuscle, isArabic: false, initialTab: byExercise));
 
     expect(find.text('Goal: build muscle — we follow your working weight'), findsOneWidget);
     expect(find.text('Stronger on 1 of 1 exercises'), findsOneWidget);
@@ -36,7 +38,7 @@ void main() {
   });
 
   testWidgets('picking a day shows only its exercises', (tester) async {
-    await pump(tester, ExerciseProgressView(board: trialBoard(), goal: null, isArabic: false));
+    await pump(tester, ExerciseProgressView(board: trialBoard(), goal: null, isArabic: false, initialTab: byExercise));
 
     await tester.tap(find.text('Pull Day · 1'));
     await tester.pumpAndSettle();
@@ -46,7 +48,7 @@ void main() {
   });
 
   testWidgets('tapping an exercise opens its history with the coach note', (tester) async {
-    await pump(tester, ExerciseProgressView(board: trialBoard(), goal: ProgressGoalType.loseFat, isArabic: false));
+    await pump(tester, ExerciseProgressView(board: trialBoard(), goal: ProgressGoalType.loseFat, isArabic: false, initialTab: byExercise));
 
     await tester.tap(find.text('Bench press'));
     await tester.pumpAndSettle();
@@ -58,7 +60,7 @@ void main() {
   testWidgets('Arabic: right-to-left with Arabic names and labels', (tester) async {
     await pump(
       tester,
-      ExerciseProgressView(board: trialBoard(), goal: ProgressGoalType.buildMuscle, isArabic: true),
+      ExerciseProgressView(board: trialBoard(), goal: ProgressGoalType.buildMuscle, isArabic: true, initialTab: byExercise),
       arabic: true,
     );
 
