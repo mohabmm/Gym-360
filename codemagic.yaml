@@ -1,7 +1,14 @@
-# Codemagic CI/CD: every merge to `develop` ships the affected iOS apps to TestFlight.
+# Codemagic CI/CD: every merge to `develop` ships the affected iOS apps to TestFlight
+# and the affected Android apps to the Google Play **Internal testing** track.
+# Android never publishes to production: the workflows only name `track: internal`,
+# and the Play service account may only release to testing tracks.
 #
 # Each workflow builds only when its own app, the shared gymapp_core package, or
 # this file changed. A backend or web-only merge starts no build.
+#
+# Android auto-publish can be paused from the Main Portal (staging admin →
+# Settings → Release Automation). Each Android build reads the switch first and
+# cancels itself when it is off. It is on unless an admin turns it off.
 #
 # Signing uses the encrypted `gym360_apple` variable group on the Codemagic app:
 #   APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY_IDENTIFIER,
@@ -15,6 +22,18 @@ definitions:
     flutter: 3.44.9
     xcode: latest
     cocoapods: default
+
+  # Android signing + secrets come from the encrypted `gym360_android` variable group:
+  #   {STAFF,TRAINEE,TRAINER}_KEYSTORE_B64 (base64 upload keystore, alias `upload`)
+  #     and {STAFF,TRAINEE,TRAINER}_KEYSTORE_PASSWORD (store + key password);
+  #   GCLOUD_SERVICE_ACCOUNT_CREDENTIALS (Play
+  #     service-account JSON), CI_RELEASE_TOKEN (same value as the staging API's
+  #     Ci__ReleaseToken), CM_API_TOKEN (Codemagic API token, to cancel builds).
+  environment: &android_environment
+    flutter: 3.44.9
+    java: 17
+    # Each workflow sets GYM360_API_URL (the staging API that owns the switch)
+    # in its own `vars` — YAML merge keys do not deep-merge maps.
 
   triggering: &develop_merge
     events:
@@ -71,6 +90,53 @@ definitions:
           --create
         keychain add-certificates
         xcode-project use-profiles --project "$CM_BUILD_DIR/$APP_DIR/ios/Runner.xcodeproj"
+    - &android_keystore
+      name: Set up Android upload keystore
+      script: |
+        b64_var="${KEYSTORE_PREFIX}_KEYSTORE_B64"
+        pw_var="${KEYSTORE_PREFIX}_KEYSTORE_PASSWORD"
+        if [ -z "${!b64_var}" ] || [ -z "${!pw_var}" ]; then
+          echo "$b64_var / $pw_var missing from the gym360_android group — refusing to build unsigned."
+          exit 1
+        fi
+        keystore="$CM_BUILD_DIR/upload-keystore.jks"
+        echo "${!b64_var}" | base64 --decode > "$keystore"
+        # build.gradle signs release builds from these.
+        {
+          echo "CM_KEYSTORE_PATH=$keystore"
+          echo "CM_KEYSTORE_PASSWORD=${!pw_var}"
+          echo "CM_KEY_ALIAS=upload"
+          echo "CM_KEY_PASSWORD=${!pw_var}"
+        } >> "$CM_ENV"
+    - &android_release_gate
+      name: Check Main Portal Android auto-publish switch
+      script: |
+        set -o pipefail
+        if ! enabled=$(curl -fsS --max-time 30 --retry 3 \
+              -H "X-Ci-Token: $CI_RELEASE_TOKEN" \
+              "$GYM360_API_URL/api/v1/ci/release-settings" \
+              | jq -r '.data.androidInternalAutoPublish | if type == "boolean" then tostring else error("missing") end'); then
+          echo "Could not read the auto-publish switch from $GYM360_API_URL — not publishing."
+          exit 1
+        fi
+        if [ "$enabled" = "true" ]; then
+          echo "Android auto-publish is ON — building for Play Internal testing."
+          exit 0
+        fi
+        echo "Android auto-publish is OFF in the Main Portal — cancelling this build."
+        curl -fsS -X POST -H "x-auth-token: $CM_API_TOKEN" \
+          "https://api.codemagic.io/builds/$CM_BUILD_ID/cancel" || true
+        # Codemagic stops the build within seconds; never fall through to publishing.
+        sleep 120
+        exit 1
+    - &build_aab
+      name: Build signed AAB
+      script: |
+        cd "$CM_BUILD_DIR/$APP_DIR"
+        # Next versionCode after whatever is already on the internal track
+        # (including the first manual upload).
+        LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" --tracks internal)
+        flutter build appbundle --release --build-number=$((LATEST + 1))
     - &build_ipa
       name: Build IPA
       script: |
@@ -88,6 +154,12 @@ definitions:
       issuer_id: $APP_STORE_CONNECT_ISSUER_ID
       # Upload only: internal testers need no Beta App Review.
       submit_to_testflight: false
+
+  publishing: &play_internal
+    google_play:
+      credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      # Internal testing only — never production.
+      track: internal
 
 workflows:
   ios-staff-testflight:
@@ -176,3 +248,99 @@ workflows:
       - gymapp-mobile/apps/gymapp_trainer/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing: *testflight
+
+  android-staff-internal:
+    name: Android Staff - Play Internal testing
+    instance_type: linux_x2
+    max_build_duration: 60
+    triggering: *develop_merge
+    when:
+      changeset:
+        includes:
+          - gymapp-mobile/apps/gymapp_gym/
+          - gymapp-mobile/packages/gymapp_core/
+          - codemagic.yaml
+    environment:
+      <<: *android_environment
+      groups:
+        - gym360_android
+      vars:
+        GYM360_API_URL: https://staging-api.gym-365.com
+        PACKAGE_NAME: com.gym360.staff
+        KEYSTORE_PREFIX: STAFF
+        APP_DIR: gymapp-mobile/apps/gymapp_gym
+    scripts:
+      - *android_release_gate
+      - *android_keystore
+      - *generate_shared_code
+      - *get_app_packages
+      - *run_tests
+      - *build_aab
+    artifacts:
+      - gymapp-mobile/apps/gymapp_gym/build/app/outputs/bundle/release/*.aab
+      - gymapp-mobile/apps/gymapp_gym/build/app/outputs/mapping/release/mapping.txt
+    publishing: *play_internal
+
+  android-trainee-internal:
+    name: Android Member - Play Internal testing
+    instance_type: linux_x2
+    max_build_duration: 60
+    triggering: *develop_merge
+    when:
+      changeset:
+        includes:
+          - gymapp-mobile/apps/gymapp_trainee/
+          - gymapp-mobile/packages/gymapp_core/
+          - codemagic.yaml
+    environment:
+      <<: *android_environment
+      groups:
+        - gym360_android
+      vars:
+        GYM360_API_URL: https://staging-api.gym-365.com
+        PACKAGE_NAME: com.gym360.trainee
+        KEYSTORE_PREFIX: TRAINEE
+        APP_DIR: gymapp-mobile/apps/gymapp_trainee
+    scripts:
+      - *android_release_gate
+      - *android_keystore
+      - *generate_shared_code
+      - *get_app_packages
+      - *run_tests
+      - *build_aab
+    artifacts:
+      - gymapp-mobile/apps/gymapp_trainee/build/app/outputs/bundle/release/*.aab
+      - gymapp-mobile/apps/gymapp_trainee/build/app/outputs/mapping/release/mapping.txt
+    publishing: *play_internal
+
+  android-trainer-internal:
+    name: Android Trainer - Play Internal testing
+    instance_type: linux_x2
+    max_build_duration: 60
+    triggering: *develop_merge
+    when:
+      changeset:
+        includes:
+          - gymapp-mobile/apps/gymapp_trainer/
+          - gymapp-mobile/packages/gymapp_core/
+          - codemagic.yaml
+    environment:
+      <<: *android_environment
+      groups:
+        - gym360_android
+      vars:
+        GYM360_API_URL: https://staging-api.gym-365.com
+        PACKAGE_NAME: com.gym360.trainer
+        KEYSTORE_PREFIX: TRAINER
+        APP_DIR: gymapp-mobile/apps/gymapp_trainer
+    scripts:
+      - *android_release_gate
+      - *android_keystore
+      - *generate_shared_code
+      - *get_app_packages
+      - *run_tests
+      - *build_aab
+    artifacts:
+      - gymapp-mobile/apps/gymapp_trainer/build/app/outputs/bundle/release/*.aab
+      - gymapp-mobile/apps/gymapp_trainer/build/app/outputs/mapping/release/mapping.txt
+    publishing: *play_internal

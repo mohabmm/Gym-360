@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { PageHeader, ConfirmModal } from '@gym360/ui';
 import { useAdminUsers } from '@/lib/hooks';
-import { useSecuritySettings, useSettingsActions, useSettingsToasts } from '@/components/settings/use-settings-actions';
+import { useReleaseSettings, useSecuritySettings, useSettingsActions, useSettingsToasts } from '@/components/settings/use-settings-actions';
 import {
   PdplComplianceTab,
   PlatformConfigTab,
+  ReleaseAutomationTab,
   SecurityTab,
   SettingsTabBar,
   type SettingsTab,
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>('Platform Config');
   const toasts = useSettingsToasts();
   const security = useSecuritySettings(toasts);
+  const release = useReleaseSettings(toasts);
   const actions = useSettingsActions(toasts);
   const { data: adminUsersData } = useAdminUsers();
   const adminUsers = (adminUsersData?.data ?? []).filter(
@@ -57,6 +59,8 @@ export default function SettingsPage() {
       {activeTab === 'Admin Team' && <AdminTeamTab adminUsers={adminUsers} actions={actions} />}
 
       {activeTab === 'Security' && <SecurityTab {...security} />}
+
+      {activeTab === 'Release Automation' && <ReleaseAutomationTab {...release} />}
 
       <ConfirmModal
         open={!!deleteAdmin}

@@ -145,6 +145,7 @@ export const ADMIN = {
   GYM_ANALYTICS: (gymId: string) => `/admin/analytics/gyms/${gymId}`,
   PLATFORM_CONFIG: '/admin/platform-config',
   SECURITY_SETTINGS: '/admin/security-settings',
+  RELEASE_SETTINGS: '/admin/release-settings',
 } as const;
 
 // Feature flags (per-gym presets + overrides). Admin routes require the super_admin role.

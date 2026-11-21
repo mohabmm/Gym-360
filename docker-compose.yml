@@ -37,6 +37,8 @@ services:
       - Fcm__IsEnabled=${FCM_ENABLED:-false}
       - Fcm__ProjectId=${FCM_PROJECT_ID:-gym360-app}
       - Fcm__ServiceAccountJson=${FCM_SERVICE_ACCOUNT_JSON:-}
+      # Shared secret Codemagic sends (X-Ci-Token) to read the Android auto-publish toggle.
+      - Ci__ReleaseToken=${CI_RELEASE_TOKEN:-}
       - Fcm__ServiceAccountKeyPath=/run/secrets/firebase-service-account.json
       - Tenancy__Mode=${TENANCY_MODE:-Hard}
       # Run EF migrations + Hard-mode fresh-DB self-bootstrap at startup.

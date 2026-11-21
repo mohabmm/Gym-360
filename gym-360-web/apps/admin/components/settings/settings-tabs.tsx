@@ -2,16 +2,17 @@
 
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { StatusBadge } from '@gym360/ui';
-import { Settings, Shield, Users, Lock } from 'lucide-react';
+import { Settings, Shield, Users, Lock, Rocket } from 'lucide-react';
 import type { PlatformConfig } from './use-settings-actions';
 
-export const SETTINGS_TABS = ['Platform Config', 'Admin Team', 'Security', 'PDPL Compliance'] as const;
+export const SETTINGS_TABS = ['Platform Config', 'Admin Team', 'Security', 'Release Automation', 'PDPL Compliance'] as const;
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 const TAB_ICONS: Record<SettingsTab, typeof Settings> = {
   'Platform Config': Settings,
   'Admin Team': Users,
   Security: Shield,
+  'Release Automation': Rocket,
   'PDPL Compliance': Lock,
 };
 
@@ -140,6 +141,31 @@ export function SecurityTab({ twoFactorOn, ipWhitelistOn, toggleTwoFactor, toggl
           <ToggleSwitch on={ipWhitelistOn} onToggle={toggleIpWhitelist} ariaLabel="Toggle IP whitelisting" />
         </SettingRow>
       </div>
+    </div>
+  );
+}
+
+interface ReleaseAutomationTabProps {
+  androidAutoPublishOn: boolean;
+  updatedAt: string | null;
+  toggleAndroidAutoPublish: () => void;
+}
+
+export function ReleaseAutomationTab({ androidAutoPublishOn, updatedAt, toggleAndroidAutoPublish }: ReleaseAutomationTabProps) {
+  return (
+    <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <h3 className="text-sm font-semibold mb-4">Mobile Release Automation</h3>
+      <SettingRow
+        title="Auto-publish Android to Google Play Internal testing"
+        hint="Every merge to develop builds the Staff, Member and Trainer Android apps and uploads them to the Internal testing track. Production is never touched."
+        last
+      >
+        <ToggleSwitch on={androidAutoPublishOn} onToggle={toggleAndroidAutoPublish} ariaLabel="Toggle Android auto-publish to internal testing" />
+      </SettingRow>
+      <p className="text-xs text-muted-foreground">
+        {updatedAt ? `Last changed ${new Date(updatedAt).toLocaleString()}` : 'On by default — never changed.'}
+        {' '}iOS TestFlight uploads are not affected by this switch.
+      </p>
     </div>
   );
 }
