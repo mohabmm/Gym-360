@@ -25,6 +25,13 @@ class FCMService {
   /// Set once the listeners are attached so re-login doesn't double-subscribe.
   bool _listening = false;
 
+  /// iOS only: FCM can't issue a token (or join topics) until Apple has
+  /// delivered the APNs token, which arrives asynchronously after launch.
+  /// Shared so initialize() and the topic subscriptions wait on one check.
+  Future<bool>? _apnsWait;
+  final Duration _apnsRetryDelay;
+  static const int _apnsMaxAttempts = 30;
+
   /// True when a default Firebase app is initialized and FCM is usable.
   /// When false, all FCM operations become safe no-ops so the app still runs
   /// in dev environments without google-services.json / GoogleService-Info.plist.
@@ -55,7 +62,9 @@ class FCMService {
     ApiClient? apiClient,
     FirebaseMessaging? messaging,
     ForegroundNotificationPresenter? presenter,
+    Duration apnsRetryDelay = const Duration(milliseconds: 500),
   })  : _ref = ref,
+        _apnsRetryDelay = apnsRetryDelay,
         _storage = storage,
         _apiClient = apiClient,
         _presenter = presenter ?? ForegroundNotificationPresenter(),
@@ -88,44 +97,82 @@ class FCMService {
       provisional: false,
     );
 
-    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional) {
-      // Get and save FCM token
+    final status = settings.authorizationStatus;
+    if (status != AuthorizationStatus.authorized &&
+        status != AuthorizationStatus.provisional) {
+      return;
+    }
+    if (!await _apnsReady(messaging)) return;
+
+    await _saveCurrentToken(messaging);
+    _setupMessageListeners(messaging);
+  }
+
+  Future<void> _saveCurrentToken(FirebaseMessaging messaging) async {
+    try {
       final token = await messaging.getToken();
-      if (token != null) {
-        await _storage.saveFcmToken(token);
-        await _registerTokenWithBackend(token);
-      }
-
-      // Listen for token refreshes
-      messaging.onTokenRefresh.listen((newToken) async {
-        await _storage.saveFcmToken(newToken);
-        await _registerTokenWithBackend(newToken);
-      });
-
-      // Set up message handlers
-      _setupMessageListeners(messaging);
+      if (token != null) await _saveToken(token);
+    } catch (e) {
+      debugPrint('[FCMService] getToken failed: $e');
     }
   }
 
-  /// Subscribe to gym-specific topic for targeted notifications.
-  Future<void> subscribeToGym(String gymId) async {
-    await _messaging?.subscribeToTopic(AppConstants.fcmTopicGym(gymId));
+  Future<void> _saveToken(String token) async {
+    await _storage.saveFcmToken(token);
+    await _registerTokenWithBackend(token);
   }
+
+  /// Resolves true once FCM can issue tokens. Non-iOS platforms are ready
+  /// immediately; on iOS this waits for the APNs token. A failed wait is
+  /// not cached, so the next login tries again.
+  Future<bool> _apnsReady(FirebaseMessaging messaging) {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      return Future.value(true);
+    }
+    return _apnsWait ??= _waitForApnsToken(messaging).then((ready) {
+      if (!ready) _apnsWait = null;
+      return ready;
+    });
+  }
+
+  Future<bool> _waitForApnsToken(FirebaseMessaging messaging) async {
+    for (var attempt = 0; attempt < _apnsMaxAttempts; attempt++) {
+      if (await messaging.getAPNSToken() != null) return true;
+      await Future<void>.delayed(_apnsRetryDelay);
+    }
+    debugPrint('[FCMService] APNs token never arrived — push unavailable.');
+    return false;
+  }
+
+  /// Subscribe to gym-specific topic for targeted notifications.
+  Future<void> subscribeToGym(String gymId) =>
+      _updateTopic(AppConstants.fcmTopicGym(gymId), subscribe: true);
 
   /// Unsubscribe from gym topic.
-  Future<void> unsubscribeFromGym(String gymId) async {
-    await _messaging?.unsubscribeFromTopic(AppConstants.fcmTopicGym(gymId));
-  }
+  Future<void> unsubscribeFromGym(String gymId) =>
+      _updateTopic(AppConstants.fcmTopicGym(gymId), subscribe: false);
 
   /// Subscribe to global topic.
-  Future<void> subscribeToGlobal() async {
-    await _messaging?.subscribeToTopic(AppConstants.fcmTopicGlobal);
+  Future<void> subscribeToGlobal() =>
+      _updateTopic(AppConstants.fcmTopicGlobal, subscribe: true);
+
+  Future<void> _updateTopic(String topic, {required bool subscribe}) async {
+    final messaging = _messaging;
+    if (messaging == null || !await _apnsReady(messaging)) return;
+    try {
+      subscribe
+          ? await messaging.subscribeToTopic(topic)
+          : await messaging.unsubscribeFromTopic(topic);
+    } catch (e) {
+      debugPrint('[FCMService] topic $topic update failed: $e');
+    }
   }
 
   void _setupMessageListeners(FirebaseMessaging messaging) {
     if (_listening) return;
     _listening = true;
+
+    messaging.onTokenRefresh.listen(_saveToken);
 
     // iOS: let the OS draw the banner while the app is open.
     messaging.setForegroundNotificationPresentationOptions(
