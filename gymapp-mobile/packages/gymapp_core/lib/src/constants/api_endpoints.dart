@@ -137,6 +137,16 @@ class ApiEndpoints {
   static String workoutAssignmentById(WorkoutAssignmentId id) =>
       '$basePrefix/training/workout-assignments/$id';
   static const String todaysWorkout = '$basePrefix/training/todays-workout';
+
+  // pt.training_plan
+  static const String planTemplates = '$basePrefix/training/plan-templates';
+  static String planTemplateById(String id) => '$basePrefix/training/plan-templates/$id';
+  static String duplicatePlanTemplate(String id) => '$basePrefix/training/plan-templates/$id/duplicate';
+  static const String trainingPlans = '$basePrefix/training/plans';
+  static String trainingPlanById(String id) => '$basePrefix/training/plans/$id';
+  static String savePlanAsTemplate(String id) => '$basePrefix/training/plans/$id/save-as-template';
+  static String traineePlans(String traineeId) => '$basePrefix/training/trainees/$traineeId/plans';
+  static const String planExercises = '$basePrefix/training/plan-exercises';
   static const String remoteWorkoutActivate =
       '$basePrefix/training/remote-workout/activate';
   static const String remoteWorkoutDeactivate =

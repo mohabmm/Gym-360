@@ -20,6 +20,8 @@ import '../features/clients/presentation/screens/assign_workout_screen.dart';
 import '../features/workouts/presentation/screens/workout_builder_screen.dart';
 import '../features/workouts/presentation/screens/template_library_screen.dart';
 import '../features/workouts/presentation/screens/program_builder_screen.dart';
+import '../features/plans/presentation/plan_builder_screen.dart';
+import '../features/plans/presentation/plan_templates_screen.dart';
 import '../features/workouts/presentation/screens/exercise_manager_screen.dart';
 import '../features/scheduling/presentation/screens/availability_screen.dart';
 import '../features/scheduling/presentation/screens/booking_requests_screen.dart';
@@ -85,6 +87,8 @@ class AppRoutes {
   static const String mealPlanBuilder = '/more/nutrition/meal-plan-builder';
   static const String clientNutrition = '/more/nutrition/client/:clientId';
   static const String clientPackages = '/more/packages';
+  static const String planTemplates = '/plans';
+  static const String planBuilder = '/plans/builder';
   static const String earningsDashboard = '/more/earnings';
   static const String myRatings = '/more/ratings';
   static const String settings = '/more/settings';
@@ -353,6 +357,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ClientPackagesScreen(),
       ),
       GoRoute(
+        path: AppRoutes.planTemplates,
+        builder: (context, state) => const PlanTemplatesScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.planBuilder,
+        redirect: (context, state) => state.extra is PlanBuilderArgs ? null : AppRoutes.planTemplates,
+        builder: (context, state) => PlanBuilderScreen(args: state.extra! as PlanBuilderArgs),
+      ),
+      GoRoute(
         path: AppRoutes.earningsDashboard,
         builder: (context, state) => const EarningsDashboardScreen(),
       ),
@@ -385,6 +398,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 List<(IconData, String, String, String, String?)> _moreItems(bool ar) => [
       (Icons.inventory_2_outlined, ar ? 'الباقات' : 'Packages', ar ? 'عرض باقات العملاء' : 'View client packages',
           AppRoutes.clientPackages, FeatureFlagKeys.ptPackages),
+      (Icons.event_note_outlined, ar ? 'قوالب الخطط' : 'Plan templates', ar ? 'قوالب النادي وقوالبك' : 'Gym templates and yours',
+          AppRoutes.planTemplates, FeatureFlagKeys.ptTrainingPlan),
       (Icons.monetization_on_outlined, ar ? 'الارباح' : 'Earnings', ar ? 'عرض الارباح والجلسات' : 'View earnings & sessions',
           AppRoutes.earningsDashboard, FeatureFlagKeys.gymFinance),
       (Icons.chat_outlined, ar ? 'المحادثات' : 'Chat', ar ? 'محادثات العملاء' : 'Client conversations',
