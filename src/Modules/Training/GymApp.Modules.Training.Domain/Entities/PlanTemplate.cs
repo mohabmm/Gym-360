@@ -29,21 +29,27 @@ public sealed class PlanTemplate : Entity
     public int DaysPerWeek { get; private set; }
     public PlanDocument Document { get; private set; } = default!;
     /// <summary>Seeded sample; editable like any other gym template.</summary>
-    public bool IsSample { get; private set; }
+    public bool IsSample => SampleKey is not null;
+    /// <summary>Which seeded sample this is (unique per gym, so samples are seeded once).</summary>
+    public string? SampleKey { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
     public PlanContent Content => new(Name, NameAr, Goal, GoalText, Document);
 
-    public static PlanTemplate CreateForGym(Guid gymId, Guid createdBy, PlanContent content, bool isSample = false) =>
-        Create(gymId, PlanTemplateScope.Gym, ownerTrainerId: null, createdBy, content, isSample);
+    public static PlanTemplate CreateForGym(Guid gymId, Guid createdBy, PlanContent content) =>
+        Create(gymId, PlanTemplateScope.Gym, ownerTrainerId: null, createdBy, content, sampleKey: null);
 
     public static PlanTemplate CreateForCoach(Guid gymId, Guid trainerId, PlanContent content) =>
-        Create(gymId, PlanTemplateScope.Coach, trainerId, trainerId, content, isSample: false);
+        Create(gymId, PlanTemplateScope.Coach, trainerId, trainerId, content, sampleKey: null);
+
+    /// <summary>A gym template seeded by the system (<paramref name="sampleKey"/> is unique per gym).</summary>
+    public static PlanTemplate CreateSample(Guid gymId, string sampleKey, PlanContent content) =>
+        Create(gymId, PlanTemplateScope.Gym, ownerTrainerId: null, Guid.Empty, content, sampleKey);
 
     private static PlanTemplate Create(
-        Guid gymId, PlanTemplateScope scope, Guid? ownerTrainerId, Guid createdBy, PlanContent content, bool isSample)
+        Guid gymId, PlanTemplateScope scope, Guid? ownerTrainerId, Guid createdBy, PlanContent content, string? sampleKey)
     {
         var now = DateTime.UtcNow;
         var template = new PlanTemplate(Guid.NewGuid())
@@ -52,7 +58,7 @@ public sealed class PlanTemplate : Entity
             Scope = scope,
             OwnerTrainerId = ownerTrainerId,
             CreatedBy = createdBy,
-            IsSample = isSample,
+            SampleKey = sampleKey,
             CreatedAt = now
         };
         template.Apply(content, now);
