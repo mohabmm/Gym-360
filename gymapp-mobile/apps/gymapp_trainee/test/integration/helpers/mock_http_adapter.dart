@@ -56,6 +56,10 @@ class MockHttpAdapter implements HttpClientAdapter {
   void onDelete(String path, {required _Responder respond}) =>
       _register(_Route(method: 'DELETE', path: path, respond: respond));
 
+  /// PUT to any path matching [pattern] — for ids made on the device (e.g. offline client ids).
+  void onPutMatching(RegExp pattern, {required _Responder respond}) =>
+      _register(_Route(method: 'PUT', path: '', pattern: pattern, respond: respond));
+
   /// 200 OK wrapping [payload] in the BE's `{ data, errors, meta }` envelope.
   _MockResponse ok(dynamic payload, {Map<String, dynamic>? meta, int statusCode = 200}) {
     return _MockResponse(
@@ -130,7 +134,7 @@ class MockHttpAdapter implements HttpClientAdapter {
     recorded.add(recordedRequest);
 
     final route = _routes.firstWhere(
-      (r) => r.method == recordedRequest.method && r.path == recordedRequest.path,
+      (r) => r.matches(recordedRequest),
       orElse: () => _noRouteFor(recordedRequest),
     );
 
@@ -211,8 +215,12 @@ class MockHttpAdapter implements HttpClientAdapter {
 }
 
 class _Route {
-  _Route({required this.method, required this.path, required this.respond});
+  _Route({required this.method, required this.path, required this.respond, this.pattern});
   final String method;
   final String path;
   final _Responder respond;
+  final RegExp? pattern;
+
+  bool matches(RecordedRequest request) =>
+      method == request.method && (pattern?.hasMatch(request.path) ?? request.path == path);
 }

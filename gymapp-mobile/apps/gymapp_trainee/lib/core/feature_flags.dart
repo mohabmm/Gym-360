@@ -4,6 +4,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import 'providers.dart';
 import 'router.dart';
+import '../features/plan/presentation/plan_routes.dart';
 
 /// Trainee app: flags come from `GET /feature-flags/me` through the shared service.
 FeatureFlagService createTraineeFeatureFlagService(Ref ref) => ApiFeatureFlagService(
@@ -33,6 +34,7 @@ const traineeRouteGuard = FeatureRouteGuard(
     AppRoutes.checkin: FeatureFlagKeys.gymAttendance,
     AppRoutes.membership: FeatureFlagKeys.ptPackages,
     AppRoutes.exerciseProgress: FeatureFlagKeys.ptExerciseProgress,
+    PlanRoutes.plan: FeatureFlagKeys.ptTrainingPlan,
   },
 );
 

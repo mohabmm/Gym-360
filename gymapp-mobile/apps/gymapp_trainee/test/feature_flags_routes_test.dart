@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:gymapp_trainee/core/feature_flags.dart';
 import 'package:gymapp_trainee/core/router.dart';
+import 'package:gymapp_trainee/features/plan/presentation/plan_routes.dart';
 
 void main() {
   final pt = FeatureFlags.ptDefaults();
@@ -41,11 +42,23 @@ void main() {
       '/schedule/sessions/abc',
       AppRoutes.membership,
       AppRoutes.exerciseProgress,
+      PlanRoutes.plan,
+      PlanRoutes.workout('d-1'),
       AppRoutes.notifications,
       AppRoutes.settings,
     ]) {
       test(path, () => expect(traineeRouteGuard.redirect(path, pt), isNull));
     }
+  });
+
+  test('with pt.training_plan off, the plan and a workout deep link go home', () {
+    final off = FeatureFlags(
+      values: {...pt.values, FeatureFlagKeys.ptTrainingPlan: false},
+      preset: 'pt_module',
+      origin: FeatureFlagsOrigin.server,
+    );
+    expect(traineeRouteGuard.redirect(PlanRoutes.plan, off), AppRoutes.home);
+    expect(traineeRouteGuard.redirect(PlanRoutes.workout('d-1'), off), AppRoutes.home);
   });
 
   test('business preset opens everything', () {

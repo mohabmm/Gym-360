@@ -147,6 +147,10 @@ class ApiEndpoints {
   static String savePlanAsTemplate(String id) => '$basePrefix/training/plans/$id/save-as-template';
   static String traineePlans(String traineeId) => '$basePrefix/training/trainees/$traineeId/plans';
   static const String planExercises = '$basePrefix/training/plan-exercises';
+  static const String myPlan = '$basePrefix/training/me/plan';
+  static const String myPlanProgress = '$basePrefix/training/me/plan-progress';
+  static String myPlanWorkout(String clientId) => '$basePrefix/training/me/plan-workouts/$clientId';
+  static String traineePlanProgress(String traineeId) => '$basePrefix/training/trainees/$traineeId/plan-progress';
   static const String remoteWorkoutActivate =
       '$basePrefix/training/remote-workout/activate';
   static const String remoteWorkoutDeactivate =
