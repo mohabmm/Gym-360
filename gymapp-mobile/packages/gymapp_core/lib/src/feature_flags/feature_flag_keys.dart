@@ -12,6 +12,10 @@ abstract final class FeatureFlagKeys {
   static const ptPackageInterest = 'pt.package_interest';
   static const ptTrialFollowUps = 'pt.trial_followups';
   static const ptExerciseProgress = 'pt.exercise_progress';
+  static const ptTrainingPlan = 'pt.training_plan';
+
+  // Opt-in pilots — OFF in every preset; the Super Admin turns them on per gym.
+  static const memFirstMonthChallenge = 'mem.first_month_challenge';
 
   // PT later phase — OFF in pt_module.
   static const ptMonthlyReport = 'pt.monthly_report';
@@ -61,5 +65,6 @@ abstract final class FeatureFlagKeys {
     ptPackageInterest,
     ptTrialFollowUps,
     ptExerciseProgress,
+    ptTrainingPlan,
   };
 }

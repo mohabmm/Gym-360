@@ -146,3 +146,16 @@ final ptDashboardProvider =
             PtDashboard.fromJson(Map<String, dynamic>.from(data as Map)),
       );
 });
+
+/// mem.first_month_challenge — members who earned the first-month reward; [delivered] false =
+/// still to hand over, true = handed over. Newest first.
+final challengeAwardsProvider =
+    FutureProvider.autoDispose.family<List<ChallengeAwardModel>, bool>((ref, delivered) async {
+  return ref.watch(apiClientProvider).get<List<ChallengeAwardModel>>(
+        ApiEndpoints.challengeAwards,
+        queryParameters: {'delivered': delivered},
+        parser: (data) => (data as List)
+            .map((e) => ChallengeAwardModel.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
+      );
+});

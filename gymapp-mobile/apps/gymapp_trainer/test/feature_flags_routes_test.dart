@@ -38,6 +38,9 @@ void main() {
       '/clients/c1/measurements',
       '/pt-sessions/s1/exercises?clientId=c1',
       AppRoutes.clientPackages,
+      AppRoutes.planTemplates,
+      AppRoutes.planBuilder,
+      AppRoutes.clientPlans,
       AppRoutes.notifications,
       AppRoutes.settings,
       AppRoutes.profile,
@@ -62,5 +65,16 @@ void main() {
       origin: FeatureFlagsOrigin.server,
     );
     expect(trainerFeatureRedirect('/pt-sessions/s1/exercises?clientId=c1', noExercises), AppRoutes.home);
+  });
+
+  test('plan templates and the plan builder are blocked when pt.training_plan is off', () {
+    final noPlans = FeatureFlags(
+      values: {for (final k in FeatureFlagKeys.ptModuleDefaults) k: k != FeatureFlagKeys.ptTrainingPlan},
+      preset: 'pt_module',
+      origin: FeatureFlagsOrigin.server,
+    );
+    expect(trainerFeatureRedirect(AppRoutes.planTemplates, noPlans), AppRoutes.home);
+    expect(trainerFeatureRedirect(AppRoutes.planBuilder, noPlans), AppRoutes.home);
+    expect(trainerFeatureRedirect(AppRoutes.clientPlans, noPlans), AppRoutes.home);
   });
 }

@@ -7,6 +7,8 @@ import '../../../../core/providers.dart';
 import '../../../../core/router.dart';
 import '../../../clients/presentation/providers/client_providers.dart';
 import '../../../home/presentation/providers/trainer_dashboard_provider.dart';
+import '../../../plans/data/plan_api.dart';
+import '../../../plans/data/session_plan_days.dart';
 import '../../../revenue/presentation/providers/revenue_providers.dart';
 import 'record_session/record_session_sheet.dart';
 import 'record_session/record_session_strings.dart';
@@ -75,10 +77,13 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
         strings: strings,
         draft: draft,
         onSubmit: _send,
+        planDays: ref.read(sessionPlanDaysProvider(widget.memberId)).valueOrNull,
       ),
     );
     if (result == null || !mounted) return;
     ref.invalidate(allClientPackagesProvider);
+    ref.invalidate(traineePlansProvider(widget.memberId));
+    ref.invalidate(sessionPlanDaysProvider(widget.memberId));
     ref.invalidate(trainerDashboardProvider);
     await showModalBottomSheet<void>(
       context: context,
@@ -110,6 +115,7 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
     // Keep the client's package and name loaded so the sheet opens with them.
     ref.watch(activeClientPackagesProvider);
     ref.watch(clientNameByIdProvider);
+    ref.watch(sessionPlanDaysProvider(widget.memberId));
     final label = Text(_isArabic(context) ? 'سجّل حصة' : 'Log session');
     const icon = Icon(Icons.check_circle_outline, size: 18);
     return widget.compact

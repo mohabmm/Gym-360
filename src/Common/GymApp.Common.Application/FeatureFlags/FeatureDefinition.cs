@@ -32,14 +32,16 @@ public sealed record FeatureText(string NameEn, string NameAr, string Descriptio
 /// <param name="Apps">Apps whose UI the flag changes.</param>
 /// <param name="InPtModule">Whether the <c>pt_module</c> preset turns it on when the preset is first seeded.</param>
 /// <param name="Kind">Feature or setting.</param>
+/// <param name="OptIn">A pilot that stays OFF in every preset, including <c>business</c>; the Super Admin turns it on per gym.</param>
 public sealed record FeatureDefinition(
     string Key,
     string Module,
     FeatureText Text,
     FeatureApps Apps,
     bool InPtModule,
-    FeatureKind Kind = FeatureKind.Feature)
+    FeatureKind Kind = FeatureKind.Feature,
+    bool OptIn = false)
 {
-    /// <summary>Value the <c>business</c> preset gets when first seeded: every feature on, settings at their pt default.</summary>
-    public bool InBusiness => Kind == FeatureKind.Feature || InPtModule;
+    /// <summary>Value the <c>business</c> preset gets when first seeded: every feature on (except opt-in pilots), settings at their pt default.</summary>
+    public bool InBusiness => !OptIn && (Kind == FeatureKind.Feature || InPtModule);
 }

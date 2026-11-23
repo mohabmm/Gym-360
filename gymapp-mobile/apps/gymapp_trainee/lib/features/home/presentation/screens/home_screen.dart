@@ -9,6 +9,10 @@ import '../providers/home_providers.dart';
 import '../widgets/todays_workout_card.dart';
 import '../widgets/next_session_card.dart';
 import '../widgets/weekly_activity_chart.dart';
+import '../../../plan/data/plan_providers.dart';
+import '../../../plan/data/challenge_providers.dart';
+import '../../../plan/presentation/challenge_card.dart';
+import '../../../plan/presentation/plan_today_card.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../../../communication/presentation/widgets/notification_bell.dart';
 import '../../../scheduling/presentation/providers/scheduling_providers.dart';
@@ -50,6 +54,8 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(todaysWaterProvider);
           ref.invalidate(progressJourneyProvider);
           ref.invalidate(myExerciseProgressProvider);
+          ref.invalidate(myPlanProvider);
+          ref.invalidate(myChallengeProvider);
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -65,6 +71,10 @@ class HomeScreen extends ConsumerWidget {
             ),
             // Every section belongs to a feature; disabled ones are not built at all,
             // so a PT gym sees packages, sessions to confirm and progress, with no gaps.
+            // The coach's plan comes first: it is what the member does on the days without the coach.
+            ...section(pagePad, FeatureFlagKeys.ptTrainingPlan, const PlanTodayCard(), top: 4),
+            if (flags.isEnabled(FeatureFlagKeys.ptTrainingPlan))
+              ...section(pagePad, FeatureFlagKeys.memFirstMonthChallenge, const ChallengeCard()),
             ...section(pagePad, FeatureFlagKeys.ptTrialSessions, const TrialConversionCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptPackages, const PackageSummaryCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptDualSessionLogging, const ConfirmSessionsCard()),

@@ -20,4 +20,7 @@ export const STAFF_ROUTE_RULES: readonly RouteFlagRule[] = [
   { prefix: '/pt/review', flags: [K.PT_DUAL_SESSION_LOGGING] },
   { prefix: '/pt/dashboard', flags: [K.PT_OWNER_DASHBOARD] },
   { prefix: '/pt/interests', flags: [K.PT_PACKAGE_INTEREST] },
+  { prefix: '/pt/plan-templates', flags: [K.PT_TRAINING_PLAN] },
+  // Needs pt.training_plan too; the API answers FEATURE_DISABLED without it.
+  { prefix: '/pt/challenge', flags: [K.MEM_FIRST_MONTH_CHALLENGE] },
 ];

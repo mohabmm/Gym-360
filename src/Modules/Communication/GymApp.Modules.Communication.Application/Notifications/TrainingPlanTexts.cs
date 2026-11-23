@@ -1,0 +1,28 @@
+using GymApp.Modules.Communication.Domain.ValueObjects;
+
+namespace GymApp.Modules.Communication.Application.Notifications;
+
+/// <summary>pt.training_plan notification wording, Arabic first.</summary>
+internal static class TrainingPlanTexts
+{
+    public static NotificationText Assigned(string coachName, string planName) => new(
+        "خطة تدريبك الجديدة جاهزة",
+        $"جهّز لك الكابتن {coachName} خطة \"{planName}\". افتح التطبيق وشوف تمرين النهارده.",
+        "Your new training plan is ready",
+        $"Coach {coachName} made you the plan \"{planName}\". Open the app to see today's workout.");
+
+    public static NotificationText Updated(string coachName, string planName) => new(
+        "تم تعديل خطتك",
+        $"عدّل الكابتن {coachName} خطة \"{planName}\". التمرين الجاي بالتعديلات الجديدة.",
+        "Your plan was updated",
+        $"Coach {coachName} changed \"{planName}\". Your next workout has the changes.");
+
+    /// <summary>A coach's reminder; their own words when they wrote some.</summary>
+    public static NotificationText Nudge(string coachName, string? message) => message is null
+        ? new NotificationText(
+            $"الكابتن {coachName} بيفكّرك 💪",
+            "تمرينك الجاي في الخطة مستنيك. افتح التطبيق وابدأ!",
+            $"Coach {coachName} is checking in 💪",
+            "Your next plan workout is waiting. Open the app and start!")
+        : new NotificationText($"رسالة من الكابتن {coachName}", message, $"Message from coach {coachName}", message);
+}

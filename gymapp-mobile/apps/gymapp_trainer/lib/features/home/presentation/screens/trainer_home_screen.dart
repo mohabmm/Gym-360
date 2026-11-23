@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../plans/presentation/quiet_clients_card.dart';
 import '../../../sessions/presentation/pt/pt_coach_widgets.dart';
 import '../../../sessions/presentation/pt/trial_recap_widgets.dart';
 import '../../../revenue/presentation/providers/revenue_providers.dart';
@@ -95,6 +96,7 @@ class TrainerHomeScreen extends ConsumerWidget {
                       onAction: () => context.go(AppRoutes.clients),
                     ),
                     const PtClientsPanel(),
+                    if (flags.isEnabled(FeatureFlagKeys.ptTrainingPlan)) const QuietClientsCard(),
                     if (flags.isEnabled(FeatureFlagKeys.ptTrialRecap)) ...[
                       const SizedBox(height: 8),
                       const FinishedTrialsPanel(),

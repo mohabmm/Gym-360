@@ -178,8 +178,14 @@ class _NotificationTile extends ConsumerWidget {
       case NotificationType.packageExhausted:
         return '/more/membership';
       default:
-        return null;
+        return _dataRoute(n);
     }
+  }
+
+  /// Newer notifications carry their screen in `data.route` (e.g. "/plan" for a training plan).
+  static String? _dataRoute(NotificationModel n) {
+    final route = n.data?['route'];
+    return route is String && route.startsWith('/') ? route : null;
   }
 
   IconData _iconFor(String type) {

@@ -17,6 +17,7 @@ public class FeatureRegistryTests
         FeatureKeys.PtPackageInterest,
         FeatureKeys.PtTrialFollowUps,
         FeatureKeys.PtExerciseProgress,
+        FeatureKeys.PtTrainingPlan,
     };
 
     [Fact]
@@ -26,7 +27,7 @@ public class FeatureRegistryTests
     }
 
     [Fact]
-    public void Pt_module_turns_on_exactly_the_eleven_pt_features()
+    public void Pt_module_turns_on_exactly_the_twelve_pt_features()
     {
         FeatureRegistry.PtModuleDefaults.Should().BeEquivalentTo(PtModuleOn);
     }
@@ -51,11 +52,28 @@ public class FeatureRegistryTests
     }
 
     [Fact]
-    public void Business_preset_turns_on_every_feature()
+    public void Business_preset_turns_on_every_feature_except_opt_in_pilots()
     {
         FeatureRegistry.All
-            .Where(d => d.Kind == FeatureKind.Feature)
+            .Where(d => d.Kind == FeatureKind.Feature && !d.OptIn)
             .Should().OnlyContain(d => d.InBusiness);
+    }
+
+    [Fact]
+    public void Training_plan_is_on_in_pt_module_and_business()
+    {
+        var def = FeatureRegistry.Find(FeatureKeys.PtTrainingPlan)!;
+        def.InPtModule.Should().BeTrue();
+        def.InBusiness.Should().BeTrue();
+    }
+
+    [Fact]
+    public void First_month_challenge_is_off_in_every_preset()
+    {
+        var def = FeatureRegistry.Find(FeatureKeys.MemFirstMonthChallenge)!;
+        def.Kind.Should().Be(FeatureKind.Feature);
+        def.InPtModule.Should().BeFalse();
+        def.InBusiness.Should().BeFalse("pilots are switched on per gym by the Super Admin");
     }
 
     [Fact]

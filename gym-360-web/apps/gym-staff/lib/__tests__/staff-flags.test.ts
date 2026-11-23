@@ -8,7 +8,7 @@ const all = () => true;
 
 const OFF_IN_PT = ['/classes', '/exercises', '/messages', '/billing', '/gamification', '/announcements', '/analytics', '/check-ins', '/kiosk-pin', '/data-import'];
 const ALWAYS_ON = ['/', '/members', '/members/abc', '/trainers', '/trainers/abc', '/staff', '/settings', '/subscription'];
-const PT_PAGES = ['/pt/trials', '/pt/review', '/pt/dashboard', '/pt/interests'];
+const PT_PAGES = ['/pt/trials', '/pt/review', '/pt/dashboard', '/pt/interests', '/pt/plan-templates', '/pt/plan-templates/new'];
 
 test('pt_module: every OFF-module route is blocked', () => {
   for (const path of OFF_IN_PT) expect(isPathEnabled(path, STAFF_ROUTE_RULES, pt), path).toBe(false);
@@ -35,4 +35,16 @@ test('interest list follows pt.package_interest', () => {
 test('deep sub-routes inherit their module flag', () => {
   expect(isPathEnabled('/classes/123/edit', STAFF_ROUTE_RULES, pt)).toBe(false);
   expect(isPathEnabled('/pt/dashboard?days=7'.split('?')[0], STAFF_ROUTE_RULES, (k) => k !== K.PT_OWNER_DASHBOARD && pt(k))).toBe(false);
+});
+
+test('plan templates close when pt.training_plan is off', () => {
+  const noPlans = (k: string) => pt(k) && k !== K.PT_TRAINING_PLAN;
+  expect(isPathEnabled('/pt/plan-templates', STAFF_ROUTE_RULES, noPlans)).toBe(false);
+  expect(isPathEnabled('/pt/plan-templates/abc', STAFF_ROUTE_RULES, noPlans)).toBe(false);
+  expect(isPathEnabled('/pt/interests', STAFF_ROUTE_RULES, noPlans)).toBe(true);
+});
+
+test('first-month rewards open only when mem.first_month_challenge is on (OFF in every preset)', () => {
+  expect(isPathEnabled('/pt/challenge', STAFF_ROUTE_RULES, pt)).toBe(false);
+  expect(isPathEnabled('/pt/challenge', STAFF_ROUTE_RULES, (k) => pt(k) || k === K.MEM_FIRST_MONTH_CHALLENGE)).toBe(true);
 });

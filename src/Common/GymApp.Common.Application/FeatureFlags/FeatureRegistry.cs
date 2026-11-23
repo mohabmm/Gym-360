@@ -64,6 +64,16 @@ public static class FeatureRegistry
             "Coach records sets, reps, weight, a note and the next target per exercise; trainee sees every number from the trial, then from paid sessions.",
             "يسجل المدرب المجموعات والعدات والوزن وملاحظة والهدف القادم لكل تمرين، ويرى المتدرب كل الأرقام من الحصص التجريبية ثم من الحصص المدفوعة.")),
 
+        Pt(K.PtTrainingPlan, FeatureApps.All, new(
+            "Training plans", "خطط التدريب",
+            "Coach assigns a multi-week plan from a template; the trainee follows today's workout on the days without the coach, even offline.",
+            "يعطي المدرب المتدرب خطة لعدة أسابيع من قالب، ويتابع المتدرب تمرين اليوم في الأيام التي لا يحضر فيها المدرب، حتى بدون إنترنت.")),
+        // ---- Opt-in pilots (OFF in every preset) ----
+        new(K.MemFirstMonthChallenge, "mem",
+            new FeatureText("First-month challenge", "تحدي الشهر الأول",
+                "New members who complete the target number of plan workouts in their first month earn a reward from the gym.",
+                "العضو الجديد الذي يُكمل عدد تمارين الخطة المطلوب في شهره الأول يحصل على مكافأة من النادي."),
+            FeatureApps.All, InPtModule: false, OptIn: true),
         // ---- PT later phase (OFF) ----
         Off(K.PtMonthlyReport, "pt", FeatureApps.All, new(
             "Monthly progress report", "تقرير التقدم الشهري",

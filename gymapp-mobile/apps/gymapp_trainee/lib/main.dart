@@ -11,6 +11,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'core/feature_flags.dart';
 import 'core/providers.dart';
 import 'core/router.dart';
+import 'features/plan/data/plan_workout_queue.dart';
 
 Future<void> main() async {
   final telemetry = TelemetryService(
@@ -69,6 +70,7 @@ Future<void> _initializePlatform() async {
     Hive.openBox(StorageKeys.exerciseCacheBox),
     Hive.openBox(StorageKeys.workoutCacheBox),
     Hive.openBox(StorageKeys.offlineQueueBox),
+    Hive.openBox(HivePlanWorkoutQueue.boxName),
     Hive.openBox(StorageKeys.consentBox),
   ]);
 

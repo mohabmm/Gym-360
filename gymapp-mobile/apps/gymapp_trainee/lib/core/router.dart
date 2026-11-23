@@ -43,6 +43,9 @@ import '../features/gamification/presentation/screens/rate_trainer_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
 import '../features/checkin/presentation/screens/checkin_screen.dart';
 import '../features/membership/presentation/screens/membership_screen.dart';
+import '../features/plan/presentation/my_plan_screen.dart';
+import '../features/plan/presentation/plan_routes.dart';
+import '../features/plan/presentation/plan_workout_screen.dart';
 import 'shell_screen.dart';
 
 // Route paths
@@ -175,6 +178,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => const NoTransitionPage(
               child: HomeScreen(),
             ),
+          ),
+
+          // pt.training_plan: my plan; a workout opens full screen.
+          GoRoute(
+            path: PlanRoutes.plan,
+            builder: (context, state) => const MyPlanScreen(),
+            routes: [
+              GoRoute(
+                path: 'workout/:dayKey',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => PlanWorkoutScreen(dayKey: state.pathParameters['dayKey']!),
+              ),
+            ],
           ),
 
           // Tab 2: Workouts
@@ -359,6 +375,7 @@ class _ScheduleTab extends ConsumerWidget {
 typedef _MoreDestination = (IconData, String, String, String, String?);
 
 const List<_MoreDestination> _moreFeatures = [
+  (Icons.assignment_outlined, 'خطتي', 'My plan', PlanRoutes.plan, FeatureFlagKeys.ptTrainingPlan),
   (Icons.card_membership, 'باقاتي', 'My packages', AppRoutes.membership, FeatureFlagKeys.ptPackages),
   (Icons.fitness_center, 'تمريني', 'My training', AppRoutes.exerciseProgress, FeatureFlagKeys.ptExerciseProgress),
   (Icons.qr_code, 'تسجيل الحضور', 'Check-in', AppRoutes.checkin, FeatureFlagKeys.gymAttendance),

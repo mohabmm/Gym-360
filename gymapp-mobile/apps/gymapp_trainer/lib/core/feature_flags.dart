@@ -27,6 +27,7 @@ const trainerRouteGuard = FeatureRouteGuard(
     AppRoutes.formCheck: FeatureFlagKeys.progressPhotos,
     '/more/nutrition': FeatureFlagKeys.nutrition,
     AppRoutes.clientPackages: FeatureFlagKeys.ptPackages,
+    AppRoutes.planTemplates: FeatureFlagKeys.ptTrainingPlan,
     AppRoutes.earningsDashboard: FeatureFlagKeys.gymFinance,
     AppRoutes.myRatings: FeatureFlagKeys.ptCoachRatings,
   },

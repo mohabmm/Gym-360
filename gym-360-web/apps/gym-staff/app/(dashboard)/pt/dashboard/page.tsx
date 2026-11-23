@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { KpiCard, PageHeader } from '@gym360/ui';
+import { KpiCard, PageHeader, FEATURE_FLAG_KEYS as K } from '@gym360/ui';
 import { Gift, Repeat, CheckCircle2, Percent } from 'lucide-react';
 import { emptyRow, usePtDashboard, type PtCoachRow } from '@/lib/hooks/usePt';
 import { usePtText, type PtText } from '@/lib/pt-text';
 import { PtCell, PtState, PtTable } from '@/components/pt/PtTable';
+import { PlanSummarySection } from '@/components/pt/plans/PlanSummarySection';
+import { useStaffFlags } from '@/lib/feature-flags';
 
 const PERIODS = [7, 30, 90] as const;
 
@@ -45,6 +47,7 @@ export default function PtDashboardPage() {
   const { data, isLoading, isError } = usePtDashboard(days);
   const totals = data?.totals ?? emptyRow();
   const coaches = data?.coaches ?? [];
+  const { isEnabled } = useStaffFlags();
 
   return (
     <div className="space-y-6">
@@ -68,6 +71,7 @@ export default function PtDashboardPage() {
         </PtTable>
       )}
       <p className="text-xs text-muted-foreground">{t.conversionNote}</p>
+      <PlanSummarySection enabled={isEnabled(K.PT_TRAINING_PLAN)} />
     </div>
   );
 }

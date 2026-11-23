@@ -26,8 +26,25 @@ public sealed class TrainingDbContext : DbContext, ITrainingUnitOfWork
     public DbSet<LogSet> LogSets => Set<LogSet>();
     public DbSet<WorkoutAssignment> WorkoutAssignments => Set<WorkoutAssignment>();
     public DbSet<RemoteWorkoutConfig> RemoteWorkoutConfigs => Set<RemoteWorkoutConfig>();
+    public DbSet<ChallengeAward> ChallengeAwards => Set<ChallengeAward>();
+    public DbSet<PlanTemplate> PlanTemplates => Set<PlanTemplate>();
+    public DbSet<PlanWorkoutCompletion> PlanWorkoutCompletions => Set<PlanWorkoutCompletion>();
+    public DbSet<TrainingPlanSettings> TrainingPlanSettings => Set<TrainingPlanSettings>();
+    public DbSet<TrainingPlan> TrainingPlans => Set<TrainingPlan>();
 
     internal DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    public async Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<T>> work, CancellationToken cancellationToken = default)
+    {
+        var strategy = Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+            var result = await work(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

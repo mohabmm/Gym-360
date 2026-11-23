@@ -1,0 +1,99 @@
+using GymApp.Common.Domain;
+using GymApp.Modules.Training.Domain.Enums;
+using GymApp.Modules.Training.Domain.ValueObjects;
+
+namespace GymApp.Modules.Training.Domain.Entities;
+
+/// <summary>
+/// pt.training_plan: a reusable plan. Gym templates are made by the owner or a manager and every
+/// coach of the gym can use them; coach templates belong to one coach (founder decision Q4: they
+/// disappear from the gym with the coach). Assigning a template copies it: a trainee's plan never
+/// points back at the template's content.
+/// </summary>
+public sealed class PlanTemplate : Entity
+{
+    private PlanTemplate() { }
+
+    private PlanTemplate(Guid id) : base(id) { }
+
+    public Guid GymId { get; private set; }
+    public PlanTemplateScope Scope { get; private set; }
+    /// <summary>Set for coach templates only.</summary>
+    public Guid? OwnerTrainerId { get; private set; }
+    public Guid CreatedBy { get; private set; }
+    public string Name { get; private set; } = default!;
+    public string? NameAr { get; private set; }
+    public PlanGoal Goal { get; private set; }
+    public string? GoalText { get; private set; }
+    public int DurationWeeks { get; private set; }
+    public int DaysPerWeek { get; private set; }
+    public PlanDocument Document { get; private set; } = default!;
+    /// <summary>Seeded sample; editable like any other gym template.</summary>
+    public bool IsSample => SampleKey is not null;
+    /// <summary>Which seeded sample this is (unique per gym, so samples are seeded once).</summary>
+    public string? SampleKey { get; private set; }
+    public bool IsArchived { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
+
+    public PlanContent Content => new() { Name = Name, NameAr = NameAr, Goal = Goal, GoalText = GoalText, Document = Document };
+
+    /// <summary>A template every coach of the gym can use, made by the owner or a manager.</summary>
+    public static PlanTemplate CreateForGym(TemplateUser by, PlanContent content) =>
+        Create(new Origin(by.GymId, PlanTemplateScope.Gym, null, by.UserId, null), content);
+
+    /// <summary>A coach's own template.</summary>
+    public static PlanTemplate CreateForCoach(TemplateUser coach, PlanContent content) =>
+        Create(new Origin(coach.GymId, PlanTemplateScope.Coach, coach.UserId, coach.UserId, null), content);
+
+    /// <summary>A gym template seeded by the system (<paramref name="sampleKey"/> is unique per gym).</summary>
+    public static PlanTemplate CreateSample(Guid gymId, string sampleKey, PlanContent content) =>
+        Create(new Origin(gymId, PlanTemplateScope.Gym, null, Guid.Empty, sampleKey), content);
+
+    private sealed record Origin(Guid GymId, PlanTemplateScope Scope, Guid? OwnerTrainerId, Guid CreatedBy, string? SampleKey);
+
+    private static PlanTemplate Create(Origin origin, PlanContent content)
+    {
+        var template = new PlanTemplate(Guid.NewGuid())
+        {
+            GymId = origin.GymId,
+            Scope = origin.Scope,
+            OwnerTrainerId = origin.OwnerTrainerId,
+            CreatedBy = origin.CreatedBy,
+            SampleKey = origin.SampleKey,
+            CreatedAt = DateTime.UtcNow
+        };
+        template.Apply(content);
+        return template;
+    }
+
+    /// <summary>Coaches see gym templates and their own.</summary>
+    public bool IsVisibleTo(TemplateUser user) => Scope == PlanTemplateScope.Gym || OwnerTrainerId == user.UserId;
+
+    /// <summary>Not archived and visible to the user: they can open, assign or copy it.</summary>
+    public bool IsAvailableTo(TemplateUser user) => !IsArchived && IsVisibleTo(user);
+
+    /// <summary>Gym templates: owner or manager. Coach templates: their coach.</summary>
+    public bool CanBeEditedBy(TemplateUser user) =>
+        Scope == PlanTemplateScope.Gym ? user.IsGymManager : OwnerTrainerId == user.UserId;
+
+    public void Update(PlanContent content) => Apply(content);
+
+    public void Archive()
+    {
+        IsArchived = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    private void Apply(PlanContent content)
+    {
+        Name = content.Name;
+        NameAr = content.NameAr;
+        Goal = content.Goal;
+        GoalText = content.GoalText;
+        Document = content.Document;
+        DurationWeeks = content.DurationWeeks;
+        DaysPerWeek = content.DaysPerWeek;
+        UpdatedAt = DateTime.UtcNow;
+    }
+}

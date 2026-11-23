@@ -18,5 +18,9 @@ internal sealed class QuickLogSessionCommandValidator : AbstractValidator<QuickL
             .NotNull()
             .When(x => x.Date.HasValue)
             .WithMessage("Pick the start time of the session.");
+        RuleFor(x => x.PlanDay!.PlanId).NotEmpty().When(x => x.PlanDay is not null)
+            .OverridePropertyName("PlanDay.PlanId");
+        RuleFor(x => x.PlanDay!.DayKey).NotEmpty().MaximumLength(50).When(x => x.PlanDay is not null)
+            .OverridePropertyName("PlanDay.DayKey");
     }
 }
