@@ -5,7 +5,6 @@ import 'package:gymapp_core/gymapp_core.dart';
 
 import '../data/my_plan_view.dart';
 import '../data/plan_providers.dart';
-import '../data/workout_session.dart';
 import 'plan_routes.dart';
 import 'trainee_plan_strings.dart';
 
@@ -51,7 +50,7 @@ class _Card extends StatelessWidget {
           _Progress(view: view, s: s),
           if (view.pendingCount > 0 || view.fromCache) ...[
             const SizedBox(height: 8),
-            _OfflineNote(text: view.pendingCount > 0 ? s.pending(view.pendingCount) : s.offlineCopy),
+            _OfflineNote(text: view.pendingCount > 0 ? s.pending(view) : s.offlineCopy),
           ],
           if (next != null && !view.cursor.doneToday) ...[
             const SizedBox(height: 12),
@@ -108,13 +107,13 @@ class _NextDay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final title = '${s.weekLabel(slot.week)} · ${slot.day.displayTitle(s.isArabic)}';
-    final detail = s.exercisesAndMinutes(slot.day.exercises.length, WorkoutSession.estimatedMinutes(slot.day));
+    final title = s.slotTitle(slot);
+    final detail = s.exercisesAndMinutes(slot.day);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (doneToday) Text(s.doneToday, style: theme.textTheme.titleSmall?.copyWith(color: Colors.green.shade700)),
-        Text(doneToday ? s.nextTime(title) : title, style: theme.textTheme.titleSmall),
+        Text(doneToday ? s.nextTime(slot) : title, style: theme.textTheme.titleSmall),
         Text(detail, style: theme.textTheme.bodySmall),
       ],
     );
@@ -138,8 +137,8 @@ class _Progress extends StatelessWidget {
         const SizedBox(height: 6),
         Row(
           children: [
-            Expanded(child: Text(s.doneOf(cursor.doneCount, cursor.total), style: Theme.of(context).textTheme.bodySmall)),
-            Text(s.thisWeek(view.stats.thisWeek, view.stats.weekTarget), style: Theme.of(context).textTheme.bodySmall),
+            Expanded(child: Text(s.doneOf(cursor), style: Theme.of(context).textTheme.bodySmall)),
+            Text(s.thisWeek(view.stats), style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ],

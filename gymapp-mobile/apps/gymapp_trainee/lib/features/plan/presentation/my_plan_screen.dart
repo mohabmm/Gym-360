@@ -92,7 +92,7 @@ class _WeekTile extends StatelessWidget {
               key: Key('plan-day-${slot.day.key}'),
               leading: Icon(_icon(slot, done), color: _color(context, slot, done)),
               title: Text(slot.day.displayTitle(s.isArabic)),
-              subtitle: Text(s.exerciseCount(slot.day.exercises.length)),
+              subtitle: Text(s.exerciseCount(slot.day)),
               trailing: slot.day.key == view.cursor.nextDayKey ? Chip(label: Text(s.next)) : null,
               onTap: () => context.push(PlanRoutes.workout(slot.day.key)),
             ),
@@ -173,15 +173,13 @@ class _TrendTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final first = TraineePlanStrings.kgText(trend.first ?? 0);
-    final latest = TraineePlanStrings.kgText(trend.latest ?? 0);
     final up = (trend.latest ?? 0) > (trend.first ?? 0);
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(up ? Icons.arrow_upward_rounded : Icons.drag_handle_rounded, color: up ? Colors.green.shade600 : null),
       title: Text(trend.displayName(s.isArabic)),
-      subtitle: Text(s.best(TraineePlanStrings.kgText(trend.best ?? 0))),
-      trailing: Text(s.weightChange(first, latest), style: Theme.of(context).textTheme.titleSmall),
+      subtitle: Text(s.best(trend)),
+      trailing: Text(s.weightChange(trend), style: Theme.of(context).textTheme.titleSmall),
     );
   }
 }
@@ -199,7 +197,7 @@ class _HistoryTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.check_circle_rounded, color: Colors.green),
       title: Text('${s.weekLabel(workout.week)} · ${workout.displayTitle(s.isArabic)}'),
-      subtitle: Text('$date · ${s.setsDone(workout.setsDone)}'),
+      subtitle: Text('$date · ${s.setsDone(workout)}'),
       trailing: workout.fromCoachSession ? Chip(label: Text(s.withCoach)) : null,
     );
   }

@@ -39,7 +39,8 @@ internal sealed class GetPlanSummaryQueryHandler : IQueryHandler<GetPlanSummaryQ
         }
 
         var today = TrainingCalendar.Today();
-        var month = await _completions.CountSinceAsync(gymId, new DateOnly(today.Year, today.Month, 1), cancellationToken);
+        var month = await _completions.CountSinceAsync(
+            new PlanWorkoutPeriod { GymId = gymId, Since = new DateOnly(today.Year, today.Month, 1) }, cancellationToken);
         var summary = new PlanSummaryDto
         {
             ActivePlans = await _plans.CountActiveAsync(gymId, cancellationToken),

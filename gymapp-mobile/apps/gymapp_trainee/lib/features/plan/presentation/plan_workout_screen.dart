@@ -90,7 +90,7 @@ class _WorkoutBodyState extends ConsumerState<_WorkoutBody> {
             padding: const EdgeInsets.all(16),
             child: AppButton(
               key: const Key('plan-finish-workout'),
-              text: _session.hasProgress ? s.finish(_session.doneCount, _session.totalCount) : s.tickASet,
+              text: _session.hasProgress ? s.finish(_session) : s.tickASet,
               isGradient: true,
               isLoading: _saving,
               onPressed: _session.hasProgress && !_saving ? _finish : null,
@@ -196,7 +196,7 @@ class _ExerciseCard extends StatelessWidget {
   String _subtitle() => [
         s.prescription(exercise),
         if (exercise.restSeconds != null) s.rest(exercise.restSeconds!),
-        if (lastWeight != null) s.lastTime(TraineePlanStrings.kgText(lastWeight!)),
+        if (lastWeight != null) s.lastTime(lastWeight!),
       ].join(' · ');
 }
 
@@ -225,7 +225,7 @@ class _SetRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          SizedBox(width: 72, child: Text(s.setLabel(set.setNumber))),
+          SizedBox(width: 72, child: Text(s.setLabel(set))),
           Expanded(
             child: _NumberField(
               key: ValueKey('kg-${set.weightKg}'),

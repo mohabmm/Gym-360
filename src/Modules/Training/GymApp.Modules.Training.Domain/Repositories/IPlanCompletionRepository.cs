@@ -22,8 +22,8 @@ public interface IPlanCompletionRepository
     /// <summary>Every workout of the trainee in any gym of this scope (data export).</summary>
     Task<IReadOnlyList<PlanWorkoutCompletion>> ListAllForTraineeAsync(Guid traineeId, CancellationToken cancellationToken = default);
 
-    /// <summary>Workouts that count (not voided) at this gym on or after <paramref name="since"/>, and how many members did them.</summary>
-    Task<PlanWorkoutTotals> CountSinceAsync(Guid gymId, DateOnly since, CancellationToken cancellationToken = default);
+    /// <summary>Workouts that count (not voided) at the gym in the period, and how many members did them.</summary>
+    Task<PlanWorkoutTotals> CountSinceAsync(PlanWorkoutPeriod period, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Saves the new workout. False when another upload with the same client id won the race
@@ -33,3 +33,10 @@ public interface IPlanCompletionRepository
 }
 
 public sealed record PlanWorkoutTotals(int Workouts, int Members);
+
+/// <summary>A gym's plan workouts from <see cref="Since"/> (gym-local date) until now.</summary>
+public sealed record PlanWorkoutPeriod
+{
+    public required Guid GymId { get; init; }
+    public required DateOnly Since { get; init; }
+}

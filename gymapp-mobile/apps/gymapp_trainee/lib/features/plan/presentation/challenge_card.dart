@@ -44,7 +44,7 @@ class _Card extends StatelessWidget {
                 child: Text(won ? s.challengeWon : s.challengeTitle,
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
               ),
-              Text(s.challengeCount(challenge.count, challenge.target),
+              Text(s.challengeCount(challenge),
                   key: const Key('challenge-count'),
                   style: theme.textTheme.titleSmall?.copyWith(color: accent, fontWeight: FontWeight.w700)),
             ],
@@ -58,10 +58,10 @@ class _Card extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (!won)
-            Text(s.challengeLeft((challenge.target - challenge.count).clamp(0, challenge.target), challenge.daysLeft),
+            Text(s.challengeLeft(challenge),
                 style: theme.textTheme.bodySmall),
           const SizedBox(height: 4),
-          Text(s.challengeReward(challenge.reward(s.isArabic)), style: theme.textTheme.bodyMedium),
+          Text(s.challengeReward(challenge), style: theme.textTheme.bodyMedium),
           if (won) ...[
             const SizedBox(height: 4),
             Text(s.challengeClaim, style: theme.textTheme.bodySmall),

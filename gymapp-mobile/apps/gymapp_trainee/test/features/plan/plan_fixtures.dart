@@ -1,14 +1,8 @@
 import 'package:gymapp_core/gymapp_core.dart';
 
 /// A 2-week plan, 2 days a week, as `GET training/me/plan` sends it.
-Map<String, dynamic> myPlanJson({
-  String? nextDayKey = 'w1a',
-  int lastDoneIndex = -1,
-  List<String> doneKeys = const [],
-  bool doneToday = false,
-  int thisWeek = 0,
-  Map<String, double> lastWeights = const {'e-squat-1': 40},
-}) =>
+/// Nothing done yet this week; the squat was 40 kg last time.
+Map<String, dynamic> myPlanJson({String? nextDayKey = 'w1a', int lastDoneIndex = -1}) =>
     {
       'plan': {
         'summary': {
@@ -61,11 +55,11 @@ Map<String, dynamic> myPlanJson({
         'lastDoneIndex': lastDoneIndex,
         'total': 4,
         'finished': nextDayKey == null,
-        'doneToday': doneToday,
-        'doneKeys': doneKeys,
+        'doneToday': false,
+        'doneKeys': const <String>[],
       },
-      'stats': {'thisWeek': thisWeek, 'weekTarget': 2, 'thisMonth': thisWeek, 'weekStart': '2026-11-21'},
-      'lastWeights': lastWeights,
+      'stats': {'thisWeek': 0, 'weekTarget': 2, 'thisMonth': 0, 'weekStart': '2026-11-21'},
+      'lastWeights': const {'e-squat-1': 40.0},
     };
 
 MyPlanModel myPlan({String? nextDayKey = 'w1a', int lastDoneIndex = -1}) =>
