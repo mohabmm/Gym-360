@@ -8,6 +8,7 @@ import {
   useArchivePlanTemplate, useDuplicatePlanTemplate, usePlanTemplates, type PlanTemplateSummary,
 } from '@/lib/hooks/usePlanTemplates';
 import { PtCell, PtState, PtTable } from '@/components/pt/PtTable';
+import { PlanSettingsCard } from '@/components/pt/plans/PlanSettingsCard';
 
 /** pt.training_plan — the gym's plan templates (owner and managers). Coaches use them in the trainer app. */
 export default function PlanTemplatesPage() {
@@ -23,6 +24,7 @@ export default function PlanTemplatesPage() {
         description={t.description}
         actions={<Link href="/pt/plan-templates/new" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">{t.newTemplate}</Link>}
       />
+      <PlanSettingsCard />
       {isLoading && <PtState text="…" />}
       {isError && <PtState text={t.loadError} />}
       {isEmpty && <PtState text={t.empty} />}
