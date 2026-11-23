@@ -39,6 +39,7 @@ const staffRouteGuard = FeatureRouteGuard(
     RoutePaths.ptReview: FeatureFlagKeys.ptDualSessionLogging,
     RoutePaths.ptDashboard: FeatureFlagKeys.ptOwnerDashboard,
     RoutePaths.ptInterests: FeatureFlagKeys.ptPackageInterest,
+    RoutePaths.ptChallenge: FeatureFlagKeys.memFirstMonthChallenge,
   },
 );
 

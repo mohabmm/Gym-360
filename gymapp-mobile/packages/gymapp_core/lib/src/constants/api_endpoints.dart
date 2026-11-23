@@ -149,6 +149,10 @@ class ApiEndpoints {
   static const String planExercises = '$basePrefix/training/plan-exercises';
   static const String myPlan = '$basePrefix/training/me/plan';
   static const String myPlanProgress = '$basePrefix/training/me/plan-progress';
+  // mem.first_month_challenge
+  static const String myChallenge = '$basePrefix/training/me/challenge';
+  static const String challengeAwards = '$basePrefix/training/challenge/awards';
+  static String challengeAwardDelivered(String awardId) => '$basePrefix/training/challenge/awards/$awardId/delivered';
   static String myPlanWorkout(String clientId) => '$basePrefix/training/me/plan-workouts/$clientId';
   static String traineePlanProgress(String traineeId) => '$basePrefix/training/trainees/$traineeId/plan-progress';
   static String planNudge(String traineeId) => '$basePrefix/training/trainees/$traineeId/plan-nudge';

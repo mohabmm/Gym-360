@@ -82,6 +82,7 @@ export 'src/progress_journey/measurement_form/widgets/measurement_entry_page.dar
 export 'src/exercise_progress/exercise_progress_model.dart';
 export 'src/training_plan/plan_models.dart';
 export 'src/training_plan/plan_strings.dart';
+export 'src/training_plan/challenge_models.dart';
 export 'src/training_plan/plan_workout_models.dart';
 export 'src/exercise_progress/session_summary_model.dart';
 export 'src/exercise_progress/session_insights.dart';

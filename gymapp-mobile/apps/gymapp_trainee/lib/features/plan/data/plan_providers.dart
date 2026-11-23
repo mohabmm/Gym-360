@@ -3,6 +3,7 @@ import 'package:gymapp_core/gymapp_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../core/providers.dart';
+import 'challenge_providers.dart';
 import 'my_plan_view.dart';
 import 'plan_workout_queue.dart';
 import 'plan_workout_sync.dart';
@@ -120,6 +121,7 @@ class PlanWorkoutRecorder {
     final stillPending = _ref.read(planWorkoutQueueProvider).all().any((w) => w.clientId == workout.clientId);
     _ref.invalidate(myPlanProvider);
     _ref.invalidate(myPlanProgressProvider);
+    _ref.invalidate(myChallengeProvider);
     return FinishResult(uploaded: !stillPending, note: report.notes.lastOrNull);
   }
 }

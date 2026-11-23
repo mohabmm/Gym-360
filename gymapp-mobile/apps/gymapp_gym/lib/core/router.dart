@@ -45,6 +45,7 @@ import '../features/trainers/presentation/screens/pending_trainer_approval_scree
 import '../features/trainers/presentation/screens/trainer_detail_screen.dart';
 import '../features/trainers/presentation/screens/trainer_list_screen.dart';
 import '../features/pt/presentation/screens/not_converted_trials_screen.dart';
+import '../features/pt/presentation/screens/challenge_awards_screen.dart';
 import '../features/pt/presentation/screens/package_interests_screen.dart';
 import '../features/pt/presentation/screens/pt_dashboard_screen.dart';
 import '../features/pt/presentation/screens/session_review_screen.dart';
@@ -101,6 +102,7 @@ abstract class RoutePaths {
   static const String ptReview = '/pt/review';
   static const String ptDashboard = '/pt/dashboard';
   static const String ptInterests = '/pt/interests';
+  static const String ptChallenge = '/pt/challenge';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -344,6 +346,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RoutePaths.ptInterests,
             builder: (context, state) => const PackageInterestsScreen(),
+          ),
+          GoRoute(
+            path: RoutePaths.ptChallenge,
+            builder: (context, state) => const ChallengeAwardsScreen(),
           ),
         ],
       ),
@@ -638,6 +644,15 @@ class _MainShellState extends ConsumerState<MainShell> {
                   onTap: () {
                     Navigator.pop(context);
                     context.push(RoutePaths.ptInterests);
+                  },
+                ),
+              if (on(FeatureFlagKeys.ptTrainingPlan) && on(FeatureFlagKeys.memFirstMonthChallenge))
+                _MoreMenuItem(
+                  icon: Icons.emoji_events_outlined,
+                  label: isArabic ? 'مكافآت الشهر الأول' : 'First-month rewards',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push(RoutePaths.ptChallenge);
                   },
                 ),
               if (on(FeatureFlagKeys.ptDualSessionLogging))

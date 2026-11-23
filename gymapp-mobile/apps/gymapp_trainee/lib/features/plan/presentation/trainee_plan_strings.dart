@@ -57,5 +57,15 @@ class TraineePlanStrings extends PlanStrings {
   String get retry => _t('حاول تاني', 'Try again');
   String get loadError => _t('مش قادرين نجيب خطتك دلوقتي', "Couldn't load your plan right now");
 
+  // ---- First-month challenge (mem.first_month_challenge)
+  String get challengeTitle => _t('تحدي الشهر الأول', 'First-month challenge');
+  String challengeCount(int done, int target) => _t('$done / $target تمرين', '$done / $target workouts');
+  String challengeLeft(int left, int days) => _t(
+      'فاضل $left ${left == 1 ? 'تمرين' : 'تمارين'} · $days يوم باقيين',
+      '$left ${left == 1 ? 'workout' : 'workouts'} to go · $days ${days == 1 ? 'day' : 'days'} left');
+  String challengeReward(String reward) => _t('المكافأة: $reward', 'Reward: $reward');
+  String get challengeWon => _t('مبروك! كسبت التحدي 🎉', 'You won the challenge 🎉');
+  String get challengeClaim => _t('كلّم الاستقبال أو الكابتن عشان تاخد مكافأتك.', 'Ask the desk or your coach for your reward.');
+
   static String kgText(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(1);
 }
