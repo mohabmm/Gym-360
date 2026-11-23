@@ -33,6 +33,9 @@ internal sealed class TrainingPlanRepository : ITrainingPlanRepository
             .Where(p => p.GymId == gymId && p.Status == TrainingPlanStatus.Active && traineeIds.Contains(p.TraineeId))
             .ToListAsync(cancellationToken);
 
+    public Task<int> CountActiveAsync(Guid gymId, CancellationToken cancellationToken = default) =>
+        _db.TrainingPlans.AsNoTracking().CountAsync(p => p.GymId == gymId && p.Status == TrainingPlanStatus.Active, cancellationToken);
+
     public async Task<IReadOnlyList<TrainingPlan>> ListAllForTraineeAsync(Guid traineeId, CancellationToken cancellationToken = default) =>
         await _db.TrainingPlans
             .AsNoTracking()

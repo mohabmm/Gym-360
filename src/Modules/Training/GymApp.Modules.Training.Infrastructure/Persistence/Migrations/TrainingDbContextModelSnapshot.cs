@@ -61,6 +61,64 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.ChallengeAward", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CountAtReach")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeliveredBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GymId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ReachedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RewardTextAr")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("RewardTextEn")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Target")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TraineeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TrainerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("WindowEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("WindowStart")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GymId", "DeliveredAt");
+
+                    b.HasIndex("GymId", "TraineeId")
+                        .IsUnique();
+
+                    b.ToTable("challenge_awards", "training");
+                });
+
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.Exercise", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3201,6 +3259,16 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("ChallengeTarget")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(12);
+
+                    b.Property<int>("ChallengeWindowDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
+
                     b.Property<Guid>("GymId")
                         .HasColumnType("uniqueidentifier");
 
@@ -3208,6 +3276,14 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(5);
+
+                    b.Property<string>("RewardTextAr")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("RewardTextEn")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");

@@ -22,9 +22,14 @@ public interface IPlanCompletionRepository
     /// <summary>Every workout of the trainee in any gym of this scope (data export).</summary>
     Task<IReadOnlyList<PlanWorkoutCompletion>> ListAllForTraineeAsync(Guid traineeId, CancellationToken cancellationToken = default);
 
+    /// <summary>Workouts that count (not voided) at this gym on or after <paramref name="since"/>, and how many members did them.</summary>
+    Task<PlanWorkoutTotals> CountSinceAsync(Guid gymId, DateOnly since, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Saves the new workout. False when another upload with the same client id won the race
     /// (the unique index rejected it); nothing is saved then.
     /// </summary>
     Task<bool> TryAddAsync(PlanWorkoutCompletion completion, CancellationToken cancellationToken = default);
 }
+
+public sealed record PlanWorkoutTotals(int Workouts, int Members);

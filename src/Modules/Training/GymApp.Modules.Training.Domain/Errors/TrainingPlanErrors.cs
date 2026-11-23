@@ -19,6 +19,8 @@ public static class TrainingPlanErrors
     public static readonly Error SettingsForbidden = new("Training.PlanSettings.Forbidden", "Only the gym owner or a manager can change plan settings.");
     public static readonly Error AlreadyNudged = new("Training.PlanNudge.Conflict", "You already reminded this client today.");
 
+    public static readonly Error AwardNotFound = new("Training.ChallengeAwardNotFound", "The challenge award was not found.");
+
     public static Error InvalidSettings(string reason) => new("Training.InvalidPlanSettings", reason);
 
     public static Error InvalidWorkout(string reason) => new("Training.InvalidPlanWorkout", reason);

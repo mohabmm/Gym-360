@@ -1,5 +1,6 @@
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
+using GymApp.Modules.Training.Application.TrainingPlans.Challenge;
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
@@ -20,12 +21,15 @@ internal sealed class SyncPlanWorkoutCommandHandler : ICommandHandler<SyncPlanWo
     private readonly PlanAccess _access;
     private readonly ITrainingPlanRepository _plans;
     private readonly IPlanCompletionRepository _completions;
+    private readonly ChallengeEvaluator _challenge;
 
-    public SyncPlanWorkoutCommandHandler(PlanAccess access, ITrainingPlanRepository plans, IPlanCompletionRepository completions)
+    public SyncPlanWorkoutCommandHandler(
+        PlanAccess access, ITrainingPlanRepository plans, IPlanCompletionRepository completions, ChallengeEvaluator challenge)
     {
         _access = access;
         _plans = plans;
         _completions = completions;
+        _challenge = challenge;
     }
 
     public async Task<Result<PlanWorkoutSyncDto>> Handle(SyncPlanWorkoutCommand request, CancellationToken cancellationToken)
@@ -34,6 +38,16 @@ internal sealed class SyncPlanWorkoutCommandHandler : ICommandHandler<SyncPlanWo
         if (enabled.IsFailure)
             return Result.Failure<PlanWorkoutSyncDto>(enabled.Error);
 
+        var synced = await SyncAsync(request, cancellationToken);
+        // Also on a retry: if the first upload saved the workout but failed before the challenge
+        // check, the retry finishes it (the check is safe to repeat).
+        if (synced.IsSuccess)
+            await _challenge.EvaluateAsync(request.Actor.GymId, request.Actor.UserId, cancellationToken);
+        return synced;
+    }
+
+    private async Task<Result<PlanWorkoutSyncDto>> SyncAsync(SyncPlanWorkoutCommand request, CancellationToken cancellationToken)
+    {
         var saved = await _completions.GetByClientIdAsync(request.Actor.UserId, request.ClientId, cancellationToken);
         if (saved is not null)
             return Synced(saved, PlanWorkoutOutcome.AlreadySynced);

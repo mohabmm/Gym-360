@@ -26,11 +26,17 @@
       "gymapp.modules.billing.shared": {
         "type": "Project"
       },
+      "gymapp.modules.gyms.shared": {
+        "type": "Project"
+      },
       "gymapp.modules.identity.integrationevents": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Domain": "[1.0.0, )"
         }
+      },
+      "gymapp.modules.identity.shared": {
+        "type": "Project"
       },
       "gymapp.modules.scheduling.integrationevents": {
         "type": "Project",

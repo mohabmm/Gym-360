@@ -17,5 +17,8 @@ public interface ITrainingPlanRepository
     /// <summary>Every plan given to the trainee, in any gym of this scope (data export).</summary>
     Task<IReadOnlyList<TrainingPlan>> ListAllForTraineeAsync(Guid traineeId, CancellationToken cancellationToken = default);
 
+    /// <summary>Members with an active plan at this gym.</summary>
+    Task<int> CountActiveAsync(Guid gymId, CancellationToken cancellationToken = default);
+
     Task AddAsync(TrainingPlan plan, CancellationToken cancellationToken = default);
 }

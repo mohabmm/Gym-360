@@ -86,6 +86,9 @@ public static class FeatureRouteMap
         new(K.PtTrainingPlan, "training/me/plan"),
         new(K.PtTrainingPlan, "training/me/plan-workouts"),
         new(K.PtTrainingPlan, "training/me/plan-progress"),
+        new(K.MemFirstMonthChallenge, "training/me/challenge"),
+        new(K.MemFirstMonthChallenge, "training/challenge"),
+        new(K.PtOwnerDashboard, "training/reports/plan-summary"),
 
         // ---- PT later ----
         new(K.PtCoachRatings, "gamification/trainer-ratings"),

@@ -48,6 +48,16 @@ internal sealed class PlanCompletionRepository : IPlanCompletionRepository
             .OrderByDescending(c => c.CompletedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<PlanWorkoutTotals> CountSinceAsync(Guid gymId, DateOnly since, CancellationToken cancellationToken = default)
+    {
+        var counting = _db.PlanWorkoutCompletions
+            .AsNoTracking()
+            .Where(c => c.GymId == gymId && !c.IsVoided && c.CompletedOn >= since);
+        var workouts = await counting.CountAsync(cancellationToken);
+        var members = workouts == 0 ? 0 : await counting.Select(c => c.TraineeId).Distinct().CountAsync(cancellationToken);
+        return new PlanWorkoutTotals(workouts, members);
+    }
+
     public async Task<bool> TryAddAsync(PlanWorkoutCompletion completion, CancellationToken cancellationToken = default)
     {
         await _db.PlanWorkoutCompletions.AddAsync(completion, cancellationToken);

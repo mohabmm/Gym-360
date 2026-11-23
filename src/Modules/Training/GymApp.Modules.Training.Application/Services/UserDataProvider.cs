@@ -9,13 +9,16 @@ internal sealed class UserDataProvider : IUserDataProvider
     private readonly IWorkoutAssignmentRepository _workoutAssignmentRepository;
     private readonly ITrainingPlanRepository _trainingPlanRepository;
     private readonly IPlanCompletionRepository _planCompletionRepository;
+    private readonly IChallengeAwardRepository _challengeAwardRepository;
 
     public UserDataProvider(
         IWorkoutLogRepository workoutLogRepository,
         IWorkoutAssignmentRepository workoutAssignmentRepository,
         ITrainingPlanRepository trainingPlanRepository,
-        IPlanCompletionRepository planCompletionRepository)
+        IPlanCompletionRepository planCompletionRepository,
+        IChallengeAwardRepository challengeAwardRepository)
     {
+        _challengeAwardRepository = challengeAwardRepository;
         _trainingPlanRepository = trainingPlanRepository;
         _planCompletionRepository = planCompletionRepository;
         _workoutLogRepository = workoutLogRepository;
@@ -34,6 +37,7 @@ internal sealed class UserDataProvider : IUserDataProvider
 
         var plans = await _trainingPlanRepository.ListAllForTraineeAsync(userId, cancellationToken);
         var planWorkouts = await _planCompletionRepository.ListAllForTraineeAsync(userId, cancellationToken);
+        var challengeAwards = await _challengeAwardRepository.ListAllForTraineeAsync(userId, cancellationToken);
 
         return new
         {
@@ -64,6 +68,19 @@ internal sealed class UserDataProvider : IUserDataProvider
                 c.Note,
                 c.IsVoided,
                 c.Sets
+            }),
+            FirstMonthChallengeAwards = challengeAwards.Select(a => new
+            {
+                a.Id,
+                a.GymId,
+                a.WindowStart,
+                a.WindowEnd,
+                a.Target,
+                a.CountAtReach,
+                a.ReachedAt,
+                a.RewardTextAr,
+                a.RewardTextEn,
+                a.DeliveredAt
             }),
             WorkoutLogs = recentLogs.Select(l => new
             {

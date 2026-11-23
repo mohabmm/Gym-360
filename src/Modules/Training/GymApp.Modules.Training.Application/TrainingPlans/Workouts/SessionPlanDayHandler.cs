@@ -1,5 +1,5 @@
 using GymApp.Common.Application.FeatureFlags;
-using GymApp.Modules.Training.Application.Abstractions;
+using GymApp.Modules.Training.Application.TrainingPlans.Challenge;
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Repositories;
@@ -12,31 +12,30 @@ namespace GymApp.Modules.Training.Application.TrainingPlans.Workouts;
 
 /// <summary>
 /// pt.training_plan, part C: a PT session the coach logged against a plan day counts as that
-/// plan workout for the trainee; if the desk reverses the session, the workout stops counting.
+/// plan workout for the trainee; if the desk reverses the session, the workout stops counting
+/// (<see cref="SessionReversedPlanDayHandler"/>).
 /// The session flow itself (deduction, trainee confirmation, dispute) is untouched. A dispute
 /// alone voids nothing: the desk may still keep the session, and only a reversal undoes it.
 /// </summary>
-internal sealed class SessionPlanDayHandler
-    : INotificationHandler<SessionCompletedIntegrationEvent>,
-      INotificationHandler<SessionReversedIntegrationEvent>
+internal sealed class SessionPlanDayHandler : INotificationHandler<SessionCompletedIntegrationEvent>
 {
     private readonly IFeatureFlagService _featureFlags;
     private readonly ITrainingPlanRepository _plans;
     private readonly IPlanCompletionRepository _completions;
-    private readonly ITrainingUnitOfWork _unitOfWork;
+    private readonly ChallengeEvaluator _challenge;
     private readonly ILogger<SessionPlanDayHandler> _logger;
 
     public SessionPlanDayHandler(
         IFeatureFlagService featureFlags,
         ITrainingPlanRepository plans,
         IPlanCompletionRepository completions,
-        ITrainingUnitOfWork unitOfWork,
+        ChallengeEvaluator challenge,
         ILogger<SessionPlanDayHandler> logger)
     {
+        _challenge = challenge;
         _featureFlags = featureFlags;
         _plans = plans;
         _completions = completions;
-        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -54,25 +53,16 @@ internal sealed class SessionPlanDayHandler
                 e.SessionId, link.DayKey, link.PlanId);
             return;
         }
-        if (await AlreadyCountedAsync(plan!, link, e.SessionId, cancellationToken))
-            return;
-
-        await _completions.TryAddAsync(PlanWorkoutCompletion.Record(plan!, slot, LogOf(e.SessionId, link)), cancellationToken);
+        if (!await AlreadyCountedAsync(plan!, link, e.SessionId, cancellationToken))
+            await _completions.TryAddAsync(PlanWorkoutCompletion.Record(plan!, slot, LogOf(e.SessionId, link)), cancellationToken);
+        // A session counts toward the first-month challenge like an app workout; a later
+        // reversal voids the workout but never takes back an award already given.
+        await _challenge.EvaluateAsync(e.GymId, e.MemberId, cancellationToken);
     }
 
     /// <summary>The day, when the plan exists and belongs to the session's trainee.</summary>
     private static PlanSlot? SlotFor(TrainingPlan? plan, Guid memberId, string dayKey) =>
         plan?.TraineeId == memberId ? PlanCursor.Find(plan.Document, dayKey) : null;
-
-    public async Task Handle(SessionReversedIntegrationEvent e, CancellationToken cancellationToken)
-    {
-        var linked = await _completions.ListForSessionAsync(e.GymId, e.SessionId, cancellationToken);
-        if (linked.Count == 0)
-            return;
-        foreach (var completion in linked)
-            completion.Void();
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-    }
 
     // The session id is the upload id, so a redelivered event is a no-op; and if the trainee
     // already ticked the same day off in the app that date, it is one workout, not two.
