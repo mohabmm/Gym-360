@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Application.Tenancy;
 using GymApp.Common.Infrastructure.Tenancy.Registry;
 using GymApp.Tests.Functional.Abstractions;
@@ -130,7 +131,7 @@ public sealed class FeatureFlagFunctionalTests : BaseFunctionalTest
     }
 
     [Fact]
-    public async Task Switching_a_gym_to_business_turns_every_feature_on()
+    public async Task Switching_a_gym_to_business_turns_every_feature_on_except_opt_in_pilots()
     {
         var admin = CreateAdminClient();
         var gym = await RegisterGymAsync();
@@ -143,8 +144,10 @@ public sealed class FeatureFlagFunctionalTests : BaseFunctionalTest
         var flags = await ReadDataAsync(await trainee.GetAsync("api/v1/feature-flags/me"));
         flags.GetProperty("preset").GetString().Should().Be("business");
         var values = flags.GetProperty("flags").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetBoolean());
-        values.Where(kv => kv.Key != "pt.auto_expiry").Should().OnlyContain(kv => kv.Value);
+        var optIn = FeatureRegistry.All.Where(f => f.OptIn).Select(f => f.Key).ToHashSet();
+        values.Where(kv => kv.Key != "pt.auto_expiry" && !optIn.Contains(kv.Key)).Should().OnlyContain(kv => kv.Value);
         values["pt.auto_expiry"].Should().BeFalse("settings keep their default");
+        values.Where(kv => optIn.Contains(kv.Key)).Should().OnlyContain(kv => !kv.Value, "pilots like mem.first_month_challenge are turned on per gym");
     }
 
     [Fact]
