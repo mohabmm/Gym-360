@@ -72,4 +72,5 @@ class TrainerPlanStrings extends PlanStrings {
   String get remove => _t('احذف', 'Remove');
 
   static const _letters = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز'];
+
 }

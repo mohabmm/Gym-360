@@ -151,6 +151,9 @@ class ApiEndpoints {
   static const String myPlanProgress = '$basePrefix/training/me/plan-progress';
   static String myPlanWorkout(String clientId) => '$basePrefix/training/me/plan-workouts/$clientId';
   static String traineePlanProgress(String traineeId) => '$basePrefix/training/trainees/$traineeId/plan-progress';
+  static String planNudge(String traineeId) => '$basePrefix/training/trainees/$traineeId/plan-nudge';
+  static const String coachPlanOverview = '$basePrefix/training/coach/plan-overview';
+  static const String planSettings = '$basePrefix/training/plan-settings';
   static const String remoteWorkoutActivate =
       '$basePrefix/training/remote-workout/activate';
   static const String remoteWorkoutDeactivate =

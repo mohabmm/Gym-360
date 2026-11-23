@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../data/coach_overview.dart';
 import '../data/plan_api.dart';
+import 'client_plans_strings.dart';
 import 'plan_flow.dart';
 import 'trainer_plan_strings.dart';
 
@@ -96,6 +98,7 @@ class _ActivePlan extends ConsumerWidget {
           Text(p.displayName(s.isArabic), style: Theme.of(context).textTheme.titleMedium),
           Text('${s.goal(p.goal, p.goalText)} · ${s.daysPerWeek(p.daysPerWeek)} · ${s.weeks(p.durationWeeks)}'),
           Text('${s.startDate}: ${MaterialLocalizations.of(context).formatMediumDate(p.startDate)}'),
+          _Activity(clientId: clientId, strings: ClientPlansStrings(s.isArabic)),
           const Divider(height: 24),
           for (final day in plan.document.weeks.isEmpty ? const <PlanDayModel>[] : plan.document.weeks.first.days)
             ListTile(
@@ -119,6 +122,36 @@ class _ActivePlan extends ConsumerWidget {
             ),
           ]),
         ]),
+      ),
+    );
+  }
+}
+
+/// "This week 1/3 · 4/12 done · last workout 2 days ago" from the coach's overview.
+class _Activity extends ConsumerWidget {
+  final String clientId;
+  final ClientPlansStrings strings;
+
+  const _Activity({required this.clientId, required this.strings});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final row = ref
+        .watch(coachPlanOverviewProvider)
+        .valueOrNull
+        ?.clients
+        .where((c) => c.traineeId == clientId && c.hasPlan)
+        .firstOrNull;
+    if (row == null) return const SizedBox.shrink();
+    return Padding(
+      key: const ValueKey('client-plan-activity'),
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        '${strings.progress(row)} · ${strings.activity(row)}',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: row.isInactive ? AppColors.warning : null,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }

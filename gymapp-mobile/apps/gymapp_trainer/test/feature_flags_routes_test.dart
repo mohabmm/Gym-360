@@ -40,6 +40,7 @@ void main() {
       AppRoutes.clientPackages,
       AppRoutes.planTemplates,
       AppRoutes.planBuilder,
+      AppRoutes.clientPlans,
       AppRoutes.notifications,
       AppRoutes.settings,
       AppRoutes.profile,
@@ -74,5 +75,6 @@ void main() {
     );
     expect(trainerFeatureRedirect(AppRoutes.planTemplates, noPlans), AppRoutes.home);
     expect(trainerFeatureRedirect(AppRoutes.planBuilder, noPlans), AppRoutes.home);
+    expect(trainerFeatureRedirect(AppRoutes.clientPlans, noPlans), AppRoutes.home);
   });
 }
