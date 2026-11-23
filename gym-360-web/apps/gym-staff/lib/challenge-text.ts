@@ -1,0 +1,83 @@
+import { useDocumentLocale } from '@gym360/ui';
+
+/** mem.first_month_challenge copy for staff web, Arabic first. */
+const TEXT = {
+  en: {
+    isArabic: false,
+    title: 'First-month rewards',
+    description: 'New members who reached the first-month target. Hand the reward over in person, then tick it delivered.',
+    toHandOver: 'To hand over',
+    delivered: 'Delivered',
+    emptyPending: 'No rewards waiting. When a new member reaches the target, they show up here.',
+    emptyDelivered: 'No rewards delivered yet.',
+    member: 'Member',
+    coach: 'Coach',
+    workouts: 'Workouts',
+    reachedOn: 'Reached',
+    reward: 'Reward',
+    deliveredCol: 'Delivered',
+    deliveredBy: (name: string) => `by ${name}`,
+    saveError: 'Could not save. Try again.',
+    loadError: 'Could not load this right now. Try again in a moment.',
+    // settings card
+    settingsTitle: 'First-month challenge',
+    settingsHint: 'Counts plan workouts (in the app or a PT session on a plan day) from the member’s join date. Trainee, coach and desk are told once when it is reached.',
+    targetLabel: 'Target',
+    targetUnit: 'workouts',
+    windowLabel: 'within',
+    windowUnit: 'days of joining',
+    rewardAr: 'Reward (Arabic)',
+    rewardEn: 'Reward (English)',
+    rewardHint: 'Leave empty for the default wording.',
+    save: 'Save',
+    saved: 'Saved',
+    // dashboard
+    plansTitle: 'Training plans',
+    activePlans: 'Members with an active plan',
+    workoutsThisMonth: 'Plan workouts this month',
+    membersTraining: 'Members training this month',
+    challengeReached: 'Reached the first-month challenge',
+    awaiting: (n: number) => `${n} still to hand over`,
+  },
+  ar: {
+    isArabic: true,
+    title: 'مكافآت الشهر الأول',
+    description: 'الأعضاء الجداد اللي خلّصوا هدف الشهر الأول. سلّم المكافأة وجهاً لوجه، وبعدين علّم عليها "اتسلمت".',
+    toHandOver: 'لسه ما اتسلمتش',
+    delivered: 'اتسلمت',
+    emptyPending: 'مفيش مكافآت مستنية. أول ما عضو جديد يخلّص الهدف هيظهر هنا.',
+    emptyDelivered: 'لسه ما فيش مكافآت اتسلمت.',
+    member: 'العضو',
+    coach: 'المدرب',
+    workouts: 'التمارين',
+    reachedOn: 'وصل للهدف',
+    reward: 'المكافأة',
+    deliveredCol: 'اتسلمت',
+    deliveredBy: (name: string) => `بواسطة ${name}`,
+    saveError: 'تعذّر الحفظ، حاول مرة أخرى.',
+    loadError: 'تعذّر التحميل دلوقتي، حاول تاني بعد شوية.',
+    settingsTitle: 'تحدي الشهر الأول',
+    settingsHint: 'بيتحسب من تمارين الخطة (في التطبيق أو حصة مع المدرب على يوم من الخطة) من يوم اشتراك العضو. العضو والمدرب والاستقبال بيوصلهم إشعار مرة واحدة لما يوصل للهدف.',
+    targetLabel: 'الهدف',
+    targetUnit: 'تمرين',
+    windowLabel: 'خلال',
+    windowUnit: 'يوم من الاشتراك',
+    rewardAr: 'المكافأة (عربي)',
+    rewardEn: 'المكافأة (إنجليزي)',
+    rewardHint: 'سيبها فاضية للنص الافتراضي.',
+    save: 'حفظ',
+    saved: 'تم الحفظ',
+    plansTitle: 'خطط التدريب',
+    activePlans: 'أعضاء معاهم خطة',
+    workoutsThisMonth: 'تمارين الخطة الشهر ده',
+    membersTraining: 'أعضاء اتمرنوا الشهر ده',
+    challengeReached: 'وصلوا لهدف الشهر الأول',
+    awaiting: (n: number) => `${n} لسه ما استلموش`,
+  },
+};
+
+export type ChallengeText = (typeof TEXT)['en'];
+
+export function useChallengeText(): ChallengeText {
+  return TEXT[useDocumentLocale() === 'ar' ? 'ar' : 'en'] as ChallengeText;
+}

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import apiClient from '@/lib/api-client';
 
-import type { PlanSettings } from '@/lib/plan-settings';
+import type { PlanSettings, PlanSettingsChange } from '@/lib/plan-settings';
 
 export type { PlanSettings } from '@/lib/plan-settings';
 
@@ -21,7 +21,7 @@ export function usePlanSettings() {
 export function useSavePlanSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (settings: Pick<PlanSettings, 'inactiveDays'>): Promise<PlanSettings> =>
+    mutationFn: async (settings: PlanSettingsChange): Promise<PlanSettings> =>
       (await apiClient.put('/training/plan-settings', settings)).data?.data,
     onSuccess: () => void qc.invalidateQueries({ queryKey: [KEY] }),
   });

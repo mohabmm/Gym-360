@@ -43,3 +43,8 @@ test('plan templates close when pt.training_plan is off', () => {
   expect(isPathEnabled('/pt/plan-templates/abc', STAFF_ROUTE_RULES, noPlans)).toBe(false);
   expect(isPathEnabled('/pt/interests', STAFF_ROUTE_RULES, noPlans)).toBe(true);
 });
+
+test('first-month rewards open only when mem.first_month_challenge is on (OFF in every preset)', () => {
+  expect(isPathEnabled('/pt/challenge', STAFF_ROUTE_RULES, pt)).toBe(false);
+  expect(isPathEnabled('/pt/challenge', STAFF_ROUTE_RULES, (k) => pt(k) || k === K.MEM_FIRST_MONTH_CHALLENGE)).toBe(true);
+});
