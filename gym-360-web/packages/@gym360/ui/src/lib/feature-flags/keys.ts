@@ -11,6 +11,7 @@ export const FEATURE_FLAG_KEYS = {
   PT_TRIAL_RECAP: 'pt.trial_recap',
   PT_PACKAGE_INTEREST: 'pt.package_interest',
   PT_TRIAL_FOLLOWUPS: 'pt.trial_followups',
+  PT_EXERCISE_PROGRESS: 'pt.exercise_progress',
   PT_TRAINING_PLAN: 'pt.training_plan',
   // Opt-in pilots — OFF in every preset; the Super Admin turns them on per gym.
   MEM_FIRST_MONTH_CHALLENGE: 'mem.first_month_challenge',
@@ -66,5 +67,6 @@ export const PT_MODULE_DEFAULTS: readonly string[] = [
   K.PT_TRIAL_RECAP,
   K.PT_PACKAGE_INTEREST,
   K.PT_TRIAL_FOLLOWUPS,
+  K.PT_EXERCISE_PROGRESS,
   K.PT_TRAINING_PLAN,
 ];

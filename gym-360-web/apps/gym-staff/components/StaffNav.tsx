@@ -3,7 +3,7 @@ import { isPathEnabled, type NavSection, type StaffSubRole } from '@gym360/ui';
 import {
   LayoutDashboard, Users, Dumbbell, CalendarDays, BookOpen,
   CreditCard, Trophy, Megaphone, BarChart3, DoorOpen, UserCog, Settings,
-  FileSpreadsheet, Lock, Gift, AlertTriangle, LineChart, ThumbsUp,
+  FileSpreadsheet, Lock, Gift, AlertTriangle, LineChart, ThumbsUp, ClipboardList,
 } from 'lucide-react';
 import { STAFF_ROUTE_FLAGS } from '@/lib/feature-flags';
 import type { PtText } from '@/lib/pt-text';
@@ -30,6 +30,7 @@ function allSections(t: PtText, subRole: StaffSubRole): NavSection[] {
         { label: t.navTrials, href: '/pt/trials', icon: icon(Gift) },
         { label: t.navReview, href: '/pt/review', icon: icon(AlertTriangle) },
         ...(canSeePtDashboard ? [{ label: t.navDashboard, href: '/pt/dashboard', icon: icon(LineChart) }] : []),
+        ...(canSeePtDashboard ? [{ label: t.navPlanTemplates, href: '/pt/plan-templates', icon: icon(ClipboardList) }] : []),
       ],
     },
     {
