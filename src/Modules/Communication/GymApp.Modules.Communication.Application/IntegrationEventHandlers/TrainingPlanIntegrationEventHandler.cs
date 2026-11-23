@@ -7,10 +7,11 @@ using MediatR;
 
 namespace GymApp.Modules.Communication.Application.IntegrationEventHandlers;
 
-/// <summary>pt.training_plan — tells the trainee when their coach gives them a plan or edits it.</summary>
+/// <summary>pt.training_plan — tells the trainee when their coach gives them a plan, edits it, or reminds them.</summary>
 internal sealed class TrainingPlanIntegrationEventHandler
     : INotificationHandler<TrainingPlanAssignedIntegrationEvent>,
-      INotificationHandler<TrainingPlanUpdatedIntegrationEvent>
+      INotificationHandler<TrainingPlanUpdatedIntegrationEvent>,
+      INotificationHandler<TrainingPlanNudgeIntegrationEvent>
 {
     private readonly IFeatureFlagService _featureFlags;
     private readonly PtNotifier _notifier;
@@ -29,7 +30,11 @@ internal sealed class TrainingPlanIntegrationEventHandler
         NotifyAsync(new PlanNotice(e.GymId, e.TrainerId, e.TraineeId, e.PlanId, "training_plan_updated"),
             coach => TrainingPlanTexts.Updated(coach, e.PlanNameAr ?? e.PlanName), cancellationToken);
 
-    private sealed record PlanNotice(Guid GymId, Guid TrainerId, Guid TraineeId, Guid PlanId, string Type);
+    public Task Handle(TrainingPlanNudgeIntegrationEvent e, CancellationToken cancellationToken) =>
+        NotifyAsync(new PlanNotice(e.GymId, e.TrainerId, e.TraineeId, null, "training_plan_nudge"),
+            coach => TrainingPlanTexts.Nudge(coach, e.Message), cancellationToken);
+
+    private sealed record PlanNotice(Guid GymId, Guid TrainerId, Guid TraineeId, Guid? PlanId, string Type);
 
     private async Task NotifyAsync(PlanNotice notice, Func<string, NotificationText> text, CancellationToken cancellationToken)
     {
@@ -38,11 +43,12 @@ internal sealed class TrainingPlanIntegrationEventHandler
         var coachName = await _notifier.DisplayNameAsync(notice.TrainerId, cancellationToken);
         var data = new Dictionary<string, string>
         {
-            ["planId"] = notice.PlanId.ToString(),
             ["gymId"] = notice.GymId.ToString(),
             ["type"] = notice.Type,
             ["route"] = "/plan"
         };
+        if (notice.PlanId is { } planId)
+            data["planId"] = planId.ToString();
         await _notifier.SendAsync(
             new PtNotification(notice.GymId, new[] { notice.TraineeId }, NotificationType.TrainingPlan, text(coachName), data),
             cancellationToken);

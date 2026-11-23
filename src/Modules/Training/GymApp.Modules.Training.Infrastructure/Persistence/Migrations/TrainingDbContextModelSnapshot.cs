@@ -3196,6 +3196,33 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                     b.ToTable("training_plans", "training");
                 });
 
+            modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.TrainingPlanSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GymId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("InactiveDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(5);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GymId")
+                        .IsUnique();
+
+                    b.ToTable("training_plan_settings", "training");
+                });
+
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.Workout", b =>
                 {
                     b.Property<Guid>("Id")

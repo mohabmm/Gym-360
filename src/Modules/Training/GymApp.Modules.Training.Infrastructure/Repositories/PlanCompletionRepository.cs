@@ -34,6 +34,13 @@ internal sealed class PlanCompletionRepository : IPlanCompletionRepository
             .OrderByDescending(c => c.CompletedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<PlanWorkoutCompletion>> ListForTraineesAsync(
+        Guid gymId, IReadOnlyCollection<Guid> traineeIds, DateOnly since, CancellationToken cancellationToken = default) =>
+        await _db.PlanWorkoutCompletions
+            .AsNoTracking()
+            .Where(c => c.GymId == gymId && traineeIds.Contains(c.TraineeId) && c.CompletedOn >= since)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<PlanWorkoutCompletion>> ListAllForTraineeAsync(Guid traineeId, CancellationToken cancellationToken = default) =>
         await _db.PlanWorkoutCompletions
             .AsNoTracking()

@@ -16,4 +16,13 @@ internal static class TrainingPlanTexts
         $"عدّل الكابتن {coachName} خطة \"{planName}\". التمرين الجاي بالتعديلات الجديدة.",
         "Your plan was updated",
         $"Coach {coachName} changed \"{planName}\". Your next workout has the changes.");
+
+    /// <summary>A coach's reminder; their own words when they wrote some.</summary>
+    public static NotificationText Nudge(string coachName, string? message) => message is null
+        ? new NotificationText(
+            $"الكابتن {coachName} بيفكّرك 💪",
+            "تمرينك الجاي في الخطة مستنيك. افتح التطبيق وابدأ!",
+            $"Coach {coachName} is checking in 💪",
+            "Your next plan workout is waiting. Open the app and start!")
+        : new NotificationText($"رسالة من الكابتن {coachName}", message, $"Message from coach {coachName}", message);
 }

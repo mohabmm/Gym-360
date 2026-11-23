@@ -16,5 +16,10 @@ public static class TrainingPlanErrors
 
     public static Error InvalidDocument(string reason) => new("Training.InvalidPlan", reason);
 
+    public static readonly Error SettingsForbidden = new("Training.PlanSettings.Forbidden", "Only the gym owner or a manager can change plan settings.");
+    public static readonly Error AlreadyNudged = new("Training.PlanNudge.Conflict", "You already reminded this client today.");
+
+    public static Error InvalidSettings(string reason) => new("Training.InvalidPlanSettings", reason);
+
     public static Error InvalidWorkout(string reason) => new("Training.InvalidPlanWorkout", reason);
 }
