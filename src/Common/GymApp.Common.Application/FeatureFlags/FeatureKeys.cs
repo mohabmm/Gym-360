@@ -19,6 +19,10 @@ public static class FeatureKeys
     public const string PtPackageInterest = "pt.package_interest";
     public const string PtTrialFollowUps = "pt.trial_followups";
     public const string PtExerciseProgress = "pt.exercise_progress";
+    public const string PtTrainingPlan = "pt.training_plan";
+
+    // --- Opt-in pilots: OFF in every preset, switched on per gym by the Super Admin ---
+    public const string MemFirstMonthChallenge = "mem.first_month_challenge";
 
     // --- PT, later phase: OFF in pt_module ---
     public const string PtMonthlyReport = "pt.monthly_report";
