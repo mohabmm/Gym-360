@@ -65,13 +65,17 @@ internal sealed class TrainingPlanEndpoints : IEndpoint
         .WithSummary("A trainee's active plan and plan history")
         .Produces<ApiResponse<TraineePlansDto>>(StatusCodes.Status200OK);
 
-        coach.MapGet("plan-exercises", async ([AsParameters] ExerciseSearch query, HttpContext http, ISender sender) =>
+        // The staff web's gym-template editor searches the library too.
+        app.MapGet("api/v1/training/plan-exercises", async ([AsParameters] ExerciseSearch query, HttpContext http, ISender sender) =>
         {
             if (!TryGetActor(http, out var actor, out var problem))
                 return problem!;
             var size = Math.Clamp(query.PageSize ?? 20, 1, MaxPageSize);
             return ToResult(await sender.Send(new GetExercisesQuery(actor.GymId, null, null, query.Search, Math.Max(query.Page ?? 1, 1), size)));
         })
+        .RequireAuthorization(CoachOrGymManager)
+        .RequireFeature(FeatureKeys.PtTrainingPlan)
+        .WithTags("Training plans")
         .WithSummary("Search the exercise library (English or Arabic) for the plan builder")
         .Produces<ApiResponse<PagedResponse<ExerciseDto>>>(StatusCodes.Status200OK);
 

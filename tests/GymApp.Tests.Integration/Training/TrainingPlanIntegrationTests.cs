@@ -152,6 +152,9 @@ public sealed class TrainingPlanIntegrationTests : BaseIntegrationTest
         var page = await PtTestGym.DataAsync(coach, "api/v1/training/plan-exercises?search=" + Uri.EscapeDataString("سكوات"));
 
         page.GetProperty("items").GetArrayLength().Should().BeGreaterThan(0);
+        var owner = Client(CreateGymOwnerClient(Guid.NewGuid(), _gymId));
+        (await owner.GetAsync("api/v1/training/plan-exercises?search=squat")).StatusCode
+            .Should().Be(HttpStatusCode.OK, "the staff web template editor searches the library too");
     }
 
     // ------------------------------------------------------------------ helpers
