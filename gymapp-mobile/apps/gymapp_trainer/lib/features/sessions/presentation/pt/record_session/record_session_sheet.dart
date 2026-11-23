@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../../../../plans/data/session_plan_days.dart';
 import '../pt_coach_widgets.dart' show TrialBadge;
 import 'record_session_strings.dart';
 import 'session_time_draft.dart';
@@ -17,6 +18,8 @@ class RecordSessionSheet extends StatefulWidget {
   final RecordSessionStrings strings;
   final SessionTimeDraft draft;
   final RecordSessionSubmit onSubmit;
+  /// pt.training_plan: the client's plan days (null = no plan, nothing shown).
+  final SessionPlanDays? planDays;
 
   const RecordSessionSheet({
     super.key,
@@ -25,6 +28,7 @@ class RecordSessionSheet extends StatefulWidget {
     required this.strings,
     required this.draft,
     required this.onSubmit,
+    this.planDays,
   });
 
   @override
@@ -35,6 +39,7 @@ class _RecordSessionSheetState extends State<RecordSessionSheet> {
   final _note = TextEditingController();
   bool _saving = false;
   String? _error;
+  late String? _planDayKey = widget.planDays?.suggestedKey;
 
   SessionTimeDraft get _draft => widget.draft;
   RecordSessionStrings get _s => widget.strings;
@@ -71,7 +76,12 @@ class _RecordSessionSheetState extends State<RecordSessionSheet> {
     setState(() => _saving = true);
     try {
       final note = _note.text.trim();
-      final result = await widget.onSubmit({..._draft.toPayload(), if (note.isNotEmpty) 'notes': note});
+      final planDay = _planDayKey;
+      final result = await widget.onSubmit({
+        ..._draft.toPayload(),
+        if (note.isNotEmpty) 'notes': note,
+        if (planDay != null && widget.planDays != null) 'planDay': widget.planDays!.payload(planDay),
+      });
       navigator.pop(result);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = _friendly(e));
@@ -111,6 +121,15 @@ class _RecordSessionSheetState extends State<RecordSessionSheet> {
               const SizedBox(height: 8),
               Text(_s.slot(context, _draft), key: const ValueKey('session-slot'),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              if (widget.planDays case final days?) ...[
+                const SizedBox(height: 16),
+                _PlanDayPicker(
+                  days: days,
+                  selected: _planDayKey,
+                  strings: _s,
+                  onSelected: (key) => setState(() => _planDayKey = key),
+                ),
+              ],
               const SizedBox(height: 16),
               TextField(
                 controller: _note,
@@ -211,6 +230,45 @@ class _Header extends StatelessWidget {
             )),
       ],
     ]);
+  }
+}
+
+class _PlanDayPicker extends StatelessWidget {
+  final SessionPlanDays days;
+  final String? selected;
+  final RecordSessionStrings strings;
+  final ValueChanged<String?> onSelected;
+
+  const _PlanDayPicker({required this.days, required this.selected, required this.strings, required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(strings.planDay, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      Text(strings.planDayHint, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.grey500)),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        ChoiceChip(
+          key: const ValueKey('plan-day-none'),
+          label: Text(strings.noPlanDay),
+          selected: selected == null,
+          onSelected: (_) => onSelected(null),
+        ),
+        for (final slot in days.shown)
+          ChoiceChip(
+            key: ValueKey('plan-day-${slot.day.key}'),
+            label: Text(_label(slot)),
+            selected: selected == slot.day.key,
+            onSelected: (_) => onSelected(slot.day.key),
+          ),
+      ]),
+    ]);
+  }
+
+  String _label(PlanSlot slot) {
+    final title = slot.day.displayTitle(strings.isArabic);
+    return slot.day.key == days.suggestedKey ? '$title · ${strings.nextPlanDay}' : title;
   }
 }
 

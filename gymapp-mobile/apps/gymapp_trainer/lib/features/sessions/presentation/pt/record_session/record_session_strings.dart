@@ -33,6 +33,11 @@ class RecordSessionStrings {
   String get noSessionsLeft => _t('لا توجد حصص متبقية في الباقة', 'No sessions left in the package');
   String get notYourClient => _t('هذا العميل ليس لديه باقة معك', 'This client has no package with you');
 
+  String get planDay => _t('يوم من الخطة (اختياري)', 'Plan day (optional)');
+  String get noPlanDay => _t('بدون', 'None');
+  String get planDayHint => _t('يتحسب للعميل تمرين من خطته', 'Counts as this workout of the client\'s plan');
+  String get nextPlanDay => _t('التالي', 'Next');
+
   String minutes(int m) => _t('$m د', '$m min');
 
   String leftAfter(int left, int total) => _t(
