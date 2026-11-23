@@ -572,12 +572,19 @@
           "GymApp.Common.Domain": "[1.0.0, )"
         }
       },
+      "gymapp.modules.scheduling.integrationevents": {
+        "type": "Project",
+        "dependencies": {
+          "GymApp.Common.Domain": "[1.0.0, )"
+        }
+      },
       "gymapp.modules.training.application": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Application": "[1.0.0, )",
           "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
+          "GymApp.Modules.Scheduling.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Training.Domain": "[1.0.0, )",
           "GymApp.Modules.Training.IntegrationEvents": "[1.0.0, )"
         }

@@ -10,6 +10,9 @@ public interface IPlanCompletionRepository
     /// <summary>Every workout logged against the plan, voided ones included (read-only).</summary>
     Task<IReadOnlyList<PlanWorkoutCompletion>> ListForPlanAsync(Guid gymId, Guid planId, CancellationToken cancellationToken = default);
 
+    /// <summary>Workouts recorded from this PT session (tracked, so they can be voided).</summary>
+    Task<IReadOnlyList<PlanWorkoutCompletion>> ListForSessionAsync(Guid gymId, Guid sessionId, CancellationToken cancellationToken = default);
+
     /// <summary>The trainee's workouts at this gym on or after <paramref name="since"/>, newest first (read-only).</summary>
     Task<IReadOnlyList<PlanWorkoutCompletion>> ListForTraineeAsync(Guid gymId, Guid traineeId, DateOnly? since, CancellationToken cancellationToken = default);
 

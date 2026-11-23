@@ -17,6 +17,8 @@ public sealed class TraineePlanWorkoutIntegrationTests : BaseIntegrationTest
     private const string MyPlan = "api/v1/training/me/plan";
     private const string MyProgress = "api/v1/training/me/plan-progress";
 
+    private static readonly TimeSpan OutboxTimeout = TimeSpan.FromSeconds(60);
+
     private readonly Guid _coachId = Guid.NewGuid();
     private readonly Guid _traineeId = Guid.NewGuid();
     private Guid _gymId;
@@ -124,7 +126,85 @@ public sealed class TraineePlanWorkoutIntegrationTests : BaseIntegrationTest
         }
     }
 
+    [Fact]
+    public async Task A_pt_session_logged_on_a_plan_day_counts_for_the_trainee_until_the_desk_reverses_it()
+    {
+        var (coach, trainee) = await StartAsync();
+        var planId = await AssignAsync(coach, TwoDayPlan("P"));
+        var dayA = NextDay(await PtTestGym.DataAsync(trainee, MyPlan));
+
+        var logged = await coach.PostAsJsonAsync("api/v1/scheduling/sessions/quick-log", new { memberId = _traineeId, planDay = new { planId, dayKey = dayA } });
+        logged.StatusCode.Should().Be(HttpStatusCode.OK, await logged.Content.ReadAsStringAsync());
+        var sessionId = JsonDocument.Parse(await logged.Content.ReadAsStringAsync()).RootElement.GetProperty("data").GetProperty("sessionId").GetGuid();
+
+        await EventuallyAsync(async () => NextDay(await PtTestGym.DataAsync(trainee, MyPlan)) != dayA, "the session moved the plan on");
+        var history = (await PtTestGym.DataAsync(trainee, MyProgress)).GetProperty("history").EnumerateArray().Should().ContainSingle().Subject;
+        history.GetProperty("source").GetString().Should().Be("CoachSession");
+
+        (await trainee.PostAsJsonAsync($"api/v1/scheduling/sessions/{sessionId}/member-dispute", new { reason = "Not me" }))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent, "dual confirmation still works");
+        NextDay(await PtTestGym.DataAsync(trainee, MyPlan)).Should().NotBe(dayA, "a dispute alone changes nothing until the desk decides");
+
+        (await _desk!.PostAsync($"api/v1/scheduling/sessions/{sessionId}/reverse", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await EventuallyAsync(async () => NextDay(await PtTestGym.DataAsync(trainee, MyPlan)) == dayA, "a reversed session no longer counts");
+        (await PtTestGym.DataAsync(trainee, MyPlan)).GetProperty("stats").GetProperty("thisWeek").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_same_day_done_in_the_app_and_in_the_coach_s_session_counts_once()
+    {
+        var (coach, trainee) = await StartAsync();
+        var planId = await AssignAsync(coach, TwoDayPlan("P"));
+        var dayA = NextDay(await PtTestGym.DataAsync(trainee, MyPlan));
+        await UploadAsync(trainee, Guid.NewGuid(), Workout(planId, dayA, squatKg: 40));
+
+        (await coach.PostAsJsonAsync("api/v1/scheduling/sessions/quick-log", new { memberId = _traineeId, planDay = new { planId, dayKey = dayA } }))
+            .EnsureSuccessStatusCode();
+        await EventuallyAsync(async () => await RemainingAsync(trainee) == 3, "the session was processed");
+
+        (await PtTestGym.DataAsync(trainee, MyProgress)).GetProperty("history").GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task With_training_plans_off_a_session_with_a_plan_day_is_still_logged_and_nothing_else_happens()
+    {
+        var (coach, trainee) = await StartAsync();
+        var planId = await AssignAsync(coach, TwoDayPlan("P"));
+        var dayA = NextDay(await PtTestGym.DataAsync(trainee, MyPlan));
+        await SetFlagAsync(FeatureKeys.PtTrainingPlan, enabled: false);
+
+        var logged = await coach.PostAsJsonAsync("api/v1/scheduling/sessions/quick-log", new { memberId = _traineeId, planDay = new { planId, dayKey = dayA } });
+
+        logged.StatusCode.Should().Be(HttpStatusCode.OK, "session logging never depends on plans");
+        await EventuallyAsync(async () => await RemainingAsync(trainee) == 3, "the package is still deducted");
+        await SetFlagAsync(FeatureKeys.PtTrainingPlan, enabled: true);
+        NextDay(await PtTestGym.DataAsync(trainee, MyPlan)).Should().Be(dayA);
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    private HttpClient? _desk;
+
+    private static async Task<int> RemainingAsync(HttpClient trainee)
+    {
+        var data = await PtTestGym.DataAsync(trainee, "api/v1/billing/me/packages");
+        var items = data.ValueKind == JsonValueKind.Array ? data : data.GetProperty("items");
+        return items.EnumerateArray()
+            .Where(p => p.TryGetProperty("status", out var s) && s.GetString() == "Active")
+            .Sum(p => p.GetProperty("remainingSessions").GetInt32());
+    }
+
+    private static async Task EventuallyAsync(Func<Task<bool>> condition, string because)
+    {
+        var deadline = DateTime.UtcNow + OutboxTimeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await condition())
+                return;
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+        (await condition()).Should().BeTrue(because);
+    }
 
     private static string NextDay(JsonElement myPlan) => myPlan.GetProperty("cursor").GetProperty("nextDayKey").GetString()!;
 
@@ -174,6 +254,7 @@ public sealed class TraineePlanWorkoutIntegrationTests : BaseIntegrationTest
         _gymId = await PtTestGym.RegisterAsync(Factory.Services, _traineeId);
         var deskId = Guid.NewGuid();
         var desk = Client(CreateStaffClient(deskId, _gymId));
+        _desk = desk;
         var assigned = await desk.PostAsJsonAsync("api/v1/billing/packages/quick-assign", new
         {
             gymId = _gymId, trainerId = _coachId, memberId = _traineeId, sessionCount = 4, assignedBy = deskId, isTrial = true,

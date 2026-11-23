@@ -32,6 +32,12 @@
           "GymApp.Common.Domain": "[1.0.0, )"
         }
       },
+      "gymapp.modules.scheduling.integrationevents": {
+        "type": "Project",
+        "dependencies": {
+          "GymApp.Common.Domain": "[1.0.0, )"
+        }
+      },
       "gymapp.modules.training.domain": {
         "type": "Project",
         "dependencies": {

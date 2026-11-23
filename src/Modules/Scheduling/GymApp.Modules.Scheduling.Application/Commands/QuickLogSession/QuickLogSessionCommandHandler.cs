@@ -61,13 +61,17 @@ internal sealed class QuickLogSessionCommandHandler : ICommandHandler<QuickLogSe
         await _sessions.AddAsync(session, cancellationToken);
 
         // Same event as a normal completion: Billing deducts the package session (and fires
-        // 3/1-left and trial alerts), Communication asks the trainee to confirm.
+        // 3/1-left and trial alerts), Communication asks the trainee to confirm, and Training
+        // records the plan day when the coach picked one.
         _integrationEvents.Enqueue(new SessionCompletedIntegrationEvent(
-            session.Id, session.TrainerId, session.MemberId, session.GymId));
+            session.Id, session.TrainerId, session.MemberId, session.GymId, PlanDayOf(request, schedule.Date)));
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new QuickLogSessionResult(
             session.Id, remaining.Value - 1, AlreadyLogged: false, schedule.Date, schedule.Time));
     }
+
+    private static PlanDayLink? PlanDayOf(QuickLogSessionCommand request, DateOnly sessionDate) =>
+        request.PlanDay is { } day ? new PlanDayLink(day.PlanId, day.DayKey.Trim(), sessionDate) : null;
 }

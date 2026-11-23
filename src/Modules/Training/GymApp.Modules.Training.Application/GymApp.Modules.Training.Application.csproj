@@ -10,5 +10,6 @@
     <ProjectReference Include="..\GymApp.Modules.Training.IntegrationEvents\GymApp.Modules.Training.IntegrationEvents.csproj" />
     <ProjectReference Include="..\..\Identity\GymApp.Modules.Identity.IntegrationEvents\GymApp.Modules.Identity.IntegrationEvents.csproj" />
     <ProjectReference Include="..\..\Billing\GymApp.Modules.Billing.Shared\GymApp.Modules.Billing.Shared.csproj" />
+    <ProjectReference Include="..\..\Scheduling\GymApp.Modules.Scheduling.IntegrationEvents\GymApp.Modules.Scheduling.IntegrationEvents.csproj" />
   </ItemGroup>
 </Project>

@@ -10,6 +10,10 @@ internal static class TrainingCalendar
 
     public static DateOnly Today() => LocalDate(DateTime.UtcNow);
 
+    /// <summary>Midday of a gym-local day, in UTC (a session logged for a past day).</summary>
+    public static DateTime NoonUtc(DateOnly day) =>
+        TimeZoneInfo.ConvertTimeToUtc(day.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Unspecified), Egypt);
+
     private static TimeZoneInfo Resolve()
     {
         foreach (var id in new[] { "Africa/Cairo", "Egypt Standard Time" })

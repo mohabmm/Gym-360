@@ -12,12 +12,14 @@ internal sealed class QuickLogSessionEndpoint : IEndpoint
 {
     /// <param name="Date">Gym-local day the session happened (up to 7 days back); default today.</param>
     /// <param name="StartTime">Gym-local start time; omitted = a session that just finished.</param>
+    /// <param name="PlanDay">Optional (pt.training_plan): the plan day done in this session.</param>
     internal sealed record Request(
         Guid MemberId,
         string? Notes,
         DateOnly? Date = null,
         TimeOnly? StartTime = null,
-        int? DurationMinutes = null);
+        int? DurationMinutes = null,
+        QuickLogPlanDay? PlanDay = null);
 
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
@@ -36,7 +38,7 @@ internal sealed class QuickLogSessionEndpoint : IEndpoint
 
             var result = await sender.Send(new QuickLogSessionCommand(
                 gymId.Value, trainerId, request.MemberId, request.Notes,
-                request.Date, request.StartTime, request.DurationMinutes));
+                request.Date, request.StartTime, request.DurationMinutes, request.PlanDay));
 
             return result.IsSuccess
                 ? ApiResults.Ok(result.Value)
@@ -46,7 +48,7 @@ internal sealed class QuickLogSessionEndpoint : IEndpoint
         .RequireFeature(FeatureKeys.PtDualSessionLogging)
         .WithTags("Scheduling")
         .WithSummary("Record a PT session that happened")
-        .WithDescription("Coach records a session with a client who has an active package with them: today or up to 7 days back (date + start time, gym-local), duration 15–180 min (default 60). Without a time it is a session that just finished. The session is completed, the package is deducted, and the trainee is asked to confirm. Recording the same slot again (or a repeat one-tap within 5 minutes) returns the existing session with alreadyLogged = true.")
+        .WithDescription("Coach records a session with a client who has an active package with them: today or up to 7 days back (date + start time, gym-local), duration 15–180 min (default 60). Without a time it is a session that just finished. The session is completed, the package is deducted, and the trainee is asked to confirm. Recording the same slot again (or a repeat one-tap within 5 minutes) returns the existing session with alreadyLogged = true. Optional planDay {planId, dayKey} records that plan day as done for the trainee (when training plans are on); the session itself is the same either way.")
         .Produces<ApiResponse<QuickLogSessionResult>>(StatusCodes.Status200OK)
         .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
         .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
