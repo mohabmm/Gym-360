@@ -2914,6 +2914,97 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                     b.ToTable("plan_templates", "training");
                 });
 
+            modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.PlanWorkoutCompletion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("CompletedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DayKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("DayTitle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DayTitleAr")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("GymId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsVoided")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("PlanVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SequenceIndex")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Sets")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("sets");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("TraineeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Week")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GymId", "PlanId");
+
+                    b.HasIndex("GymId", "SessionId")
+                        .HasFilter("[SessionId] IS NOT NULL");
+
+                    b.HasIndex("TraineeId", "ClientId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_plan_workout_completions_client");
+
+                    b.HasIndex("GymId", "TraineeId", "CompletedOn");
+
+                    b.ToTable("plan_workout_completions", "training");
+                });
+
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.Program", b =>
                 {
                     b.Property<Guid>("Id")

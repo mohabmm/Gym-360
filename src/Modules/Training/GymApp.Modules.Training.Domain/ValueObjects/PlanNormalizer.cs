@@ -57,7 +57,7 @@ internal sealed class PlanNormalizer
     }
 }
 
-internal static class PlanText
+public static class PlanText
 {
     /// <summary>Trimmed text, or null when blank.</summary>
     public static string? OrNull(this string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

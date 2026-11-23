@@ -25,6 +25,7 @@ internal sealed class TrainingUserDataEraser : IUserDataEraser
             .ExecuteDeleteAsync(cancellationToken);
         count += await _db.RemoteWorkoutConfigs.Where(c => c.ClientId == userId || c.TrainerId == userId)
             .ExecuteDeleteAsync(cancellationToken);
+        count += await _db.PlanWorkoutCompletions.Where(c => c.TraineeId == userId).ExecuteDeleteAsync(cancellationToken);
         count += await _db.TrainingPlans.Where(p => p.TraineeId == userId).ExecuteDeleteAsync(cancellationToken);
         return count;
     }

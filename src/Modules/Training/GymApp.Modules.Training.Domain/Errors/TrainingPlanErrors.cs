@@ -12,5 +12,9 @@ public static class TrainingPlanErrors
     public static readonly Error PlanNotActive = new("Training.TrainingPlanNotActive", "Only the active plan can be edited.");
     public static readonly Error VersionConflict = new("Training.TrainingPlan.Conflict", "The plan was changed by someone else. Reload it and try again.");
 
+    public static readonly Error DayNotInPlan = new("Training.PlanDayNotFound", "This workout day is not in the plan.");
+
     public static Error InvalidDocument(string reason) => new("Training.InvalidPlan", reason);
+
+    public static Error InvalidWorkout(string reason) => new("Training.InvalidPlanWorkout", reason);
 }

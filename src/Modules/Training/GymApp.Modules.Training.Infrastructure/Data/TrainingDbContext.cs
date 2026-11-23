@@ -27,6 +27,7 @@ public sealed class TrainingDbContext : DbContext, ITrainingUnitOfWork
     public DbSet<WorkoutAssignment> WorkoutAssignments => Set<WorkoutAssignment>();
     public DbSet<RemoteWorkoutConfig> RemoteWorkoutConfigs => Set<RemoteWorkoutConfig>();
     public DbSet<PlanTemplate> PlanTemplates => Set<PlanTemplate>();
+    public DbSet<PlanWorkoutCompletion> PlanWorkoutCompletions => Set<PlanWorkoutCompletion>();
     public DbSet<TrainingPlan> TrainingPlans => Set<TrainingPlan>();
 
     internal DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

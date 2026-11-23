@@ -8,13 +8,16 @@ internal sealed class UserDataProvider : IUserDataProvider
     private readonly IWorkoutLogRepository _workoutLogRepository;
     private readonly IWorkoutAssignmentRepository _workoutAssignmentRepository;
     private readonly ITrainingPlanRepository _trainingPlanRepository;
+    private readonly IPlanCompletionRepository _planCompletionRepository;
 
     public UserDataProvider(
         IWorkoutLogRepository workoutLogRepository,
         IWorkoutAssignmentRepository workoutAssignmentRepository,
-        ITrainingPlanRepository trainingPlanRepository)
+        ITrainingPlanRepository trainingPlanRepository,
+        IPlanCompletionRepository planCompletionRepository)
     {
         _trainingPlanRepository = trainingPlanRepository;
+        _planCompletionRepository = planCompletionRepository;
         _workoutLogRepository = workoutLogRepository;
         _workoutAssignmentRepository = workoutAssignmentRepository;
     }
@@ -30,6 +33,7 @@ internal sealed class UserDataProvider : IUserDataProvider
             cancellationToken);
 
         var plans = await _trainingPlanRepository.ListAllForTraineeAsync(userId, cancellationToken);
+        var planWorkouts = await _planCompletionRepository.ListAllForTraineeAsync(userId, cancellationToken);
 
         return new
         {
@@ -45,6 +49,21 @@ internal sealed class UserDataProvider : IUserDataProvider
                 p.StartDate,
                 Status = p.Status.ToString(),
                 p.Document
+            }),
+            PlanWorkouts = planWorkouts.Select(c => new
+            {
+                c.Id,
+                c.PlanId,
+                c.GymId,
+                c.DayTitle,
+                c.DayTitleAr,
+                c.Week,
+                c.CompletedAt,
+                Source = c.Source.ToString(),
+                c.DurationMinutes,
+                c.Note,
+                c.IsVoided,
+                c.Sets
             }),
             WorkoutLogs = recentLogs.Select(l => new
             {

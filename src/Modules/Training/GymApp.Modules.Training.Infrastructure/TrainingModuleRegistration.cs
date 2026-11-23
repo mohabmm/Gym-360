@@ -38,6 +38,7 @@ public static class TrainingModuleRegistration
         services.AddScoped<IRemoteWorkoutConfigRepository, RemoteWorkoutConfigRepository>();
         services.AddScoped<IPlanTemplateRepository, PlanTemplateRepository>();
         services.AddScoped<ITrainingPlanRepository, TrainingPlanRepository>();
+        services.AddScoped<IPlanCompletionRepository, PlanCompletionRepository>();
         services.AddScoped<GymApp.Modules.Training.Application.TrainingPlans.PlanAccess>();
 
         services.AddScoped<ITrainingQueryService, TrainingQueryService>();
