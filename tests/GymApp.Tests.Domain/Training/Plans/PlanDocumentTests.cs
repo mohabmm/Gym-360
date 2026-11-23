@@ -41,8 +41,8 @@ public class PlanDocumentTests
     {
         var doc = PlanDocument.Of(new[]
         {
-            new PlanWeek(2, new[] { Day("W2", Exercise("Row")) }),
-            new PlanWeek(1, new[] { Day("W1", Exercise("Squat")) }),
+            new PlanWeek { Week = 2, Days = new[] { Day("W2", Exercise("Row")) } },
+            new PlanWeek { Week = 1, Days = new[] { Day("W1", Exercise("Squat")) } },
         });
 
         doc.Sequence().Select(d => d.Title).Should().Equal("W1", "W2");
@@ -53,7 +53,7 @@ public class PlanDocumentTests
     [InlineData(null, null)] // neither
     public void An_exercise_needs_either_reps_or_a_time(string? reps, int? seconds)
     {
-        var result = PlanContent.Create("P", null, PlanGoal.FatLoss, null,
+        var result = Validate("P", PlanGoal.FatLoss, null,
             OneWeek(Day("A", Exercise("Squat", 3, reps, seconds))));
 
         result.IsFailure.Should().BeTrue();
@@ -63,15 +63,15 @@ public class PlanDocumentTests
     [Fact]
     public void A_timed_exercise_is_valid()
     {
-        PlanContent.Create("P", null, PlanGoal.FatLoss, null,
+        Validate("P", PlanGoal.FatLoss, null,
             OneWeek(Day("A", Exercise("Plank", 3, reps: null, seconds: 45)))).IsSuccess.Should().BeTrue();
     }
 
     [Fact]
     public void Free_text_goal_needs_a_description()
     {
-        PlanContent.Create("P", null, PlanGoal.Other, "  ", FullBodyWeek()).IsFailure.Should().BeTrue();
-        PlanContent.Create("P", null, PlanGoal.Other, "Football pre-season", FullBodyWeek())
+        Validate("P", PlanGoal.Other, "  ", FullBodyWeek()).IsFailure.Should().BeTrue();
+        Validate("P", PlanGoal.Other, "Football pre-season", FullBodyWeek())
             .Value.GoalText.Should().Be("Football pre-season");
     }
 
@@ -80,12 +80,12 @@ public class PlanDocumentTests
     {
         var bad = Exercise("Squat") with { VideoUrl = "javascript:alert(1)" };
 
-        PlanContent.Create("P", null, PlanGoal.FatLoss, null, OneWeek(Day("A", bad))).IsFailure.Should().BeTrue();
+        Validate("P", PlanGoal.FatLoss, null, OneWeek(Day("A", bad))).IsFailure.Should().BeTrue();
     }
 
     [Fact]
     public void A_day_without_exercises_is_rejected()
     {
-        PlanContent.Create("P", null, PlanGoal.FatLoss, null, OneWeek(Day("Empty"))).IsFailure.Should().BeTrue();
+        Validate("P", PlanGoal.FatLoss, null, OneWeek(Day("Empty"))).IsFailure.Should().BeTrue();
     }
 }

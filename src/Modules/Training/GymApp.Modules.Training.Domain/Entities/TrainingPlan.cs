@@ -38,7 +38,7 @@ public sealed class TrainingPlan : Entity
     public DateTime UpdatedAt { get; private set; }
     public DateTime? EndedAt { get; private set; }
 
-    public PlanContent Content => new(Name, NameAr, Goal, GoalText, Document);
+    public PlanContent Content => new() { Name = Name, NameAr = NameAr, Goal = Goal, GoalText = GoalText, Document = Document };
 
     public bool IsActive => Status == TrainingPlanStatus.Active;
 

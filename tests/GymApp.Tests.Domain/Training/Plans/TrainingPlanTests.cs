@@ -2,6 +2,7 @@ using FluentAssertions;
 using GymApp.Modules.Training.Domain.Entities;
 using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Events;
+using GymApp.Modules.Training.Domain.ValueObjects;
 using Xunit;
 using static GymApp.Tests.Domain.Training.Plans.PlanSamples;
 
@@ -19,7 +20,7 @@ public class TrainingPlanTests
     [Fact]
     public void Editing_a_plan_copied_from_a_template_never_changes_the_template()
     {
-        var template = PlanTemplate.CreateForGym(Gym, Guid.NewGuid(), Content(FullBodyWeek().CopyFirstWeekToAll(4)));
+        var template = PlanTemplate.CreateForGym(new TemplateUser(Gym, Guid.NewGuid(), true), Content(FullBodyWeek().CopyFirstWeekToAll(4)));
         var before = System.Text.Json.JsonSerializer.Serialize(template.Document);
         var plan = AssignFrom(template);
 
@@ -36,7 +37,7 @@ public class TrainingPlanTests
     [Fact]
     public void Assigning_raises_an_event_and_starts_at_version_one()
     {
-        var plan = AssignFrom(PlanTemplate.CreateForGym(Gym, Coach, Content()));
+        var plan = AssignFrom(PlanTemplate.CreateForGym(new TemplateUser(Gym, Coach, true), Content()));
 
         plan.Status.Should().Be(TrainingPlanStatus.Active);
         plan.Version.Should().Be(1);
@@ -46,7 +47,7 @@ public class TrainingPlanTests
     [Fact]
     public void Revising_bumps_the_version_and_tells_the_trainee()
     {
-        var plan = AssignFrom(PlanTemplate.CreateForGym(Gym, Coach, Content()));
+        var plan = AssignFrom(PlanTemplate.CreateForGym(new TemplateUser(Gym, Coach, true), Content()));
 
         plan.Revise(Content(), Coach, expectedVersion: 1).IsSuccess.Should().BeTrue();
 
@@ -57,7 +58,7 @@ public class TrainingPlanTests
     [Fact]
     public void A_stale_edit_is_rejected_as_a_conflict()
     {
-        var plan = AssignFrom(PlanTemplate.CreateForGym(Gym, Coach, Content()));
+        var plan = AssignFrom(PlanTemplate.CreateForGym(new TemplateUser(Gym, Coach, true), Content()));
         plan.Revise(Content(), Coach, expectedVersion: 1);
 
         var stale = plan.Revise(Content(), Coach, expectedVersion: 1);
@@ -69,7 +70,7 @@ public class TrainingPlanTests
     [Fact]
     public void A_replaced_plan_stays_in_history_and_cannot_be_edited()
     {
-        var plan = AssignFrom(PlanTemplate.CreateForGym(Gym, Coach, Content()));
+        var plan = AssignFrom(PlanTemplate.CreateForGym(new TemplateUser(Gym, Coach, true), Content()));
 
         plan.Replace();
 
@@ -81,15 +82,15 @@ public class TrainingPlanTests
     [Fact]
     public void Gym_templates_are_edited_by_managers_and_coach_templates_by_their_coach()
     {
-        var gymTemplate = PlanTemplate.CreateForGym(Gym, Guid.NewGuid(), Content());
-        var coachTemplate = PlanTemplate.CreateForCoach(Gym, Coach, Content());
+        var gymTemplate = PlanTemplate.CreateForGym(new TemplateUser(Gym, Guid.NewGuid(), true), Content());
+        var coachTemplate = PlanTemplate.CreateForCoach(new TemplateUser(Gym, Coach), Content());
         var otherCoach = Guid.NewGuid();
 
-        gymTemplate.CanBeEditedBy(Coach, isGymManager: false).Should().BeFalse();
-        gymTemplate.CanBeEditedBy(Guid.NewGuid(), isGymManager: true).Should().BeTrue();
-        coachTemplate.CanBeEditedBy(Coach, isGymManager: false).Should().BeTrue();
-        coachTemplate.CanBeEditedBy(otherCoach, isGymManager: true).Should().BeFalse();
-        coachTemplate.IsVisibleTo(otherCoach).Should().BeFalse();
-        gymTemplate.IsVisibleTo(otherCoach).Should().BeTrue();
+        gymTemplate.CanBeEditedBy(new TemplateUser(Gym, Coach)).Should().BeFalse();
+        gymTemplate.CanBeEditedBy(new TemplateUser(Gym, Guid.NewGuid(), true)).Should().BeTrue();
+        coachTemplate.CanBeEditedBy(new TemplateUser(Gym, Coach)).Should().BeTrue();
+        coachTemplate.CanBeEditedBy(new TemplateUser(Gym, otherCoach, true)).Should().BeFalse();
+        coachTemplate.IsVisibleTo(new TemplateUser(Gym, otherCoach)).Should().BeFalse();
+        gymTemplate.IsVisibleTo(new TemplateUser(Gym, otherCoach)).Should().BeTrue();
     }
 }

@@ -36,43 +36,48 @@ public sealed class PlanTemplate : Entity
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
-    public PlanContent Content => new(Name, NameAr, Goal, GoalText, Document);
+    public PlanContent Content => new() { Name = Name, NameAr = NameAr, Goal = Goal, GoalText = GoalText, Document = Document };
 
-    public static PlanTemplate CreateForGym(Guid gymId, Guid createdBy, PlanContent content) =>
-        Create(gymId, PlanTemplateScope.Gym, ownerTrainerId: null, createdBy, content, sampleKey: null);
+    /// <summary>A template every coach of the gym can use, made by the owner or a manager.</summary>
+    public static PlanTemplate CreateForGym(TemplateUser by, PlanContent content) =>
+        Create(new Origin(by.GymId, PlanTemplateScope.Gym, null, by.UserId, null), content);
 
-    public static PlanTemplate CreateForCoach(Guid gymId, Guid trainerId, PlanContent content) =>
-        Create(gymId, PlanTemplateScope.Coach, trainerId, trainerId, content, sampleKey: null);
+    /// <summary>A coach's own template.</summary>
+    public static PlanTemplate CreateForCoach(TemplateUser coach, PlanContent content) =>
+        Create(new Origin(coach.GymId, PlanTemplateScope.Coach, coach.UserId, coach.UserId, null), content);
 
     /// <summary>A gym template seeded by the system (<paramref name="sampleKey"/> is unique per gym).</summary>
     public static PlanTemplate CreateSample(Guid gymId, string sampleKey, PlanContent content) =>
-        Create(gymId, PlanTemplateScope.Gym, ownerTrainerId: null, Guid.Empty, content, sampleKey);
+        Create(new Origin(gymId, PlanTemplateScope.Gym, null, Guid.Empty, sampleKey), content);
 
-    private static PlanTemplate Create(
-        Guid gymId, PlanTemplateScope scope, Guid? ownerTrainerId, Guid createdBy, PlanContent content, string? sampleKey)
+    private sealed record Origin(Guid GymId, PlanTemplateScope Scope, Guid? OwnerTrainerId, Guid CreatedBy, string? SampleKey);
+
+    private static PlanTemplate Create(Origin origin, PlanContent content)
     {
-        var now = DateTime.UtcNow;
         var template = new PlanTemplate(Guid.NewGuid())
         {
-            GymId = gymId,
-            Scope = scope,
-            OwnerTrainerId = ownerTrainerId,
-            CreatedBy = createdBy,
-            SampleKey = sampleKey,
-            CreatedAt = now
+            GymId = origin.GymId,
+            Scope = origin.Scope,
+            OwnerTrainerId = origin.OwnerTrainerId,
+            CreatedBy = origin.CreatedBy,
+            SampleKey = origin.SampleKey,
+            CreatedAt = DateTime.UtcNow
         };
-        template.Apply(content, now);
+        template.Apply(content);
         return template;
     }
 
     /// <summary>Coaches see gym templates and their own.</summary>
-    public bool IsVisibleTo(Guid userId) => Scope == PlanTemplateScope.Gym || OwnerTrainerId == userId;
+    public bool IsVisibleTo(TemplateUser user) => Scope == PlanTemplateScope.Gym || OwnerTrainerId == user.UserId;
+
+    /// <summary>Not archived and visible to the user: they can open, assign or copy it.</summary>
+    public bool IsAvailableTo(TemplateUser user) => !IsArchived && IsVisibleTo(user);
 
     /// <summary>Gym templates: owner or manager. Coach templates: their coach.</summary>
-    public bool CanBeEditedBy(Guid userId, bool isGymManager) =>
-        Scope == PlanTemplateScope.Gym ? isGymManager : OwnerTrainerId == userId;
+    public bool CanBeEditedBy(TemplateUser user) =>
+        Scope == PlanTemplateScope.Gym ? user.IsGymManager : OwnerTrainerId == user.UserId;
 
-    public void Update(PlanContent content) => Apply(content, DateTime.UtcNow);
+    public void Update(PlanContent content) => Apply(content);
 
     public void Archive()
     {
@@ -80,7 +85,7 @@ public sealed class PlanTemplate : Entity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    private void Apply(PlanContent content, DateTime now)
+    private void Apply(PlanContent content)
     {
         Name = content.Name;
         NameAr = content.NameAr;
@@ -89,6 +94,6 @@ public sealed class PlanTemplate : Entity
         Document = content.Document;
         DurationWeeks = content.DurationWeeks;
         DaysPerWeek = content.DaysPerWeek;
-        UpdatedAt = now;
+        UpdatedAt = DateTime.UtcNow;
     }
 }
