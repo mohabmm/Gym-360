@@ -12,4 +12,10 @@ public interface IPlanTemplateRepository
     Task<bool> AnyForGymAsync(Guid gymId, CancellationToken cancellationToken = default);
 
     Task AddAsync(PlanTemplate template, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Adds and saves seeded samples on its own. Returns 0 instead of failing when another request
+    /// seeded the same gym at the same moment (the unique sample index rejects the duplicate).
+    /// </summary>
+    Task<int> TryAddSamplesAsync(IReadOnlyList<PlanTemplate> samples, CancellationToken cancellationToken = default);
 }

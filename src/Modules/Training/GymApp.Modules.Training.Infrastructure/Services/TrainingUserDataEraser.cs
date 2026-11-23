@@ -6,8 +6,8 @@ namespace GymApp.Modules.Training.Infrastructure.Services;
 
 /// <summary>
 /// Deletes the user's workout logs (+sets, cascade) and every assignment / remote config
-/// where they are the client or the trainer. Programs and workouts a trainer authored stay
-/// as gym content.
+/// where they are the client or the trainer, and the training plans given to them.
+/// Programs, workouts and plan templates a trainer authored stay as gym content.
 /// </summary>
 internal sealed class TrainingUserDataEraser : IUserDataEraser
 {
@@ -25,6 +25,7 @@ internal sealed class TrainingUserDataEraser : IUserDataEraser
             .ExecuteDeleteAsync(cancellationToken);
         count += await _db.RemoteWorkoutConfigs.Where(c => c.ClientId == userId || c.TrainerId == userId)
             .ExecuteDeleteAsync(cancellationToken);
+        count += await _db.TrainingPlans.Where(p => p.TraineeId == userId).ExecuteDeleteAsync(cancellationToken);
         return count;
     }
 }

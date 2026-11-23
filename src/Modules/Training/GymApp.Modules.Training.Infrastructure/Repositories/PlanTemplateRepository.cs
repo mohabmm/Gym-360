@@ -27,6 +27,22 @@ internal sealed class PlanTemplateRepository : IPlanTemplateRepository
     public Task<bool> AnyForGymAsync(Guid gymId, CancellationToken cancellationToken = default) =>
         _db.PlanTemplates.AsNoTracking().AnyAsync(t => t.GymId == gymId && t.Scope == PlanTemplateScope.Gym, cancellationToken);
 
+    public async Task<int> TryAddSamplesAsync(IReadOnlyList<PlanTemplate> samples, CancellationToken cancellationToken = default)
+    {
+        await _db.PlanTemplates.AddRangeAsync(samples, cancellationToken);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+            return samples.Count;
+        }
+        catch (DbUpdateException)
+        {
+            foreach (var sample in samples)
+                _db.Entry(sample).State = EntityState.Detached;
+            return 0;
+        }
+    }
+
     public async Task AddAsync(PlanTemplate template, CancellationToken cancellationToken = default) =>
         await _db.PlanTemplates.AddAsync(template, cancellationToken);
 }

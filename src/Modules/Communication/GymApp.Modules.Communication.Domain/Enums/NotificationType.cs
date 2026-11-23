@@ -28,5 +28,8 @@ public enum NotificationType
     PackageInterest = 19,
 
     /// <summary>pt.trial_followups: post-trial reminders to the trainee.</summary>
-    TrialFollowUp = 20
+    TrialFollowUp = 20,
+
+    /// <summary>pt.training_plan: the coach gave the trainee a plan or changed it.</summary>
+    TrainingPlan = 21
 }
