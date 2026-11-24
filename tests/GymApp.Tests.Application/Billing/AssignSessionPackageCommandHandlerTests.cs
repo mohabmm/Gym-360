@@ -1,3 +1,5 @@
+using GymApp.Modules.Billing.IntegrationEvents;
+using GymApp.Common.Application.Messaging;
 using GymApp.Common.Application.FeatureFlags;
 using GymApp.Modules.Billing.Application.Abstractions;
 using GymApp.Modules.Billing.Application.Commands.SessionPackages;
@@ -15,6 +17,7 @@ public class AssignSessionPackageCommandHandlerTests
     private readonly ISessionPackageTemplateRepository _templates = Substitute.For<ISessionPackageTemplateRepository>();
     private readonly IFeatureFlagService _flags = Substitute.For<IFeatureFlagService>();
     private readonly IBillingUnitOfWork _uow = Substitute.For<IBillingUnitOfWork>();
+    private readonly IIntegrationEventPublisher _events = Substitute.For<IIntegrationEventPublisher>();
     private readonly AssignSessionPackageCommandHandler _sut;
 
     private static readonly Guid GymId = Guid.NewGuid();
@@ -35,7 +38,7 @@ public class AssignSessionPackageCommandHandlerTests
         _flags.IsEnabledAsync(GymId, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.ArgAt<string>(1) != FeatureKeys.PtAutoExpiry);
         _templates.GetByIdAsync(_template.Id, Arg.Any<CancellationToken>()).Returns(_template);
-        _sut = new AssignSessionPackageCommandHandler(_packages, _templates, _flags, _uow);
+        _sut = new AssignSessionPackageCommandHandler(_packages, _templates, _flags, _uow, _events);
     }
 
     private AssignSessionPackageCommand Assign(Guid trainerId, Guid? assignedBy = null) =>
@@ -107,5 +110,26 @@ public class AssignSessionPackageCommandHandlerTests
             CancellationToken.None);
 
         result.Error.Should().Be(BillingErrors.TemplateNotFound);
+    }
+
+    [Fact]
+    public async Task Assigning_a_package_tells_the_coach_about_the_client()
+    {
+        var result = await _sut.Handle(Assign(CoachId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        _events.Received(1).Enqueue(Arg.Is<SessionPackageAssignedIntegrationEvent>(e =>
+            e.PackageId == result.Value && e.MemberId == MemberId && e.TrainerId == CoachId
+            && e.GymId == GymId && !e.IsTrial && e.TotalSessions == 12));
+    }
+
+    [Fact]
+    public async Task A_rejected_assignment_announces_nothing()
+    {
+        MemberHasSessionsLeftWith(CoachId);
+
+        await _sut.Handle(Assign(Guid.NewGuid()), CancellationToken.None);
+
+        _events.DidNotReceiveWithAnyArgs().Enqueue(default!);
     }
 }

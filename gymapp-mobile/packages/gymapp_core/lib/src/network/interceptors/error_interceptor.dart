@@ -145,7 +145,7 @@ class ErrorInterceptor extends Interceptor {
       case 401:
         return UnauthorizedException(message: parsed.message);
       case 403:
-        return ForbiddenException(message: parsed.message);
+        return ForbiddenException(message: parsed.message, code: parsed.errorCode);
       case 404:
         return NotFoundException(message: parsed.message);
       case 409:

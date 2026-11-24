@@ -10,6 +10,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/providers.dart';
 import 'core/feature_flags.dart';
+import 'core/push_routes.dart';
 import 'core/router.dart';
 
 Future<void> main() async {
@@ -63,7 +64,7 @@ Future<void> main() async {
           telemetryServiceProvider.overrideWithValue(telemetry),
           featureFlagServiceProvider.overrideWith(createTrainerFeatureFlagService),
         ],
-        child: const TrainerFeatureFlagsSync(child: GymAppTrainer()),
+        child: const TrainerFeatureFlagsSync(child: TrainerPushTapRouter(child: GymAppTrainer())),
       ),
     );
   });

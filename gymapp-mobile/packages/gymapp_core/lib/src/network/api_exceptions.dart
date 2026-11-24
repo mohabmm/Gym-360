@@ -34,10 +34,13 @@ class UnauthorizedException extends ApiException {
   }) : super(message: message, statusCode: 401, errorCode: 'UNAUTHORIZED');
 }
 
+/// A 403 for this caller. [code] keeps the server's error code (e.g. `Training.StarterPlan.Forbidden`)
+/// so a screen can explain the reason; without one it is `FORBIDDEN`.
 class ForbiddenException extends ApiException {
   const ForbiddenException({
     String message = 'Access denied',
-  }) : super(message: message, statusCode: 403, errorCode: 'FORBIDDEN');
+    String? code,
+  }) : super(message: message, statusCode: 403, errorCode: code ?? 'FORBIDDEN');
 }
 
 /// `403 FEATURE_DISABLED:<key>` — the feature is OFF for this gym. Screens should

@@ -148,6 +148,10 @@ class ApiEndpoints {
   static String trainingPlanById(String id) => '$basePrefix/training/plans/$id';
   static String savePlanAsTemplate(String id) => '$basePrefix/training/plans/$id/save-as-template';
   static String traineePlans(String traineeId) => '$basePrefix/training/trainees/$traineeId/plans';
+  /// pt.starter_plan: may the coach give this client only a 3-day starter plan?
+  static String traineePlanAccess(String traineeId) => '$basePrefix/training/trainees/$traineeId/plan-access';
+  /// pt.starter_plan (staff): a member's coach and whether the monthly programs are open.
+  static const String planUnlocks = '$basePrefix/training/plan-unlocks';
   static const String planExercises = '$basePrefix/training/plan-exercises';
   static const String myPlan = '$basePrefix/training/me/plan';
   static const String myPlanProgress = '$basePrefix/training/me/plan-progress';

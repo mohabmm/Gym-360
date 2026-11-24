@@ -2,7 +2,9 @@ using GymApp.Common.Application.FeatureFlags;
 using GymApp.Common.Domain;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Modules.Training.Domain.Entities;
+using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Errors;
+using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Domain.ValueObjects;
 
 namespace GymApp.Modules.Training.Application.TrainingPlans;
@@ -18,12 +20,41 @@ internal sealed class PlanAccess
 {
     private readonly IFeatureFlagService _featureFlags;
     private readonly ITrainerAssignmentLookup _assignments;
+    private readonly IPlanProgramUnlockRepository _unlocks;
 
-    public PlanAccess(IFeatureFlagService featureFlags, ITrainerAssignmentLookup assignments)
+    public PlanAccess(IFeatureFlagService featureFlags, ITrainerAssignmentLookup assignments, IPlanProgramUnlockRepository unlocks)
     {
         _featureFlags = featureFlags;
         _assignments = assignments;
+        _unlocks = unlocks;
     }
+
+    /// <summary><c>FEATURE_DISABLED:pt.starter_plan</c> when the gym does not use starter plans.</summary>
+    public async Task<Result> EnsureStarterPlanEnabledAsync(Guid gymId, CancellationToken cancellationToken) =>
+        await _featureFlags.IsEnabledAsync(gymId, FeatureKeys.PtStarterPlan, cancellationToken)
+            ? Result.Success()
+            : Result.Failure(FeatureFlagErrors.FeatureDisabled(FeatureKeys.PtStarterPlan));
+
+    /// <summary>
+    /// pt.starter_plan: <see cref="TrainingPlanLimit.Starter"/> until the staff unlock this
+    /// coach–member pair, then one week or 30 days as the staff chose; <see cref="TrainingPlanLimit.None"/>
+    /// while the flag is off. See <see cref="PlanLimitPolicy"/>.
+    /// </summary>
+    public async Task<TrainingPlanLimit> GetPlanLimitAsync(CoachTrainee pair, CancellationToken cancellationToken)
+    {
+        if ((await EnsureStarterPlanEnabledAsync(pair.GymId, cancellationToken)).IsFailure)
+            return TrainingPlanLimit.None;
+        var length = await _unlocks.GetOpenLengthAsync(pair, cancellationToken);
+        return length is { } open ? PlanLimitRules.For(open) : TrainingPlanLimit.Starter;
+    }
+
+    /// <summary>The unlocked program uses up the staff's unlock; saved with the plan.</summary>
+    public async Task UseUnlockAsync(CoachTrainee pair, CancellationToken cancellationToken) =>
+        (await _unlocks.GetAsync(pair, cancellationToken))?.Lock(pair.TrainerId);
+
+    /// <summary>The coach has an active package (free sessions included) with the member.</summary>
+    public async Task<bool> HasPackageAsync(CoachTrainee pair, CancellationToken cancellationToken) =>
+        (await _assignments.GetClientsForTrainerAsync(pair.TrainerId, pair.GymId, cancellationToken)).Contains(pair.TraineeId);
 
     /// <summary><c>FEATURE_DISABLED:pt.training_plan</c> when the gym has plans switched off.</summary>
     public async Task<Result> EnsureEnabledAsync(Guid gymId, CancellationToken cancellationToken) =>

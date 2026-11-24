@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../data/plan_api.dart';
+import '../data/plan_draft.dart';
 import 'ready_programs_section.dart';
 import 'trainer_plan_strings.dart';
 
@@ -21,41 +22,52 @@ class StartChoice {
 }
 
 /// "Start blank" first, then the ready programs, then the gym's and the coach's templates.
-Future<StartChoice?> showStartPlanSheet(BuildContext context) => showModalBottomSheet<StartChoice>(
+/// pt.starter_plan [limit]: a starter plan is built blank or from a ready program's first days
+/// and the templates show as locked; an unlocked one-week or 30-day program uses any template or
+/// program, cut to fit.
+Future<StartChoice?> showStartPlanSheet(BuildContext context, {PlanLimit limit = PlanLimit.none}) =>
+    showModalBottomSheet<StartChoice>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => const FractionallySizedBox(heightFactor: 0.85, child: _StartPlanSheet()),
+      builder: (_) => FractionallySizedBox(heightFactor: 0.85, child: _StartPlanSheet(limit: limit)),
     );
 
 class _StartPlanSheet extends ConsumerWidget {
-  const _StartPlanSheet();
+  final PlanLimit limit;
+
+  const _StartPlanSheet({required this.limit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final s = TrainerPlanStrings(isArabic);
     final templates = ref.watch(planTemplatesProvider);
+    final starter = limit == PlanLimit.starter;
+    final limited = limit != PlanLimit.none;
     return Directionality(
       textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
-          Text(s.newPlan, style: Theme.of(context).textTheme.titleLarge),
+          Text(limited ? s.limitTitle(limit) : s.newPlan, style: Theme.of(context).textTheme.titleLarge),
+          if (limited) Text(s.limitHint(limit)),
           const SizedBox(height: 12),
           Card(
             child: ListTile(
+              key: const ValueKey('start-blank'),
               leading: const Icon(Icons.edit_note),
-              title: Text(s.startBlank),
-              subtitle: Text(s.startBlankHint),
+              title: Text(limited ? s.limitBlank(limit) : s.startBlank),
+              subtitle: Text(limited ? s.limitRules(limit) : s.startBlankHint),
               onTap: () => Navigator.pop(context, const StartChoice.blank()),
             ),
           ),
           const SizedBox(height: 16),
+          if (starter) Text(s.starterFromProgramHint, style: Theme.of(context).textTheme.bodySmall),
           ReadyProgramsSection(strings: s, onTap: (p) => Navigator.pop(context, StartChoice.program(p))),
           const SizedBox(height: 16),
           Text(s.fromTemplate, style: Theme.of(context).textTheme.titleMedium),
-          templates.when(
+          if (starter) _ProgramsLocked(strings: s) else templates.when(
             loading: () => const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
             error: (_, __) => Padding(padding: const EdgeInsets.all(16), child: Text(s.saveFailed)),
             data: (list) => Column(children: [
@@ -78,6 +90,23 @@ class _StartPlanSheet extends ConsumerWidget {
       for (final t in items) PlanTemplateTile(template: t, strings: s, onTap: () => Navigator.pop(context, StartChoice.template(t))),
     ];
   }
+}
+
+/// pt.starter_plan: templates stay closed until the desk unlocks a one-week program.
+class _ProgramsLocked extends StatelessWidget {
+  final TrainerPlanStrings strings;
+
+  const _ProgramsLocked({required this.strings});
+
+  @override
+  Widget build(BuildContext context) => Card(
+        key: const ValueKey('programs-locked'),
+        child: ListTile(
+          leading: const Icon(Icons.lock_outline),
+          title: Text(strings.programsLocked),
+          subtitle: Text(strings.programsLockedHint),
+        ),
+      );
 }
 
 /// One template: name, goal, days a week and weeks.

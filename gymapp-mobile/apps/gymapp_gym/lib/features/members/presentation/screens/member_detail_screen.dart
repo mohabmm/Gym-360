@@ -10,6 +10,7 @@ import '../../../../core/router.dart';
 import '../providers/members_provider.dart';
 import '../widgets/current_coach.dart';
 import '../widgets/assign_trainer_form.dart';
+import '../widgets/monthly_programs_card.dart';
 
 class MemberDetailScreen extends ConsumerWidget {
   final String memberId;
@@ -149,6 +150,11 @@ class MemberDetailScreen extends ConsumerWidget {
                 // Quick Actions
                 if (coachPackage != null) ...[
                   CurrentCoachCard(package: coachPackage, isArabic: isArabic),
+                  const SizedBox(height: 8),
+                ],
+                // pt.starter_plan: the desk opens the coach's monthly programs for this member.
+                if (flags.isEnabled(FeatureFlagKeys.ptStarterPlan)) ...[
+                  MonthlyProgramsCard(memberId: memberId, isArabic: isArabic),
                   const SizedBox(height: 8),
                 ],
                 if (showAssign)

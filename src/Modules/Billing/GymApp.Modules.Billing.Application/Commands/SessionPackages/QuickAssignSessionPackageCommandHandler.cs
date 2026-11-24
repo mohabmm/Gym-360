@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Application.IntegrationEvents;
 using GymApp.Modules.Billing.Domain.Errors;
 using GymApp.Common.Application.FeatureFlags;
 using GymApp.Modules.Billing.Shared;
@@ -19,17 +20,20 @@ internal sealed class QuickAssignSessionPackageCommandHandler
     private readonly IPaymentRepository _paymentRepository;
     private readonly IFeatureFlagService _featureFlags;
     private readonly IBillingUnitOfWork _unitOfWork;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public QuickAssignSessionPackageCommandHandler(
         ISessionPackageRepository packageRepository,
         IPaymentRepository paymentRepository,
         IFeatureFlagService featureFlags,
-        IBillingUnitOfWork unitOfWork)
+        IBillingUnitOfWork unitOfWork,
+        IIntegrationEventPublisher integrationEvents)
     {
         _packageRepository = packageRepository;
         _paymentRepository = paymentRepository;
         _featureFlags = featureFlags;
         _unitOfWork = unitOfWork;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result<Guid>> Handle(QuickAssignSessionPackageCommand request, CancellationToken cancellationToken)
@@ -75,6 +79,7 @@ internal sealed class QuickAssignSessionPackageCommandHandler
         if (paymentResult.IsFailure)
             return Result.Failure<Guid>(paymentResult.Error);
 
+        PackageAssignedPublisher.Enqueue(_integrationEvents, package);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(package.Id);

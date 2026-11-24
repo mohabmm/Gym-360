@@ -16,6 +16,7 @@ abstract final class FeatureFlagKeys {
 
   // Opt-in pilots — OFF in every preset; the Super Admin turns them on per gym.
   static const memFirstMonthChallenge = 'mem.first_month_challenge';
+  static const ptStarterPlan = 'pt.starter_plan';
 
   // PT later phase — OFF in pt_module.
   static const ptMonthlyReport = 'pt.monthly_report';

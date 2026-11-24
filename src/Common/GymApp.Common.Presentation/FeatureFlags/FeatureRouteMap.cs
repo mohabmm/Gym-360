@@ -80,6 +80,7 @@ public static class FeatureRouteMap
         new(K.PtTrainingPlan, "training/plans"),
         new(K.PtTrainingPlan, "training/plan-exercises"),
         new(K.PtTrainingPlan, "training/trainees/{}/plans"),
+        new(K.PtTrainingPlan, "training/trainees/{}/plan-access"),
         new(K.PtTrainingPlan, "training/trainees/{}/plan-progress"),
         new(K.PtTrainingPlan, "training/trainees/{}/plan-nudge"),
         new(K.PtTrainingPlan, "training/coach/plan-overview"),
@@ -89,6 +90,7 @@ public static class FeatureRouteMap
         new(K.PtTrainingPlan, "training/me/plan-progress"),
         new(K.MemFirstMonthChallenge, "training/me/challenge"),
         new(K.MemFirstMonthChallenge, "training/challenge"),
+        new(K.PtStarterPlan, "training/plan-unlocks"),
         new(K.PtOwnerDashboard, "training/reports/plan-summary"),
 
         // ---- PT later ----

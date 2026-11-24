@@ -37,10 +37,17 @@ public sealed class TrainingPlan : Entity
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
     public DateTime? EndedAt { get; private set; }
+    /// <summary>pt.starter_plan: a 3-day starter plan or a one-week program; None for every other plan.</summary>
+    public TrainingPlanLimit Limit { get; private set; }
+    /// <summary>Last day of a limited plan; null for every other plan.</summary>
+    public DateOnly? EndsOn { get; private set; }
 
     public PlanContent Content => new() { Name = Name, NameAr = NameAr, Goal = Goal, GoalText = GoalText, Document = Document };
 
     public bool IsActive => Status == TrainingPlanStatus.Active;
+
+    /// <summary>A limited plan is over the day after <see cref="EndsOn"/>; other plans never end by date.</summary>
+    public bool HasEndedOn(DateOnly today) => EndsOn is { } last && today > last;
 
     public static TrainingPlan Assign(PlanAssignment assignment, PlanContent content)
     {
@@ -54,7 +61,9 @@ public sealed class TrainingPlan : Entity
             StartDate = assignment.StartDate,
             Status = TrainingPlanStatus.Active,
             Version = 1,
-            CreatedAt = now
+            CreatedAt = now,
+            Limit = assignment.Limit,
+            EndsOn = PlanLimitRules.EndsOn(assignment.Limit, assignment.StartDate)
         };
         plan.Apply(content, now);
         plan.RaiseDomainEvent(new TrainingPlanAssignedDomainEvent(plan.Id, plan.TrainerId, plan.TraineeId));
@@ -71,6 +80,8 @@ public sealed class TrainingPlan : Entity
             return Result.Failure(TrainingPlanErrors.PlanNotActive);
         if (expectedVersion is { } expected && expected != Version)
             return Result.Failure(TrainingPlanErrors.VersionConflict);
+        if (!PlanLimitRules.Fits(Limit, content.Document))
+            return Result.Failure(TrainingPlanErrors.PlanTooLong(Limit));
         TrainerId = editedBy;
         Version++;
         Apply(content, DateTime.UtcNow);
@@ -106,4 +117,7 @@ public sealed class TrainingPlan : Entity
 }
 
 /// <summary>Who gets a plan, from whom, from when, and (optionally) which template it was copied from.</summary>
-public sealed record PlanAssignment(Guid GymId, Guid TrainerId, Guid TraineeId, DateOnly StartDate, Guid? SourceTemplateId);
+/// <paramref name="Limit"/> marks a pt.starter_plan 3-day plan or one-week program, which ends on its own.
+public sealed record PlanAssignment(
+    Guid GymId, Guid TrainerId, Guid TraineeId, DateOnly StartDate, Guid? SourceTemplateId,
+    TrainingPlanLimit Limit = TrainingPlanLimit.None);

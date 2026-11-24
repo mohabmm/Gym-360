@@ -14,6 +14,7 @@ import { MemberTabBar, MemberTabContent, visibleMemberTabs, type MemberTab } fro
 import { useStaffFlags } from '@/lib/feature-flags';
 import { FEATURE_FLAG_KEYS as K } from '@gym360/ui';
 import { AssignTrainerModal } from '@/components/members/AssignTrainerModal';
+import { MonthlyProgramsCard } from '@/components/members/MonthlyProgramsCard';
 import { EditMemberModal, RemoveMemberModal, type EditMemberForm } from '@/components/members/MemberModals';
 
 // BE requires gym_owner_or_admin to DELETE members; gate the UI on the same
@@ -158,6 +159,8 @@ export default function MemberDetailPage() {
         <span className="text-sm text-muted-foreground capitalize">{(member.membershipType ?? '').replace(/_/g, ' ')}</span>
         <span className="text-sm text-muted-foreground">{member.section}</span>
       </div>
+
+      {isEnabled(K.PT_STARTER_PLAN) && <MonthlyProgramsCard memberId={memberId} />}
 
       <MemberTabBar tabs={tabs} active={shownTab} onChange={setActiveTab} />
 

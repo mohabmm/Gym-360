@@ -37,5 +37,11 @@ public enum NotificationType
     FirstMonthChallenge = 22,
 
     /// <summary>nutrition: the coach gave the member a diet plan.</summary>
-    MealPlan = 23
+    MealPlan = 23,
+
+    /// <summary>pt.starter_plan: the desk gave a member a package with this coach.</summary>
+    NewClientAssigned = 24,
+
+    /// <summary>pt.starter_plan: the staff opened the monthly programs for one of the coach's members.</summary>
+    PlanProgramsUnlocked = 25
 }

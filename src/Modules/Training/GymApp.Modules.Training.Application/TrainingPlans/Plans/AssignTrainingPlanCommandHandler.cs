@@ -2,6 +2,7 @@ using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Application.Abstractions;
 using GymApp.Modules.Training.Domain.Entities;
+using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.Errors;
 using GymApp.Modules.Training.Domain.Repositories;
 using GymApp.Modules.Training.Domain.ValueObjects;
@@ -41,9 +42,16 @@ internal sealed class AssignTrainingPlanCommandHandler : ICommandHandler<AssignT
         var content = await ResolveContentAsync(request, cancellationToken);
         if (content.IsFailure)
             return Result.Failure<TrainingPlanDto>(content.Error);
+        var pair = new CoachTrainee(request.Actor.GymId, request.Actor.UserId, request.TraineeId);
+        var limit = await _access.GetPlanLimitAsync(pair, cancellationToken);
+        var allowed = PlanLimitPolicy.Check(limit, request.TemplateId, content.Value);
+        if (allowed.IsFailure)
+            return Result.Failure<TrainingPlanDto>(allowed.Error);
+        if (limit is TrainingPlanLimit.OneWeek or TrainingPlanLimit.ThirtyDays)
+            await _access.UseUnlockAsync(pair, cancellationToken);
 
         var plan = TrainingPlan.Assign(
-            new PlanAssignment(request.Actor.GymId, request.Actor.UserId, request.TraineeId, request.StartDate, request.TemplateId),
+            new PlanAssignment(pair.GymId, pair.TrainerId, pair.TraineeId, request.StartDate, request.TemplateId, limit),
             content.Value);
         await _unitOfWork.InTransactionAsync(ct => ReplaceActiveAndAddAsync(plan, ct), cancellationToken);
         return Result.Success(plan.ToDto());

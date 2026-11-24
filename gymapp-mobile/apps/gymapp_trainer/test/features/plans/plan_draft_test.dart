@@ -102,4 +102,50 @@ void main() {
     expect(draft.firstWeek[0].titleAr, 'اليوم ١');
     expect(draft.firstWeek[1].title, 'Legs', reason: 'a name the coach typed is kept');
   });
+
+  group('pt.starter_plan', () {
+    PlanDraft starter() => PlanDraft.fromDocument(
+        PlanDocumentModel(weeks: [
+          for (var w = 1; w <= 4; w++)
+            PlanWeekModel(week: w, days: [for (final d in ['a', 'b', 'c', 'd', 'e']) _day('w$w-$d', 'Day $d')])
+        ]),
+        name: 'Split')
+      ..limitTo(PlanLimit.starter);
+
+    test('a starter draft is one week', () {
+      final draft = starter();
+
+      expect(draft.durationWeeks, 1);
+      expect(draft.weeks, hasLength(1));
+      expect(draft.toContentJson()['repeatWeekOneForWeeks'], 1);
+    });
+
+    test('a one-week program keeps a full week of week 1', () {
+      final draft = starter()..limitTo(PlanLimit.oneWeek);
+
+      expect(draft.maxDays, 7);
+      expect(draft.weeks, hasLength(1));
+    });
+
+    test('a 30-day program keeps up to 4 weeks', () {
+      final draft = PlanDraft.fromDocument(
+          PlanDocumentModel(weeks: [
+            for (var w = 1; w <= 8; w++) PlanWeekModel(week: w, days: [_day('w$w-a', 'Day a')])
+          ]),
+          name: 'Long')
+        ..limitTo(PlanLimit.thirtyDays);
+
+      expect(draft.durationWeeks, 4);
+      expect(draft.toContentJson()['repeatWeekOneForWeeks'], 4);
+      expect(draft.isValid, isTrue);
+    });
+
+    test('a starter draft keeps the first 3 days of week 1', () {
+      final draft = starter();
+
+      expect(draft.firstWeek.map((d) => d.key), ['w1-a', 'w1-b', 'w1-c']);
+      expect(draft.maxDays, 3);
+      expect(draft.isValid, isTrue);
+    });
+  });
 }

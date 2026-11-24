@@ -1,3 +1,5 @@
+using GymApp.Modules.Billing.IntegrationEvents;
+using GymApp.Common.Application.Messaging;
 using GymApp.Modules.Billing.Domain.ValueObjects;
 using GymApp.Common.Application.FeatureFlags;
 using GymApp.Modules.Billing.Application.Abstractions;
@@ -14,6 +16,7 @@ public class QuickAssignTrialTests
     private readonly IPaymentRepository _payments = Substitute.For<IPaymentRepository>();
     private readonly IFeatureFlagService _flags = Substitute.For<IFeatureFlagService>();
     private readonly IBillingUnitOfWork _uow = Substitute.For<IBillingUnitOfWork>();
+    private readonly IIntegrationEventPublisher _events = Substitute.For<IIntegrationEventPublisher>();
     private readonly QuickAssignSessionPackageCommandHandler _sut;
 
     private static readonly Guid GymId = Guid.NewGuid();
@@ -22,11 +25,22 @@ public class QuickAssignTrialTests
     {
         _flags.IsEnabledAsync(GymId, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.ArgAt<string>(1) != FeatureKeys.PtAutoExpiry);
-        _sut = new QuickAssignSessionPackageCommandHandler(_packages, _payments, _flags, _uow);
+        _sut = new QuickAssignSessionPackageCommandHandler(_packages, _payments, _flags, _uow, _events);
     }
 
     private static QuickAssignSessionPackageCommand Trial(int sessions = 2, DateTime? expires = null) =>
         new(GymId, Guid.NewGuid(), Guid.NewGuid(), sessions, Guid.NewGuid(), ExpiresAt: expires, IsTrial: true);
+
+    [Fact]
+    public async Task A_trial_tells_the_coach_about_the_new_client()
+    {
+        var command = Trial();
+
+        await _sut.Handle(command, CancellationToken.None);
+
+        _events.Received(1).Enqueue(Arg.Is<SessionPackageAssignedIntegrationEvent>(e =>
+            e.IsTrial && e.TrainerId == command.TrainerId && e.MemberId == command.MemberId));
+    }
 
     [Fact]
     public async Task Creates_a_free_trial_package_with_the_chosen_coach()

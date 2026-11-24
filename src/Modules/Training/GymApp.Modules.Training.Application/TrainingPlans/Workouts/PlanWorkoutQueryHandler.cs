@@ -32,7 +32,8 @@ internal sealed class PlanWorkoutQueryHandler
         if (enabled.IsFailure)
             return Result.Failure<MyPlanDto?>(enabled.Error);
         var plan = await _plans.GetActiveForTraineeAsync(request.Actor.GymId, request.Actor.UserId, cancellationToken);
-        if (plan is null)
+        // A 3-day starter plan is over once its last day has passed (pt.starter_plan).
+        if (plan is null || plan.HasEndedOn(TrainingCalendar.Today()))
             return Result.Success<MyPlanDto?>(null);
 
         var progress = await LoadAsync(plan.GymId, plan.TraineeId, plan, cancellationToken);

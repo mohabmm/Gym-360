@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/push_routes.dart';
 import '../providers/communication_providers.dart';
 
 /// Trainer notifications inbox. Opened from the bell on the home app bar.
@@ -149,7 +150,7 @@ class _NotificationTile extends ConsumerWidget {
       case NotificationType.rateTrainer:
         return '/more/ratings';
       default:
-        return null;
+        return trainerPushRoute(n.data);
     }
   }
 
@@ -169,6 +170,10 @@ class _NotificationTile extends ConsumerWidget {
         return Icons.star_outline;
       case NotificationType.paymentRecorded:
         return Icons.receipt_long_outlined;
+      case 'NewClientAssigned':
+        return Icons.person_add_alt_1_outlined;
+      case 'PlanProgramsUnlocked':
+        return Icons.lock_open_outlined;
       default:
         return Icons.notifications_outlined;
     }
