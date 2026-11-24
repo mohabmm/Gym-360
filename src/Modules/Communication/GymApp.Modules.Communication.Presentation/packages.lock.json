@@ -46,6 +46,7 @@
           "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
           "GymApp.Modules.Identity.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Identity.Shared": "[1.0.0, )",
+          "GymApp.Modules.Nutrition.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Progress.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Scheduling.IntegrationEvents": "[1.0.0, )",
           "GymApp.Modules.Training.IntegrationEvents": "[1.0.0, )"
@@ -80,6 +81,12 @@
       },
       "gymapp.modules.identity.shared": {
         "type": "Project"
+      },
+      "gymapp.modules.nutrition.integrationevents": {
+        "type": "Project",
+        "dependencies": {
+          "GymApp.Common.Domain": "[1.0.0, )"
+        }
       },
       "gymapp.modules.progress.integrationevents": {
         "type": "Project",

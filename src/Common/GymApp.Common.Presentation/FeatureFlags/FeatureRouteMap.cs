@@ -76,6 +76,7 @@ public static class FeatureRouteMap
         new(K.PtDualSessionLogging, "scheduling/sessions/{}/member-log"),
         new(K.PtProgressMeasurements, "progress"),
         new(K.PtTrainingPlan, "training/plan-templates"),
+        new(K.PtTrainingPlan, "training/plan-programs"),
         new(K.PtTrainingPlan, "training/plans"),
         new(K.PtTrainingPlan, "training/plan-exercises"),
         new(K.PtTrainingPlan, "training/trainees/{}/plans"),

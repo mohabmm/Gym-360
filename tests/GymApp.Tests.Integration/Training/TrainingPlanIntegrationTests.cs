@@ -131,7 +131,7 @@ public sealed class TrainingPlanIntegrationTests : BaseIntegrationTest
         var plan = await AssignAsync(coach, new { traineeId = _traineeId, content = Content("P", weeks: 1) });
         await SetFlagAsync(FeatureKeys.PtTrainingPlan, enabled: false);
 
-        foreach (var url in new[] { Templates, $"{Plans}/{plan.GetProperty("summary").GetProperty("id").GetGuid()}", $"api/v1/training/trainees/{_traineeId}/plans", "api/v1/training/plan-exercises?search=squat" })
+        foreach (var url in new[] { Templates, "api/v1/training/plan-programs", $"{Plans}/{plan.GetProperty("summary").GetProperty("id").GetGuid()}", $"api/v1/training/trainees/{_traineeId}/plans", "api/v1/training/plan-exercises?search=squat" })
         {
             var response = await coach.GetAsync(url);
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden, url);
@@ -155,6 +155,59 @@ public sealed class TrainingPlanIntegrationTests : BaseIntegrationTest
         var owner = Client(CreateGymOwnerClient(Guid.NewGuid(), _gymId));
         (await owner.GetAsync("api/v1/training/plan-exercises?search=squat")).StatusCode
             .Should().Be(HttpStatusCode.OK, "the staff web template editor searches the library too");
+    }
+
+    [Fact]
+    public async Task Coach_gives_a_ready_program_linked_to_the_library_without_making_a_template()
+    {
+        var (_, coach, trainee) = await StartWithFreeSessionsAsync();
+
+        var programs = (await PtTestGym.DataAsync(coach, "api/v1/training/plan-programs")).EnumerateArray().ToList();
+        programs.Should().HaveCount(15);
+        programs.Select(p => p.GetProperty("category").GetString()).Distinct().Should().BeEquivalentTo("Classic", "Egyptian", "Lifestyle", "Cardio");
+        var split = programs.Single(p => p.GetProperty("key").GetString() == "classic_split_5d");
+        split.GetProperty("nameAr").GetString().Should().StartWith("التقسيمة");
+        split.GetProperty("daysPerWeek").GetInt32().Should().Be(5);
+
+        var detail = await PtTestGym.DataAsync(coach, "api/v1/training/plan-programs/classic_split_5d");
+        var document = detail.GetProperty("document");
+        var exercises = document.GetProperty("weeks").EnumerateArray()
+            .SelectMany(w => w.GetProperty("days").EnumerateArray())
+            .SelectMany(d => d.GetProperty("exercises").EnumerateArray()).ToList();
+        exercises.Should().OnlyContain(e => e.GetProperty("exerciseId").ValueKind == JsonValueKind.String, "every program exercise is in the global library");
+
+        var plan = await AssignAsync(coach, new
+        {
+            traineeId = _traineeId,
+            content = new { name = split.GetProperty("name").GetString(), nameAr = split.GetProperty("nameAr").GetString(), goal = "MuscleGain", document },
+        });
+        plan.GetProperty("summary").GetProperty("workoutCount").GetInt32().Should().Be(40);
+        (await PtTestGym.DataAsync(trainee, "api/v1/training/me/plan")).ValueKind.Should().NotBe(JsonValueKind.Null, "the member sees it at once");
+        (await PtTestGym.DataAsync(coach, Templates)).GetArrayLength().Should().Be(3, "using a program does not add templates");
+        (await coach.GetAsync("api/v1/training/plan-programs/nope")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Library_exercises_come_with_a_demo_animation_the_member_sees_in_their_plan()
+    {
+        var (_, coach, trainee) = await StartWithFreeSessionsAsync();
+
+        var page = await PtTestGym.DataAsync(coach, "api/v1/training/plan-exercises?search=" + Uri.EscapeDataString("Barbell Back Squat"));
+        var squat = page.GetProperty("items").EnumerateArray().First(e => e.GetProperty("name").GetString() == "Barbell Back Squat");
+        var url = squat.GetProperty("demoMediaUrl").GetString();
+        url.Should().Be("/media/exercises/barbell-back-squat.webp");
+
+        var file = await Factory.CreateClient().GetAsync(url);
+        file.StatusCode.Should().Be(HttpStatusCode.OK, "animations are public, no login needed");
+        file.Content.Headers.ContentType!.MediaType.Should().Be("image/webp");
+        file.Headers.CacheControl!.MaxAge.Should().BeGreaterThan(TimeSpan.FromDays(1));
+
+        var detail = await PtTestGym.DataAsync(coach, "api/v1/training/plan-programs/strength_5x5_3d");
+        var plan = await AssignAsync(coach, new { traineeId = _traineeId, content = new { name = "5x5", goal = "MuscleGain", document = detail.GetProperty("document") } });
+        var squatKey = plan.GetProperty("document").GetProperty("weeks")[0].GetProperty("days")[0].GetProperty("exercises")[0].GetProperty("key").GetString()!;
+
+        var mine = await PtTestGym.DataAsync(trainee, "api/v1/training/me/plan");
+        mine.GetProperty("exerciseMedia").GetProperty(squatKey).GetString().Should().Be("/media/exercises/barbell-back-squat.webp");
     }
 
     // ------------------------------------------------------------------ helpers

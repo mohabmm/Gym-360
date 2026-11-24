@@ -80,6 +80,7 @@ class _WorkoutBodyState extends ConsumerState<_WorkoutBody> {
                 exercise: exercise,
                 session: _session,
                 lastWeight: widget.view.data.lastWeights[exercise.key],
+                mediaUrl: widget.view.data.exerciseMedia[exercise.key],
                 s: s,
                 onChanged: () => setState(() {}),
               ),
@@ -148,6 +149,7 @@ class _ExerciseCard extends StatelessWidget {
   final PlanExerciseModel exercise;
   final WorkoutSession session;
   final double? lastWeight;
+  final String? mediaUrl;
   final TraineePlanStrings s;
   final VoidCallback onChanged;
 
@@ -155,6 +157,7 @@ class _ExerciseCard extends StatelessWidget {
     required this.exercise,
     required this.session,
     required this.lastWeight,
+    required this.mediaUrl,
     required this.s,
     required this.onChanged,
   });
@@ -168,10 +171,22 @@ class _ExerciseCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(exercise.displayName(s.isArabic), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-          Text(_subtitle(), style: theme.textTheme.bodySmall),
-          if (exercise.notes?.isNotEmpty ?? false)
-            Padding(padding: const EdgeInsets.only(top: 4), child: Text(exercise.notes!, style: theme.textTheme.bodySmall)),
+          InkWell(
+            key: ValueKey('exercise-demo-${exercise.key}'),
+            onTap: () => _openDemo(context),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              ExerciseMediaView(url: mediaUrl),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(exercise.displayName(s.isArabic), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(_subtitle(), style: theme.textTheme.bodySmall),
+                  if (exercise.notes?.isNotEmpty ?? false)
+                    Padding(padding: const EdgeInsets.only(top: 4), child: Text(exercise.notes!, style: theme.textTheme.bodySmall)),
+                ]),
+              ),
+            ]),
+          ),
           const SizedBox(height: 8),
           for (var i = 0; i < sets.length; i++)
             _SetRow(
@@ -193,7 +208,20 @@ class _ExerciseCard extends StatelessWidget {
     );
   }
 
-  String _subtitle() => [
+  /// The big looping demo, the coach's notes and their video link.
+  void _openDemo(BuildContext context) => showExerciseMediaSheet(
+        context,
+        ExerciseMediaDetails(
+          title: exercise.displayName(s.isArabic),
+          subtitle: _subtitle(),
+          mediaUrl: mediaUrl,
+          notes: exercise.notes,
+          videoUrl: exercise.videoUrl,
+        ),
+        isArabic: s.isArabic,
+      );
+
+    String _subtitle() => [
         s.prescription(exercise),
         if (exercise.restSeconds != null) s.rest(exercise.restSeconds!),
         if (lastWeight != null) s.lastTime(lastWeight!),

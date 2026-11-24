@@ -1,0 +1,778 @@
+{
+ "Ab Wheel Rollout": {
+  "file": "ab-wheel-rollout.webp",
+  "source": "Ab_Roller"
+ },
+ "Arnold Press": {
+  "file": "arnold-press.webp",
+  "source": "Arnold_Dumbbell_Press"
+ },
+ "Back Extension": {
+  "file": "back-extension.webp",
+  "source": "Hyperextensions_Back_Extensions"
+ },
+ "Band Pull-Apart": {
+  "file": "band-pull-apart.webp",
+  "source": "Band_Pull_Apart"
+ },
+ "Banded Lateral Walk": {
+  "file": "banded-lateral-walk.webp",
+  "source": "Monster_Walk"
+ },
+ "Barbell Back Squat": {
+  "file": "barbell-back-squat.webp",
+  "source": "Barbell_Squat"
+ },
+ "Barbell Bench Press": {
+  "file": "barbell-bench-press.webp",
+  "source": "Barbell_Bench_Press_-_Medium_Grip"
+ },
+ "Barbell Calf Raise": {
+  "file": "barbell-calf-raise.webp",
+  "source": "Standing_Barbell_Calf_Raise"
+ },
+ "Barbell Curl": {
+  "file": "barbell-curl.webp",
+  "source": "Barbell_Curl"
+ },
+ "Barbell Front Squat": {
+  "file": "barbell-front-squat.webp",
+  "source": "Front_Squat_Clean_Grip"
+ },
+ "Barbell Hip Thrust": {
+  "file": "barbell-hip-thrust.webp",
+  "source": "Barbell_Hip_Thrust"
+ },
+ "Barbell Lunge": {
+  "file": "barbell-lunge.webp",
+  "source": "Barbell_Lunge"
+ },
+ "Barbell Overhead Tricep Extension": {
+  "file": "barbell-overhead-tricep-extension.webp",
+  "source": "Standing_Overhead_Barbell_Triceps_Extension"
+ },
+ "Barbell Shrug": {
+  "file": "barbell-shrug.webp",
+  "source": "Barbell_Shrug"
+ },
+ "Barbell Step-Up": {
+  "file": "barbell-step-up.webp",
+  "source": "Barbell_Step_Ups"
+ },
+ "Barbell Upright Row": {
+  "file": "barbell-upright-row.webp",
+  "source": "Upright_Barbell_Row"
+ },
+ "Battle Ropes": {
+  "file": "battle-ropes.webp",
+  "source": "Battling_Ropes"
+ },
+ "Bench Dips": {
+  "file": "bench-dips.webp",
+  "source": "Bench_Dips"
+ },
+ "Bent-Over Barbell Row": {
+  "file": "bent-over-barbell-row.webp",
+  "source": "Bent_Over_Barbell_Row"
+ },
+ "Bicycle Crunches": {
+  "file": "bicycle-crunches.webp",
+  "source": "Air_Bike"
+ },
+ "Bodyweight Calf Raise": {
+  "file": "bodyweight-calf-raise.webp",
+  "source": "Standing_Calf_Raises"
+ },
+ "Box Jump": {
+  "file": "box-jump.webp",
+  "source": "Front_Box_Jump"
+ },
+ "Broad Jump": {
+  "file": "broad-jump.webp",
+  "source": "Standing_Long_Jump"
+ },
+ "Cable Crossover": {
+  "file": "cable-crossover.webp",
+  "source": "Cable_Crossover"
+ },
+ "Cable Crunch": {
+  "file": "cable-crunch.webp",
+  "source": "Cable_Crunch"
+ },
+ "Cable Curl": {
+  "file": "cable-curl.webp",
+  "source": "Standing_Biceps_Cable_Curl"
+ },
+ "Cable Face Pull": {
+  "file": "cable-face-pull.webp",
+  "source": "Face_Pull"
+ },
+ "Cable Fly": {
+  "file": "cable-fly.webp",
+  "source": "Cable_Crossover"
+ },
+ "Cable Front Raise": {
+  "file": "cable-front-raise.webp",
+  "source": "Front_Cable_Raise"
+ },
+ "Cable Hammer Curl (Rope)": {
+  "file": "cable-hammer-curl-rope.webp",
+  "source": "Cable_Hammer_Curls_-_Rope_Attachment"
+ },
+ "Cable Hip Abduction": {
+  "file": "cable-hip-abduction.webp",
+  "source": "Thigh_Abductor"
+ },
+ "Cable Kickback": {
+  "file": "cable-kickback.webp",
+  "source": "One-Legged_Cable_Kickback"
+ },
+ "Cable Lateral Raise": {
+  "file": "cable-lateral-raise.webp",
+  "source": "Cable_Seated_Lateral_Raise"
+ },
+ "Cable Pallof Press": {
+  "file": "cable-pallof-press.webp",
+  "source": "Pallof_Press"
+ },
+ "Cable Pull-Through": {
+  "file": "cable-pull-through.webp",
+  "source": "Pull_Through"
+ },
+ "Cable Rear Delt Fly": {
+  "file": "cable-rear-delt-fly.webp",
+  "source": "Cable_Rear_Delt_Fly"
+ },
+ "Cat-Cow Stretch": {
+  "file": "cat-cow-stretch.webp",
+  "source": "Cat_Stretch"
+ },
+ "Chest Dips": {
+  "file": "chest-dips.webp",
+  "source": "Dips_-_Chest_Version"
+ },
+ "Chest Stretch (Doorway)": {
+  "file": "chest-stretch-doorway.webp",
+  "source": "Chest_And_Front_Of_Shoulder_Stretch"
+ },
+ "Child's Pose": {
+  "file": "child-s-pose.webp",
+  "source": "Childs_Pose"
+ },
+ "Chin-Ups": {
+  "file": "chin-ups.webp",
+  "source": "Chin-Up"
+ },
+ "Close-Grip Barbell Bench Press": {
+  "file": "close-grip-barbell-bench-press.webp",
+  "source": "Close-Grip_Barbell_Bench_Press"
+ },
+ "Close-Grip Bench Press": {
+  "file": "close-grip-bench-press.webp",
+  "source": "Close-Grip_Barbell_Bench_Press"
+ },
+ "Close-Grip Lat Pulldown": {
+  "file": "close-grip-lat-pulldown.webp",
+  "source": "Close-Grip_Front_Lat_Pulldown"
+ },
+ "Concentration Curl": {
+  "file": "concentration-curl.webp",
+  "source": "Concentration_Curls"
+ },
+ "Conventional Deadlift": {
+  "file": "conventional-deadlift.webp",
+  "source": "Barbell_Deadlift"
+ },
+ "Cross-Body Hammer Curl": {
+  "file": "cross-body-hammer-curl.webp",
+  "source": "Cross_Body_Hammer_Curl"
+ },
+ "Crunches": {
+  "file": "crunches.webp",
+  "source": "Crunches"
+ },
+ "Dead Bug": {
+  "file": "dead-bug.webp",
+  "source": "Dead_Bug"
+ },
+ "Decline Barbell Bench Press": {
+  "file": "decline-barbell-bench-press.webp",
+  "source": "Decline_Barbell_Bench_Press"
+ },
+ "Decline Dumbbell Bench Press": {
+  "file": "decline-dumbbell-bench-press.webp",
+  "source": "Decline_Dumbbell_Bench_Press"
+ },
+ "Decline Dumbbell Fly": {
+  "file": "decline-dumbbell-fly.webp",
+  "source": "Decline_Dumbbell_Flyes"
+ },
+ "Decline Push-Ups": {
+  "file": "decline-push-ups.webp",
+  "source": "Decline_Push-Up"
+ },
+ "Decline Sit-Ups": {
+  "file": "decline-sit-ups.webp",
+  "source": "Decline_Crunch"
+ },
+ "Depth Jump": {
+  "file": "depth-jump.webp",
+  "source": "Depth_Jump_Leap"
+ },
+ "Diamond Push-Ups": {
+  "file": "diamond-push-ups.webp",
+  "source": "Push-Ups_-_Close_Triceps_Position"
+ },
+ "Diamond Push-Ups (Triceps)": {
+  "file": "diamond-push-ups-triceps.webp",
+  "source": "Push-Ups_-_Close_Triceps_Position"
+ },
+ "Donkey Calf Raise": {
+  "file": "donkey-calf-raise.webp",
+  "source": "Donkey_Calf_Raises"
+ },
+ "Drag Curl": {
+  "file": "drag-curl.webp",
+  "source": "Drag_Curl"
+ },
+ "Dumbbell Bench Press": {
+  "file": "dumbbell-bench-press.webp",
+  "source": "Dumbbell_Bench_Press"
+ },
+ "Dumbbell Bulgarian Split Squat": {
+  "file": "dumbbell-bulgarian-split-squat.webp",
+  "source": "Split_Squat_with_Dumbbells"
+ },
+ "Dumbbell Calf Raise": {
+  "file": "dumbbell-calf-raise.webp",
+  "source": "Standing_Dumbbell_Calf_Raise"
+ },
+ "Dumbbell Curl": {
+  "file": "dumbbell-curl.webp",
+  "source": "Dumbbell_Bicep_Curl"
+ },
+ "Dumbbell Deadlift": {
+  "file": "dumbbell-deadlift.webp",
+  "source": "Stiff-Legged_Dumbbell_Deadlift"
+ },
+ "Dumbbell Fly": {
+  "file": "dumbbell-fly.webp",
+  "source": "Dumbbell_Flyes"
+ },
+ "Dumbbell Front Raise": {
+  "file": "dumbbell-front-raise.webp",
+  "source": "Front_Dumbbell_Raise"
+ },
+ "Dumbbell Kickback": {
+  "file": "dumbbell-kickback.webp",
+  "source": "Tricep_Dumbbell_Kickback"
+ },
+ "Dumbbell Lateral Raise": {
+  "file": "dumbbell-lateral-raise.webp",
+  "source": "Side_Lateral_Raise"
+ },
+ "Dumbbell Lunge": {
+  "file": "dumbbell-lunge.webp",
+  "source": "Dumbbell_Lunges"
+ },
+ "Dumbbell Overhead Tricep Extension": {
+  "file": "dumbbell-overhead-tricep-extension.webp",
+  "source": "Standing_Dumbbell_Triceps_Extension"
+ },
+ "Dumbbell Pullover": {
+  "file": "dumbbell-pullover.webp",
+  "source": "Bent-Arm_Dumbbell_Pullover"
+ },
+ "Dumbbell Rear Delt Fly": {
+  "file": "dumbbell-rear-delt-fly.webp",
+  "source": "Seated_Bent-Over_Rear_Delt_Raise"
+ },
+ "Dumbbell Romanian Deadlift": {
+  "file": "dumbbell-romanian-deadlift.webp",
+  "source": "Stiff-Legged_Dumbbell_Deadlift"
+ },
+ "Dumbbell Row": {
+  "file": "dumbbell-row.webp",
+  "source": "One-Arm_Dumbbell_Row"
+ },
+ "Dumbbell Shoulder Press": {
+  "file": "dumbbell-shoulder-press.webp",
+  "source": "Dumbbell_Shoulder_Press"
+ },
+ "Dumbbell Shrug": {
+  "file": "dumbbell-shrug.webp",
+  "source": "Dumbbell_Shrug"
+ },
+ "Dumbbell Squat": {
+  "file": "dumbbell-squat.webp",
+  "source": "Dumbbell_Squat"
+ },
+ "Dumbbell Step-Up": {
+  "file": "dumbbell-step-up.webp",
+  "source": "Dumbbell_Step_Ups"
+ },
+ "Dumbbell Upright Row": {
+  "file": "dumbbell-upright-row.webp",
+  "source": "Standing_Dumbbell_Upright_Row"
+ },
+ "Dumbbell Walking Lunge": {
+  "file": "dumbbell-walking-lunge.webp",
+  "source": "Bodyweight_Walking_Lunge"
+ },
+ "EZ-Bar Curl": {
+  "file": "ez-bar-curl.webp",
+  "source": "EZ-Bar_Curl"
+ },
+ "Elliptical Trainer": {
+  "file": "elliptical-trainer.webp",
+  "source": "Elliptical_Trainer"
+ },
+ "Flutter Kicks": {
+  "file": "flutter-kicks.webp",
+  "source": "Flutter_Kicks"
+ },
+ "Foam Rolling (Back)": {
+  "file": "foam-rolling-back.webp",
+  "source": "Lower_Back-SMR"
+ },
+ "Foam Rolling (IT Band)": {
+  "file": "foam-rolling-it-band.webp",
+  "source": "Iliotibial_Tract-SMR"
+ },
+ "Glute Bridge": {
+  "file": "glute-bridge.webp",
+  "source": "Butt_Lift_Bridge"
+ },
+ "Glute-Ham Raise": {
+  "file": "glute-ham-raise.webp",
+  "source": "Glute_Ham_Raise"
+ },
+ "Goblet Squat": {
+  "file": "goblet-squat.webp",
+  "source": "Goblet_Squat"
+ },
+ "Good Morning": {
+  "file": "good-morning.webp",
+  "source": "Good_Morning"
+ },
+ "Hack Squat Machine": {
+  "file": "hack-squat-machine.webp",
+  "source": "Hack_Squat"
+ },
+ "Hammer Curl": {
+  "file": "hammer-curl.webp",
+  "source": "Hammer_Curls"
+ },
+ "Hamstring Stretch": {
+  "file": "hamstring-stretch.webp",
+  "source": "Hamstring_Stretch"
+ },
+ "Handstand Push-Ups": {
+  "file": "handstand-push-ups.webp",
+  "source": "Handstand_Push-Ups"
+ },
+ "Hanging Knee Raises": {
+  "file": "hanging-knee-raises.webp",
+  "source": "Hanging_Leg_Raise"
+ },
+ "Hanging Leg Raises": {
+  "file": "hanging-leg-raises.webp",
+  "source": "Hanging_Leg_Raise"
+ },
+ "High Cable Curl": {
+  "file": "high-cable-curl.webp",
+  "source": "High_Cable_Curls"
+ },
+ "Hip Flexor Stretch": {
+  "file": "hip-flexor-stretch.webp",
+  "source": "Kneeling_Hip_Flexor"
+ },
+ "Hyperextension": {
+  "file": "hyperextension.webp",
+  "source": "Hyperextensions_Back_Extensions"
+ },
+ "Incline Barbell Bench Press": {
+  "file": "incline-barbell-bench-press.webp",
+  "source": "Barbell_Incline_Bench_Press_-_Medium_Grip"
+ },
+ "Incline Dumbbell Bench Press": {
+  "file": "incline-dumbbell-bench-press.webp",
+  "source": "Incline_Dumbbell_Press"
+ },
+ "Incline Dumbbell Curl": {
+  "file": "incline-dumbbell-curl.webp",
+  "source": "Incline_Dumbbell_Curl"
+ },
+ "Incline Dumbbell Fly": {
+  "file": "incline-dumbbell-fly.webp",
+  "source": "Incline_Dumbbell_Flyes"
+ },
+ "Inverted Row": {
+  "file": "inverted-row.webp",
+  "source": "Inverted_Row"
+ },
+ "Jump Rope": {
+  "file": "jump-rope.webp",
+  "source": "Rope_Jumping"
+ },
+ "Jump Squat": {
+  "file": "jump-squat.webp",
+  "source": "Freehand_Jump_Squat"
+ },
+ "Kettlebell Press": {
+  "file": "kettlebell-press.webp",
+  "source": "Two-Arm_Kettlebell_Military_Press"
+ },
+ "Kettlebell Swing": {
+  "file": "kettlebell-swing.webp",
+  "source": "One-Arm_Kettlebell_Swings"
+ },
+ "Lat Pulldown": {
+  "file": "lat-pulldown.webp",
+  "source": "Wide-Grip_Lat_Pulldown"
+ },
+ "Lateral Bound": {
+  "file": "lateral-bound.webp",
+  "source": "Lateral_Bound"
+ },
+ "Leg Extension Machine": {
+  "file": "leg-extension-machine.webp",
+  "source": "Leg_Extensions"
+ },
+ "Leg Press": {
+  "file": "leg-press.webp",
+  "source": "Leg_Press"
+ },
+ "Leg Press Calf Raise": {
+  "file": "leg-press-calf-raise.webp",
+  "source": "Calf_Press_On_The_Leg_Press_Machine"
+ },
+ "Leg Raises (Lying)": {
+  "file": "leg-raises-lying.webp",
+  "source": "Flat_Bench_Lying_Leg_Raise"
+ },
+ "Low Cable Crossover": {
+  "file": "low-cable-crossover.webp",
+  "source": "Low_Cable_Crossover"
+ },
+ "Lying Leg Curl Machine": {
+  "file": "lying-leg-curl-machine.webp",
+  "source": "Lying_Leg_Curls"
+ },
+ "Machine Bicep Curl": {
+  "file": "machine-bicep-curl.webp",
+  "source": "Machine_Bicep_Curl"
+ },
+ "Machine Chest Press": {
+  "file": "machine-chest-press.webp",
+  "source": "Machine_Bench_Press"
+ },
+ "Machine Crunch": {
+  "file": "machine-crunch.webp",
+  "source": "Ab_Crunch_Machine"
+ },
+ "Machine Dip": {
+  "file": "machine-dip.webp",
+  "source": "Dip_Machine"
+ },
+ "Machine Hip Abduction": {
+  "file": "machine-hip-abduction.webp",
+  "source": "Thigh_Abductor"
+ },
+ "Machine Hip Adduction": {
+  "file": "machine-hip-adduction.webp",
+  "source": "Thigh_Adductor"
+ },
+ "Machine Incline Chest Press": {
+  "file": "machine-incline-chest-press.webp",
+  "source": "Leverage_Incline_Chest_Press"
+ },
+ "Machine Lat Pulldown": {
+  "file": "machine-lat-pulldown.webp",
+  "source": "Full_Range-Of-Motion_Lat_Pulldown"
+ },
+ "Machine Preacher Curl": {
+  "file": "machine-preacher-curl.webp",
+  "source": "Machine_Preacher_Curls"
+ },
+ "Machine Rear Delt Fly": {
+  "file": "machine-rear-delt-fly.webp",
+  "source": "Reverse_Machine_Flyes"
+ },
+ "Machine Shoulder Press": {
+  "file": "machine-shoulder-press.webp",
+  "source": "Machine_Shoulder_Military_Press"
+ },
+ "Machine Tricep Extension": {
+  "file": "machine-tricep-extension.webp",
+  "source": "Machine_Triceps_Extension"
+ },
+ "Medicine Ball Chest Pass": {
+  "file": "medicine-ball-chest-pass.webp",
+  "source": "Medicine_Ball_Chest_Pass"
+ },
+ "Medicine Ball Slam": {
+  "file": "medicine-ball-slam.webp",
+  "source": "Overhead_Slam"
+ },
+ "Mountain Climbers": {
+  "file": "mountain-climbers.webp",
+  "source": "Mountain_Climbers"
+ },
+ "Neutral-Grip Pull-Ups": {
+  "file": "neutral-grip-pull-ups.webp",
+  "source": "V-Bar_Pullup"
+ },
+ "Nordic Hamstring Curl": {
+  "file": "nordic-hamstring-curl.webp",
+  "source": "Natural_Glute_Ham_Raise"
+ },
+ "Overhead Cable Tricep Extension": {
+  "file": "overhead-cable-tricep-extension.webp",
+  "source": "Cable_Rope_Overhead_Triceps_Extension"
+ },
+ "Overhead Press (Military Press)": {
+  "file": "overhead-press-military-press.webp",
+  "source": "Standing_Military_Press"
+ },
+ "Overhead Squat": {
+  "file": "overhead-squat.webp",
+  "source": "Overhead_Squat"
+ },
+ "Pec Deck Machine": {
+  "file": "pec-deck-machine.webp",
+  "source": "Butterfly"
+ },
+ "Pistol Squat": {
+  "file": "pistol-squat.webp",
+  "source": "Kettlebell_Pistol_Squat"
+ },
+ "Plank": {
+  "file": "plank.webp",
+  "source": "Plank"
+ },
+ "Plate Front Raise": {
+  "file": "plate-front-raise.webp",
+  "source": "Front_Plate_Raise"
+ },
+ "Plyo Push-Up": {
+  "file": "plyo-push-up.webp",
+  "source": "Plyo_Push-up"
+ },
+ "Preacher Curl (Barbell)": {
+  "file": "preacher-curl-barbell.webp",
+  "source": "Preacher_Curl"
+ },
+ "Preacher Curl (Dumbbell)": {
+  "file": "preacher-curl-dumbbell.webp",
+  "source": "One_Arm_Dumbbell_Preacher_Curl"
+ },
+ "Pull-Ups": {
+  "file": "pull-ups.webp",
+  "source": "Pullups"
+ },
+ "Push Press": {
+  "file": "push-press.webp",
+  "source": "Push_Press"
+ },
+ "Push-Ups": {
+  "file": "push-ups.webp",
+  "source": "Pushups"
+ },
+ "Quad Stretch": {
+  "file": "quad-stretch.webp",
+  "source": "Quad_Stretch"
+ },
+ "Recumbent Bike": {
+  "file": "recumbent-bike.webp",
+  "source": "Recumbent_Bike"
+ },
+ "Reverse Barbell Curl": {
+  "file": "reverse-barbell-curl.webp",
+  "source": "Reverse_Barbell_Curl"
+ },
+ "Reverse Crunches": {
+  "file": "reverse-crunches.webp",
+  "source": "Reverse_Crunch"
+ },
+ "Romanian Deadlift": {
+  "file": "romanian-deadlift.webp",
+  "source": "Romanian_Deadlift"
+ },
+ "Rowing Machine": {
+  "file": "rowing-machine.webp",
+  "source": "Rowing_Stationary"
+ },
+ "Russian Twist": {
+  "file": "russian-twist.webp",
+  "source": "Russian_Twist"
+ },
+ "Seated Barbell Press": {
+  "file": "seated-barbell-press.webp",
+  "source": "Seated_Barbell_Military_Press"
+ },
+ "Seated Cable Row": {
+  "file": "seated-cable-row.webp",
+  "source": "Seated_Cable_Rows"
+ },
+ "Seated Calf Raise (Machine)": {
+  "file": "seated-calf-raise-machine.webp",
+  "source": "Seated_Calf_Raise"
+ },
+ "Seated Dumbbell Press": {
+  "file": "seated-dumbbell-press.webp",
+  "source": "Seated_Dumbbell_Press"
+ },
+ "Seated Forward Fold": {
+  "file": "seated-forward-fold.webp",
+  "source": "Seated_Floor_Hamstring_Stretch"
+ },
+ "Seated Leg Curl Machine": {
+  "file": "seated-leg-curl-machine.webp",
+  "source": "Seated_Leg_Curl"
+ },
+ "Shoulder Stretch (Cross-Body)": {
+  "file": "shoulder-stretch-cross-body.webp",
+  "source": "Shoulder_Stretch"
+ },
+ "Side Plank": {
+  "file": "side-plank.webp",
+  "source": "Push_Up_to_Side_Plank"
+ },
+ "Single-Arm Cable Row": {
+  "file": "single-arm-cable-row.webp",
+  "source": "Seated_One-arm_Cable_Pulley_Rows"
+ },
+ "Single-Leg Glute Bridge": {
+  "file": "single-leg-glute-bridge.webp",
+  "source": "Single_Leg_Glute_Bridge"
+ },
+ "Sissy Squat": {
+  "file": "sissy-squat.webp",
+  "source": "Weighted_Sissy_Squat"
+ },
+ "Sit-Ups": {
+  "file": "sit-ups.webp",
+  "source": "Sit-Up"
+ },
+ "Skull Crusher (EZ-Bar)": {
+  "file": "skull-crusher-ez-bar.webp",
+  "source": "EZ-Bar_Skullcrusher"
+ },
+ "Smith Machine Bench Press": {
+  "file": "smith-machine-bench-press.webp",
+  "source": "Smith_Machine_Bench_Press"
+ },
+ "Smith Machine Calf Raise": {
+  "file": "smith-machine-calf-raise.webp",
+  "source": "Smith_Machine_Calf_Raise"
+ },
+ "Smith Machine Shoulder Press": {
+  "file": "smith-machine-shoulder-press.webp",
+  "source": "Smith_Machine_Overhead_Shoulder_Press"
+ },
+ "Smith Machine Squat": {
+  "file": "smith-machine-squat.webp",
+  "source": "Smith_Machine_Squat"
+ },
+ "Spider Curl": {
+  "file": "spider-curl.webp",
+  "source": "Spider_Curl"
+ },
+ "Sprints": {
+  "file": "sprints.webp",
+  "source": "Wind_Sprints"
+ },
+ "Stair Climber": {
+  "file": "stair-climber.webp",
+  "source": "Stairmaster"
+ },
+ "StairMaster": {
+  "file": "stairmaster.webp",
+  "source": "Stairmaster"
+ },
+ "Standing Calf Raise (Machine)": {
+  "file": "standing-calf-raise-machine.webp",
+  "source": "Standing_Calf_Raises"
+ },
+ "Standing Calf Stretch": {
+  "file": "standing-calf-stretch.webp",
+  "source": "Calf_Stretch_Hands_Against_Wall"
+ },
+ "Standing Leg Curl Machine": {
+  "file": "standing-leg-curl-machine.webp",
+  "source": "Standing_Leg_Curl"
+ },
+ "Stationary Bike": {
+  "file": "stationary-bike.webp",
+  "source": "Bicycling_Stationary"
+ },
+ "Stiff-Leg Deadlift": {
+  "file": "stiff-leg-deadlift.webp",
+  "source": "Stiff-Legged_Barbell_Deadlift"
+ },
+ "Sumo Deadlift": {
+  "file": "sumo-deadlift.webp",
+  "source": "Sumo_Deadlift"
+ },
+ "Sumo Squat": {
+  "file": "sumo-squat.webp",
+  "source": "Plie_Dumbbell_Squat"
+ },
+ "T-Bar Row": {
+  "file": "t-bar-row.webp",
+  "source": "Lying_T-Bar_Row"
+ },
+ "Toe Touches": {
+  "file": "toe-touches.webp",
+  "source": "Toe_Touchers"
+ },
+ "Treadmill Incline Walking": {
+  "file": "treadmill-incline-walking.webp",
+  "source": "Walking_Treadmill"
+ },
+ "Treadmill Running": {
+  "file": "treadmill-running.webp",
+  "source": "Running_Treadmill"
+ },
+ "Treadmill Walking": {
+  "file": "treadmill-walking.webp",
+  "source": "Walking_Treadmill"
+ },
+ "Tricep Dips": {
+  "file": "tricep-dips.webp",
+  "source": "Dips_-_Triceps_Version"
+ },
+ "Tricep Pushdown (Cable)": {
+  "file": "tricep-pushdown-cable.webp",
+  "source": "Triceps_Pushdown"
+ },
+ "Tricep Rope Pushdown": {
+  "file": "tricep-rope-pushdown.webp",
+  "source": "Triceps_Pushdown_-_Rope_Attachment"
+ },
+ "Tricep Stretch (Overhead)": {
+  "file": "tricep-stretch-overhead.webp",
+  "source": "Tricep_Side_Stretch"
+ },
+ "Tuck Jump": {
+  "file": "tuck-jump.webp",
+  "source": "Knee_Tuck_Jump"
+ },
+ "Wide Push-Ups": {
+  "file": "wide-push-ups.webp",
+  "source": "Push-Up_Wide"
+ },
+ "Wide-Grip Lat Pulldown": {
+  "file": "wide-grip-lat-pulldown.webp",
+  "source": "Wide-Grip_Lat_Pulldown"
+ },
+ "Zercher Squat": {
+  "file": "zercher-squat.webp",
+  "source": "Zercher_Squats"
+ },
+ "Zottman Curl": {
+  "file": "zottman-curl.webp",
+  "source": "Zottman_Curl"
+ }
+}

@@ -41,10 +41,17 @@
           "GymApp.Common.Application": "[1.0.0, )",
           "GymApp.Modules.Billing.Shared": "[1.0.0, )",
           "GymApp.Modules.Gyms.Shared": "[1.0.0, )",
-          "GymApp.Modules.Nutrition.Domain": "[1.0.0, )"
+          "GymApp.Modules.Nutrition.Domain": "[1.0.0, )",
+          "GymApp.Modules.Nutrition.IntegrationEvents": "[1.0.0, )"
         }
       },
       "gymapp.modules.nutrition.domain": {
+        "type": "Project",
+        "dependencies": {
+          "GymApp.Common.Domain": "[1.0.0, )"
+        }
+      },
+      "gymapp.modules.nutrition.integrationevents": {
         "type": "Project",
         "dependencies": {
           "GymApp.Common.Domain": "[1.0.0, )"

@@ -7,10 +7,12 @@ import '../../../core/router.dart';
 import '../data/plan_api.dart';
 import '../data/plan_draft.dart';
 import 'plan_builder_screen.dart';
+import 'ready_programs_section.dart';
 import 'start_plan_sheet.dart';
 import 'trainer_plan_strings.dart';
 
-/// The coach's template library: gym templates (read-only for coaches) and their own.
+/// The coach's template library: gym templates (read-only for coaches), their own, and the
+/// ready programs they can save as their own.
 class PlanTemplatesScreen extends ConsumerWidget {
   const PlanTemplatesScreen({super.key});
 
@@ -27,6 +29,14 @@ class PlanTemplatesScreen extends ConsumerWidget {
           templateId: t.id,
           draft: PlanDraft.fromTemplate(detail),
         ));
+  }
+
+  /// A ready program opens as a new template of the coach's own, to save as is or change first.
+  Future<void> _openProgram(BuildContext context, WidgetRef ref, PlanProgramSummaryModel p) async {
+    final detail = await ref.read(planProgramProvider(p.key).future);
+    if (!context.mounted) return;
+    await context.push(AppRoutes.planBuilder,
+        extra: PlanBuilderArgs(mode: PlanBuilderMode.newTemplate, draft: PlanDraft.fromProgram(detail)));
   }
 
   Future<void> _offerCopy(BuildContext context, WidgetRef ref, TrainerPlanStrings s, PlanTemplateSummaryModel t) async {
@@ -68,6 +78,8 @@ class PlanTemplatesScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
             children: [
               for (final t in list) PlanTemplateTile(template: t, strings: s, onTap: () => _open(context, ref, s, t)),
+              const SizedBox(height: 16),
+              ReadyProgramsSection(strings: s, onTap: (p) => _openProgram(context, ref, p)),
             ],
           ),
         ),

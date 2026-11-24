@@ -93,26 +93,6 @@ void main() {
     });
   });
 
-  test('GET /nutrition/me/meal-plan returns plan when assigned', () async {
-    t.adapter.onGet(
-      ApiEndpoints.myMealPlan,
-      respond: (_) => t.adapter.ok(Samples.mealPlan()),
-    );
-    final plan = await ds.getActiveMealPlan();
-    expect(plan, isNotNull);
-    expect(plan!.assignedByTrainerId, 'trainer-1');
-    expect(plan.dailyCalorieTarget, 2000);
-  });
-
-  test('GET /nutrition/me/meal-plan returns null when BE returns empty envelope',
-      () async {
-    t.adapter.onGet(
-      ApiEndpoints.myMealPlan,
-      respond: (_) => t.adapter.ok(null),
-    );
-    expect(await ds.getActiveMealPlan(), isNull);
-  });
-
   test('GET /nutrition/food-database passes query + paging', () async {
     t.adapter.onGet(
       ApiEndpoints.foodDatabase,

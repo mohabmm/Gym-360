@@ -60,6 +60,7 @@ Map<String, dynamic> myPlanJson({String? nextDayKey = 'w1a', int lastDoneIndex =
       },
       'stats': {'thisWeek': 0, 'weekTarget': 2, 'thisMonth': 0, 'weekStart': '2026-11-21'},
       'lastWeights': const {'e-squat-1': 40.0},
+      'exerciseMedia': const {'e-squat-1': '/media/exercises/goblet-squat.webp'},
     };
 
 MyPlanModel myPlan({String? nextDayKey = 'w1a', int lastDoneIndex = -1}) =>

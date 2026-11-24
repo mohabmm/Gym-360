@@ -3,18 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
 import '../data/plan_api.dart';
+import 'ready_programs_section.dart';
 import 'trainer_plan_strings.dart';
 
-/// What the coach picked to start a plan from: nothing (blank) or a template.
+/// What the coach picked to start a plan from: nothing (blank), a ready program or a template.
 class StartChoice {
   final PlanTemplateSummaryModel? template;
+  final PlanProgramSummaryModel? program;
 
-  const StartChoice.blank() : template = null;
+  const StartChoice.blank()
+      : template = null,
+        program = null;
 
-  const StartChoice.template(PlanTemplateSummaryModel this.template);
+  const StartChoice.template(PlanTemplateSummaryModel this.template) : program = null;
+
+  const StartChoice.program(PlanProgramSummaryModel this.program) : template = null;
 }
 
-/// "Start blank" next to the gym's and the coach's templates — both are one tap away.
+/// "Start blank" first, then the ready programs, then the gym's and the coach's templates.
 Future<StartChoice?> showStartPlanSheet(BuildContext context) => showModalBottomSheet<StartChoice>(
       context: context,
       isScrollControlled: true,
@@ -45,6 +51,8 @@ class _StartPlanSheet extends ConsumerWidget {
               onTap: () => Navigator.pop(context, const StartChoice.blank()),
             ),
           ),
+          const SizedBox(height: 16),
+          ReadyProgramsSection(strings: s, onTap: (p) => Navigator.pop(context, StartChoice.program(p))),
           const SizedBox(height: 16),
           Text(s.fromTemplate, style: Theme.of(context).textTheme.titleMedium),
           templates.when(

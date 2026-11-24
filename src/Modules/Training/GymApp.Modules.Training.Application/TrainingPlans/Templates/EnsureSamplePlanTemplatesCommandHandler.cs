@@ -25,10 +25,7 @@ internal sealed class EnsureSamplePlanTemplatesCommandHandler : ICommandHandler<
         if (await _templates.AnyForGymAsync(request.GymId, cancellationToken))
             return Result.Success(0);
 
-        var library = (await _exercises.GetAllAsync(request.GymId, cancellationToken: cancellationToken))
-            .Where(e => e.GymId is null)
-            .GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => (g.First().Id, g.First().NameAr), StringComparer.OrdinalIgnoreCase);
+        var library = await GlobalExerciseLookup.LoadAsync(_exercises, request.GymId, cancellationToken);
         var samples = SamplePlanTemplates.All
             .Select(s => PlanTemplate.CreateSample(request.GymId, s.Key, SamplePlanTemplates.ToContent(s, library)))
             .ToList();

@@ -48,6 +48,7 @@ class _PlanBuilderScreenState extends ConsumerState<PlanBuilderScreen> {
   void _changed() => setState(() {});
 
   Future<void> _save(TrainerPlanStrings s) async {
+    _draft.nameUnnamedDays(isArabic: s.isArabic);
     if (!_draft.isValid) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.incomplete)));
       return;

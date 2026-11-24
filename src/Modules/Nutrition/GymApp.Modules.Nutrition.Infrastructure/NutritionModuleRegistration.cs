@@ -33,6 +33,7 @@ public static class NutritionModuleRegistration
         services.AddScoped<IWaterLogRepository, WaterLogRepository>();
         services.AddScoped<IFoodDatabaseRepository, FoodDatabaseRepository>();
         services.AddScoped<IMealPlanRepository, MealPlanRepository>();
+        services.AddScoped<GymApp.Modules.Nutrition.Application.Diets.DietAccess>();
         services.AddScoped<IUserDataProvider, GymApp.Modules.Nutrition.Application.Services.UserDataProvider>();
         services.AddScoped<IUserDataEraser, Services.NutritionUserDataEraser>();
 

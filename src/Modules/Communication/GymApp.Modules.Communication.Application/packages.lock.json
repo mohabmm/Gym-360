@@ -59,6 +59,12 @@
       "gymapp.modules.identity.shared": {
         "type": "Project"
       },
+      "gymapp.modules.nutrition.integrationevents": {
+        "type": "Project",
+        "dependencies": {
+          "GymApp.Common.Domain": "[1.0.0, )"
+        }
+      },
       "gymapp.modules.progress.integrationevents": {
         "type": "Project",
         "dependencies": {

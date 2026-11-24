@@ -34,5 +34,8 @@ public enum NotificationType
     TrainingPlan = 21,
 
     /// <summary>mem.first_month_challenge: a new member reached the target (trainee, coach, desk).</summary>
-    FirstMonthChallenge = 22
+    FirstMonthChallenge = 22,
+
+    /// <summary>nutrition: the coach gave the member a diet plan.</summary>
+    MealPlan = 23
 }

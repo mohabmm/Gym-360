@@ -1,3 +1,4 @@
+using GymApp.Modules.Training.Application.Exercises;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Application.DTOs;
@@ -48,7 +49,7 @@ internal sealed class GetExercisesQueryHandler : IQueryHandler<GetExercisesQuery
                 e.NameAr,
                 e.Description,
                 e.Instructions,
-                e.DemoMediaUrl,
+                ExerciseDemoMedia.UrlFor(e),
                 e.MuscleGroups.Select(mg => mg.ToString()).ToList(),
                 e.Equipment.ToString(),
                 e.Category.ToString(),

@@ -61,18 +61,6 @@ class NutritionRemoteDataSource {
     );
   }
 
-  /// Returns the trainee's currently-assigned meal plan at the current gym,
-  /// or `null` if none is assigned.
-  ///
-  /// Backed by `GET /api/v1/nutrition/me/meal-plan`. `X-Gym-Id` is supplied
-  /// automatically by [GymIdInterceptor].
-  Future<MealPlanModel?> getActiveMealPlan() async {
-    return _apiClient.get<MealPlanModel?>(
-      ApiEndpoints.myMealPlan,
-      parser: _mealPlanFromRaw,
-    );
-  }
-
   Future<List<FoodItemModel>> searchFoodItems(
     String query, {
     int page = 1,
@@ -98,37 +86,6 @@ List<dynamic> _itemsOf(dynamic data) {
   if (data is List) return data;
   if (data is Map && data['items'] is List) return data['items'] as List;
   return const [];
-}
-
-/// `null` when nothing is assigned (empty body or a bare envelope).
-MealPlanModel? _mealPlanFromRaw(dynamic raw) {
-  if (raw is! Map<String, dynamic>) return null;
-  final looksLikeEnvelope =
-      !raw.containsKey('id') && (raw.containsKey('errors') || raw.containsKey('meta'));
-  if (looksLikeEnvelope) return null;
-  // BE sometimes emits macro/calorie fields as decimals (150.00) while
-  // the model declares them as int. Coerce numerics via a normaliser
-  // so freezed's generated fromJson doesn't throw a TypeError.
-  return MealPlanModel.fromJson(_normaliseMealPlanJson(raw));
-}
-
-/// Coerce any numeric meal-plan field that the model types as `int` but the
-/// backend may emit as a decimal (e.g. `150.00`). We rewrite only the fields
-/// where this mismatch has been observed; untouched fields round-trip as-is.
-Map<String, dynamic> _normaliseMealPlanJson(Map<String, dynamic> raw) {
-  final out = Map<String, dynamic>.from(raw);
-  final dailyCal = out['dailyCalorieTarget'];
-  if (dailyCal is num) out['dailyCalorieTarget'] = dailyCal.toInt();
-  final macros = out['macroTargets'];
-  if (macros is Map<String, dynamic>) {
-    final m = Map<String, dynamic>.from(macros);
-    for (final key in const ['proteinGrams', 'carbsGrams', 'fatGrams']) {
-      final v = m[key];
-      if (v is num) m[key] = v.toInt();
-    }
-    out['macroTargets'] = m;
-  }
-  return out;
 }
 
 /// Adapts backend `FoodLogResponse` — grouped `meals`, each with its own

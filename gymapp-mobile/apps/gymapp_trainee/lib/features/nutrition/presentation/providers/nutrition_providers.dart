@@ -47,12 +47,6 @@ final waterLogProvider = FutureProvider<WaterLogModel>((ref) async {
   );
 });
 
-final activeMealPlanProvider =
-    FutureProvider<MealPlanModel?>((ref) async {
-  final repo = ref.watch(nutritionRepositoryProvider);
-  return repo.getActiveMealPlan();
-});
-
 final foodSearchQueryProvider = StateProvider<String>((ref) => '');
 
 final foodSearchResultsProvider =

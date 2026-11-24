@@ -23,10 +23,10 @@ internal static class SamplePlanTemplates
     private const string FormFirst = "ركّز على الأداء الصحيح قبل زيادة الوزن";
     private const string Steady = "مجهود متوسط تقدر تتكلم فيه";
 
-    private static SampleExercise R(string library, string nameAr, int sets, string reps, int rest, string? note = null) =>
+    internal static SampleExercise R(string library, string nameAr, int sets, string reps, int rest, string? note = null) =>
         new(library, nameAr, sets, reps, null, rest, note);
 
-    private static SampleExercise T(string library, string nameAr, int sets, int seconds, int rest, string? note = null) =>
+    internal static SampleExercise T(string library, string nameAr, int sets, int seconds, int rest, string? note = null) =>
         new(library, nameAr, sets, null, seconds, rest, note);
 
     public static IReadOnlyList<Sample> All { get; } = new[]
@@ -132,19 +132,18 @@ internal static class SamplePlanTemplates
     /// <summary>Builds the plan content, linking each exercise to the library when the name is there.</summary>
     public static PlanContent ToContent(Sample sample, IReadOnlyDictionary<string, (Guid Id, string? NameAr)> library)
     {
-        var week = new PlanWeek
-        {
-            Week = 1,
-            Days = sample.Days.Select(d => new PlanDay
-            {
-                Title = d.TitleEn,
-                TitleAr = d.TitleAr,
-                Exercises = d.Exercises.Select(e => ToExercise(e, library)).ToList()
-            }).ToList()
-        };
+        var week = new PlanWeek { Week = 1, Days = sample.Days.Select(d => ToDay(d, library)).ToList() };
         var document = PlanDocument.Of(new[] { week }).CopyFirstWeekToAll(Weeks);
         return PlanContent.Create(new PlanContent { Name = sample.NameEn, NameAr = sample.NameAr, Goal = sample.Goal, Document = document }).Value;
     }
+
+    /// <summary>One sample day as a plan day, its exercises linked to the library where the name is there.</summary>
+    internal static PlanDay ToDay(SampleDay day, IReadOnlyDictionary<string, (Guid Id, string? NameAr)> library) => new()
+    {
+        Title = day.TitleEn,
+        TitleAr = day.TitleAr,
+        Exercises = day.Exercises.Select(e => ToExercise(e, library)).ToList()
+    };
 
     private static PlanExercise ToExercise(SampleExercise e, IReadOnlyDictionary<string, (Guid Id, string? NameAr)> library)
     {

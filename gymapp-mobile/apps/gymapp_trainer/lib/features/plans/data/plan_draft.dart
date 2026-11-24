@@ -15,6 +15,9 @@ class ExerciseDraft {
   String notes;
   String videoUrl;
 
+  /// The library's demo animation, shown while editing; never sent (the server resolves it).
+  String? demoMediaUrl;
+
   ExerciseDraft({
     this.key = '',
     this.exerciseId,
@@ -153,6 +156,10 @@ class PlanDraft {
   factory PlanDraft.fromTemplate(PlanTemplateModel t) => PlanDraft.fromDocument(t.document,
       name: t.summary.name, nameAr: t.summary.nameAr, goal: t.summary.goal, goalText: t.summary.goalText);
 
+  /// Starting from a ready program: a copy of its name, goal and days.
+  factory PlanDraft.fromProgram(PlanProgramModel p) => PlanDraft.fromDocument(p.document,
+      name: p.summary.name, nameAr: p.summary.nameAr, goal: p.summary.goal);
+
   /// Editing a client's plan.
   factory PlanDraft.fromPlan(TrainingPlanModel p) => PlanDraft.fromDocument(p.document,
       name: p.summary.name, nameAr: p.summary.nameAr, goal: p.summary.goal, goalText: p.summary.goalText);
@@ -165,6 +172,22 @@ class PlanDraft {
       name.trim().isNotEmpty &&
       (goal != PlanGoal.other || goalText.trim().isNotEmpty) &&
       weeks.every((w) => w.isNotEmpty && w.length <= maxDaysPerWeek && w.every((d) => d.isValid));
+
+  /// Days the coach left unnamed get "Day 1", "Day 2", … (Arabic: «اليوم ١») so a plan built
+  /// from scratch saves without naming every day; the hint the field shows is never saved.
+  void nameUnnamedDays({required bool isArabic}) {
+    for (final week in weeks) {
+      for (var i = 0; i < week.length; i++) {
+        final day = week[i];
+        if (day.title.trim().isNotEmpty) continue;
+        final arabic = 'اليوم ${_arabicDigits(i + 1)}';
+        day.title = isArabic && (day.titleAr?.trim().isNotEmpty ?? false) ? day.titleAr!.trim() : 'Day ${i + 1}';
+        if (isArabic && (day.titleAr?.trim().isEmpty ?? true)) day.titleAr = arabic;
+      }
+    }
+  }
+
+  static String _arabicDigits(int n) => n.toString().split('').map((d) => '٠١٢٣٤٥٦٧٨٩'[int.parse(d)]).join();
 
   /// Edit every week on its own, starting from copies of week 1.
   void splitWeeks() {

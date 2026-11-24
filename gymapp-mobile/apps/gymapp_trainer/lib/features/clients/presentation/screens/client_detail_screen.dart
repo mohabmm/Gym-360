@@ -11,8 +11,9 @@ import '../providers/client_providers.dart';
 import '../../../sessions/presentation/pt/pt_coach_widgets.dart';
 import '../widgets/client_exercise_progress_tab.dart';
 import '../../../plans/presentation/client_plan_tab.dart';
+import '../../../nutrition/diet/client_diet_tab.dart';
 
-/// Client detail screen with 5 tabs: Overview, Progress, Sessions, Workouts, Notes.
+/// Client detail screen: Overview, then a tab per feature that is on (plan, diet, progress, …).
 class ClientDetailScreen extends ConsumerStatefulWidget {
   final String clientId;
 
@@ -42,6 +43,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           'الخطة',
           'Plan',
           (_) => ClientPlanTab(clientId: widget.clientId, isArabic: isArabic)
+        ),
+      if (on(FeatureFlagKeys.nutrition))
+        (
+          'التغذية',
+          'Diet',
+          (_) => ClientDietTab(clientId: widget.clientId, isArabic: isArabic)
         ),
       if (on(FeatureFlagKeys.ptProgressMeasurements))
         (
