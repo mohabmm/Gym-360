@@ -304,28 +304,19 @@ class _ExerciseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = isArabic && exercise.nameAr != null ? exercise.nameAr! : exercise.name;
+    final muscles = exercise.muscleGroups.isEmpty
+        ? null
+        : ExerciseLabels.muscleGroups(exercise.muscleGroups, language: AppLanguage.of(context));
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          Icons.fitness_center,
-          size: 20,
-          color: Theme.of(context).colorScheme.onSecondaryContainer,
-        ),
-      ),
+      leading: ExerciseMediaView(url: exercise.demoMediaUrl, size: 48),
       title: Text(name),
-      subtitle: exercise.muscleGroups.isEmpty
-          ? null
-          : Text(ExerciseLabels.muscleGroups(
-              exercise.muscleGroups,
-              language: AppLanguage.of(context),
-            )),
+      subtitle: muscles == null ? null : Text(muscles),
+      onTap: () => showExerciseMediaSheet(
+        context,
+        ExerciseMediaDetails(title: name, subtitle: muscles, mediaUrl: exercise.demoMediaUrl),
+        isArabic: isArabic,
+      ),
     );
   }
 }

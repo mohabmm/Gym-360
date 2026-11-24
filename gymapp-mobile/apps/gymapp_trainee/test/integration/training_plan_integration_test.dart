@@ -160,7 +160,21 @@ void main() {
     expect(clientIds, hasLength(1), reason: 'every attempt reused the same client id');
   });
 
-  testWidgets('leaving with ticked sets asks first', (tester) async {
+  testWidgets('every exercise shows its demo; tapping opens the big loop with the coach notes', (tester) async {
+    final h = _Harness();
+    await h.pump(tester);
+
+    await tester.tap(find.byKey(const Key('plan-start-workout')));
+    await tester.pumpAndSettle();
+    final demos = tester.widgetList<ExerciseMediaView>(find.byType(ExerciseMediaView)).toList();
+    expect(demos.first.url, '/media/exercises/goblet-squat.webp');
+
+    await tester.tap(find.byKey(const ValueKey('exercise-demo-e-squat-1')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ExerciseMediaView), findsNWidgets(demos.length + 1), reason: 'the sheet adds the large one');
+  });
+
+    testWidgets('leaving with ticked sets asks first', (tester) async {
     final h = _Harness();
     await h.pump(tester, locale: 'en');
     await tester.tap(find.byKey(const Key('plan-start-workout')));

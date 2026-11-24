@@ -113,7 +113,16 @@ class MyPlanModel {
   final PlanWeekStatsModel stats;
   final Map<String, double> lastWeights;
 
-  const MyPlanModel({required this.plan, required this.cursor, required this.stats, this.lastWeights = const {}});
+  /// Demo animation URL of each library exercise, by plan exercise key.
+  final Map<String, String> exerciseMedia;
+
+  const MyPlanModel({
+    required this.plan,
+    required this.cursor,
+    required this.stats,
+    this.lastWeights = const {},
+    this.exerciseMedia = const {},
+  });
 
   factory MyPlanModel.fromJson(Map<String, dynamic> json) => MyPlanModel(
         plan: TrainingPlanModel.fromJson(_map(json['plan'])),
@@ -121,6 +130,10 @@ class MyPlanModel {
         stats: PlanWeekStatsModel.fromJson(_map(json['stats'])),
         lastWeights: {
           for (final e in _map(json['lastWeights']).entries) e.key: (e.value as num).toDouble(),
+        },
+        exerciseMedia: {
+          for (final e in _map(json['exerciseMedia']).entries)
+            if (e.value is String) e.key: e.value as String,
         },
       );
 }

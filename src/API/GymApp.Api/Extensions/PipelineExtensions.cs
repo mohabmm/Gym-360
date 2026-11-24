@@ -35,6 +35,13 @@ public static class PipelineExtensions
         app.UseExceptionHandler();
         app.UseSerilogRequestLogging();
 
+        // Public, anonymous exercise demo animations (wwwroot/media, public-domain images).
+        // Served before auth and tenant resolution; the images rarely change, so cache for 30 days.
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl = "public, max-age=2592000",
+        });
+
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();

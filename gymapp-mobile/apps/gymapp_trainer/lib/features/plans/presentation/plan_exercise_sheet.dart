@@ -33,7 +33,11 @@ class _ExerciseSheet extends StatefulWidget {
 class _ExerciseSheetState extends State<_ExerciseSheet> {
   static const _restChoices = [30, 45, 60, 90, 120, 180];
 
-  late final ExerciseDraft _draft = widget.initial == null ? ExerciseDraft() : (ExerciseDraft.from(widget.initial!.toModel())..key = widget.initial!.key);
+  late final ExerciseDraft _draft = widget.initial == null
+      ? ExerciseDraft()
+      : (ExerciseDraft.from(widget.initial!.toModel())
+        ..key = widget.initial!.key
+        ..demoMediaUrl = widget.initial!.demoMediaUrl);
   late bool _picking = _draft.name.isEmpty;
 
   bool get _isArabic => Localizations.localeOf(context).languageCode == 'ar';
@@ -42,8 +46,8 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
         _draft
           ..name = library?.name ?? name.trim()
           ..nameAr = library?.nameAr
-          ..exerciseId = library?.id;
-        if (_draft.videoUrl.isEmpty && library?.demoMediaUrl != null) _draft.videoUrl = library!.demoMediaUrl!;
+          ..exerciseId = library?.id
+          ..demoMediaUrl = library?.demoMediaUrl;
         _picking = false;
       });
 
@@ -63,6 +67,7 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
+          leading: _draft.demoMediaUrl == null ? null : ExerciseMediaView(url: _draft.demoMediaUrl),
           title: Text(_draft.toModel().displayName(_isArabic), style: Theme.of(context).textTheme.titleMedium),
           subtitle: _draft.exerciseId == null ? null : Text(s.fromLibrary),
           trailing: IconButton(icon: const Icon(Icons.swap_horiz), onPressed: () => setState(() => _picking = true)),
@@ -103,13 +108,21 @@ class _ExerciseSheetState extends State<_ExerciseSheet> {
             ),
         ]),
         const SizedBox(height: 12),
-        WeightField(weight: _draft.targetWeightKg, isArabic: _isArabic, label: s.targetWeight, onChanged: (v) => _draft.targetWeightKg = v),
+        WeightField(
+            weight: _draft.targetWeightKg,
+            isArabic: _isArabic,
+            label: s.targetWeight,
+            onChanged: (v) => _draft.targetWeightKg = v),
         const SizedBox(height: 12),
         _RpeChips(value: _draft.rpe, label: s.rpeLabel, onChanged: (v) => setState(() => _draft.rpe = v)),
         const SizedBox(height: 12),
         ExerciseTextField(label: s.notesLabel, initial: _draft.notes, onChanged: (v) => _draft.notes = v),
         const SizedBox(height: 12),
-        ExerciseTextField(label: s.videoLabel, initial: _draft.videoUrl, keyboardType: TextInputType.url, onChanged: (v) => _draft.videoUrl = v),
+        ExerciseTextField(
+            label: s.videoLabel,
+            initial: _draft.videoUrl,
+            keyboardType: TextInputType.url,
+            onChanged: (v) => _draft.videoUrl = v),
         const SizedBox(height: 20),
         FilledButton(onPressed: _draft.isValid ? () => Navigator.pop(context, _draft) : null, child: Text(s.done)),
       ],
@@ -174,7 +187,7 @@ class _ExercisePickerState extends ConsumerState<_ExercisePicker> {
           data: (list) => [
             for (final e in list)
               ListTile(
-                leading: const Icon(Icons.fitness_center),
+                leading: ExerciseMediaView(url: e.demoMediaUrl, size: 44),
                 title: Text(e.displayName(s.isArabic)),
                 subtitle: s.isArabic && e.nameAr != null ? Text(e.name) : null,
                 onTap: () => widget.onPicked(e.name, library: e),

@@ -21,6 +21,23 @@ final planTemplateProvider = FutureProvider.autoDispose.family<PlanTemplateModel
       );
 });
 
+/// pt.training_plan: the built-in ready programs (classics, Egyptian staples, lifestyle, cardio).
+final planProgramsProvider = FutureProvider.autoDispose<List<PlanProgramSummaryModel>>((ref) async {
+  return ref.watch(apiClientProvider).get<List<PlanProgramSummaryModel>>(
+        ApiEndpoints.planPrograms,
+        parser: (data) => [
+          for (final item in data as List) PlanProgramSummaryModel.fromJson(Map<String, dynamic>.from(item as Map))
+        ],
+      );
+});
+
+final planProgramProvider = FutureProvider.autoDispose.family<PlanProgramModel, String>((ref, key) async {
+  return ref.watch(apiClientProvider).get<PlanProgramModel>(
+        ApiEndpoints.planProgramByKey(key),
+        parser: (data) => PlanProgramModel.fromJson(Map<String, dynamic>.from(data as Map)),
+      );
+});
+
 /// A client's active plan and history.
 final traineePlansProvider = FutureProvider.autoDispose.family<TraineePlansModel, String>((ref, clientId) async {
   return ref.watch(apiClientProvider).get<TraineePlansModel>(

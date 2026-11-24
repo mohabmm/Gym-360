@@ -142,6 +142,8 @@ class ApiEndpoints {
   static const String planTemplates = '$basePrefix/training/plan-templates';
   static String planTemplateById(String id) => '$basePrefix/training/plan-templates/$id';
   static String duplicatePlanTemplate(String id) => '$basePrefix/training/plan-templates/$id/duplicate';
+  static const String planPrograms = '$basePrefix/training/plan-programs';
+  static String planProgramByKey(String key) => '$basePrefix/training/plan-programs/${Uri.encodeComponent(key)}';
   static const String trainingPlans = '$basePrefix/training/plans';
   static String trainingPlanById(String id) => '$basePrefix/training/plans/$id';
   static String savePlanAsTemplate(String id) => '$basePrefix/training/plans/$id/save-as-template';
@@ -248,6 +250,13 @@ class ApiEndpoints {
       '$basePrefix/nutrition/meal-plans/$mealPlanId/assign';
   // Trainee's own currently-assigned meal plan (PRD /me endpoints).
   static const String myMealPlan = '$basePrefix/nutrition/me/meal-plan';
+  // Ready Egyptian diets (coach) and today's meals (member).
+  static const String calorieTarget = '$basePrefix/nutrition/calorie-target';
+  static const String readyDiets = '$basePrefix/nutrition/ready-diets';
+  static String readyDietByKey(String key) => '$basePrefix/nutrition/ready-diets/${Uri.encodeComponent(key)}';
+  static String clientDiet(String clientId) => '$basePrefix/nutrition/clients/$clientId/diet';
+  static const String myMealsToday = '$basePrefix/nutrition/me/meal-plan/today';
+  static String myMealDone(int index) => '$basePrefix/nutrition/me/meal-plan/today/$index/done';
   // BE name is /food-database (search the Egyptian food DB).
   static const String foodDatabase = '$basePrefix/nutrition/food-database';
   static String clientFoodLog(ClientId clientId) =>

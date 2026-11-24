@@ -13,6 +13,8 @@ import '../../../plan/data/plan_providers.dart';
 import '../../../plan/data/challenge_providers.dart';
 import '../../../plan/presentation/challenge_card.dart';
 import '../../../plan/presentation/plan_today_card.dart';
+import '../../../nutrition/diet/diet_providers.dart';
+import '../../../nutrition/diet/today_meals_card.dart';
 import '../../../communication/presentation/providers/communication_providers.dart';
 import '../../../communication/presentation/widgets/notification_bell.dart';
 import '../../../scheduling/presentation/providers/scheduling_providers.dart';
@@ -49,6 +51,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(myTrialRecapProvider);
           ref.invalidate(myPackageInterestProvider);
           ref.invalidate(todaysWorkoutProvider);
+          ref.invalidate(todayMealsProvider);
           ref.invalidate(upcomingSessionsListProvider);
           ref.invalidate(progressDashboardProvider);
           ref.invalidate(todaysWaterProvider);
@@ -75,6 +78,8 @@ class HomeScreen extends ConsumerWidget {
             ...section(pagePad, FeatureFlagKeys.ptTrainingPlan, const PlanTodayCard(), top: 4),
             if (flags.isEnabled(FeatureFlagKeys.ptTrainingPlan))
               ...section(pagePad, FeatureFlagKeys.memFirstMonthChallenge, const ChallengeCard()),
+            // The coach's diet sits next to the plan: both are what the member follows between sessions.
+            ...section(pagePad, FeatureFlagKeys.nutrition, const TodayMealsCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptTrialSessions, const TrialConversionCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptPackages, const PackageSummaryCard(), top: 4),
             ...section(pagePad, FeatureFlagKeys.ptDualSessionLogging, const ConfirmSessionsCard()),

@@ -203,6 +203,77 @@ class PlanTemplateModel {
       );
 }
 
+/// Where a ready program comes from, for the coach's filter chips.
+enum ProgramCategory {
+  classic('Classic'),
+  egyptian('Egyptian'),
+  lifestyle('Lifestyle'),
+  cardio('Cardio');
+
+  final String api;
+  const ProgramCategory(this.api);
+
+  static ProgramCategory parse(String? value) =>
+      ProgramCategory.values.firstWhere((c) => c.api.toLowerCase() == value?.toLowerCase(), orElse: () => classic);
+}
+
+/// A ready program (برامج جاهزة) in the picker: built in, the same for every gym.
+class PlanProgramSummaryModel {
+  final String key;
+  final String name;
+  final String nameAr;
+  final String description;
+  final String descriptionAr;
+  final ProgramCategory category;
+  final bool isBeginner;
+  final PlanGoal goal;
+  final int durationWeeks;
+  final int daysPerWeek;
+
+  const PlanProgramSummaryModel({
+    required this.key,
+    required this.name,
+    required this.nameAr,
+    this.description = '',
+    this.descriptionAr = '',
+    this.category = ProgramCategory.classic,
+    this.isBeginner = true,
+    this.goal = PlanGoal.generalFitness,
+    this.durationWeeks = 4,
+    this.daysPerWeek = 3,
+  });
+
+  String displayName(bool isArabic) => isArabic && nameAr.isNotEmpty ? nameAr : name;
+
+  String displayDescription(bool isArabic) => isArabic && descriptionAr.isNotEmpty ? descriptionAr : description;
+
+  factory PlanProgramSummaryModel.fromJson(Map<String, dynamic> json) => PlanProgramSummaryModel(
+        key: json['key'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        nameAr: json['nameAr'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        descriptionAr: json['descriptionAr'] as String? ?? '',
+        category: ProgramCategory.parse(json['category'] as String?),
+        isBeginner: (json['level'] as String?) != 'Intermediate',
+        goal: PlanGoal.parse(json['goal'] as String?),
+        durationWeeks: (json['durationWeeks'] as num?)?.toInt() ?? 0,
+        daysPerWeek: (json['daysPerWeek'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// A ready program with its days, linked to the gym's exercise library.
+class PlanProgramModel {
+  final PlanProgramSummaryModel summary;
+  final PlanDocumentModel document;
+
+  const PlanProgramModel({required this.summary, required this.document});
+
+  factory PlanProgramModel.fromJson(Map<String, dynamic> json) => PlanProgramModel(
+        summary: PlanProgramSummaryModel.fromJson(_map(json['summary'])),
+        document: PlanDocumentModel.fromJson(_map(json['document'])),
+      );
+}
+
 class TrainingPlanSummaryModel {
   final String id;
   final String traineeId;

@@ -1,3 +1,4 @@
+using GymApp.Modules.Training.Application.Exercises;
 using GymApp.Common.Application.Messaging;
 using GymApp.Common.Domain;
 using GymApp.Modules.Training.Domain.Entities;
@@ -39,8 +40,19 @@ internal sealed class PlanWorkoutQueryHandler
             plan.ToDto(),
             progress.Cursor!,
             progress.Stats,
-            PlanProgress.LastWeights(plan.Document, progress.Recent)));
+            PlanProgress.LastWeights(plan.Document, progress.Recent),
+            ExerciseMediaFor(plan.Document)));
     }
+
+    /// <summary>Library exercises' animations by plan exercise key (free-text exercises have none).</summary>
+    internal static IReadOnlyDictionary<string, string> ExerciseMediaFor(PlanDocument document) =>
+        document.Sequence()
+            .SelectMany(d => d.Exercises)
+            .Where(e => e.ExerciseId is not null)
+            .Select(e => (e.Key, Url: ExerciseDemoMedia.UrlForName(e.Name)))
+            .Where(x => x.Url is not null)
+            .GroupBy(x => x.Key)
+            .ToDictionary(g => g.Key, g => g.First().Url!);
 
     public async Task<Result<PlanProgressDto>> Handle(GetPlanProgressQuery request, CancellationToken cancellationToken)
     {

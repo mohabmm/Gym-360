@@ -85,4 +85,21 @@ void main() {
     draft.goalText = 'Football pre-season';
     expect(draft.isValid, isTrue);
   });
+
+  test('days left unnamed are named in order, so a plan from scratch can be saved', () {
+    final draft = PlanDraft.blank()
+      ..name = 'خطتي'
+      ..firstWeek.add(DayDraft(title: 'Legs'));
+    for (final d in draft.firstWeek) {
+      d.exercises.add(ExerciseDraft(name: 'Squat'));
+    }
+    expect(draft.isValid, isFalse, reason: 'day 1 has no name yet');
+
+    draft.nameUnnamedDays(isArabic: true);
+
+    expect(draft.isValid, isTrue);
+    expect(draft.firstWeek[0].title, 'Day 1');
+    expect(draft.firstWeek[0].titleAr, 'اليوم ١');
+    expect(draft.firstWeek[1].title, 'Legs', reason: 'a name the coach typed is kept');
+  });
 }

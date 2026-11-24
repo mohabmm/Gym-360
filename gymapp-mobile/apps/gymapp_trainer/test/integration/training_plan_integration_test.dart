@@ -57,11 +57,32 @@ Map<String, dynamic> _plan({int version = 1}) => {
       'document': {'schemaVersion': 1, 'weeks': [for (var w = 1; w <= 4; w++) _week(w)]},
     };
 
-Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? active}) async {
+Map<String, dynamic> _programSummary(String key, String name, String category) => {
+      'key': key,
+      'name': name,
+      'nameAr': name,
+      'description': 'One muscle group a day',
+      'descriptionAr': 'عضلة كل يوم',
+      'category': category,
+      'level': 'Intermediate',
+      'goal': 'MuscleGain',
+      'durationWeeks': 8,
+      'daysPerWeek': 3,
+    };
+
+Map<String, dynamic> _program() => {
+      'summary': _programSummary('classic_split_5d', 'Classic split', 'Egyptian'),
+      'document': {'schemaVersion': 1, 'weeks': [for (var w = 1; w <= 8; w++) _week(w)]},
+    };
+
+Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? active, bool nutrition = false}) async {
   t.adapter.onGet(ApiEndpoints.traineePlans(kClientId), respond: (_) => t.adapter.ok({'active': active, 'history': const []}));
   t.adapter.onGet(ApiEndpoints.planTemplates,
       respond: (_) => t.adapter.ok([_summary(), _summary(id: 'tpl-mine', scope: 'Coach', canEdit: true)]));
   t.adapter.onGet(ApiEndpoints.planTemplateById('tpl-gym'), respond: (_) => t.adapter.ok(_template()));
+  t.adapter.onGet(ApiEndpoints.planPrograms,
+      respond: (_) => t.adapter.ok([_programSummary('ppl_3d', 'Push / pull / legs', 'Classic'), _programSummary('classic_split_5d', 'Classic split', 'Egyptian')]));
+  t.adapter.onGet(ApiEndpoints.planProgramByKey('classic_split_5d'), respond: (_) => t.adapter.ok(_program()));
   tester.view.physicalSize = const Size(1200, 2600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -70,7 +91,10 @@ Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? active}) async {
     GoRoute(path: AppRoutes.planBuilder, builder: (_, state) => PlanBuilderScreen(args: state.extra! as PlanBuilderArgs)),
   ]);
   await tester.pumpWidget(ProviderScope(
-    overrides: [apiClientProvider.overrideWithValue(t.apiClient)],
+    overrides: [
+      apiClientProvider.overrideWithValue(t.apiClient),
+      isFeatureEnabledProvider.overrideWith((ref, key) => nutrition && key == FeatureFlagKeys.nutrition),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       locale: const Locale('en'),
@@ -123,7 +147,91 @@ void main() {
     expect(t.adapter.recorded.where((r) => r.method == 'POST'), isEmpty);
   });
 
-  testWidgets('editing a plan sends the version it was loaded at and explains a conflict', (tester) async {
+  testWidgets('a plan built from scratch saves with a free-text exercise and no day name typed', (tester) async {
+    t.adapter.onGet(ApiEndpoints.planExercises, respond: (_) => t.adapter.ok({'items': const []}));
+    t.adapter.onPost(ApiEndpoints.trainingPlans, respond: (_) => t.adapter.ok(_plan()));
+    await _pump(tester);
+
+    await tester.tap(find.text('Give a plan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start blank'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Plan name'), 'My client plan');
+    await tester.tap(find.text('Add exercise'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Squat');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use "Squat" as a free-text exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Give plan ·'));
+    await tester.pumpAndSettle();
+
+    final content = _sent('POST')['content'] as Map;
+    final day = ((((content['document'] as Map)['weeks'] as List).first as Map)['days'] as List).first as Map;
+    expect(content['name'], 'My client plan');
+    expect(day['title'], 'Day 1');
+    expect(((day['exercises'] as List).first as Map)['name'], 'Squat');
+    expect(find.text('Plan given ✅ the client is notified'), findsOneWidget);
+  });
+
+  testWidgets('a ready program is filtered by category and given to a client as a copy, not a template', (tester) async {
+    t.adapter.onPost(ApiEndpoints.trainingPlans, respond: (_) => t.adapter.ok(_plan()));
+    await _pump(tester);
+
+    await tester.tap(find.text('Give a plan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ready programs'), findsOneWidget);
+    await tester.tap(find.text('Egyptian gyms'));
+    await tester.pumpAndSettle();
+    expect(find.text('Push / pull / legs'), findsNothing, reason: 'the filter hides other groups');
+    await tester.tap(find.text('Classic split'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Give plan ·'));
+    await tester.pumpAndSettle();
+
+    final body = _sent('POST');
+    expect(body['templateId'], isNull);
+    final content = body['content'] as Map;
+    expect(content['name'], 'Classic split');
+    expect(content['goal'], 'MuscleGain');
+    expect(content['repeatWeekOneForWeeks'], 8);
+  });
+
+    testWidgets('onboarding: after the plan is given the coach is offered the diet (nutrition on only)', (tester) async {
+    t.adapter.onPost(ApiEndpoints.trainingPlans, respond: (_) => t.adapter.ok(_plan()));
+    await _pump(tester, nutrition: true);
+
+    await tester.tap(find.text('Give a plan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Beginner full body – 3 days').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Give plan · 12 workouts'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('diet-onboarding-offer')), findsOneWidget);
+    expect(find.text("Complete the client's onboarding"), findsOneWidget);
+    await tester.tap(find.text('Later'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('diet-onboarding-offer')), findsNothing);
+  });
+
+  testWidgets('with nutrition off no diet is offered after the plan', (tester) async {
+    t.adapter.onPost(ApiEndpoints.trainingPlans, respond: (_) => t.adapter.ok(_plan()));
+    await _pump(tester);
+
+    await tester.tap(find.text('Give a plan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Beginner full body – 3 days').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Give plan · 12 workouts'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('diet-onboarding-offer')), findsNothing);
+  });
+
+    testWidgets('editing a plan sends the version it was loaded at and explains a conflict', (tester) async {
     t.adapter.onPut(ApiEndpoints.trainingPlanById('plan-1'),
         respond: (_) => t.adapter.error(409, code: 'Training.TrainingPlan.Conflict', message: 'changed'));
     await _pump(tester, active: _plan(version: 3));

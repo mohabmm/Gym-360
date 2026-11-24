@@ -88,6 +88,8 @@ public static class DatabaseInitializer
                     await MigrateContextAsync(_sp, ctxType, "soft");
             }
 
+            await PatchTrainingPlanTablesAsync();
+
             await SeedFeatureFlagsAsync();
 
             await RunIdentityDevSeederAsync();
@@ -260,6 +262,12 @@ IF LEN(@outboxUpgrade) > 0 EXEC sp_executesql @outboxUpgrade;");
         // reason as above. Idempotent (adds nullable columns only if missing).
         private Task PatchBodyCompositionColumnsAsync() =>
             ApplySchemaPatchAsync("InBody composition columns", BodyCompositionSchemaPatch.Sql, "InBody scans");
+
+        // Step 2a — pt.training_plan tables (plans, templates, workouts, settings, challenge). Same
+        // reason as above. Runs after the migrations so the legacy training schema's own
+        // migrations never find the tables already there. Idempotent (creates only if missing).
+        private Task PatchTrainingPlanTablesAsync() =>
+            ApplySchemaPatchAsync("Training plan tables", TrainingPlanSchemaPatch.Sql, "training plans and templates");
 
         /// <summary>Runs one idempotent schema patch across existing schemas. Failure is logged, never fatal.</summary>
         private async Task ApplySchemaPatchAsync(string patch, string sql, string affected)

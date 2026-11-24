@@ -5,6 +5,9 @@
     <InternalsVisibleTo Include="GymApp.Modules.Training.Infrastructure" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Exercises\exercise-media-map.json" LogicalName="exercise-media-map.json" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\..\Common\GymApp.Common.Application\GymApp.Common.Application.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Training.Domain\GymApp.Modules.Training.Domain.csproj" />
     <ProjectReference Include="..\GymApp.Modules.Training.IntegrationEvents\GymApp.Modules.Training.IntegrationEvents.csproj" />

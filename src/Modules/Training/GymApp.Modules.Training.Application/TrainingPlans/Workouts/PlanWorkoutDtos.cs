@@ -59,9 +59,16 @@ public sealed record PlanWorkoutDto
 public sealed record PlanCursorDto(
     string? NextDayKey, int? NextWeek, int LastDoneIndex, int Total, bool Finished, bool DoneToday, IReadOnlyList<string> DoneKeys);
 
-/// <summary>The trainee's home card and plan screen: the plan, the next day, this week, and last weights to prefill.</summary>
+/// <summary>
+/// The trainee's home card and plan screen: the plan, the next day, this week, last weights to
+/// prefill, and the demo animation of each library exercise by its plan exercise key.
+/// </summary>
 public sealed record MyPlanDto(
-    TrainingPlanDto Plan, PlanCursorDto Cursor, PlanWeekStats Stats, IReadOnlyDictionary<string, decimal> LastWeights);
+    TrainingPlanDto Plan,
+    PlanCursorDto Cursor,
+    PlanWeekStats Stats,
+    IReadOnlyDictionary<string, decimal> LastWeights,
+    IReadOnlyDictionary<string, string> ExerciseMedia);
 
 public sealed record PlanProgressDto(
     Guid? PlanId,

@@ -17,6 +17,17 @@ class TrainerPlanStrings extends PlanStrings {
   String get startBlank => _t('ابدأ من الصفر', 'Start blank');
   String get startBlankHint => _t('ابنِ خطة خاصة لهذا العميل', 'Build a plan just for this client');
   String get fromTemplate => _t('ابدأ من قالب', 'Start from a template');
+  String get readyPrograms => _t('برامج جاهزة', 'Ready programs');
+  String get readyProgramsHint => _t('برامج معروفة عالمياً وفي جيمات مصر – عدّل فيها براحتك',
+      'Programs known worldwide and in Egyptian gyms – change anything you like');
+  String get allCategories => _t('الكل', 'All');
+  String category(ProgramCategory c) => switch (c) {
+        ProgramCategory.classic => _t('كلاسيك عالمي', 'Classics'),
+        ProgramCategory.egyptian => _t('جيمات مصر', 'Egyptian gyms'),
+        ProgramCategory.lifestyle => _t('رمضان والبيت', 'Ramadan & home'),
+        ProgramCategory.cardio => _t('كارديو', 'Cardio'),
+      };
+  String level(bool isBeginner) => isBeginner ? _t('مبتدئ', 'Beginner') : _t('متوسط', 'Intermediate');
   String get assignAsIs => _t('اعطِ كما هي', 'Give as is');
   String get customize => _t('عدّل قبل الإعطاء', 'Customize first');
   String get noPlan => _t('لا توجد خطة بعد', 'No plan yet');

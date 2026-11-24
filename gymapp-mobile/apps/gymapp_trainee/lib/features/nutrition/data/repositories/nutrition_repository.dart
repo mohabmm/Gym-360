@@ -25,8 +25,6 @@ class NutritionRepository {
   Future<String> addWaterEntry(WaterEntryRequest request) =>
       _remoteDataSource.addWaterEntry(request);
 
-  Future<MealPlanModel?> getActiveMealPlan() =>
-      _remoteDataSource.getActiveMealPlan();
 
   Future<List<FoodItemModel>> searchFoodItems(String query) =>
       _remoteDataSource.searchFoodItems(query);
