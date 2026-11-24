@@ -1,5 +1,7 @@
 import 'package:gymapp_core/gymapp_core.dart';
 
+import '../data/plan_draft.dart';
+
 /// Arabic / English copy for the coach's plan screens.
 class TrainerPlanStrings extends PlanStrings {
   const TrainerPlanStrings(super.isArabic);
@@ -65,6 +67,49 @@ class TrainerPlanStrings extends PlanStrings {
   String get incomplete => _t('أكمل اسم الخطة وكل يوم وتمارينه', 'Fill in the plan name and every day with its exercises');
   String workouts(int n) => _t('$n تمرين', n == 1 ? '1 workout' : '$n workouts');
   String templateCopyName(String name) => _t('$name (نسختي)', '$name (my copy)');
+
+  // pt.starter_plan
+  String get starterTitle => _t('خطة بداية ٣ أيام', '3-day starter plan');
+  String get starterHint => _t('ابدأ مع العميل بخطة ٣ أيام. لو غاب، الاستقبال يفتح لك برنامج أسبوع من القوالب.',
+      'Start your client on a 3-day plan. If they stop coming, the desk unlocks a one-week program from the templates.');
+  String get starterBlank => _t('ابنِ خطة ٣ أيام', 'Build a 3-day plan');
+  String get starterFromProgramHint => _t('أو ابدأ من برنامج جاهز – هناخد أول ٣ أيام منه',
+      'Or start from a ready program – its first 3 days are used');
+  String get programsLocked => _t('القوالب مقفولة 🔒', 'Templates are locked 🔒');
+  String get programsLockedHint => _t('لو العضو غاب، الاستقبال يقدر يفتح لك برنامج أسبوع أو ٣٠ يوم من القوالب.',
+      'If the member stops coming, the desk can unlock a one-week or 30-day program from the templates.');
+  String get weekTitle => _t('برنامج أسبوع', 'One-week program');
+  String get monthTitle => _t('برنامج ٣٠ يوم', '30-day program');
+
+  String limitTitle(PlanLimit limit) => switch (limit) {
+        PlanLimit.oneWeek => weekTitle,
+        PlanLimit.thirtyDays => monthTitle,
+        _ => starterTitle,
+      };
+  String limitHint(PlanLimit limit) => switch (limit) {
+        PlanLimit.oneWeek => _t('الاستقبال فتح لك أسبوع عشان العضو يرجع الجيم. اختار قالب أو برنامج جاهز – هناخد أول أسبوع منه، وبعده ادّيله الأكل.',
+            'The desk unlocked one week to bring the member back. Pick a template or ready program – its first week is used – then give a diet.'),
+        PlanLimit.thirtyDays => _t('الاستقبال فتح لك ٣٠ يوم. اختار قالب أو برنامج جاهز – لحد ٤ أسابيع منه، وبعده ادّيله الأكل.',
+            'The desk unlocked 30 days. Pick a template or ready program – up to 4 weeks of it – then give a diet.'),
+        _ => starterHint,
+      };
+  String limitBlank(PlanLimit limit) => limit == PlanLimit.starter ? starterBlank : _t('ابنِ من الصفر', 'Build from scratch');
+  String limitRules(PlanLimit limit) => switch (limit) {
+        PlanLimit.oneWeek => _t('برنامج أسبوع: لحد ٧ أيام تمرين، وينتهي بعد ٧ أيام.', 'One-week program: up to 7 workout days, ends after 7 days.'),
+        PlanLimit.thirtyDays => _t('برنامج ٣٠ يوم: لحد ٤ أسابيع، وينتهي بعد ٣٠ يوم.', '30-day program: up to 4 weeks, ends after 30 days.'),
+        _ => _t('خطة البداية: أسبوع واحد و٣ أيام تمرين بالكتير، وتنتهي بعد ٣ أيام.',
+            'Starter plan: one week, up to 3 workout days, ends after 3 days.'),
+      };
+  String limitEnds(PlanLimit limit, String date) => _t('${limitTitle(limit)} · آخر يوم $date', '${limitTitle(limit)} · last day $date');
+  String limitEnded(PlanLimit limit) => limit.isUnlocked
+      ? _t('خلص ${limitTitle(limit)}. لو العضو لسه غايب، اطلب من الاستقبال برنامج تاني.',
+          'The ${limitTitle(limit).toLowerCase()} is over. If the member is still away, ask the desk for another.')
+      : _t('خلصت خطة البداية. لو العضو غاب، اطلب من الاستقبال يفتح لك برنامج أسبوع أو ٣٠ يوم.',
+          'The starter plan is over. If the member stops coming, ask the desk to unlock a one-week or 30-day program.');
+  String get starterOnlyError => _t('القوالب لسه مقفولة: اعطِ خطة ٣ أيام بس.', 'Templates are still locked: give a 3-day plan only.');
+  String get weekOnlyError => _t('الاستقبال فتح أسبوع واحد بس: اعطِ أسبوع لحد ٧ أيام تمرين.',
+      'The desk unlocked one week only: give one week of up to 7 workout days.');
+  String get monthOnlyError => _t('الاستقبال فتح ٣٠ يوم: اعطِ لحد ٤ أسابيع.', 'The desk unlocked 30 days: give up to 4 weeks.');
 
   // Exercise sheet
   String get exercise => _t('التمرين', 'Exercise');

@@ -23,6 +23,7 @@ public static class FeatureKeys
 
     // --- Opt-in pilots: OFF in every preset, switched on per gym by the Super Admin ---
     public const string MemFirstMonthChallenge = "mem.first_month_challenge";
+    public const string PtStarterPlan = "pt.starter_plan";
 
     // --- PT, later phase: OFF in pt_module ---
     public const string PtMonthlyReport = "pt.monthly_report";

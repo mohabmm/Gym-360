@@ -1,3 +1,4 @@
+using GymApp.Common.Application.Messaging;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Common.Domain;
@@ -14,11 +15,12 @@ public class RecordPaymentCommandHandlerTests
     private readonly ISessionPackageRepository _sessionPackageRepository = Substitute.For<ISessionPackageRepository>();
     private readonly IGymPlanService _gymPlanService = Substitute.For<IGymPlanService>();
     private readonly IBillingUnitOfWork _unitOfWork = Substitute.For<IBillingUnitOfWork>();
+    private readonly IIntegrationEventPublisher _events = Substitute.For<IIntegrationEventPublisher>();
     private readonly RecordPaymentCommandHandler _sut;
 
     public RecordPaymentCommandHandlerTests()
     {
-        _sut = new RecordPaymentCommandHandler(_paymentRepository, _sessionPackageRepository, _gymPlanService, _unitOfWork);
+        _sut = new RecordPaymentCommandHandler(_paymentRepository, _sessionPackageRepository, _gymPlanService, _unitOfWork, _events);
     }
 
     private static RecordPaymentCommand CreateValidCommand(Guid? gymId = null) =>

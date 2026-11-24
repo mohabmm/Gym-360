@@ -57,6 +57,18 @@ class PlanBuilderHeader extends StatelessWidget {
           onChanged: (v) => _update(() => draft.goalText = v),
         ),
       const SizedBox(height: 12),
+      if (draft.limit != PlanLimit.none)
+        Card(
+          key: const ValueKey('plan-limits'),
+          child: ListTile(
+              leading: const Icon(Icons.flag_outlined), title: Text(s.limitTitle(draft.limit)), subtitle: Text(s.limitRules(draft.limit))),
+        ),
+      if (draft.limit.maxWeeks > 1) ..._duration(context, s),
+    ]);
+  }
+
+  // How many weeks (capped by a 30-day limit), and "same days every week" or week tabs. Not for one-week plans.
+  List<Widget> _duration(BuildContext context, TrainerPlanStrings s) => [
       Text(s.durationLabel, style: Theme.of(context).textTheme.labelLarge),
       Row(children: [
         Expanded(
@@ -72,8 +84,7 @@ class PlanBuilderHeader extends StatelessWidget {
         onChanged: (on) => _update(on ? draft.copyWeekOneToAll : draft.splitWeeks),
       ),
       if (!draft.sameEveryWeek) _WeekTabs(draft: draft, strings: s, week: week, onWeek: onWeek, onCopy: () => _update(draft.copyWeekOneToAll)),
-    ]);
-  }
+    ];
 }
 
 class _WeekTabs extends StatelessWidget {

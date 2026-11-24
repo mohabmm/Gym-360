@@ -23,5 +23,25 @@ public static class TrainingPlanErrors
 
     public static Error InvalidSettings(string reason) => new("Training.InvalidPlanSettings", reason);
 
+    public static readonly Error StarterPlanOnly = new("Training.StarterPlan.Forbidden",
+        "Until the staff unlock the programs for this member, give a 3-day starter plan: one week, at most 3 workout days, no template.");
+
+    public static readonly Error WeekProgramOnly = new("Training.WeekProgram.Forbidden",
+        "The staff unlocked one week: give one week of at most 7 workout days.");
+
+    public static readonly Error ThirtyDaysOnly = new("Training.MonthProgram.Forbidden",
+        "The staff unlocked 30 days: give at most 4 weeks.");
+
+    /// <summary>The plan's content does not fit its starter, one-week or 30-day limit.</summary>
+    public static Error PlanTooLong(Enums.TrainingPlanLimit limit) => limit switch
+    {
+        Enums.TrainingPlanLimit.Starter => StarterPlanOnly,
+        Enums.TrainingPlanLimit.ThirtyDays => ThirtyDaysOnly,
+        _ => WeekProgramOnly,
+    };
+
+    public static readonly Error UnlockNotYourClient = new("Training.PlanUnlock.NotFound",
+        "This coach has no package with this member.");
+
     public static Error InvalidWorkout(string reason) => new("Training.InvalidPlanWorkout", reason);
 }

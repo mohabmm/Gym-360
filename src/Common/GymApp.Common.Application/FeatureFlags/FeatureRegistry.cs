@@ -74,6 +74,11 @@ public static class FeatureRegistry
                 "New members who complete the target number of plan workouts in their first month earn a reward from the gym.",
                 "العضو الجديد الذي يُكمل عدد تمارين الخطة المطلوب في شهره الأول يحصل على مكافأة من النادي."),
             FeatureApps.All, InPtModule: false, OptIn: true),
+        new(K.PtStarterPlan, "pt",
+            new FeatureText("3-day starter plan & unlocked programs", "خطة البداية ٣ أيام والبرامج المفتوحة",
+                "The coach is notified when the desk assigns them a member and starts with a 3-day plan. When the member stops coming, the staff unlock one week or 30 days from the templates and ready programs (plan and diet) to bring them back.",
+                "يصل للمدرب إشعار عند تعيين عضو له ويبدأ بخطة ٣ أيام. ولما العضو يغيب، يفتح الموظفون أسبوع أو ٣٠ يوم من القوالب والبرامج الجاهزة (خطة وأكل) عشان يرجع الجيم."),
+            FeatureApps.Trainer | Staff, InPtModule: false, OptIn: true),
         // ---- PT later phase (OFF) ----
         Off(K.PtMonthlyReport, "pt", FeatureApps.All, new(
             "Monthly progress report", "تقرير التقدم الشهري",

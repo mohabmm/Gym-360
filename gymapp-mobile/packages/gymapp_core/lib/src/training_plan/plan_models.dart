@@ -291,6 +291,15 @@ class TrainingPlanSummaryModel {
   final int version;
   final DateTime updatedAt;
 
+  /// pt.starter_plan: `Starter` (3-day plan), `OneWeek` (staff-unlocked week) or `None`.
+  final String limit;
+
+  /// Last day of a limited plan; null for other plans.
+  final DateTime? endsOn;
+
+  /// A limited plan whose last day has passed.
+  final bool hasEnded;
+
   const TrainingPlanSummaryModel({
     required this.id,
     required this.traineeId,
@@ -307,9 +316,16 @@ class TrainingPlanSummaryModel {
     this.status = 'Active',
     this.version = 1,
     required this.updatedAt,
+    this.limit = 'None',
+    this.endsOn,
+    this.hasEnded = false,
   });
 
   bool get isActive => status == 'Active';
+
+  bool get isStarter => limit == 'Starter';
+
+  bool get isOneWeek => limit == 'OneWeek';
 
   String displayName(bool isArabic) => isArabic && (nameAr?.isNotEmpty ?? false) ? nameAr! : name;
 
@@ -329,6 +345,9 @@ class TrainingPlanSummaryModel {
         status: json['status'] as String? ?? 'Active',
         version: (json['version'] as num?)?.toInt() ?? 1,
         updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+        limit: json['limit'] as String? ?? 'None',
+        endsOn: DateTime.tryParse(json['endsOn'] as String? ?? ''),
+        hasEnded: json['hasEnded'] as bool? ?? false,
       );
 }
 

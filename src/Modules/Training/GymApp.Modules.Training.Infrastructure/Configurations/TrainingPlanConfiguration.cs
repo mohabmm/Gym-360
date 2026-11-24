@@ -1,4 +1,5 @@
 using GymApp.Modules.Training.Domain.Entities;
+using GymApp.Modules.Training.Domain.Enums;
 using GymApp.Modules.Training.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -14,6 +15,7 @@ internal sealed class TrainingPlanConfiguration : IEntityTypeConfiguration<Train
         builder.Property(p => p.Id).ValueGeneratedNever();
         builder.Property(p => p.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(p => p.Goal).HasConversion<string>().HasMaxLength(30);
+        builder.Property(p => p.Limit).HasConversion<string>().HasMaxLength(20).HasDefaultValue(TrainingPlanLimit.None);
         builder.Property(p => p.Name).HasMaxLength(PlanDocumentRules.MaxNameLength).IsRequired();
         builder.Property(p => p.NameAr).HasMaxLength(PlanDocumentRules.MaxNameLength);
         builder.Property(p => p.GoalText).HasMaxLength(PlanDocumentRules.MaxNameLength);

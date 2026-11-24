@@ -112,6 +112,7 @@ class PlanDraft {
   static const int maxWeeks = 52;
   static const int maxDaysPerWeek = 7;
 
+
   String name;
   String? nameAr;
   PlanGoal goal;
@@ -119,6 +120,9 @@ class PlanDraft {
   int durationWeeks;
   bool sameEveryWeek;
   final List<List<DayDraft>> weeks;
+
+  /// pt.starter_plan: a 3-day plan or a one-week program is held to one week.
+  PlanLimit limit = PlanLimit.none;
 
   PlanDraft({
     this.name = '',
@@ -168,10 +172,27 @@ class PlanDraft {
 
   int get workoutCount => sameEveryWeek ? firstWeek.length * durationWeeks : weeks.fold(0, (n, w) => n + w.length);
 
+  /// Workout days a week the builder allows.
+  int get maxDays => limit.maxDaysPerWeek;
+
   bool get isValid =>
       name.trim().isNotEmpty &&
       (goal != PlanGoal.other || goalText.trim().isNotEmpty) &&
-      weeks.every((w) => w.isNotEmpty && w.length <= maxDaysPerWeek && w.every((d) => d.isValid));
+      durationWeeks <= limit.maxWeeks &&
+      weeks.length <= limit.maxWeeks &&
+      weeks.every((w) => w.isNotEmpty && w.length <= maxDays && w.every((d) => d.isValid));
+
+  /// Holds this draft to [to]: at most [PlanLimit.maxWeeks] weeks of [PlanLimit.maxDaysPerWeek] days
+  /// (a one-week limit keeps week 1 only; no change for none).
+  void limitTo(PlanLimit to) {
+    limit = to;
+    if (to == PlanLimit.none) return;
+    if (to.maxWeeks == 1) copyWeekOneToAll();
+    setDurationWeeks(durationWeeks);
+    for (final week in weeks) {
+      if (week.length > to.maxDaysPerWeek) week.removeRange(to.maxDaysPerWeek, week.length);
+    }
+  }
 
   /// Days the coach left unnamed get "Day 1", "Day 2", … (Arabic: «اليوم ١») so a plan built
   /// from scratch saves without naming every day; the hint the field shows is never saved.
@@ -207,7 +228,7 @@ class PlanDraft {
   }
 
   void setDurationWeeks(int value) {
-    durationWeeks = value.clamp(1, maxWeeks);
+    durationWeeks = value.clamp(1, limit.maxWeeks);
     if (sameEveryWeek) return;
     while (weeks.length > durationWeeks) {
       weeks.removeLast();
@@ -239,3 +260,29 @@ class PlanDraft {
 }
 
 String? _blank(String value) => value.trim().isEmpty ? null : value.trim();
+
+/// pt.starter_plan: `Starter` — the first 3-day plan (no template); `OneWeek` / `ThirtyDays` —
+/// from a template or ready program after a staff unlock of that length; `None` — no limit (flag off).
+enum PlanLimit {
+  none(lengthDays: 0, maxWeeks: PlanDraft.maxWeeks, maxDaysPerWeek: PlanDraft.maxDaysPerWeek),
+  starter(lengthDays: 3, maxWeeks: 1, maxDaysPerWeek: 3),
+  oneWeek(lengthDays: 7, maxWeeks: 1, maxDaysPerWeek: PlanDraft.maxDaysPerWeek),
+  thirtyDays(lengthDays: 30, maxWeeks: 4, maxDaysPerWeek: PlanDraft.maxDaysPerWeek);
+
+  /// Calendar days the plan lasts (0 = never ends by date).
+  final int lengthDays;
+  final int maxWeeks;
+  final int maxDaysPerWeek;
+
+  const PlanLimit({required this.lengthDays, required this.maxWeeks, required this.maxDaysPerWeek});
+
+  /// The staff unlocked a program (one week or 30 days) that the coach may now give.
+  bool get isUnlocked => this == oneWeek || this == thirtyDays;
+
+  static PlanLimit parse(String? api) => switch (api) {
+        'Starter' => PlanLimit.starter,
+        'OneWeek' => PlanLimit.oneWeek,
+        'ThirtyDays' => PlanLimit.thirtyDays,
+        _ => PlanLimit.none,
+      };
+}

@@ -2897,6 +2897,47 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                     b.ToTable("log_sets", "training");
                 });
 
+            modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.PlanProgramUnlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("GymId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Length")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("OneWeek");
+
+                    b.Property<DateTime?>("LockedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("LockedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TraineeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TrainerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("UnlockedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UnlockedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GymId", "TraineeId", "TrainerId")
+                        .IsUnique();
+
+                    b.ToTable("plan_program_unlocks", "training");
+                });
+
             modelBuilder.Entity("GymApp.Modules.Training.Domain.Entities.PlanTemplate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3195,6 +3236,9 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("EndedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateOnly?>("EndsOn")
+                        .HasColumnType("date");
+
                     b.Property<string>("Goal")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -3206,6 +3250,13 @@ namespace GymApp.Modules.Training.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("GymId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Limit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("None");
 
                     b.Property<string>("Name")
                         .IsRequired()

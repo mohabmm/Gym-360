@@ -75,8 +75,10 @@ Map<String, dynamic> _program() => {
       'document': {'schemaVersion': 1, 'weeks': [for (var w = 1; w <= 8; w++) _week(w)]},
     };
 
-Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? active, bool nutrition = false}) async {
+Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? active, bool nutrition = false, Map<String, dynamic>? access}) async {
   t.adapter.onGet(ApiEndpoints.traineePlans(kClientId), respond: (_) => t.adapter.ok({'active': active, 'history': const []}));
+  t.adapter.onGet(ApiEndpoints.traineePlanAccess(kClientId),
+      respond: (_) => t.adapter.ok(access ?? {'limit': 'None', 'maxDays': 0, 'limitedPlan': null}));
   t.adapter.onGet(ApiEndpoints.planTemplates,
       respond: (_) => t.adapter.ok([_summary(), _summary(id: 'tpl-mine', scope: 'Coach', canEdit: true)]));
   t.adapter.onGet(ApiEndpoints.planTemplateById('tpl-gym'), respond: (_) => t.adapter.ok(_template()));
@@ -244,5 +246,104 @@ void main() {
 
     expect(_sent('PUT')['expectedVersion'], 3);
     expect(find.text('The plan was changed elsewhere. Open it again.'), findsOneWidget);
+  });
+
+  group('pt.starter_plan', () {
+    const locked = {'limit': 'Starter', 'maxDays': 3, 'limitedPlan': null};
+    const week = {'limit': 'OneWeek', 'maxDays': 7, 'limitedPlan': null};
+    const month = {'limit': 'ThirtyDays', 'lengthDays': 30, 'maxWeeks': 4, 'limitedPlan': null};
+
+    testWidgets('while templates are locked the coach gives a 3-day plan from a ready program\'s first days', (tester) async {
+      t.adapter.onPost(ApiEndpoints.trainingPlans, respond: (_) => t.adapter.ok(_plan()));
+      await _pump(tester, access: locked);
+
+      await tester.tap(find.text('3-day starter plan'));
+      await tester.pumpAndSettle();
+      expect(find.text('Build a 3-day plan'), findsOneWidget);
+      expect(find.byKey(const ValueKey('programs-locked')), findsOneWidget);
+      expect(find.text('Gym templates'), findsNothing, reason: 'templates stay closed until the desk unlocks them');
+      await tester.tap(find.text('Classic split'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('plan-limits')), findsOneWidget);
+      expect(find.text('Duration'), findsNothing, reason: 'a starter plan is one week');
+      await tester.tap(find.textContaining('Give plan ·'));
+      await tester.pumpAndSettle();
+
+      final body = _sent('POST');
+      expect(body['templateId'], isNull);
+      final content = body['content'] as Map;
+      expect(content['repeatWeekOneForWeeks'], 1);
+      final weeks = (content['document'] as Map)['weeks'] as List;
+      expect(weeks, hasLength(1));
+      expect((weeks.first as Map)['days'], hasLength(3));
+    });
+
+    testWidgets('a starter plan that is over says the desk can unlock a one-week program', (tester) async {
+      final plan = _plan();
+      (plan['summary'] as Map)
+        ..['limit'] = 'Starter'
+        ..['endsOn'] = '2026-11-25'
+        ..['hasEnded'] = true;
+      await _pump(tester, active: plan, access: locked);
+
+      expect(find.byKey(const ValueKey('limit-status')), findsOneWidget);
+      expect(find.text('The starter plan is over. If the member stops coming, ask the desk to unlock a one-week or 30-day program.'),
+          findsOneWidget);
+    });
+
+    testWidgets('after the desk unlocks a week, a gym template is given as its first week, then the diet is offered', (tester) async {
+      t.adapter.onPost(ApiEndpoints.trainingPlans, respond: (_) => t.adapter.ok(_plan()));
+      await _pump(tester, access: week, nutrition: true);
+
+      await tester.tap(find.text('One-week program'));
+      await tester.pumpAndSettle();
+      expect(find.text('Gym templates'), findsOneWidget, reason: 'templates are open for the week');
+      await tester.tap(find.text('Beginner full body – 3 days').first);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('plan-limits')), findsOneWidget);
+      await tester.tap(find.textContaining('Give plan ·'));
+      await tester.pumpAndSettle();
+
+      final body = _sent('POST');
+      expect(body['templateId'], 'tpl-gym');
+      final content = body['content'] as Map;
+      expect(content['repeatWeekOneForWeeks'], 1);
+      expect((content['document'] as Map)['weeks'], hasLength(1));
+      expect(find.byKey(const Key('diet-onboarding-offer')), findsOneWidget, reason: 'plan and diet together');
+    });
+
+    testWidgets('the server refusing a longer plan is explained', (tester) async {
+      t.adapter.onPost(ApiEndpoints.trainingPlans,
+          respond: (_) => t.adapter.error(403, code: 'Training.StarterPlan.Forbidden', message: 'starter only'));
+      await _pump(tester);
+
+      await tester.tap(find.text('Give a plan'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Beginner full body – 3 days').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Give plan · 12 workouts'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Templates are still locked: give a 3-day plan only.'), findsOneWidget);
+    });
+
+    testWidgets('after the desk unlocks 30 days, a 4-week gym template is given whole and the weeks stay capped', (tester) async {
+      t.adapter.onPost(ApiEndpoints.trainingPlans, respond: (_) => t.adapter.ok(_plan()));
+      await _pump(tester, access: month);
+
+      await tester.tap(find.text('30-day program'));
+      await tester.pumpAndSettle();
+      expect(find.text('Gym templates'), findsOneWidget);
+      await tester.tap(find.text('Beginner full body – 3 days').first);
+      await tester.pumpAndSettle();
+      expect(find.text('30-day program: up to 4 weeks, ends after 30 days.'), findsOneWidget);
+      expect(find.text('Duration'), findsOneWidget, reason: 'weeks can be chosen, up to 4');
+      await tester.tap(find.textContaining('Give plan ·'));
+      await tester.pumpAndSettle();
+
+      final body = _sent('POST');
+      expect(body['templateId'], 'tpl-gym');
+      expect((body['content'] as Map)['repeatWeekOneForWeeks'], 4);
+    });
   });
 }

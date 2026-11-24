@@ -77,6 +77,15 @@ public class FeatureRegistryTests
     }
 
     [Fact]
+    public void Starter_plan_is_an_opt_in_pilot_off_in_every_preset()
+    {
+        var def = FeatureRegistry.Find(FeatureKeys.PtStarterPlan)!;
+        def.Kind.Should().Be(FeatureKind.Feature);
+        def.InPtModule.Should().BeFalse();
+        def.InBusiness.Should().BeFalse("pilots are switched on per gym by the Super Admin");
+    }
+
+    [Fact]
     public void Every_key_constant_is_registered()
     {
         var constants = typeof(FeatureKeys).GetFields()

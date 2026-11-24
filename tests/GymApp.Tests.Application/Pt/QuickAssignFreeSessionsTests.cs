@@ -1,3 +1,4 @@
+using GymApp.Common.Application.Messaging;
 using GymApp.Common.Application.FeatureFlags;
 using GymApp.Modules.Billing.Application.Abstractions;
 using GymApp.Modules.Billing.Application.Commands.SessionPackages;
@@ -15,6 +16,7 @@ public class QuickAssignFreeSessionsTests
     private readonly IPaymentRepository _payments = Substitute.For<IPaymentRepository>();
     private readonly IFeatureFlagService _flags = Substitute.For<IFeatureFlagService>();
     private readonly IBillingUnitOfWork _uow = Substitute.For<IBillingUnitOfWork>();
+    private readonly IIntegrationEventPublisher _events = Substitute.For<IIntegrationEventPublisher>();
     private readonly QuickAssignSessionPackageCommandHandler _sut;
     private readonly QuickAssignSessionPackageCommandValidator _validator = new();
 
@@ -24,7 +26,7 @@ public class QuickAssignFreeSessionsTests
     {
         _flags.IsEnabledAsync(GymId, Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.ArgAt<string>(1) != FeatureKeys.PtAutoExpiry);
-        _sut = new QuickAssignSessionPackageCommandHandler(_packages, _payments, _flags, _uow);
+        _sut = new QuickAssignSessionPackageCommandHandler(_packages, _payments, _flags, _uow, _events);
     }
 
     private static QuickAssignSessionPackageCommand Package(int sessions, decimal? price = null, string? method = null) =>

@@ -334,3 +334,19 @@ Features are grouped by the lowest plan that includes them.
 | **Who Uses It** | The gym owner opens the "Data Import" page in the Gym Staff Web App, downloads the template, pastes exported data, uploads it, and watches the job finish. The error CSV is downloadable directly from the same page. |
 | **Available On** | **Pro and above** |
 
+
+---
+
+## OPT-IN PILOTS (switched on per gym by the Super Admin)
+
+### 28. 3-Day Starter Plan & Unlocked One-Week / 30-Day Programs
+
+**Category:** Training | **Feature Code:** `pt.starter_plan` (needs `pt.training_plan`; the diet step needs `nutrition`)
+
+| Field | Description |
+|-------|-------------|
+| **What It Does** | When the desk gives a member a session package (trial, free or paid, renewals included), the coach gets a push «عضو جديد معاك» and tapping it opens the member's profile. The coach's first plan is a **3-day starter plan**: one week, at most 3 workout days, ending 3 days after it starts (built from scratch or from a ready program's first 3 days; no template). When the member stops coming, **staff** (reception, manager or owner) unlock a program for that coach and member on the member's page and **choose its length: one week or 30 days**. The coach gets a push, picks any gym template or ready program and gives it cut to fit: **one week** = its first week (up to 7 workout days), ending 7 days after it starts; **30 days** = up to 4 weeks, ending 30 days after it starts. Then the coach is offered the diet. **One unlock = one program:** giving it locks it again. The server enforces these limits on every plan it saves, edits included. Limited plans disappear from the member's app after their last day. |
+| **Why It Matters** | Brings back a member who has stopped coming: the gym decides when, and the coach sends a ready week of training and food so the member has a reason to come back. |
+| **Who Uses It** | Coach: Trainer app (push → member → «خطة بداية ٣ أيام» / «برنامج أسبوع» → diet). Staff: «برنامج للمدرب: أسبوع أو ٣٠ يوم» card (buttons «أسبوع» / «٣٠ يوم» / «اقفله») on the member page in the Staff app and the Staff web. Super Admin: turns the flag on per gym. |
+| **API** | `GET training/trainees/{id}/plan-access` → `limit` Starter / OneWeek / ThirtyDays / None, `lengthDays`, `maxWeeks`, `maxDaysPerWeek` (coach) · `GET/PUT training/plan-unlocks` with `length` OneWeek / ThirtyDays (staff) · plan summary `limit`, `endsOn`, `hasEnded` · errors `Training.StarterPlan.Forbidden`, `Training.WeekProgram.Forbidden`, `Training.MonthProgram.Forbidden` · notification types `NewClientAssigned` (24), `PlanProgramsUnlocked` (25) |
+| **Available On** | Opt-in pilot: OFF in every preset. When it's off, coaches work as before. |

@@ -40,6 +40,7 @@ public static class TrainingModuleRegistration
         services.AddScoped<ITrainingPlanRepository, TrainingPlanRepository>();
         services.AddScoped<IPlanCompletionRepository, PlanCompletionRepository>();
         services.AddScoped<ITrainingPlanSettingsRepository, TrainingPlanSettingsRepository>();
+        services.AddScoped<IPlanProgramUnlockRepository, PlanProgramUnlockRepository>();
         services.AddScoped<IChallengeAwardRepository, ChallengeAwardRepository>();
         services.AddScoped<GymApp.Modules.Training.Application.TrainingPlans.Challenge.ChallengeAccess>();
         services.AddScoped<GymApp.Modules.Training.Application.TrainingPlans.Challenge.ChallengeProgressReader>();

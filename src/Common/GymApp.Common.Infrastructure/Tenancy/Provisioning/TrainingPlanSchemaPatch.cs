@@ -3,7 +3,8 @@ namespace GymApp.Common.Infrastructure.Tenancy.Provisioning;
 /// <summary>
 /// Schema-agnostic, idempotent T-SQL that creates the pt.training_plan tables
 /// (<c>plan_templates</c>, <c>training_plans</c>, <c>plan_workout_completions</c>,
-/// <c>training_plan_settings</c>, <c>challenge_awards</c>) and the first-month challenge columns
+/// <c>training_plan_settings</c>, <c>challenge_awards</c>, <c>plan_program_unlocks</c>), the first-month
+/// challenge columns and the starter-plan columns (plan limit, end date)
 /// in every schema that already has <c>workout_assignments</c> (legacy <c>training</c> and per-gym
 /// <c>g{N}_training</c>). Per-gym tables are created from the EF model and never migrated, so
 /// existing gyms need this on deploy — without it saving a plan or template fails with
@@ -142,6 +143,27 @@ BEGIN
     );
     CREATE INDEX [IX_challenge_awards_GymId_DeliveredAt] ON ' + QUOTENAME(s.name) + N'.[challenge_awards] ([GymId], [DeliveredAt]);
     CREATE UNIQUE INDEX [IX_challenge_awards_GymId_TraineeId] ON ' + QUOTENAME(s.name) + N'.[challenge_awards] ([GymId], [TraineeId]);
+END;
+IF COL_LENGTH(' + QUOTENAME(s.name + N'.training_plans', '''') + N', ''Limit'') IS NULL
+    ALTER TABLE ' + QUOTENAME(s.name) + N'.[training_plans]
+        ADD [Limit] nvarchar(20) NOT NULL CONSTRAINT ' + QUOTENAME(N'DF_' + s.name + N'_tp_Limit') + N' DEFAULT N''None'';
+IF COL_LENGTH(' + QUOTENAME(s.name + N'.training_plans', '''') + N', ''EndsOn'') IS NULL
+    ALTER TABLE ' + QUOTENAME(s.name) + N'.[training_plans] ADD [EndsOn] date NULL;
+IF OBJECT_ID(' + QUOTENAME(s.name + N'.plan_program_unlocks', '''') + N', ''U'') IS NULL
+BEGIN
+    CREATE TABLE ' + QUOTENAME(s.name) + N'.[plan_program_unlocks] (
+        [Id]         uniqueidentifier NOT NULL,
+        [GymId]      uniqueidentifier NOT NULL,
+        [TrainerId]  uniqueidentifier NOT NULL,
+        [TraineeId]  uniqueidentifier NOT NULL,
+        [Length]     nvarchar(20)     NOT NULL CONSTRAINT ' + QUOTENAME(N'DF_' + s.name + N'_ppu_Length') + N' DEFAULT N''OneWeek'',
+        [UnlockedAt] datetime2        NOT NULL,
+        [UnlockedBy] uniqueidentifier NOT NULL,
+        [LockedAt]   datetime2        NULL,
+        [LockedBy]   uniqueidentifier NULL,
+        CONSTRAINT ' + QUOTENAME(N'PK_' + s.name + N'_plan_program_unlocks') + N' PRIMARY KEY ([Id])
+    );
+    CREATE UNIQUE INDEX [IX_plan_program_unlocks_GymId_TraineeId_TrainerId] ON ' + QUOTENAME(s.name) + N'.[plan_program_unlocks] ([GymId], [TraineeId], [TrainerId]);
 END;'
 FROM sys.schemas s
 WHERE OBJECT_ID(s.name + N'.workout_assignments', 'U') IS NOT NULL;

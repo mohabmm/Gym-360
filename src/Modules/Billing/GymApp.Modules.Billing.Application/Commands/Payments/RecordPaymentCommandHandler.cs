@@ -1,3 +1,4 @@
+using GymApp.Modules.Billing.Application.IntegrationEvents;
 using GymApp.Modules.Billing.Shared;
 using GymApp.Common.Application.Errors;
 using GymApp.Common.Application.Messaging;
@@ -16,17 +17,20 @@ internal sealed class RecordPaymentCommandHandler : ICommandHandler<RecordPaymen
     private readonly ISessionPackageRepository _sessionPackageRepository;
     private readonly IGymPlanService _gymPlanService;
     private readonly IBillingUnitOfWork _unitOfWork;
+    private readonly IIntegrationEventPublisher _integrationEvents;
 
     public RecordPaymentCommandHandler(
         IPaymentRepository paymentRepository,
         ISessionPackageRepository sessionPackageRepository,
         IGymPlanService gymPlanService,
-        IBillingUnitOfWork unitOfWork)
+        IBillingUnitOfWork unitOfWork,
+        IIntegrationEventPublisher integrationEvents)
     {
         _paymentRepository = paymentRepository;
         _sessionPackageRepository = sessionPackageRepository;
         _gymPlanService = gymPlanService;
         _unitOfWork = unitOfWork;
+        _integrationEvents = integrationEvents;
     }
 
     public async Task<Result<Guid>> Handle(RecordPaymentCommand request, CancellationToken cancellationToken)
@@ -102,6 +106,7 @@ internal sealed class RecordPaymentCommandHandler : ICommandHandler<RecordPaymen
         });
 
         await _sessionPackageRepository.AddAsync(package, cancellationToken);
+        PackageAssignedPublisher.Enqueue(_integrationEvents, package);
         return package.Id;
     }
 

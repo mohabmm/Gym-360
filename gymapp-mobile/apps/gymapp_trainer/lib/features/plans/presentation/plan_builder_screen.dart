@@ -80,9 +80,21 @@ class _PlanBuilderScreenState extends ConsumerState<PlanBuilderScreen> {
 
   static String _errorText(TrainerPlanStrings s, ApiException e) => switch (e.statusCode) {
         409 => s.conflict,
+        403 when e.errorCode == starterOnlyErrorCode => s.starterOnlyError,
+        403 when e.errorCode == weekOnlyErrorCode => s.weekOnlyError,
+        403 when e.errorCode == monthOnlyErrorCode => s.monthOnlyError,
         403 => s.notYourClient,
         _ => s.saveFailed,
       };
+
+  /// pt.starter_plan: templates are still locked for this client (3-day plan only).
+  static const starterOnlyErrorCode = 'Training.StarterPlan.Forbidden';
+
+  /// pt.starter_plan: the desk unlocked one week only.
+  static const weekOnlyErrorCode = 'Training.WeekProgram.Forbidden';
+
+  /// pt.starter_plan: the desk unlocked 30 days (up to 4 weeks).
+  static const monthOnlyErrorCode = 'Training.MonthProgram.Forbidden';
 
   String _buttonLabel(TrainerPlanStrings s) => switch (_mode) {
         PlanBuilderMode.assign => '${s.assign} · ${s.workouts(_draft.workoutCount)}',
@@ -121,10 +133,12 @@ class _PlanBuilderScreenState extends ConsumerState<PlanBuilderScreen> {
               index: i,
               strings: s,
               onChanged: _changed,
-              onDuplicate: () => setState(() => days.insert(i + 1, days[i].copy())),
+              onDuplicate: () {
+                if (days.length < _draft.maxDays) setState(() => days.insert(i + 1, days[i].copy()));
+              },
               onDelete: () => setState(() => days.removeAt(i)),
             ),
-          if (days.length < PlanDraft.maxDaysPerWeek)
+          if (days.length < _draft.maxDays)
             OutlinedButton.icon(
               onPressed: () => setState(() => days.add(DayDraft())),
               icon: const Icon(Icons.add),

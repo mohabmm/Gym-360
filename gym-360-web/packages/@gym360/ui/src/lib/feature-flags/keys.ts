@@ -15,6 +15,7 @@ export const FEATURE_FLAG_KEYS = {
   PT_TRAINING_PLAN: 'pt.training_plan',
   // Opt-in pilots — OFF in every preset; the Super Admin turns them on per gym.
   MEM_FIRST_MONTH_CHALLENGE: 'mem.first_month_challenge',
+  PT_STARTER_PLAN: 'pt.starter_plan',
   // PT later phase — OFF in pt_module.
   PT_MONTHLY_REPORT: 'pt.monthly_report',
   PT_COACH_RATINGS: 'pt.coach_ratings',
