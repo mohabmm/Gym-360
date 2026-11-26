@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
 /// Why the chosen time can't be recorded.
-enum SessionTimeIssue { tooOld, notEnded }
+enum SessionTimeIssue { tooOld, notStarted }
 
 /// When a PT session happened, as the coach picks it in the "Record session" sheet.
 ///
-/// Default: today, *just finished* — start = now − duration, rounded down to 15 minutes.
-/// The coach may pick any day up to [maxDaysBack] days back (server rule, same number).
+/// Default: today, *going on now* — start = now, rounded down to 15 minutes, because the coach
+/// records the session on the floor while training the client. A session in progress is fine;
+/// one that has not started yet is not. The coach may pick any day up to [maxDaysBack] days back
+/// (server rule, same number).
 class SessionTimeDraft {
   static const int maxDaysBack = 7;
   static const List<int> durations = [30, 45, 60, 90];
-  static const Duration _endSlack = Duration(minutes: 5);
+  static const Duration _startSlack = Duration(minutes: 5);
 
   final DateTime now;
   late DateTime _day;
@@ -19,7 +21,7 @@ class SessionTimeDraft {
   bool _startPicked = false;
 
   SessionTimeDraft(this.now) {
-    _resetToJustFinished();
+    _resetToNow();
   }
 
   DateTime get day => _day;
@@ -38,15 +40,15 @@ class SessionTimeDraft {
 
   SessionTimeIssue? get issue {
     if (_day.isBefore(firstDay)) return SessionTimeIssue.tooOld;
-    if (endAt.isAfter(now.add(_endSlack))) return SessionTimeIssue.notEnded;
+    if (startAt.isAfter(now.add(_startSlack))) return SessionTimeIssue.notStarted;
     return null;
   }
 
   void setDay(DateTime day) {
     _day = DateUtils.dateOnly(day);
-    // A past day has no "just finished": keep the time unless the coach never picked one and
-    // goes back to today.
-    if (isToday && !_startPicked) _resetToJustFinished();
+    // A past day has no "now": keep the time unless the coach never picked one and goes back
+    // to today.
+    if (isToday && !_startPicked) _resetToNow();
   }
 
   void setStart(TimeOfDay start) {
@@ -54,15 +56,20 @@ class SessionTimeDraft {
     _startPicked = true;
   }
 
-  void setMinutes(int minutes) {
-    _minutes = minutes;
-    if (isToday && !_startPicked) _resetToJustFinished();
+  void setMinutes(int minutes) => _minutes = minutes;
+
+  /// Back to "going on now" (the default) after picking another day or time.
+  void resetToNow() {
+    _startPicked = false;
+    _resetToNow();
   }
 
-  void _resetToJustFinished() {
-    final begun = now.subtract(Duration(minutes: _minutes));
-    _day = DateUtils.dateOnly(begun);
-    _start = TimeOfDay(hour: begun.hour, minute: begun.minute - begun.minute % 15);
+  /// True when the slot is still the default "now" one.
+  bool get isNow => isToday && !_startPicked;
+
+  void _resetToNow() {
+    _day = DateUtils.dateOnly(now);
+    _start = TimeOfDay(hour: now.hour, minute: now.minute - now.minute % 15);
   }
 
   static String _two(int v) => v.toString().padLeft(2, '0');

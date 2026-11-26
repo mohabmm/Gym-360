@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:gymapp_core/gymapp_core.dart';
 
-/// Push / Pull / Legs … chips plus "Other" for a custom label.
+/// Push / Pull / Legs … chips, the coach's own days this client trained before ([pastDays]:
+/// tap one to reuse it as a template), plus "Other" for a new custom label. Tapping the selected
+/// chip again clears the day.
 class DayLabelPicker extends StatelessWidget {
   final String? selected;
   final bool isArabic;
   final ValueChanged<String?> onChanged;
+  final List<String> pastDays;
 
-  const DayLabelPicker({super.key, required this.selected, required this.isArabic, required this.onChanged});
+  const DayLabelPicker({
+    super.key,
+    required this.selected,
+    required this.isArabic,
+    required this.onChanged,
+    this.pastDays = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
-    final custom = selected != null && !ExerciseDays.presets.containsKey(selected);
+    final custom = selected != null && !ExerciseDays.presets.containsKey(selected) && !pastDays.contains(selected);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -19,6 +28,14 @@ class DayLabelPicker extends StatelessWidget {
         for (final label in ExerciseDays.presets.keys)
           ChoiceChip(
             label: Text(ExerciseDays.display(label, isArabic)),
+            selected: selected == label,
+            onSelected: (on) => onChanged(on ? label : null),
+          ),
+        for (final label in pastDays)
+          ChoiceChip(
+            key: ValueKey('past-day-$label'),
+            avatar: const Icon(Icons.history, size: 18),
+            label: Text(label),
             selected: selected == label,
             onSelected: (on) => onChanged(on ? label : null),
           ),

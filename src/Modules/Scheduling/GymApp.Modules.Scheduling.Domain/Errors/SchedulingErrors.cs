@@ -99,6 +99,6 @@ public static class SchedulingErrors
     public static readonly Error QuickLogTooOld =
         new("Scheduling.QuickLog.TooOld.Conflict", "A session can be recorded up to 7 days after it happened. Ask the front desk for older sessions.");
 
-    public static readonly Error QuickLogNotEnded =
-        new("Scheduling.QuickLog.NotEnded.Conflict", "This session hasn't ended yet. Record it after it finishes.");
+    public static readonly Error QuickLogNotStarted =
+        new("Scheduling.QuickLog.NotStarted.Conflict", "This session hasn't started yet. Record it once it begins.");
 }

@@ -12,7 +12,7 @@ void main() {
   test('repeating a day the client trained fills last time, using the coach target when set', () {
     final draft = SessionExercisesDraft();
 
-    expect(draft.applyRepeat(trialBoard(), 'Push Day'), isTrue);
+    expect(draft.pickDay(trialBoard(), 'Push Day'), DayPick.filled);
 
     final bench = draft.rows.single;
     expect((draft.dayLabel, bench.name, bench.setCount), ('Push Day', 'Bench press', 3));
@@ -20,14 +20,66 @@ void main() {
     expect(draft.canSave, isTrue);
   });
 
-  test('a new day keeps the blank form; typed rows are never replaced', () {
+  test('a new day keeps the blank form; typed rows are never replaced without asking', () {
     final fresh = SessionExercisesDraft();
-    expect(fresh.applyRepeat(trialBoard(), 'Leg Day'), isFalse);
+    expect(fresh.pickDay(trialBoard(), 'Leg Day'), DayPick.labelled);
     expect((fresh.dayLabel, fresh.rows.single.isUntouched), ('Leg Day', true));
 
     final typed = SessionExercisesDraft()..rows.single.name = 'Squat';
-    expect(typed.applyRepeat(trialBoard(), 'Push Day'), isFalse);
-    expect(typed.rows.single.name, 'Squat');
+    expect(typed.pickDay(trialBoard(), 'Push Day'), DayPick.needsConfirm);
+    expect((typed.dayLabel, typed.rows.single.name), (null, 'Squat'), reason: 'nothing changes until the coach agrees');
+
+    expect(typed.pickDay(trialBoard(), 'Push Day', replace: true), DayPick.filled);
+    expect(typed.rows.single.name, 'Bench press');
+  });
+
+  test('switching from a filled day to another swaps the template without going back', () {
+    final draft = SessionExercisesDraft()..pickDay(trialBoard(), 'Push Day');
+
+    expect(draft.pickDay(trialBoard(), 'Pull Day'), DayPick.filled);
+    expect(draft.rows.single.name, 'Barbell row');
+
+    expect(draft.pickDay(trialBoard(), 'Leg Day'), DayPick.cleared, reason: 'Pull Day rows go, Leg Day starts fresh');
+    expect((draft.dayLabel, draft.rows.single.isUntouched), ('Leg Day', true));
+  });
+
+  test('no day: an untouched template is cleared; the coach\'s edits are kept', () {
+    final draft = SessionExercisesDraft()..pickDay(trialBoard(), 'Push Day');
+    expect(draft.clearDay(), isTrue);
+    expect((draft.dayLabel, draft.rows.single.isUntouched), (null, true));
+
+    final edited = SessionExercisesDraft()..pickDay(trialBoard(), 'Push Day');
+    edited.rows.single.sets.first.reps = '12';
+    expect(edited.isUnchangedPrefill, isFalse);
+    expect(edited.clearDay(), isFalse);
+    expect((edited.dayLabel, edited.rows.single.name), (null, 'Bench press'));
+  });
+
+  test('start over and undo bring back exactly what was there', () {
+    final draft = SessionExercisesDraft()..pickDay(trialBoard(), 'Push Day');
+    expect(draft.canClear, isTrue);
+    final before = draft.snapshot();
+
+    draft.startEmpty();
+    expect((draft.dayLabel, draft.rows.single.isUntouched, draft.canClear), ('Push Day', true, false));
+
+    draft.restore(before);
+    expect((draft.dayLabel, draft.rows.single.name, draft.isUnchangedPrefill), ('Push Day', 'Bench press', true));
+  });
+
+  test("the coach's own named days are offered again, most recent first", () {
+    final board = ExerciseProgressModel(
+      summary: trialBoard().summary,
+      days: [
+        TrainingDayModel(label: 'Arms', lastTrained: DateTime(2026, 11, 1)),
+        const TrainingDayModel(label: 'Push Day'),
+        TrainingDayModel(label: 'Glutes & core', lastTrained: DateTime(2026, 11, 9)),
+        const TrainingDayModel(),
+      ],
+      exercises: const [],
+    );
+    expect(SessionExercisesDraft.pastCustomDays(board), ['Glutes & core', 'Arms']);
+    expect(SessionExercisesDraft.pastCustomDays(null), isEmpty);
   });
 
   test('payload sends each set with its own weight, the summary and the target', () {

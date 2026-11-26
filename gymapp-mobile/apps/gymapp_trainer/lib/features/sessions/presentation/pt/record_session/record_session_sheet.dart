@@ -9,8 +9,8 @@ import 'session_time_draft.dart';
 /// Sends the session (payload = time + note); throws [ApiException] on failure.
 typedef RecordSessionSubmit = Future<RecordedSession> Function(Map<String, dynamic> payload);
 
-/// "Record session": who, how many sessions are left, when it happened (today / yesterday / up
-/// to 7 days back, start time, duration), an optional note, then one clear button.
+/// "Record session": who, how many sessions are left, when it is (default: going on now; or
+/// yesterday / up to 7 days back, start time, duration), an optional note, then one clear button.
 /// Pops with the [RecordedSession] on success.
 class RecordSessionSheet extends StatefulWidget {
   final String clientName;
@@ -93,7 +93,7 @@ class _RecordSessionSheetState extends State<RecordSessionSheet> {
   String _friendly(ApiException e) {
     final code = e.errorCode ?? '';
     if (code.contains('QuickLog.TooOld')) return _s.issue(SessionTimeIssue.tooOld);
-    if (code.contains('QuickLog.NotEnded')) return _s.issue(SessionTimeIssue.notEnded);
+    if (code.contains('QuickLog.NotStarted')) return _s.issue(SessionTimeIssue.notStarted);
     if (code.contains('NoSessionsRemaining')) return _s.noSessionsLeft;
     if (code.contains('ClientNotAssignedToTrainer')) return _s.notYourClient;
     return _s.saveFailed;
@@ -187,6 +187,13 @@ class _RecordSessionSheetState extends State<RecordSessionSheet> {
             label: Text('${_s.startTime}: ${_draft.start.format(context)}'),
           ),
         ),
+        // One tap back to "going on now" after picking another day or time.
+        if (!_draft.isNow)
+          TextButton(
+            key: const ValueKey('start-now'),
+            onPressed: () => _update(_draft.resetToNow),
+            child: Text(_s.now),
+          ),
         const SizedBox(width: 8),
         DropdownButton<int>(
           key: const ValueKey('duration'),

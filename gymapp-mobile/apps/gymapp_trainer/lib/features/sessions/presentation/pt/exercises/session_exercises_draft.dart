@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:gymapp_core/gymapp_core.dart';
 
 /// What stops one exercise from being saved.
@@ -209,10 +211,42 @@ class ExerciseRowDraft {
       };
 }
 
+/// What picking a training day did to the form.
+enum DayPick {
+  /// Only the label changed (a new day, or nothing to fill).
+  labelled,
+
+  /// The exercises were filled from the last time the client trained that day.
+  filled,
+
+  /// The exercises of the previous day the form was filled from were taken away (new day, nothing to fill).
+  cleared,
+
+  /// The coach typed their own exercises: ask before replacing them.
+  needsConfirm,
+}
+
+/// The form as it was, so a day pick or a clear can be undone.
+class SessionExercisesSnapshot {
+  final String? dayLabel;
+  final List<ExerciseRowDraft> rows;
+  final String? prefill;
+
+  const SessionExercisesSnapshot._(this.dayLabel, this.rows, this.prefill);
+}
+
 /// The session form: a day label and the exercises.
+///
+/// Picking a day the client trained before fills last time's exercises (a ready-made template).
+/// The coach can switch days, clear the day or start empty at any time without leaving the screen:
+/// exercises still exactly as filled are swapped freely; once the coach changed them, the screen
+/// asks first. Every change can be undone with [restore].
 class SessionExercisesDraft {
   String? dayLabel;
   final List<ExerciseRowDraft> rows;
+
+  /// The rows as they were filled from a day, to tell a filled template from the coach's own work.
+  String? _prefill;
 
   SessionExercisesDraft({this.dayLabel, List<ExerciseRowDraft>? rows}) : rows = rows ?? [ExerciseRowDraft()];
 
@@ -223,16 +257,68 @@ class SessionExercisesDraft {
     return board.exercisesFor(day).map(ExerciseRowDraft.fromHistory).toList();
   }
 
-  /// Fills the form from the last [label] day while nothing has been typed yet.
-  bool applyRepeat(ExerciseProgressModel? board, String label) {
-    dayLabel = label;
-    final repeat = repeatOf(board, label);
-    if (repeat.isEmpty || rows.any((r) => !r.isUntouched)) return false;
+  /// The client's own named days (not the presets) the coach can pick again, most recent first.
+  static List<String> pastCustomDays(ExerciseProgressModel? board) {
+    final days = [...?board?.days.where((d) => d.label != null && !ExerciseDays.presets.containsKey(d.label))];
+    days.sort((a, b) => (b.lastTrained ?? DateTime(0)).compareTo(a.lastTrained ?? DateTime(0)));
+    return [for (final d in days) d.label!];
+  }
+
+  String _fingerprint() => jsonEncode([for (final (i, r) in rows.indexed) r.toJson(i)]);
+
+  /// Rows still exactly as they were filled from a day.
+  bool get isUnchangedPrefill => _prefill != null && _fingerprint() == _prefill;
+
+  /// Nothing of the coach's own would be lost by replacing the rows.
+  bool get _nothingToLose => rows.every((r) => r.isUntouched) || isUnchangedPrefill;
+
+  /// True when there is something to clear.
+  bool get canClear => !rows.every((r) => r.isUntouched);
+
+  SessionExercisesSnapshot snapshot() => SessionExercisesSnapshot._(dayLabel, [...rows], _prefill);
+
+  void restore(SessionExercisesSnapshot snap) {
+    dayLabel = snap.dayLabel;
+    _prefill = snap.prefill;
     rows
       ..clear()
-      ..addAll(repeat);
+      ..addAll(snap.rows);
+  }
+
+  /// Picks [label]: fills last time's exercises unless that would replace the coach's own (then
+  /// [DayPick.needsConfirm], and nothing changes); [replace] = the coach agreed.
+  DayPick pickDay(ExerciseProgressModel? board, String label, {bool replace = false}) {
+    final repeat = repeatOf(board, label);
+    if (repeat.isNotEmpty && !replace && !_nothingToLose) return DayPick.needsConfirm;
+    final wasPrefill = isUnchangedPrefill;
+    dayLabel = label;
+    if (repeat.isNotEmpty) {
+      _setRows(repeat);
+      _prefill = _fingerprint();
+      return DayPick.filled;
+    }
+    if (!wasPrefill) return DayPick.labelled;
+    startEmpty();
+    return DayPick.cleared;
+  }
+
+  /// No day: the label goes, and so do exercises still exactly as filled from it. True when rows were cleared.
+  bool clearDay() {
+    dayLabel = null;
+    if (!isUnchangedPrefill) return false;
+    startEmpty();
     return true;
   }
+
+  /// One blank exercise, no template: the coach writes their own.
+  void startEmpty() {
+    _setRows([ExerciseRowDraft()]);
+    _prefill = null;
+  }
+
+  void _setRows(List<ExerciseRowDraft> next) => rows
+    ..clear()
+    ..addAll(next);
 
   List<ExerciseRowDraft> get filled => rows.where((r) => !r.isUntouched).toList();
 

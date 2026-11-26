@@ -12,11 +12,12 @@ class RecordSessionStrings {
   String _t(String ar, String en) => isArabic ? ar : en;
 
   String get title => _t('تسجيل حصة', 'Record session');
-  String get when => _t('متى تمت الحصة؟', 'When did it happen?');
+  String get when => _t('متى الحصة؟', 'When is the session?');
   String get today => _t('اليوم', 'Today');
   String get yesterday => _t('أمس', 'Yesterday');
   String get otherDay => _t('يوم آخر', 'Other day');
   String get startTime => _t('وقت البداية', 'Start time');
+  String get now => _t('الآن', 'Now');
   String get duration => _t('مدة الحصة', 'Duration');
   String get note => _t('ملاحظة (اختياري)', 'Note (optional)');
   String get noteHint => _t('مثال: ركزنا على الظهر', 'e.g. focused on back');
@@ -55,8 +56,8 @@ class RecordSessionStrings {
         SessionTimeIssue.tooOld => _t(
             'يمكن تسجيل حصة حتى ${SessionTimeDraft.maxDaysBack} أيام بعد موعدها. للأقدم تواصل مع الاستقبال.',
             'Sessions can be recorded up to ${SessionTimeDraft.maxDaysBack} days later. Ask the desk for older ones.'),
-        SessionTimeIssue.notEnded => _t('هذه الحصة لم تنتهِ بعد — سجّلها بعد انتهائها.',
-            "This session hasn't ended yet — record it after it finishes."),
+        SessionTimeIssue.notStarted => _t('هذه الحصة لم تبدأ بعد — اختر وقت بداية الآن أو قبله.',
+            "This session hasn't started yet — pick a start time now or earlier."),
       };
 
   String day(DateTime d, SessionTimeDraft draft) {

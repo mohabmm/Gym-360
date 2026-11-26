@@ -50,6 +50,50 @@ void main() {
     expect(find.textContaining("Filled in last Push Day's exercises"), findsOneWidget);
   });
 
+  testWidgets('switch day, untick it, start over and undo — all without leaving the screen', (tester) async {
+    await _pump(tester);
+
+    await tester.tap(find.text('Push Day'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pull Day'));
+    await tester.pumpAndSettle();
+    expect(find.text('Barbell row'), findsOneWidget, reason: 'the untouched Push template is swapped');
+    expect(find.text('Bench press'), findsNothing);
+
+    await tester.tap(find.text('Pull Day'));
+    await tester.pumpAndSettle();
+    expect(find.text('Barbell row'), findsNothing, reason: 'no day = no template');
+
+    await tester.tap(find.byKey(const ValueKey('undo-exercises')));
+    await tester.pumpAndSettle();
+    expect(find.text('Barbell row'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('start-empty')));
+    await tester.pumpAndSettle();
+    expect(find.text('Barbell row'), findsNothing);
+    expect(find.byKey(const ValueKey('start-empty')), findsNothing);
+  });
+
+  testWidgets("the coach's own exercises are replaced only after asking", (tester) async {
+    await _pump(tester);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Exercise'), 'Squat');
+    await tester.pump();
+    await tester.tap(find.text('Push Day'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('keep-mine')));
+    await tester.pumpAndSettle();
+    expect(find.text('Squat'), findsOneWidget);
+    expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Push Day')).selected, isTrue);
+
+    await tester.tap(find.text('Pull Day'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('replace-exercises')));
+    await tester.pumpAndSettle();
+    expect(find.text('Barbell row'), findsOneWidget);
+    expect(find.text('Squat'), findsNothing);
+  });
+
   testWidgets('next target fields open on demand', (tester) async {
     await _pump(tester);
 
