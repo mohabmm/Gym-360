@@ -12,8 +12,8 @@ using GymApp.Common.Application.Messaging;
 namespace GymApp.Tests.Application.Pt;
 
 /// <summary>
-/// pt.dual_session_logging: the coach says when the session happened — today (default: just
-/// finished) or up to 7 days back — and the same slot is never recorded twice.
+/// pt.dual_session_logging: the coach says when the session happened — today (default: going on
+/// now, so the coach can record it while training) or up to 7 days back — and the same slot is never recorded twice.
 /// Clock: 12 Nov 2026 16:00 UTC = 18:00 in Cairo.
 /// </summary>
 public class QuickLogScheduleTests
@@ -52,12 +52,14 @@ public class QuickLogScheduleTests
     }
 
     [Fact]
-    public async Task Without_a_time_it_is_a_session_that_just_finished()
+    public async Task Without_a_time_it_is_a_session_going_on_now()
     {
+        _clock.UtcNow.Returns(new DateTime(2026, 11, 12, 16, 10, 0, DateTimeKind.Utc));
+
         var saved = await SavedAsync(At(null, null));
 
         saved.ScheduledDate.Should().Be(Today);
-        saved.ScheduledTime.Should().Be(new TimeOnly(17, 0), "18:00 now minus 60 minutes");
+        saved.ScheduledTime.Should().Be(new TimeOnly(18, 0), "18:10 now, at the current quarter hour");
         saved.DurationMinutes.Should().Be(60);
     }
 
@@ -82,11 +84,23 @@ public class QuickLogScheduleTests
     }
 
     [Fact]
-    public async Task A_session_that_has_not_ended_yet_is_rejected()
+    public async Task A_session_in_progress_is_recorded()
     {
-        var result = await _sut.Handle(At(Today, new TimeOnly(17, 30), 60), CancellationToken.None);
+        var saved = await SavedAsync(At(Today, new TimeOnly(17, 30), 60));
 
-        result.Error.Should().Be(SchedulingErrors.QuickLogNotEnded);
+        saved.ScheduledTime.Should().Be(new TimeOnly(17, 30), "it started 30 minutes ago and is still going");
+    }
+
+    [Fact]
+    public async Task A_session_starting_within_five_minutes_is_recorded() =>
+        (await SavedAsync(At(Today, new TimeOnly(18, 5)))).ScheduledTime.Should().Be(new TimeOnly(18, 5));
+
+    [Fact]
+    public async Task A_session_that_has_not_started_yet_is_rejected()
+    {
+        var result = await _sut.Handle(At(Today, new TimeOnly(18, 30), 60), CancellationToken.None);
+
+        result.Error.Should().Be(SchedulingErrors.QuickLogNotStarted);
         await _sessions.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
     }
 

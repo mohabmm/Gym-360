@@ -15,17 +15,21 @@ internal static class QuickLogSchedule
     public const int MinDurationMinutes = 15;
     public const int MaxDurationMinutes = 180;
 
-    /// <summary>Clock drift / "I'm wrapping up" slack for the end-of-session check.</summary>
-    private static readonly TimeSpan EndSlack = TimeSpan.FromMinutes(5);
+    /// <summary>Clock drift slack: a session may be recorded as starting this much ahead of now.</summary>
+    private static readonly TimeSpan StartSlack = TimeSpan.FromMinutes(5);
 
-    /// <summary>The requested slot; without a date and time, a session that just finished.</summary>
+    /// <summary>
+    /// The requested slot; without a date and time, a session going on now (the coach records it
+    /// while training the client) — started at the current quarter hour.
+    /// </summary>
     public static SessionSchedule Resolve(QuickLogSessionCommand request, DateTime nowLocal)
     {
         var duration = request.DurationMinutes ?? DefaultDurationMinutes;
         if (request.StartTime is not { } start)
         {
-            var justFinished = nowLocal.AddMinutes(-duration);
-            return new SessionSchedule(DateOnly.FromDateTime(justFinished), TimeOnly.FromDateTime(justFinished), duration);
+            var now = TimeOnly.FromDateTime(nowLocal);
+            return new SessionSchedule(
+                DateOnly.FromDateTime(nowLocal), new TimeOnly(now.Hour, now.Minute - now.Minute % 15), duration);
         }
 
         return new SessionSchedule(request.Date ?? DateOnly.FromDateTime(nowLocal), start, duration);
@@ -41,8 +45,10 @@ internal static class QuickLogSchedule
         if (schedule.Date < today.AddDays(-MaxDaysBack))
             return SchedulingErrors.QuickLogTooOld;
 
-        var end = schedule.Date.ToDateTime(schedule.Time).AddMinutes(schedule.DurationMinutes);
-        return end > nowLocal + EndSlack ? SchedulingErrors.QuickLogNotEnded : null;
+        // A session in progress may be recorded (the coach logs it on the floor); one that has
+        // not started yet may not.
+        var start = schedule.Date.ToDateTime(schedule.Time);
+        return start > nowLocal + StartSlack ? SchedulingErrors.QuickLogNotStarted : null;
     }
 
     public static DateTime NowLocal(DateTime nowUtc) => GymLocalTime.FromUtc(nowUtc);

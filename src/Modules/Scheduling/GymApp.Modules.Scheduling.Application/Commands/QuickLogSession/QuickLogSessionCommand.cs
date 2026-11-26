@@ -5,8 +5,8 @@ namespace GymApp.Modules.Scheduling.Application.Commands.QuickLogSession;
 /// <summary>
 /// pt.dual_session_logging: the coach records a session that happened, no booking needed.
 /// <paramref name="Date"/> / <paramref name="StartTime"/> (gym-local) say when it happened — up to
-/// <see cref="QuickLogSchedule.MaxDaysBack"/> days back; omitted, it is a session that just
-/// finished. <paramref name="DurationMinutes"/> defaults to 60. <paramref name="PlanDay"/> (optional,
+/// <see cref="QuickLogSchedule.MaxDaysBack"/> days back; omitted, it is a session going on
+/// now. A session in progress may be recorded; one that has not started may not. <paramref name="DurationMinutes"/> defaults to 60. <paramref name="PlanDay"/> (optional,
 /// pt.training_plan) is the plan day done in the session; it changes nothing about the session.
 /// </summary>
 public sealed record QuickLogSessionCommand(

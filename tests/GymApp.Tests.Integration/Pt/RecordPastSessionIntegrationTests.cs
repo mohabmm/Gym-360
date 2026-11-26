@@ -59,6 +59,30 @@ public sealed class RecordPastSessionIntegrationTests : BaseIntegrationTest
         (await response.Content.ReadAsStringAsync()).Should().Contain("Scheduling.QuickLog.TooOld");
     }
 
+    [Fact]
+    public async Task Coach_records_the_session_while_it_is_going_on()
+    {
+        var coach = await ArrangeAsync(sessions: 3);
+
+        var response = await coach.PostAsJsonAsync(QuickLogUrl, new { memberId = _traineeId });
+
+        var data = await DataAsync(response);
+        data.GetProperty("alreadyLogged").GetBoolean().Should().BeFalse();
+        data.GetProperty("remainingSessions").GetInt32().Should().Be(2);
+        data.GetProperty("date").GetString().Should().Be(CairoToday().ToString("yyyy-MM-dd"));
+    }
+
+    [Fact]
+    public async Task A_session_that_has_not_started_is_refused()
+    {
+        var coach = await ArrangeAsync(sessions: 2);
+
+        var response = await RecordAsync(coach, CairoToday().AddDays(1), "10:00:00");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Scheduling.QuickLog.NotStarted");
+    }
+
     private async Task<HttpClient> ArrangeAsync(int sessions)
     {
         var gymId = await PtTestGym.RegisterAsync(Factory.Services, _traineeId);

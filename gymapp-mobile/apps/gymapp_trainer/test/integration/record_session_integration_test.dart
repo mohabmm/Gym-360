@@ -29,7 +29,7 @@ Map<String, dynamic> _answer({bool already = false}) => {
       'startTime': '18:00:00',
     };
 
-/// A fixed evening, so "just finished" is today whatever time the suite runs (CI runs after midnight too).
+/// A fixed evening, so "now" is today whatever time the suite runs (CI runs after midnight too).
 final _evening = DateTime(2026, 11, 20, 18, 30);
 
 Future<void> _pump(WidgetTester tester, {Map<String, dynamic>? answer, int status = 200, DateTime? now}) async {
@@ -80,18 +80,34 @@ void _theSheet() {
 
     expect(find.text('Mona Ali'), findsOneWidget);
     expect(find.text('8 of 12 left → 7 after this'), findsOneWidget);
-    expect(find.text('When did it happen?'), findsOneWidget);
+    expect(find.text('When is the session?'), findsOneWidget);
     final today = tester.widget<ChoiceChip>(find.byKey(const ValueKey('day-today')));
     expect(today.selected, isTrue);
     expect(t.adapter.recorded.where((r) => r.method == 'POST'), isEmpty, reason: 'nothing is deducted before confirming');
   });
 
-  testWidgets('just after midnight the session that just finished started yesterday', (tester) async {
-    await _pump(tester, now: DateTime(2026, 11, 21, 0, 25));
+  testWidgets('recording during the session sends now as the start (no waiting for it to end)', (tester) async {
+    await _pump(tester);
 
-    final yesterday = tester.widget<ChoiceChip>(find.byKey(const ValueKey('day-yesterday')));
-    expect(yesterday.selected, isTrue);
-    expect(tester.widget<ChoiceChip>(find.byKey(const ValueKey('day-today'))).selected, isFalse);
+    expect(find.byKey(const ValueKey('start-now')), findsNothing, reason: 'already now');
+    await tester.tap(find.byKey(const ValueKey('record-session')));
+    await tester.pumpAndSettle();
+
+    final body = _sent();
+    expect(body['date'], '2026-11-20');
+    expect(body['startTime'], '18:30:00');
+  });
+
+  testWidgets('"Now" brings a picked day back to the session going on now', (tester) async {
+    await _pump(tester);
+
+    await tester.tap(find.byKey(const ValueKey('day-yesterday')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('start-now')));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<ChoiceChip>(find.byKey(const ValueKey('day-today'))).selected, isTrue);
+    expect(find.byKey(const ValueKey('start-now')), findsNothing);
   });
 
   testWidgets('a forgotten session from yesterday is sent with its date, time and duration', (tester) async {

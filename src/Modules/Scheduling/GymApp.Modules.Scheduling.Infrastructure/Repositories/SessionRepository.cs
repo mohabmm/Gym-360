@@ -184,8 +184,10 @@ internal sealed class SessionRepository : ISessionRepository
                 && s.Status != SessionStatus.NoShow);
     }
 
+    // Sessions recorded "now" share the current quarter-hour slot: the one recorded first came first.
     private static IOrderedQueryable<Session> InChronologicalOrder(IQueryable<Session> sessions) =>
         sessions
             .OrderBy(s => s.ScheduledDate)
-            .ThenBy(s => s.ScheduledTime);
+            .ThenBy(s => s.ScheduledTime)
+            .ThenBy(s => s.CreatedAt);
 }

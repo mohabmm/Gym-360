@@ -32,7 +32,7 @@ void main() {
       ApiEndpoints.sessionExerciseLogs(const SessionId('s1')),
       respond: (_) => t.adapter.created(const <Object>[]),
     );
-    final draft = SessionExercisesDraft()..applyRepeat(trialBoard(), 'Push Day');
+    final draft = SessionExercisesDraft()..pickDay(trialBoard(), 'Push Day');
     draft.rows.single.targetWeight = 67.5;
 
     await t.apiClient.post<Object?>(
