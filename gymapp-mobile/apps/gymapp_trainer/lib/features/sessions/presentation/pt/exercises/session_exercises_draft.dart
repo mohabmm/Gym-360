@@ -104,6 +104,25 @@ class ExerciseRowDraft {
     return row;
   }
 
+  /// A planned exercise as the coach is about to do it: the plan's sets, reps (a range keeps
+  /// its lower bound), time and weight filled in, ready to confirm or adjust.
+  factory ExerciseRowDraft.fromPlan(PlanExerciseModel exercise) {
+    final timed = exercise.isTimed;
+    final reps = expandReps(exercise.reps ?? '', exercise.sets);
+    return ExerciseRowDraft(
+      name: exercise.name,
+      measure: timed ? ExerciseMeasure.time : ExerciseMeasure.reps,
+      sets: [
+        for (final r in reps)
+          SetDraft(
+            reps: timed ? '' : r,
+            time: timed ? SetDraft.formatSeconds(exercise.seconds!) : '',
+            weight: exercise.targetWeightKg,
+          ),
+      ],
+    );
+  }
+
   static List<SetDraft> _setsOf(ExerciseEntryModel entry) {
     if (entry.setEntries.isEmpty) {
       return [for (final r in expandReps(entry.reps, entry.sets)) SetDraft(reps: r, weight: entry.weight)];
@@ -300,6 +319,28 @@ class SessionExercisesDraft {
     if (!wasPrefill) return DayPick.labelled;
     startEmpty();
     return DayPick.cleared;
+  }
+
+  /// Fills the form with a day of the member's plan (pt.training_plan): its exercises, and its
+  /// title as the day label. Same rules as [pickDay]: the coach's own exercises are only
+  /// replaced once they agree ([replace]).
+  DayPick pickPlanDay(PlanDayModel day, {required bool isArabic, bool replace = false}) {
+    final planned = [for (final e in day.exercises) ExerciseRowDraft.fromPlan(e)];
+    if (planned.isNotEmpty && !replace && !_nothingToLose) return DayPick.needsConfirm;
+    dayLabel = planDayLabel(day, isArabic);
+    if (planned.isEmpty) return DayPick.labelled;
+    _setRows(planned);
+    _prefill = _fingerprint();
+    return DayPick.filled;
+  }
+
+  /// Mirrors Session.MaxDayLabelLength on the backend.
+  static const int maxDayLabelLength = 40;
+
+  /// The plan day's title as the session's day label (cut to what the API keeps).
+  static String planDayLabel(PlanDayModel day, bool isArabic) {
+    final title = day.displayTitle(isArabic).trim();
+    return title.length > maxDayLabelLength ? title.substring(0, maxDayLabelLength) : title;
   }
 
   /// No day: the label goes, and so do exercises still exactly as filled from it. True when rows were cleared.
