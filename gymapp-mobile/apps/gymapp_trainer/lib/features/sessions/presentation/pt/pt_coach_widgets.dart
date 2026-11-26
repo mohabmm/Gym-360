@@ -53,10 +53,10 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
     return fromPackage.isNotEmpty ? fromPackage : (ref.read(clientNameByIdProvider)[widget.memberId] ?? '');
   }
 
-  Future<RecordedSession> _send(Map<String, dynamic> payload) async {
-    final result = await ref.read(apiClientProvider).post<Map<String, dynamic>>(
+  static Future<RecordedSession> _send(ApiClient api, String memberId, Map<String, dynamic> payload) async {
+    final result = await api.post<Map<String, dynamic>>(
           ApiEndpoints.sessionQuickLog,
-          data: {'memberId': widget.memberId, ...payload},
+          data: {'memberId': memberId, ...payload},
           parser: (data) => Map<String, dynamic>.from(data as Map),
         );
     return RecordedSession.fromJson(result);
@@ -67,24 +67,35 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
     final router = GoRouter.of(context);
     final draft = SessionTimeDraft(ref.read(clockProvider)());
     final name = _clientName;
+    // Read everything now: the sheet can outlive this button (the list behind it reloads, e.g.
+    // after a token refresh), and `ref` of an unmounted widget throws "No ProviderScope found".
+    final package = _package;
+    final planDays = ref.read(sessionPlanDaysProvider(widget.memberId)).valueOrNull;
+    final api = ref.read(apiClientProvider);
+    final memberId = widget.memberId;
+    final container = ProviderScope.containerOf(context, listen: false);
     final result = await showModalBottomSheet<RecordedSession>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => RecordSessionSheet(
         clientName: name,
-        package: _package,
+        package: package,
         strings: strings,
         draft: draft,
-        onSubmit: _send,
-        planDays: ref.read(sessionPlanDaysProvider(widget.memberId)).valueOrNull,
+        onSubmit: (payload) => _send(api, memberId, payload),
+        planDays: planDays,
       ),
     );
-    if (result == null || !mounted) return;
-    ref.invalidate(allClientPackagesProvider);
-    ref.invalidate(traineePlansProvider(widget.memberId));
-    ref.invalidate(sessionPlanDaysProvider(widget.memberId));
-    ref.invalidate(trainerDashboardProvider);
+    if (result == null) return;
+    // The session counts even if this button is gone: refresh the counts either way.
+    container
+      ..invalidate(allClientPackagesProvider)
+      ..invalidate(traineePlansProvider(memberId))
+      ..invalidate(sessionPlanDaysProvider(memberId))
+      ..invalidate(trainerDashboardProvider);
+    if (!mounted) return;
+    final next = _nextSteps(router, result);
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -93,7 +104,7 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
         clientName: name,
         strings: strings,
         draft: draft,
-        next: _nextSteps(router, result),
+        next: next,
       ),
     );
   }
