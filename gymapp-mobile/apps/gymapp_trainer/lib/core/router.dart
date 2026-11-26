@@ -77,8 +77,12 @@ class AppRoutes {
 
   /// pt.exercise_progress — outside /sessions, which belongs to scheduling.booking.
   static const String sessionExercises = '/pt-sessions/:sessionId/exercises';
-  static String sessionExercisesFor(String sessionId, String clientId) =>
-      '/pt-sessions/$sessionId/exercises?clientId=$clientId';
+  /// [planDay]: the plan day the session was counted as, so the exercises open on it.
+  static String sessionExercisesFor(String sessionId, String clientId, {String? planDay}) =>
+      Uri(path: '/pt-sessions/$sessionId/exercises', queryParameters: {
+        'clientId': clientId,
+        if (planDay != null && planDay.isNotEmpty) 'planDay': planDay,
+      }).toString();
   static const String more = '/more';
   static const String chatList = '/more/chat';
   static const String chat = '/more/chat/:conversationId';
@@ -307,6 +311,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => SessionExercisesScreen(
           sessionId: state.pathParameters['sessionId']!,
           clientId: state.uri.queryParameters['clientId'] ?? '',
+          planDayKey: state.uri.queryParameters['planDay'],
         ),
       ),
       GoRoute(

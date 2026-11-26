@@ -48,6 +48,10 @@ Future<TestApiClient> _open(WidgetTester tester, {bool withPlan = true, bool pla
   addTearDown(tester.view.reset);
   final router = GoRouter(routes: [
     GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Center(child: QuickLogButton(memberId: kClientId)))),
+    GoRoute(
+      path: '/pt-sessions/:id/exercises',
+      builder: (_, state) => Scaffold(body: Text('exercises day ${state.uri.queryParameters['planDay']}')),
+    ),
   ]);
   await tester.pumpWidget(ProviderScope(
     overrides: [
@@ -108,6 +112,18 @@ void main() {
     await _record(tester);
 
     expect((_sent(t)['planDay'] as Map)['dayKey'], 'w2b');
+  });
+
+  testWidgets('the exercises open on the plan day the session was counted as', (tester) async {
+    await _open(tester);
+
+    await tester.tap(find.byKey(const ValueKey('plan-day-w2b')));
+    await tester.pumpAndSettle();
+    await _record(tester);
+    await tester.tap(find.byKey(const ValueKey('next-exercises')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('exercises day w2b'), findsOneWidget);
   });
 
   testWidgets('no plan, or plans off: the sheet is exactly as before', (tester) async {

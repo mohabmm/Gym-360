@@ -74,6 +74,7 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
     final api = ref.read(apiClientProvider);
     final memberId = widget.memberId;
     final container = ProviderScope.containerOf(context, listen: false);
+    String? planDayKey;
     final result = await showModalBottomSheet<RecordedSession>(
       context: context,
       isScrollControlled: true,
@@ -83,7 +84,10 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
         package: package,
         strings: strings,
         draft: draft,
-        onSubmit: (payload) => _send(api, memberId, payload),
+        onSubmit: (payload) {
+          planDayKey = (payload['planDay'] as Map?)?['dayKey'] as String?;
+          return _send(api, memberId, payload);
+        },
         planDays: planDays,
       ),
     );
@@ -95,7 +99,7 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
       ..invalidate(sessionPlanDaysProvider(memberId))
       ..invalidate(trainerDashboardProvider);
     if (!mounted) return;
-    final next = _nextSteps(router, result);
+    final next = _nextSteps(router, result, planDayKey);
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -109,13 +113,13 @@ class _QuickLogButtonState extends ConsumerState<QuickLogButton> {
     );
   }
 
-  NextSteps _nextSteps(GoRouter router, RecordedSession result) {
+  NextSteps _nextSteps(GoRouter router, RecordedSession result, String? planDayKey) {
     final canExercises = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptExerciseProgress)) &&
         result.sessionId.isNotEmpty;
     final canMeasure = ref.read(isFeatureEnabledProvider(FeatureFlagKeys.ptProgressMeasurements));
     return NextSteps(
       exercises: canExercises
-          ? () => router.push(AppRoutes.sessionExercisesFor(result.sessionId, widget.memberId))
+          ? () => router.push(AppRoutes.sessionExercisesFor(result.sessionId, widget.memberId, planDay: planDayKey))
           : null,
       measurements: canMeasure ? () => router.push(measurementsRoute(widget.memberId)) : null,
     );
